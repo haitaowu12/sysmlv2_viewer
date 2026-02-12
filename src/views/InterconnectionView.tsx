@@ -18,7 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAppStore, getNodeId } from '../store/store';
-import type { SysMLNode, PartUsage, PortUsage, ConnectionUsage, FlowUsage } from '../parser/types';
+import type { SysMLNode, ConnectionUsage } from '../parser/types';
 import { SysMLDiagramNode, PortNode } from '../components/SysMLNode';
 import { autoLayout } from '../utils/layout';
 import { findRelatedNodeIds } from '../utils/focusUtils';
