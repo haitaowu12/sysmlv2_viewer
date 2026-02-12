@@ -30,6 +30,7 @@ export interface AppState {
 
     // File state
     fileName: string | null;
+    currentModelId: string; // 'vehicle' | 'mars' | 'radio' | 'custom'
     isModified: boolean;
 
     // Actions
@@ -186,6 +187,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     showExplorer: true,
     showPropertyPanel: true,
     fileName: null,
+    currentModelId: 'vehicle',
     isModified: false,
 
     setSourceCode: (code) => {
@@ -241,7 +243,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     togglePropertyPanel: () => set(s => ({ showPropertyPanel: !s.showPropertyPanel })),
 
     loadFile: (name, content) => {
-        set({ sourceCode: content, fileName: name, isModified: false });
+        set({
+            sourceCode: content,
+            fileName: name,
+            currentModelId: 'custom',
+            isModified: false
+        });
         // Auto-parse
         const model = parseSysML(content);
         set({ model, parseErrors: model.errors, selectedNode: null });
@@ -258,7 +265,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         let code = DEMO_CODE;
         if (exampleType === 'mars') code = MARS_ROVER_EXAMPLE;
         if (exampleType === 'radio') code = RADIO_SYSTEM_EXAMPLE;
-        set({ sourceCode: code, fileName: null, isModified: false });
+        set({
+            sourceCode: code,
+            fileName: null,
+            currentModelId: exampleType,
+            isModified: false
+        });
         get().parseSource();
     },
 

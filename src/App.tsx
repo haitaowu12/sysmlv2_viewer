@@ -50,6 +50,7 @@ export default function App() {
   const resetToExample = useAppStore(s => s.resetToExample);
   const exportSysML = useAppStore(s => s.exportSysML);
   const fileName = useAppStore(s => s.fileName);
+  const currentModelId = useAppStore(s => s.currentModelId);
   const isModified = useAppStore(s => s.isModified);
   const parseErrors = useAppStore(s => s.parseErrors);
   const model = useAppStore(s => s.model);
@@ -125,13 +126,16 @@ export default function App() {
           <div className="toolbar-divider" />
           <select
             className="toolbar-select"
+            value={currentModelId}
             onChange={(e) => resetToExample(e.target.value as any)}
-            defaultValue="vehicle"
             title="Load Example"
           >
             <option value="vehicle">🚗 Vehicle Demo</option>
             <option value="mars">🚀 Mars Rover</option>
             <option value="radio">📡 Radio System</option>
+            {currentModelId === 'custom' && (
+              <option value="custom">📄 {fileName || 'Imported Model'}</option>
+            )}
           </select>
           <div className="toolbar-divider" />
           <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle explorer">
