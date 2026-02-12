@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# SysML v2 Visual Editor (Prototype v0.1)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight, web-based SysML v2 visualization and editing environment designed to help practitioners learn, adopt, and experiment with the SysML v2 language without the heavy overhead of traditional modeling suites.
 
-Currently, two official plugins are available:
+## 🚀 Mission: Removing Entry Barriers
+The transition to SysML v2 represents a significant paradigm shift from graphical-first to combined textual/graphical modeling. This project aims to lower the barrier to entry by providing:
+- **Instant Visualization**: Real-time rendering of SysML v2 textual syntax into interactive diagrams.
+- **Lightweight Experience**: No installation required; runs entirely in the browser.
+- **Interactive Learning**: A library of draggable templates and complex examples (like a Mars Rover) to see SysML v2 in action.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Core Features
+- **Code-Diagram Sync**: Integrated Monaco Editor with live parsing and bi-directional navigation.
+- **Multiple Perspectives**: Visualize your model through General, Interconnection, Action Flow, State Transition, and Requirements views.
+- **Interactive Editing**: 
+  - Drag-and-drop elements from the Library.
+  - Context-menu based focusing and attribute management.
+  - Property panel for precision attribute editing.
+- **Traceability**: Automated visualization of `satisfy` and `verify` relationships.
+- **Smart Navigation**: Auto-zoom/pan to focused elements to maintain context in large models.
 
-## React Compiler
+## 🌐 Live Version
+Experience the editor live at:  
+**[https://haitaowu12.github.io/sysmlv2_viewer/](https://haitaowu12.github.io/sysmlv2_viewer/)**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Local Development
 
-## Expanding the ESLint configuration
+### Prerequisites
+- Node.js (v18+)
+- npm
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Setup
+```bash
+# Clone the repository
+git clone https://github.com/haitaowu12/sysmlv2_viewer.git
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Install dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Build
+```bash
+npm run build
 ```
+
+## ⚠️ Prototype Status
+This is a **Prototype v0.1** version. It supports a significant subset of the SysML v2 textual notation but is not yet a complete implementation of the full language specification. Contributions and feedback are welcome as we refine the parsing and rendering engines.
+
+## ⚖️ License
+MIT License
