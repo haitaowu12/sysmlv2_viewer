@@ -114,6 +114,33 @@ const LIBRARY_ITEMS: LibraryItem[] = [
         icon: '🔒',
         codeTemplate: "constraint { true }",
     },
+    // Viewpoints & Views
+    {
+        kind: 'ViewpointDef',
+        label: 'Viewpoint Def',
+        icon: '👁️',
+        codeTemplate: "viewpoint def NewViewpoint {\n\tdoc /* Stakeholder concerns */\n\tattribute concerns : String;\n}",
+    },
+    {
+        kind: 'ViewDef',
+        label: 'View Def',
+        icon: '🖼️',
+        codeTemplate: "view def NewView : ViewpointType {\n\t\n}",
+    },
+    // Verification
+    {
+        kind: 'VerificationDef',
+        label: 'Verification Def',
+        icon: '✅',
+        codeTemplate: "verification def NewVerification {\n\tsubject : SystemUnderTest;\n}",
+    },
+    // Analysis
+    {
+        kind: 'AnalysisDef',
+        label: 'Analysis Def',
+        icon: '📊',
+        codeTemplate: "analysis def NewAnalysis {\n\t\n}",
+    },
 ];
 
 function LibraryItemComponent({ item }: { item: LibraryItem }) {

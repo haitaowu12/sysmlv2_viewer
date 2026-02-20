@@ -367,8 +367,32 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseGenericElement(lexer, lexer.lookAhead('allocation def') ? 'AllocationDef' : 'AllocationUsage');
     } else if (lexer.lookAhead('use case def') || lexer.lookAhead('use case')) {
         node = parseGenericElement(lexer, lexer.lookAhead('use case def') ? 'UseCaseDef' : 'UseCaseUsage');
-    } else if (lexer.lookAhead('view def') || lexer.lookAhead('viewpoint def') || lexer.lookAhead('view') || lexer.lookAhead('viewpoint')) {
-        node = parseGenericElement(lexer, 'ViewDef');
+    } else if (lexer.lookAhead('viewpoint def')) {
+        node = parseViewpointDef(lexer);
+    } else if (lexer.lookAhead('viewpoint')) {
+        node = parseViewpointUsage(lexer);
+    } else if (lexer.lookAhead('view def')) {
+        node = parseViewDef(lexer);
+    } else if (lexer.lookAhead('view')) {
+        node = parseViewUsage(lexer);
+    } else if (lexer.lookAhead('verification def')) {
+        node = parseVerificationDef(lexer);
+    } else if (lexer.lookAhead('verification') || lexer.lookAhead('verify')) {
+        node = parseVerificationUsage(lexer);
+    } else if (lexer.lookAhead('analysis def')) {
+        node = parseAnalysisDef(lexer);
+    } else if (lexer.lookAhead('analysis')) {
+        node = parseAnalysisUsage(lexer);
+    } else if (lexer.lookAhead('metadata def')) {
+        node = parseMetadataDef(lexer);
+    } else if (lexer.lookAhead('enumeration def')) {
+        node = parseEnumDef(lexer);
+    } else if (lexer.lookAhead('enumeration')) {
+        node = parseEnumUsage(lexer);
+    } else if (lexer.lookAhead('test case')) {
+        node = parseGenericElement(lexer, 'VerificationUsage');
+    } else if (lexer.lookAhead('satisfy')) {
+        node = parseSatisfyUsage(lexer);
     } else {
         // Unknown element - try to skip it gracefully
         const word = lexer.readIdentifier();
@@ -1156,14 +1180,171 @@ function readReference(lexer: Lexer): string {
     lexer.skipWhitespace();
     let ref = '';
 
-    // Handle "references" keyword
     if (lexer.lookAhead('references')) {
         lexer.match('references');
     }
 
-    // Read qualified name path
     ref = lexer.readQualifiedName();
     return ref;
+}
+
+function parseViewpointDef(lexer: Lexer): SysMLNode {
+    lexer.expect('viewpoint');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+
+    const concerns: string[] = [];
+    for (const child of children) {
+        if (child.kind === 'AttributeUsage' && child.name === 'concerns') {
+            const val = (child as any).defaultValue;
+            if (val) concerns.push(val);
+        }
+    }
+
+    return {
+        kind: 'ViewpointDef',
+        name,
+        shortName,
+        concerns,
+        children,
+    } as SysMLNode;
+}
+
+function parseViewpointUsage(lexer: Lexer): SysMLNode {
+    lexer.expect('viewpoint');
+
+    const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'ViewpointUsage', name, typeName, children } as SysMLNode;
+}
+
+function parseViewDef(lexer: Lexer): SysMLNode {
+    lexer.expect('view');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+
+    let viewpoint: string | undefined;
+    if (lexer.match(':')) {
+        viewpoint = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'ViewDef', name, shortName, viewpoint, children } as SysMLNode;
+}
+
+function parseViewUsage(lexer: Lexer): SysMLNode {
+    lexer.expect('view');
+
+    const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'ViewUsage', name, typeName, children } as SysMLNode;
+}
+
+function parseVerificationDef(lexer: Lexer): SysMLNode {
+    lexer.expect('verification');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+
+    let subject: { name: string; typeName?: string } | undefined;
+    for (const child of children) {
+        if (child.name.startsWith('subject:')) {
+            subject = {
+                name: child.name.replace('subject:', ''),
+                typeName: (child as any).typeName,
+            };
+        }
+    }
+
+    return { kind: 'VerificationDef', name, shortName, subject, children } as SysMLNode;
+}
+
+function parseVerificationUsage(lexer: Lexer): SysMLNode {
+    if (lexer.match('verify')) {
+        const name = lexer.readIdentifier();
+        let typeName: string | undefined;
+        if (lexer.match(':')) {
+            typeName = lexer.readQualifiedName();
+        }
+        const children = parseBody(lexer);
+        return { kind: 'VerificationUsage', name: name || 'verify', typeName, children } as SysMLNode;
+    }
+
+    lexer.expect('verification');
+    const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'VerificationUsage', name, typeName, children } as SysMLNode;
+}
+
+function parseAnalysisDef(lexer: Lexer): SysMLNode {
+    lexer.expect('analysis');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+
+    return { kind: 'AnalysisDef', name, shortName, children } as SysMLNode;
+}
+
+function parseAnalysisUsage(lexer: Lexer): SysMLNode {
+    lexer.expect('analysis');
+
+    const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'AnalysisUsage', name, typeName, children } as SysMLNode;
+}
+
+function parseMetadataDef(lexer: Lexer): SysMLNode {
+    lexer.expect('metadata');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+
+    return { kind: 'MetadataDef', name, shortName, children } as SysMLNode;
+}
+
+function parseSatisfyUsage(lexer: Lexer): SysMLNode {
+    lexer.expect('satisfy');
+
+    const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    lexer.match(';');
+
+    return {
+        kind: 'RequirementUsage',
+        name: name || 'satisfy',
+        typeName,
+        children: [],
+    } as SysMLNode;
 }
 
 export function getNodeDisplayName(node: SysMLNode): string {
@@ -1197,11 +1378,25 @@ export function getNodeIcon(kind: string): string {
         ItemUsage: '📄',
         EnumDef: '📊',
         EnumUsage: '📊',
+        EnumValueDef: '📊',
         FlowUsage: '↗️',
         BindingUsage: '⇔',
         Import: '📥',
         Comment: '💬',
         Doc: '📖',
+        ViewpointDef: '👁️',
+        ViewpointUsage: '👁️',
+        ViewDef: '🖼️',
+        ViewUsage: '🖼️',
+        VerificationDef: '✅',
+        VerificationUsage: '✅',
+        AnalysisDef: '📊',
+        AnalysisUsage: '📊',
+        MetadataDef: '🏷️',
+        AllocationDef: '↔️',
+        AllocationUsage: '↔️',
+        UseCaseDef: '📝',
+        UseCaseUsage: '📝',
     };
     return icons[kind] || '❓';
 }
