@@ -2,7 +2,7 @@
  * Property Panel - Shows details of the selected element
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAppStore, getNodeId } from '../store/store';
 import TypeSelector from './TypeSelector';
 import type { SysMLNode, DocNode } from '../parser/types';
@@ -61,7 +61,14 @@ function getPropertiesForNode(node: SysMLNode): { label: string; value: string }
         props.push({ label: 'Default Value', value: (node as any).defaultValue });
     }
 
-    // Doc
+    if ('viewpoint' in node && (node as any).viewpoint) {
+        props.push({ label: 'Viewpoint', value: (node as any).viewpoint });
+    }
+
+    if ('concerns' in node && (node as any).concerns?.length) {
+        props.push({ label: 'Concerns', value: (node as any).concerns.join(', ') });
+    }
+
     const doc = node.children.find(c => c.kind === 'Doc') as DocNode | undefined;
     if (doc) {
         props.push({ label: 'Documentation', value: doc.text });
@@ -76,6 +83,11 @@ function getPropertiesForNode(node: SysMLNode): { label: string; value: string }
     return props;
 }
 
+function isValidAttributeName(name: string): boolean {
+    if (!name || name.trim().length === 0) return false;
+    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name.trim());
+}
+
 export default function PropertyPanel() {
     const selectedNode = useAppStore(s => s.selectedNode);
     const updateNodeAttribute = useAppStore(s => s.updateNodeAttribute);
@@ -83,6 +95,46 @@ export default function PropertyPanel() {
     const deleteNodeAttribute = useAppStore(s => s.deleteNodeAttribute);
 
     const [newAttr, setNewAttr] = useState({ name: '', type: '', def: '' });
+    const [validationError, setValidationError] = useState<string | null>(null);
+
+    const handleAddAttribute = useCallback(() => {
+        if (!selectedNode) return;
+
+        const trimmedName = newAttr.name.trim();
+
+        if (!trimmedName) {
+            setValidationError('Attribute name is required');
+            return;
+        }
+
+        if (!isValidAttributeName(trimmedName)) {
+            setValidationError('Invalid attribute name. Use letters, numbers, and underscores only. Must start with a letter or underscore.');
+            return;
+        }
+
+        const existingAttr = selectedNode.children.find(
+            c => c.kind === 'AttributeUsage' && c.name === trimmedName
+        );
+        if (existingAttr) {
+            setValidationError('An attribute with this name already exists');
+            return;
+        }
+
+        setValidationError(null);
+        addNodeAttribute(getNodeId(selectedNode), {
+            name: trimmedName,
+            type: newAttr.type.trim() || undefined,
+            def: newAttr.def.trim() || undefined,
+        });
+        setNewAttr({ name: '', type: '', def: '' });
+    }, [selectedNode, newAttr, addNodeAttribute]);
+
+    const handleNameChange = useCallback((value: string) => {
+        setNewAttr(prev => ({ ...prev, name: value }));
+        if (validationError) {
+            setValidationError(null);
+        }
+    }, [validationError]);
 
     if (!selectedNode) {
         return (
@@ -100,12 +152,7 @@ export default function PropertyPanel() {
 
     const properties = getPropertiesForNode(selectedNode);
     const attributeChildren = selectedNode.children.filter(c => c.kind === 'AttributeUsage');
-
-    const handleAdd = () => {
-        if (!newAttr.name) return;
-        addNodeAttribute(getNodeId(selectedNode), newAttr);
-        setNewAttr({ name: '', type: '', def: '' });
-    };
+    const canEditAttributes = selectedNode.kind.endsWith('Def') || selectedNode.kind === 'Package';
 
     return (
         <div className="property-panel">
@@ -121,49 +168,53 @@ export default function PropertyPanel() {
                     </div>
                 ))}
 
-                {/* Attribute Editor Section */}
-                {(selectedNode.kind.endsWith('Def') || selectedNode.kind === 'Package') && (
+                {canEditAttributes && (
                     <div className="prop-section">
-                        <div className="prop-section-header">Attributes (Editable)</div>
+                        <div className="prop-section-header">Attributes ({attributeChildren.length})</div>
                         {attributeChildren.map((attr, i) => {
-                            // const typedAttr = attr as PartUsage; // AttributeUsage has same structure as PartUsage in our parser types? Types say ItemUsage. Check 'typeName'.
-                            // In types.ts: AttributeUsage extends ItemUsage extends PartUsage (implicit structure in TS if interfaces match).
-                            // Actually types.ts defines AttributeUsage as interface extending ItemUsage. ItemUsage has typeName? No, ItemUsage definition in parser/types.ts:
-                            // export interface ItemUsage extends SysMLNode { ... }
-                            // But my store updates assumed typeName.
-                            // Let's assume the parser populates it.
-
                             const typeName = (attr as any).typeName || '';
                             const defValue = (attr as any).defaultValue || '';
 
                             return (
-                                <div key={attr.location?.start.offset || i} className="attr-edit-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '4px', marginBottom: '8px' }}>
+                                <div key={attr.location?.start.offset || i} className="attr-edit-row">
                                     <div className="input-group">
-                                        <label style={{ fontSize: '10px', color: '#888' }}>Name</label>
+                                        <label>Name</label>
                                         <input
                                             defaultValue={attr.name}
-                                            onBlur={(e) => updateNodeAttribute(getNodeId(selectedNode), attr.name, { name: e.target.value })}
+                                            onBlur={(e) => {
+                                                const newName = e.target.value.trim();
+                                                if (newName && newName !== attr.name && isValidAttributeName(newName)) {
+                                                    updateNodeAttribute(getNodeId(selectedNode), attr.name, { name: newName });
+                                                }
+                                            }}
                                             className="prop-input"
                                         />
                                     </div>
                                     <div className="input-group">
-                                        <label style={{ fontSize: '10px', color: '#888' }}>Type</label>
+                                        <label>Type</label>
                                         <TypeSelector
                                             value={typeName}
                                             onChange={(val) => updateNodeAttribute(getNodeId(selectedNode), attr.name, { type: val })}
                                         />
                                     </div>
                                     <div className="input-group">
-                                        <label style={{ fontSize: '10px', color: '#888' }}>Default</label>
+                                        <label>Default</label>
                                         <input
                                             defaultValue={defValue}
-                                            onBlur={(e) => updateNodeAttribute(getNodeId(selectedNode), attr.name, { def: e.target.value })}
+                                            onBlur={(e) => updateNodeAttribute(getNodeId(selectedNode), attr.name, { def: e.target.value.trim() })}
                                             className="prop-input"
                                         />
                                     </div>
                                     <button
                                         onClick={() => deleteNodeAttribute(getNodeId(selectedNode), attr.name)}
-                                        style={{ marginTop: '14px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                                        style={{
+                                            marginTop: '14px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#ef4444',
+                                            fontSize: '14px'
+                                        }}
                                         title="Delete Attribute"
                                     >
                                         🗑️
@@ -172,38 +223,70 @@ export default function PropertyPanel() {
                             );
                         })}
 
-                        {/* Add New Attribute */}
-                        <div className="attr-add-row" style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '8px', marginTop: '8px' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Add Attribute</div>
+                        <div className="attr-add-row">
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Add New Attribute</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
-                                <input
-                                    placeholder="Name"
-                                    value={newAttr.name}
-                                    onChange={e => setNewAttr({ ...newAttr, name: e.target.value })}
-                                    className="prop-input"
-                                />
-                                <TypeSelector
-                                    placeholder="Type"
-                                    value={newAttr.type}
-                                    onChange={val => setNewAttr({ ...newAttr, type: val })}
-                                />
-                                <input
-                                    placeholder="Default"
-                                    value={newAttr.def}
-                                    onChange={e => setNewAttr({ ...newAttr, def: e.target.value })}
-                                    className="prop-input"
-                                />
+                                <div className="input-group">
+                                    <label>Name *</label>
+                                    <input
+                                        placeholder="attributeName"
+                                        value={newAttr.name}
+                                        onChange={e => handleNameChange(e.target.value)}
+                                        className="prop-input"
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label>Type</label>
+                                    <TypeSelector
+                                        placeholder="Type..."
+                                        value={newAttr.type}
+                                        onChange={val => setNewAttr({ ...newAttr, type: val })}
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label>Default</label>
+                                    <input
+                                        placeholder="value"
+                                        value={newAttr.def}
+                                        onChange={e => setNewAttr({ ...newAttr, def: e.target.value })}
+                                        className="prop-input"
+                                    />
+                                </div>
                             </div>
+                            {validationError && (
+                                <div style={{
+                                    fontSize: '11px',
+                                    color: 'var(--error)',
+                                    marginTop: '4px',
+                                    padding: '4px 8px',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    borderRadius: 'var(--radius-sm)'
+                                }}>
+                                    {validationError}
+                                </div>
+                            )}
                             <button
-                                onClick={handleAdd}
-                                style={{ width: '100%', marginTop: '4px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
+                                onClick={handleAddAttribute}
+                                disabled={!newAttr.name.trim()}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '8px',
+                                    background: newAttr.name.trim() ? 'var(--accent)' : 'var(--bg-tertiary)',
+                                    color: newAttr.name.trim() ? 'white' : 'var(--text-muted)',
+                                    border: 'none',
+                                    borderRadius: 'var(--radius-sm)',
+                                    padding: '6px',
+                                    cursor: newAttr.name.trim() ? 'pointer' : 'not-allowed',
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    transition: 'all var(--transition)'
+                                }}
                             >
-                                Add
+                                Add Attribute
                             </button>
                         </div>
                     </div>
                 )}
-
 
                 {selectedNode.children.length > 0 && (
                     <div className="prop-section">

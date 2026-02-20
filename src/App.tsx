@@ -14,6 +14,7 @@ import InterconnectionView from './views/InterconnectionView';
 import ActionFlowView from './views/ActionFlowView';
 import StateTransitionView from './views/StateTransitionView';
 import RequirementsView from './views/RequirementsView';
+import ViewpointsView from './views/ViewpointsView';
 import { openFileDialog, downloadFile, setupDragDrop } from './utils/fileIO';
 
 const viewTabs: { id: ViewType; label: string; icon: string; description: string }[] = [
@@ -22,6 +23,7 @@ const viewTabs: { id: ViewType; label: string; icon: string; description: string
   { id: 'actionFlow', label: 'Action Flow', icon: '⚡', description: 'Activity Diagram' },
   { id: 'stateTransition', label: 'State Transition', icon: '🔄', description: 'State Machine Diagram' },
   { id: 'requirements', label: 'Requirements', icon: '📋', description: 'Requirements Diagram' },
+  { id: 'viewpoints', label: 'Viewpoints', icon: '👁️', description: 'Viewpoint Diagram' },
 ];
 
 function DiagramArea() {
@@ -33,6 +35,7 @@ function DiagramArea() {
     case 'actionFlow': return <ActionFlowView />;
     case 'stateTransition': return <StateTransitionView />;
     case 'requirements': return <RequirementsView />;
+    case 'viewpoints': return <ViewpointsView />;
     default: return <GeneralView />;
   }
 }

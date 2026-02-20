@@ -25,6 +25,7 @@ export type NodeKind =
     | 'ItemUsage'
     | 'EnumDef'
     | 'EnumUsage'
+    | 'EnumValueDef'
     | 'FlowUsage'
     | 'BindingUsage'
     | 'Comment'
@@ -39,6 +40,11 @@ export type NodeKind =
     | 'ViewUsage'
     | 'ViewpointDef'
     | 'ViewpointUsage'
+    | 'VerificationDef'
+    | 'VerificationUsage'
+    | 'AnalysisDef'
+    | 'AnalysisUsage'
+    | 'MetadataDef'
     | 'Unknown';
 
 export interface SourceLocation {
@@ -235,6 +241,59 @@ export interface ImportNode extends SysMLNode {
     isAll?: boolean;
 }
 
+export interface ViewpointDef extends SysMLNode {
+    kind: 'ViewpointDef';
+    concerns?: string[];
+    stakeholder?: string;
+}
+
+export interface ViewpointUsage extends SysMLNode {
+    kind: 'ViewpointUsage';
+    typeName?: string;
+}
+
+export interface ViewDef extends SysMLNode {
+    kind: 'ViewDef';
+    viewpoint?: string;
+    stakeholder?: string;
+}
+
+export interface ViewUsage extends SysMLNode {
+    kind: 'ViewUsage';
+    typeName?: string;
+}
+
+export interface VerificationDef extends SysMLNode {
+    kind: 'VerificationDef';
+    subject?: { name: string; typeName?: string };
+}
+
+export interface VerificationUsage extends SysMLNode {
+    kind: 'VerificationUsage';
+    typeName?: string;
+    subject?: { name: string; typeName?: string };
+}
+
+export interface AnalysisDef extends SysMLNode {
+    kind: 'AnalysisDef';
+    params?: ActionParam[];
+}
+
+export interface AnalysisUsage extends SysMLNode {
+    kind: 'AnalysisUsage';
+    typeName?: string;
+}
+
+export interface MetadataDef extends SysMLNode {
+    kind: 'MetadataDef';
+    attributes?: { name: string; typeName?: string; value?: string }[];
+}
+
+export interface EnumValueDef extends SysMLNode {
+    kind: 'EnumValueDef';
+    value?: string;
+}
+
 export interface SysMLModel {
     children: SysMLNode[];
     errors: ParseError[];
@@ -245,5 +304,5 @@ export interface ParseError {
     location?: SourceLocation;
 }
 
-export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef;
-export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage;
+export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef;
+export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage | ViewpointUsage | ViewUsage | VerificationUsage | AnalysisUsage;

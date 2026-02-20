@@ -8,7 +8,7 @@ import { parseSysML } from '../parser/parser';
 import { MARS_ROVER_EXAMPLE } from '../examples/marsRover';
 import { RADIO_SYSTEM_EXAMPLE } from '../examples/radioSystem';
 
-export type ViewType = 'general' | 'interconnection' | 'actionFlow' | 'stateTransition' | 'requirements' | 'explorer';
+export type ViewType = 'general' | 'interconnection' | 'actionFlow' | 'stateTransition' | 'requirements' | 'viewpoints' | 'explorer';
 
 export interface AppState {
     // Source code

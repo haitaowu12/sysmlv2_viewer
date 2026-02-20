@@ -1122,3 +1122,94 @@ body {
 .ctx-menu-item:hover {
   background: var(--bg-hover);
 }
+
+/* ============================================
+   Type Selector Dropdown
+   ============================================ */
+.type-selector {
+  position: relative;
+}
+
+.type-selector-dropdown {
+  animation: fadeInDropdown 0.15s ease-out;
+}
+
+@keyframes fadeInDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.type-selector-option:hover,
+.type-selector-option.highlighted {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   Prop Input Styling
+   ============================================ */
+.prop-input {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.prop-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.prop-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Viewpoint and View Node Styles
+   ============================================ */
+.viewpoint-node {
+  min-width: 180px;
+}
+
+.view-node {
+  min-width: 180px;
+}
+
+/* ============================================
+   Attribute Edit Row
+   ============================================ */
+.attr-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 4px;
+  margin-bottom: 8px;
+  align-items: end;
+}
+
+.attr-add-row {
+  border-top: 1px solid var(--border-primary);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.input-group label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
