@@ -34,6 +34,22 @@ export async function handleApiRequest(req, res) {
   const path = (req.url || '').split('?')[0];
   const method = (req.method || 'GET').toUpperCase();
 
+  if (method === 'GET' && path === '/api/health') {
+    sendJson(res, 200, {
+      ok: true,
+      service: 'sysml-viewer-ai-api',
+      features: [
+        'drawio-bridge',
+        'bidirectional-sync',
+        'ai-generate-model',
+        'ai-edit-model',
+        'drawio-validate',
+      ],
+      date: new Date().toISOString(),
+    });
+    return true;
+  }
+
   if (method === 'POST' && path === '/api/ai/generate-model') {
     try {
       const payload = await parseJsonBody(req);
