@@ -18,9 +18,34 @@ function decodeValue(raw: string): string {
   return (doc.documentElement.textContent ?? raw).trim();
 }
 
-function toSemanticNodeKind(style: Record<string, string>): SemanticNodeKind {
+function inferKindFromLabel(label: string): SemanticNodeKind | null {
+  const normalized = label.trim();
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  if (lower.startsWith('package ')) return 'Package';
+  if (lower.startsWith('part def ')) return 'PartDef';
+  if (lower.startsWith('part ')) return 'PartUsage';
+  if (lower.startsWith('port def ')) return 'PortDef';
+  if (lower.startsWith('port ')) return 'PortUsage';
+  if (lower.startsWith('connection ') || lower.startsWith('connect ')) return 'ConnectionUsage';
+  if (lower.startsWith('requirement def ')) return 'RequirementDef';
+  if (lower.startsWith('requirement ') || lower.startsWith('satisfy ')) return 'RequirementUsage';
+  if (lower.startsWith('verification def ')) return 'VerificationDef';
+  if (lower.startsWith('verification ') || lower.startsWith('verify ')) return 'VerificationUsage';
+  return null;
+}
+
+function toSemanticNodeKind(
+  style: Record<string, string>,
+  label: string,
+  defaultKind: SemanticNodeKind = 'PartUsage',
+): SemanticNodeKind {
   const fromStyle = style.sysmlKind as SemanticNodeKind | undefined;
   if (fromStyle) return fromStyle;
+
+  const fromLabel = inferKindFromLabel(label);
+  if (fromLabel) return fromLabel;
 
   const shape = style.shape ?? '';
   if (shape.includes('requirement')) return 'RequirementDef';
@@ -28,7 +53,65 @@ function toSemanticNodeKind(style: Record<string, string>): SemanticNodeKind {
   if (shape.includes('ellipse')) return 'PortUsage';
   if (shape.includes('rhombus')) return 'ConnectionUsage';
   if (shape.includes('swimlane')) return 'Package';
-  return 'Unknown';
+  if (shape.includes('hexagon') || shape.includes('rectangle') || shape.includes('mxgraph')) return defaultKind;
+  return defaultKind;
+}
+
+function stripKeywordPrefix(label: string): string {
+  return label
+    .replace(/^package\s+/i, '')
+    .replace(/^part\s+def\s+/i, '')
+    .replace(/^part\s+/i, '')
+    .replace(/^port\s+def\s+/i, '')
+    .replace(/^port\s+/i, '')
+    .replace(/^connection\s+/i, '')
+    .replace(/^connect\s+/i, '')
+    .replace(/^requirement\s+def\s+/i, '')
+    .replace(/^requirement\s+/i, '')
+    .replace(/^satisfy\s+/i, '')
+    .replace(/^verification\s+def\s+/i, '')
+    .replace(/^verification\s+/i, '')
+    .replace(/^verify\s+/i, '')
+    .trim();
+}
+
+function parseNodeLabel(label: string): { name: string; typeName?: string } {
+  const cleaned = stripKeywordPrefix(label).trim();
+  if (!cleaned) return { name: '' };
+
+  const colonIndex = cleaned.indexOf(':');
+  if (colonIndex <= 0) return { name: cleaned };
+  return {
+    name: cleaned.slice(0, colonIndex).trim(),
+    typeName: cleaned.slice(colonIndex + 1).trim() || undefined,
+  };
+}
+
+function defaultNodeName(kind: SemanticNodeKind, index: number): string {
+  switch (kind) {
+    case 'Package':
+      return `NewPackage${index}`;
+    case 'PartDef':
+      return `NewPartDef${index}`;
+    case 'PartUsage':
+      return `newPart${index}`;
+    case 'PortDef':
+      return `NewPortDef${index}`;
+    case 'PortUsage':
+      return `newPort${index}`;
+    case 'ConnectionUsage':
+      return `newConnection${index}`;
+    case 'RequirementDef':
+      return `NewRequirement${index}`;
+    case 'RequirementUsage':
+      return `newRequirement${index}`;
+    case 'VerificationDef':
+      return `NewVerification${index}`;
+    case 'VerificationUsage':
+      return `newVerification${index}`;
+    default:
+      return `NewElement${index}`;
+  }
 }
 
 function toSemanticEdgeKind(style: Record<string, string>): SemanticEdgeKind {
@@ -55,7 +138,11 @@ function isParserError(doc: Document): boolean {
   return doc.getElementsByTagName('parsererror').length > 0;
 }
 
-export function parseDrawioToSemanticModel(xml: string): SemanticModel {
+export interface ParseDrawioOptions {
+  defaultNodeKind?: SemanticNodeKind;
+}
+
+export function parseDrawioToSemanticModel(xml: string, options: ParseDrawioOptions = {}): SemanticModel {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'text/xml');
 
@@ -68,6 +155,7 @@ export function parseDrawioToSemanticModel(xml: string): SemanticModel {
   const nodes: SemanticNode[] = [];
   const edges: SemanticEdge[] = [];
   const layout: LayoutMap = {};
+  let generatedNameCount = 0;
 
   for (const cell of allCells) {
     const id = cell.getAttribute('id') ?? '';
@@ -80,6 +168,10 @@ export function parseDrawioToSemanticModel(xml: string): SemanticModel {
     const style = parseStyle(cell.getAttribute('style') ?? '');
     const rawValue = cell.getAttribute('value') ?? '';
     const label = decodeValue(rawValue).replace(/<[^>]+>/g, '').trim();
+    const semanticKind = toSemanticNodeKind(style, label, options.defaultNodeKind ?? 'PartUsage');
+    const parsedLabel = parseNodeLabel(label);
+    const syntheticName = defaultNodeName(semanticKind, ++generatedNameCount);
+    const name = parsedLabel.name && parsedLabel.name.toLowerCase() !== 'text' ? parsedLabel.name : syntheticName;
     const parentId = cell.getAttribute('parent') ?? undefined;
     const geometry = readGeometry(cell);
 
@@ -87,10 +179,11 @@ export function parseDrawioToSemanticModel(xml: string): SemanticModel {
 
     nodes.push({
       id,
-      kind: toSemanticNodeKind(style),
-      name: label || id,
+      kind: semanticKind,
+      name,
       sysmlPath: cell.getAttribute('sysmlPath') ?? `drawio/${id}`,
       parentId: parentId && parentId !== '1' ? parentId : undefined,
+      typeName: parsedLabel.typeName,
     });
 
     layout[id] = geometry;
