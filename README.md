@@ -8,6 +8,7 @@ This workspace now includes:
 
 - Bidirectional SysML v2 <-> Draw.io synchronization (structural V1 subset)
 - Interactive Draw.io embed tab in the main UI
+- View-scoped Draw.io generation mode (`General`, `Interconnection`, `Requirements`, `Verification`, `All`)
 - Hybrid patch safety flow (`safe` auto-apply, `review_required` manual)
 - Export support for `.sysml`, `.drawio`, `.svg`, `.png`
 - In-app AI chat panel with BYOK provider headers and local fallback generator
@@ -34,6 +35,7 @@ Open the URL printed by Vite (typically `http://localhost:5173/sysmlv2_viewer/`)
 2. View tabs include `Draw.io`.
 3. Right panel has `AI Chat` tab.
 4. Export format selector includes `.drawio`, `.svg`, `.png`.
+5. Draw.io toolbar includes a view selector so diagrams stay logically grouped by concern.
 
 If these are missing, you are likely running a different project or an old deployed build.
 

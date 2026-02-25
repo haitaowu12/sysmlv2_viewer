@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/store';
 import type { SyncPatch } from '../bridge/semantic-types';
+import type { DrawioViewMode } from '../bridge/view-partition';
 
 const DRAWIO_EMBED_URL =
   'https://embed.diagrams.net/?embed=1&spin=1&proto=json&ui=min&libraries=1&saveAndExit=0&autosave=1';
@@ -13,8 +14,10 @@ function patchLabel(patch: SyncPatch): string {
 export default function DrawioBridgeView() {
   const drawioXml = useAppStore((state) => state.drawioXml);
   const syncState = useAppStore((state) => state.syncState);
+  const drawioViewMode = useAppStore((state) => state.drawioViewMode);
   const pendingPatchReview = useAppStore((state) => state.pendingPatchReview);
   const setDrawioXml = useAppStore((state) => state.setDrawioXml);
+  const setDrawioViewMode = useAppStore((state) => state.setDrawioViewMode);
   const syncFromSysml = useAppStore((state) => state.syncFromSysml);
   const reflowDrawioLayout = useAppStore((state) => state.reflowDrawioLayout);
   const syncFromDrawio = useAppStore((state) => state.syncFromDrawio);
@@ -119,6 +122,18 @@ export default function DrawioBridgeView() {
   return (
     <div className="drawio-bridge-view">
       <div className="drawio-bridge-toolbar">
+        <select
+          className="toolbar-select"
+          value={drawioViewMode}
+          onChange={(event) => setDrawioViewMode(event.target.value as DrawioViewMode)}
+          title="Choose which SysML view to generate in Draw.io"
+        >
+          <option value="general">General View</option>
+          <option value="interconnection">Interconnection View</option>
+          <option value="requirements">Requirements View</option>
+          <option value="verification">Verification View</option>
+          <option value="all">All Elements</option>
+        </select>
         <button className="toolbar-btn" onClick={syncFromSysml} title="Regenerate Draw.io from SysML source">
           Regenerate from SysML
         </button>
