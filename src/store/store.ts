@@ -15,6 +15,7 @@ import { parseDrawioToSemanticModel } from '../bridge/drawio-to-semantic';
 import { diffSemanticModels } from '../bridge/semantic-diff';
 import { applySyncPatches, semanticModelToSysmlSource } from '../bridge/semantic-to-sysml-patch';
 import { semanticModelToSvg } from '../bridge/semantic-to-svg';
+import { partitionSemanticModelForDrawio, type DrawioViewMode } from '../bridge/view-partition';
 
 export type ViewType =
   | 'general'
@@ -36,6 +37,7 @@ export interface AppState {
 
   // Sync state
   drawioXml: string;
+  drawioViewMode: DrawioViewMode;
   layoutMap: LayoutMap;
   syncState: SyncState;
   pendingPatchReview: SyncPatch[];
@@ -74,6 +76,7 @@ export interface AppState {
   syncFromSysml: () => void;
   syncFromDrawio: (xml: string) => void;
   setDrawioXml: (xml: string) => void;
+  setDrawioViewMode: (mode: DrawioViewMode) => void;
   reflowDrawioLayout: () => void;
   applyPatch: (patchId: string) => void;
   rejectPatch: (patchId: string) => void;
@@ -194,8 +197,10 @@ const DEMO_CODE = `package 'Vehicle System' {
 
 const INITIAL_MODEL = parseSysML(DEMO_CODE);
 const INITIAL_SEMANTIC = buildSemanticModelFromSource(DEMO_CODE);
+const INITIAL_DRAWIO_VIEW_MODE: DrawioViewMode = 'general';
+const INITIAL_DRAWIO_SEMANTIC = partitionSemanticModelForDrawio(INITIAL_SEMANTIC, INITIAL_DRAWIO_VIEW_MODE, INITIAL_SEMANTIC.layout);
 const INITIAL_SOURCE_HASH = sysmlPathHash(DEMO_CODE);
-const INITIAL_DRAWIO_XML = semanticModelToDrawioXml(INITIAL_SEMANTIC);
+const INITIAL_DRAWIO_XML = semanticModelToDrawioXml(INITIAL_DRAWIO_SEMANTIC);
 
 function findNodeById(nodes: SysMLNode[], id: string): SysMLNode | null {
   for (const node of nodes) {
@@ -227,11 +232,18 @@ export function getNodeId(node: SysMLNode): string {
   return `${node.kind}_${node.name}`;
 }
 
+function toDrawioViewMode(view: ViewType): DrawioViewMode {
+  if (view === 'requirements') return 'requirements';
+  if (view === 'interconnection') return 'interconnection';
+  return 'general';
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   sourceCode: DEMO_CODE,
   model: INITIAL_MODEL,
   parseErrors: INITIAL_MODEL.errors,
   drawioXml: INITIAL_DRAWIO_XML,
+  drawioViewMode: INITIAL_DRAWIO_VIEW_MODE,
   layoutMap: INITIAL_SEMANTIC.layout,
   syncState: {
     isSyncing: false,
@@ -282,7 +294,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  setActiveView: (view) => set({ activeView: view }),
+  setActiveView: (view) => {
+    const { activeView } = get();
+    const next: Partial<AppState> = { activeView: view };
+
+    if (view === 'drawio' && activeView !== 'drawio') {
+      next.drawioViewMode = toDrawioViewMode(activeView);
+    }
+
+    set(next as Pick<AppState, 'activeView'> & Partial<AppState>);
+    if (view === 'drawio') {
+      get().syncFromSysml();
+    }
+  },
 
   selectNode: (nodeId, node) => {
     if (nodeId === null) {
@@ -328,6 +352,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           currentModelId: 'custom',
           isModified: false,
           drawioXml: content,
+          drawioViewMode: 'all',
           layoutMap: { ...semantic.layout },
           pendingPatchReview: [],
           appliedSyncPatches: [],
@@ -379,25 +404,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   exportDrawio: () => {
-    const { drawioXml, sourceCode, layoutMap } = get();
+    const { drawioXml, sourceCode, layoutMap, drawioViewMode } = get();
     if (drawioXml.trim()) return drawioXml;
     const semantic = buildSemanticModelFromSource(sourceCode, layoutMap);
-    return semanticModelToDrawioXml(semantic);
+    const scoped = partitionSemanticModelForDrawio(semantic, drawioViewMode, layoutMap);
+    return semanticModelToDrawioXml(scoped);
   },
 
   exportSvg: () => {
-    const { sourceCode, layoutMap } = get();
+    const { sourceCode, layoutMap, drawioViewMode } = get();
     const semantic = buildSemanticModelFromSource(sourceCode, layoutMap);
-    return semanticModelToSvg(semantic);
+    const scoped = partitionSemanticModelForDrawio(semantic, drawioViewMode, layoutMap);
+    return semanticModelToSvg(scoped);
   },
 
   setModified: (v) => set({ isModified: v }),
 
   syncFromSysml: () => {
-    const { sourceCode, layoutMap } = get();
+    const { sourceCode, layoutMap, drawioViewMode } = get();
     try {
       const semantic = buildSemanticModelFromSource(sourceCode, layoutMap);
-      const drawioXml = semanticModelToDrawioXml(semantic);
+      const scoped = partitionSemanticModelForDrawio(semantic, drawioViewMode, layoutMap);
+      const drawioXml = semanticModelToDrawioXml(scoped);
       const sourceHash = sysmlPathHash(sourceCode);
 
       set((state) => ({
@@ -434,7 +462,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      const currentSemantic = buildSemanticModelFromSource(state.sourceCode, state.layoutMap);
+      const fullSemantic = buildSemanticModelFromSource(state.sourceCode, state.layoutMap);
+      const currentSemantic = partitionSemanticModelForDrawio(
+        fullSemantic,
+        state.drawioViewMode,
+        state.layoutMap,
+      );
       const incomingSemantic = parseDrawioToSemanticModel(xml);
       const diff = diffSemanticModels(currentSemantic, incomingSemantic);
 
@@ -504,11 +537,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setDrawioXml: (xml) => set({ drawioXml: xml }),
 
+  setDrawioViewMode: (mode) => {
+    set({ drawioViewMode: mode });
+    get().syncFromSysml();
+  },
+
   reflowDrawioLayout: () => {
-    const { sourceCode } = get();
+    const { sourceCode, drawioViewMode } = get();
     try {
       const semantic = buildSemanticModelFromSource(sourceCode, {});
-      const drawioXml = semanticModelToDrawioXml(semantic);
+      const scoped = partitionSemanticModelForDrawio(semantic, drawioViewMode, {});
+      const drawioXml = semanticModelToDrawioXml(scoped);
       const sourceHash = sysmlPathHash(sourceCode);
       set((state) => ({
         drawioXml,
@@ -572,6 +611,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyGeneratedModel: ({ sysml, drawioXml, diagnostics = [] }) => {
+    const currentMode = get().drawioViewMode;
     let resolvedDrawio = drawioXml ?? '';
     let layout = { ...get().layoutMap };
 
@@ -586,7 +626,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     if (!resolvedDrawio) {
       const semantic = buildSemanticModelFromSource(sysml, layout);
-      resolvedDrawio = semanticModelToDrawioXml(semantic);
+      const scoped = partitionSemanticModelForDrawio(semantic, currentMode, layout);
+      resolvedDrawio = semanticModelToDrawioXml(scoped);
       layout = semantic.layout;
     }
 
@@ -617,12 +658,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   resetToExample: (exampleType = 'vehicle') => {
+    const currentMode = get().drawioViewMode;
     let code = DEMO_CODE;
     if (exampleType === 'mars') code = MARS_ROVER_EXAMPLE;
     if (exampleType === 'radio') code = RADIO_SYSTEM_EXAMPLE;
 
     const model = parseSysML(code);
     const semantic = buildSemanticModelFromSource(code);
+    const scoped = partitionSemanticModelForDrawio(semantic, currentMode, semantic.layout);
     const sourceHash = sysmlPathHash(code);
 
     set({
@@ -634,7 +677,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       isModified: false,
       selectedNode: null,
       selectedNodeId: null,
-      drawioXml: semanticModelToDrawioXml(semantic),
+      drawioXml: semanticModelToDrawioXml(scoped),
       layoutMap: semantic.layout,
       pendingPatchReview: [],
       appliedSyncPatches: [],
