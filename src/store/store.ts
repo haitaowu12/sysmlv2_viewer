@@ -7,7 +7,7 @@ import type { SysMLModel, SysMLNode, ParseError } from '../parser/types';
 import { parseSysML } from '../parser/parser';
 import { MARS_ROVER_EXAMPLE } from '../examples/marsRover';
 import { RADIO_SYSTEM_EXAMPLE } from '../examples/radioSystem';
-import type { LayoutMap, SyncPatch, SyncState } from '../bridge/semantic-types';
+import type { LayoutMap, SemanticNodeKind, SyncPatch, SyncState } from '../bridge/semantic-types';
 import { sysmlPathHash } from '../bridge/semantic-types';
 import { buildSemanticModelFromSource } from '../bridge/sysml-to-semantic';
 import { semanticModelToDrawioXml } from '../bridge/semantic-to-drawio';
@@ -80,6 +80,8 @@ export interface AppState {
   reflowDrawioLayout: () => void;
   applyPatch: (patchId: string) => void;
   rejectPatch: (patchId: string) => void;
+  applyAllPatches: () => void;
+  rejectAllPatches: () => void;
 
   // AI apply action
   applyGeneratedModel: (payload: { sysml: string; drawioXml?: string; diagnostics?: string[] }) => void;
@@ -236,6 +238,14 @@ function toDrawioViewMode(view: ViewType): DrawioViewMode {
   if (view === 'requirements') return 'requirements';
   if (view === 'interconnection') return 'interconnection';
   return 'general';
+}
+
+function defaultNodeKindForView(view: DrawioViewMode): SemanticNodeKind {
+  if (view === 'requirements') return 'RequirementDef';
+  if (view === 'verification') return 'VerificationDef';
+  if (view === 'interconnection') return 'PartUsage';
+  if (view === 'all') return 'PartUsage';
+  return 'PartDef';
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -468,7 +478,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         state.drawioViewMode,
         state.layoutMap,
       );
-      const incomingSemantic = parseDrawioToSemanticModel(xml);
+      const incomingSemantic = parseDrawioToSemanticModel(xml, {
+        defaultNodeKind: defaultNodeKindForView(state.drawioViewMode),
+      });
       const diff = diffSemanticModels(currentSemantic, incomingSemantic);
 
       let candidatePatches = diff.patches;
@@ -607,6 +619,52 @@ export const useAppStore = create<AppState>((set, get) => ({
   rejectPatch: (patchId) => {
     set((state) => ({
       pendingPatchReview: state.pendingPatchReview.filter((patch) => patch.id !== patchId),
+    }));
+  },
+
+  applyAllPatches: () => {
+    const state = get();
+    if (state.pendingPatchReview.length === 0) return;
+
+    const forcedSafe = state.pendingPatchReview.map((patch) => ({ ...patch, safety: 'safe' as const }));
+    const patchResult = applySyncPatches(state.sourceCode, forcedSafe);
+    const nextSource = patchResult.sourceCode;
+    const model = parseSysML(nextSource);
+    const nextHash = sysmlPathHash(nextSource);
+    const newSelectedNode = refreshModelSelection(model, state.selectedNode);
+
+    set((prev) => ({
+      sourceCode: nextSource,
+      model,
+      parseErrors: model.errors,
+      selectedNode: newSelectedNode,
+      pendingPatchReview: dedupePatches(patchResult.reviewPatches),
+      appliedSyncPatches: [...prev.appliedSyncPatches, ...patchResult.appliedPatches],
+      syncState: {
+        ...prev.syncState,
+        diagnostics: patchResult.diagnostics,
+        conflict: undefined,
+        sourceHash: nextHash,
+        drawioSnapshotHash: nextHash,
+        lastSyncedAt: new Date().toISOString(),
+      },
+      isModified: true,
+    }));
+
+    if (model.errors.length === 0) {
+      get().syncFromSysml();
+    }
+  },
+
+  rejectAllPatches: () => {
+    set((state) => ({
+      pendingPatchReview: [],
+      syncState: {
+        ...state.syncState,
+        diagnostics: ['All pending review patches were rejected.'],
+        conflict: undefined,
+        lastSyncedAt: new Date().toISOString(),
+      },
     }));
   },
 

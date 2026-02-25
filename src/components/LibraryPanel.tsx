@@ -4,6 +4,7 @@
  */
 
 import { useRef } from 'react';
+import { useAppStore } from '../store/store';
 
 interface LibraryItem {
     kind: string;
@@ -144,10 +145,24 @@ const LIBRARY_ITEMS: LibraryItem[] = [
 ];
 
 function LibraryItemComponent({ item }: { item: LibraryItem }) {
+    const openCreationModal = useAppStore((s) => s.openCreationModal);
+
     const handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.setData('application/sysml-template', item.codeTemplate);
         e.dataTransfer.setData('application/sysml-kind', item.kind);
         e.dataTransfer.effectAllowed = 'copy';
+        window.dispatchEvent(
+            new CustomEvent('sysml-library-drag-start', {
+                detail: {
+                    kind: item.kind,
+                    template: item.codeTemplate,
+                },
+            }),
+        );
+    };
+
+    const handleDragEnd = () => {
+        window.dispatchEvent(new CustomEvent('sysml-library-drag-end'));
     };
 
     return (
@@ -155,7 +170,9 @@ function LibraryItemComponent({ item }: { item: LibraryItem }) {
             className="library-item"
             draggable
             onDragStart={handleDragStart}
-            title="Drag to diagram to add"
+            onDragEnd={handleDragEnd}
+            onDoubleClick={() => openCreationModal(item.codeTemplate, item.kind)}
+            title="Drag to diagram/editor or double-click to create"
         >
             <span className="library-icon">{item.icon}</span>
             <span className="library-label">{item.label}</span>

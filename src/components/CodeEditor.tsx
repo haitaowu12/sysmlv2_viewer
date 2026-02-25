@@ -232,6 +232,56 @@ export default function CodeEditor() {
         parseSource();
     }, []);
 
+    useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const domNode = editor.getDomNode();
+        if (!domNode) return;
+
+        const onDragOver = (event: DragEvent) => {
+            const dataTransfer = event.dataTransfer;
+            if (!dataTransfer?.types.includes('application/sysml-template')) return;
+            event.preventDefault();
+            dataTransfer.dropEffect = 'copy';
+        };
+
+        const onDrop = (event: DragEvent) => {
+            const dataTransfer = event.dataTransfer;
+            const template = dataTransfer?.getData('application/sysml-template');
+            if (!template) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const position = editor.getPosition();
+            const selection = editor.getSelection();
+            if (!position) return;
+
+            const range = selection ?? {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+            };
+
+            editor.executeEdits('sysml-library-drop', [
+                {
+                    range,
+                    text: `\n${template}\n`,
+                    forceMoveMarkers: true,
+                },
+            ]);
+            editor.focus();
+        };
+
+        domNode.addEventListener('dragover', onDragOver);
+        domNode.addEventListener('drop', onDrop);
+        return () => {
+            domNode.removeEventListener('dragover', onDragOver);
+            domNode.removeEventListener('drop', onDrop);
+        };
+    }, []);
+
     return (
         <div className="code-editor-container">
             <Editor

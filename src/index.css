@@ -1282,6 +1282,7 @@ body {
   flex: 1;
   min-height: 320px;
   border-bottom: 1px solid var(--border-primary);
+  position: relative;
 }
 
 .drawio-frame {
@@ -1289,6 +1290,22 @@ body {
   height: 100%;
   border: none;
   background: #ffffff;
+}
+
+.drawio-drop-overlay {
+  position: absolute;
+  inset: 10px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 2;
 }
 
 .drawio-fallback-panel {
@@ -1318,10 +1335,22 @@ body {
   overflow: auto;
 }
 
+.drawio-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .drawio-review-title {
   font-size: 12px;
   font-weight: 600;
-  margin-bottom: 8px;
+}
+
+.drawio-review-bulk-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .drawio-review-list {
@@ -1344,6 +1373,15 @@ body {
   font-size: 11px;
   color: var(--text-secondary);
   word-break: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawio-review-item-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .drawio-review-actions {

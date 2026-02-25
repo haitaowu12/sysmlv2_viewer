@@ -36,6 +36,10 @@ function safetyForNode(node: SemanticNode): SyncPatchSafety {
   return AUTO_NODE_KINDS.has(node.kind) ? 'safe' : 'review_required';
 }
 
+function safetyForEdgeReconnect(edge: SemanticEdge): SyncPatchSafety {
+  return edge.kind === 'contains' ? 'review_required' : 'safe';
+}
+
 export function diffSemanticModels(previous: SemanticModel, next: SemanticModel): SyncDiffResult {
   const patches: SyncPatch[] = [];
 
@@ -148,7 +152,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
       patches.push({
         id: patchId('reconnect', edge.id, { action: 'change', before, edge }),
         op: 'reconnect',
-        safety: 'review_required',
+        safety: safetyForEdgeReconnect(edge),
         targetId: edge.id,
         payload: {
           action: 'change',
@@ -178,7 +182,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
 
     const outgoingKey = `${edge.kind}:${edge.sourceId}`;
     const siblingCount = previousOutgoingCount.get(outgoingKey) ?? 1;
-    const ambiguousDeletion = siblingCount > 1;
+    const ambiguousDeletion = edge.kind === 'contains' && siblingCount > 1;
 
     patches.push({
       id: patchId('reconnect', edge.id, { action: 'remove', edge }),

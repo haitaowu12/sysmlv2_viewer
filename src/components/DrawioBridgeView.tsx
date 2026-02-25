@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/store';
-import type { SyncPatch } from '../bridge/semantic-types';
 import type { DrawioViewMode } from '../bridge/view-partition';
+import { describeSyncPatch } from '../bridge/patch-review';
 
 const DRAWIO_EMBED_URL =
   'https://embed.diagrams.net/?embed=1&spin=1&proto=json&ui=min&libraries=1&saveAndExit=0&autosave=1';
-
-function patchLabel(patch: SyncPatch): string {
-  const reason = typeof patch.payload.reason === 'string' ? ` (${patch.payload.reason})` : '';
-  return `${patch.op} → ${patch.targetId}${reason}`;
-}
 
 export default function DrawioBridgeView() {
   const drawioXml = useAppStore((state) => state.drawioXml);
@@ -23,16 +18,21 @@ export default function DrawioBridgeView() {
   const syncFromDrawio = useAppStore((state) => state.syncFromDrawio);
   const applyPatch = useAppStore((state) => state.applyPatch);
   const rejectPatch = useAppStore((state) => state.rejectPatch);
+  const applyAllPatches = useAppStore((state) => state.applyAllPatches);
+  const rejectAllPatches = useAppStore((state) => state.rejectAllPatches);
+  const openCreationModal = useAppStore((state) => state.openCreationModal);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoadedXmlRef = useRef<string>('');
   const [isReady, setIsReady] = useState(false);
   const [manualXml, setManualXml] = useState(drawioXml);
+  const [showXmlEditor, setShowXmlEditor] = useState(false);
+  const [libraryDragActive, setLibraryDragActive] = useState(false);
 
   const summary = useMemo(() => {
     if (syncState.conflict) return syncState.conflict;
-    if (pendingPatchReview.length > 0) return `${pendingPatchReview.length} patch(es) waiting for review`;
+    if (pendingPatchReview.length > 0) return `${pendingPatchReview.length} change(s) waiting for review`;
     return 'Draw.io and SysML are synchronized';
   }, [pendingPatchReview.length, syncState.conflict]);
 
@@ -68,6 +68,43 @@ export default function DrawioBridgeView() {
       pushXmlToFrame(drawioXml);
     }
   }, [drawioXml, isReady, pushXmlToFrame]);
+
+  useEffect(() => {
+    const onLibraryDragStart = () => setLibraryDragActive(true);
+    const onLibraryDragEnd = () => setLibraryDragActive(false);
+
+    window.addEventListener('sysml-library-drag-start', onLibraryDragStart as EventListener);
+    window.addEventListener('sysml-library-drag-end', onLibraryDragEnd as EventListener);
+    window.addEventListener('dragend', onLibraryDragEnd);
+    window.addEventListener('drop', onLibraryDragEnd);
+
+    return () => {
+      window.removeEventListener('sysml-library-drag-start', onLibraryDragStart as EventListener);
+      window.removeEventListener('sysml-library-drag-end', onLibraryDragEnd as EventListener);
+      window.removeEventListener('dragend', onLibraryDragEnd);
+      window.removeEventListener('drop', onLibraryDragEnd);
+    };
+  }, []);
+
+  const handleLibraryDrop = useCallback(
+    (event: React.DragEvent) => {
+      const template = event.dataTransfer.getData('application/sysml-template');
+      if (!template) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const kind = event.dataTransfer.getData('application/sysml-kind') || 'Element';
+      openCreationModal(template, kind);
+      setLibraryDragActive(false);
+    },
+    [openCreationModal],
+  );
+
+  const handleLibraryDragOver = useCallback((event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes('application/sysml-template')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -150,10 +187,17 @@ export default function DrawioBridgeView() {
         >
           Apply XML
         </button>
+        <button
+          className="toolbar-btn"
+          onClick={() => setShowXmlEditor((prev) => !prev)}
+          title="Show advanced raw XML editor"
+        >
+          {showXmlEditor ? 'Hide Raw XML' : 'Show Raw XML'}
+        </button>
         <span className={`drawio-sync-pill ${syncState.conflict ? 'conflict' : 'ok'}`}>{summary}</span>
       </div>
 
-      <div className="drawio-frame-container">
+      <div className="drawio-frame-container" onDragOver={handleLibraryDragOver} onDrop={handleLibraryDrop}>
         <iframe
           ref={iframeRef}
           src={DRAWIO_EMBED_URL}
@@ -161,34 +205,57 @@ export default function DrawioBridgeView() {
           title="Draw.io Bridge"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
         />
+        {libraryDragActive && (
+          <div className="drawio-drop-overlay" onDragOver={handleLibraryDragOver} onDrop={handleLibraryDrop}>
+            Drop to create a SysML element here
+          </div>
+        )}
       </div>
 
-      <details className="drawio-fallback-panel">
-        <summary>Fallback XML Editor</summary>
-        <textarea
-          value={manualXml}
-          onChange={(event) => setManualXml(event.target.value)}
-          className="drawio-fallback-textarea"
-        />
-      </details>
+      {showXmlEditor && (
+        <div className="drawio-fallback-panel">
+          <div className="drawio-review-title">Advanced Raw XML Editor</div>
+          <textarea
+            value={manualXml}
+            onChange={(event) => setManualXml(event.target.value)}
+            className="drawio-fallback-textarea"
+          />
+        </div>
+      )}
 
       {pendingPatchReview.length > 0 && (
         <div className="drawio-review-panel">
-          <div className="drawio-review-title">Review Required Patches</div>
+          <div className="drawio-review-header">
+            <div className="drawio-review-title">Review Required Changes ({pendingPatchReview.length})</div>
+            <div className="drawio-review-bulk-actions">
+              <button className="toolbar-btn" onClick={applyAllPatches}>
+                Accept All
+              </button>
+              <button className="toolbar-btn" onClick={rejectAllPatches}>
+                Reject All
+              </button>
+            </div>
+          </div>
           <div className="drawio-review-list">
-            {pendingPatchReview.map((patch) => (
-              <div key={patch.id} className="drawio-review-item">
-                <div className="drawio-review-text">{patchLabel(patch)}</div>
-                <div className="drawio-review-actions">
-                  <button className="toolbar-btn" onClick={() => applyPatch(patch.id)}>
-                    Apply
-                  </button>
-                  <button className="toolbar-btn" onClick={() => rejectPatch(patch.id)}>
-                    Reject
-                  </button>
+            {pendingPatchReview.map((patch) => {
+              const description = describeSyncPatch(patch);
+              return (
+                <div key={patch.id} className="drawio-review-item">
+                  <div className="drawio-review-text">
+                    <div className="drawio-review-item-title">{description.title}</div>
+                    <div>{description.details}</div>
+                  </div>
+                  <div className="drawio-review-actions">
+                    <button className="toolbar-btn" onClick={() => applyPatch(patch.id)}>
+                      Apply
+                    </button>
+                    <button className="toolbar-btn" onClick={() => rejectPatch(patch.id)}>
+                      Reject
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
