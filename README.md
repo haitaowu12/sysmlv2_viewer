@@ -1,53 +1,53 @@
-# SysML v2 Visual Editor (Prototype v0.1)
+# SysML Viewer (Enhanced)
 
-A lightweight, web-based SysML v2 visualization and editing environment designed to help practitioners learn, adopt, and experiment with the SysML v2 language without the heavy overhead of traditional modeling suites.
+A SysML v2 editor with synchronized Draw.io visualization and in-app AI-assisted model generation/editing.
 
-## 🚀 Mission: Removing Entry Barriers
-The transition to SysML v2 represents a significant paradigm shift from graphical-first to combined textual/graphical modeling. This project aims to lower the barrier to entry by providing:
-- **Instant Visualization**: Real-time rendering of SysML v2 textual syntax into interactive diagrams.
-- **Lightweight Experience**: No installation required; runs entirely in the browser.
-- **Interactive Learning**: A library of draggable templates and complex examples (like a Mars Rover) to see SysML v2 in action.
+## What changed
 
-## ✨ Core Features
-- **Code-Diagram Sync**: Integrated Monaco Editor with live parsing and bi-directional navigation.
-- **Multiple Perspectives**: Visualize your model through General, Interconnection, Action Flow, State Transition, and Requirements views.
-- **Interactive Editing**: 
-  - Drag-and-drop elements from the Library.
-  - Context-menu based focusing and attribute management.
-  - Property panel for precision attribute editing.
-- **Traceability**: Automated visualization of `satisfy` and `verify` relationships.
-- **Smart Navigation**: Auto-zoom/pan to focused elements to maintain context in large models.
+This workspace now includes:
 
-## 🌐 Live Version
-Experience the editor live at:  
-**[https://haitaowu12.github.io/sysmlv2_viewer/](https://haitaowu12.github.io/sysmlv2_viewer/)**
+- Bidirectional SysML v2 <-> Draw.io synchronization (structural V1 subset)
+- Interactive Draw.io embed tab in the main UI
+- Hybrid patch safety flow (`safe` auto-apply, `review_required` manual)
+- Export support for `.sysml`, `.drawio`, `.svg`, `.png`
+- In-app AI chat panel with BYOK provider headers and local fallback generator
+- API endpoints:
+  - `POST /api/ai/generate-model`
+  - `POST /api/ai/edit-model`
+  - `POST /api/validate/drawio`
+  - `GET /api/health`
 
-## 🛠️ Local Development
+## Launch the updated app
 
-### Prerequisites
-- Node.js (v18+)
-- npm
+From this folder:
 
-### Setup
 ```bash
-# Clone the repository
-git clone https://github.com/haitaowu12/sysmlv2_viewer.git
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-### Build
-```bash
-npm run build
-```
+Open the URL printed by Vite (typically `http://localhost:5173/sysmlv2_viewer/`).
 
-## ⚠️ Prototype Status
-This is a **Prototype v0.1** version. It supports a significant subset of the SysML v2 textual notation but is not yet a complete implementation of the full language specification. Contributions and feedback are welcome as we refine the parsing and rendering engines.
+### Confirm you are in the enhanced build
 
-## ⚖️ License
-MIT License
+1. Top toolbar shows a `Draw.io` button (`🧩`).
+2. View tabs include `Draw.io`.
+3. Right panel has `AI Chat` tab.
+4. Export format selector includes `.drawio`, `.svg`, `.png`.
 
+If these are missing, you are likely running a different project or an old deployed build.
+
+## Shortcuts
+
+- Open Draw.io bridge: `Ctrl/Cmd + Shift + D`
+- Open AI chat panel: `Ctrl/Cmd + Shift + I`
+
+## Scope status
+
+V1 focuses on structural roundtrip for:
+
+- `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`
+- `RequirementDef`, `RequirementUsage`, `satisfy`
+- `VerificationDef`, `VerificationUsage`, `verify`
+
+SysML text remains canonical semantics; visual/layout edits are synchronized with patch safety classification.

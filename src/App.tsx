@@ -87,6 +87,7 @@ export default function App() {
   const [leftTab, setLeftTab] = useState<'explorer' | 'library'>('explorer');
   const [rightTab, setRightTab] = useState<'properties' | 'chat'>('properties');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('sysml');
+  const [showWhatsNew, setShowWhatsNew] = useState(() => localStorage.getItem('sysml_viewer_whats_new_dismissed') !== '1');
   const appRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,8 +100,25 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey) {
+        if (e.shiftKey && e.key.toLowerCase() === 'd') {
+          e.preventDefault();
+          setActiveView('drawio');
+          return;
+        }
+
+        if (e.shiftKey && e.key.toLowerCase() === 'i') {
+          e.preventDefault();
+          if (!showPropertyPanel) {
+            togglePropertyPanel();
+          }
+          setRightTab('chat');
+          return;
+        }
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const target = e.target as HTMLElement;
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
           removeSelectedNode();
         }
@@ -195,6 +213,14 @@ export default function App() {
           </button>
           <button
             className="toolbar-btn"
+            onClick={() => setActiveView('drawio')}
+            title="Open Draw.io bridge (Ctrl/Cmd+Shift+D)"
+          >
+            <span className="btn-icon">🧩</span>
+            <span className="btn-label">Draw.io</span>
+          </button>
+          <button
+            className="toolbar-btn"
             onClick={togglePropertyPanel}
             title="Toggle right panel"
           >
@@ -208,9 +234,10 @@ export default function App() {
               }
               setRightTab('chat');
             }}
-            title="Open AI chat"
+            title="Open AI chat (Ctrl/Cmd+Shift+I)"
           >
             <span className="btn-icon">💬</span>
+            <span className="btn-label">AI</span>
           </button>
         </div>
 
@@ -236,6 +263,25 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {showWhatsNew && (
+        <div className="whats-new-banner">
+          <div className="whats-new-text">
+            New in this build: interactive Draw.io sync + AI chat. Use the <strong>Draw.io</strong> tab or press
+            <code> Ctrl/Cmd+Shift+D</code>. Open AI chat with <code>Ctrl/Cmd+Shift+I</code>.
+          </div>
+          <button
+            className="toolbar-btn"
+            onClick={() => {
+              localStorage.setItem('sysml_viewer_whats_new_dismissed', '1');
+              setShowWhatsNew(false);
+            }}
+            title="Dismiss"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="main-content">
         {showExplorer && (
