@@ -16,6 +16,7 @@ export default function DrawioBridgeView() {
   const pendingPatchReview = useAppStore((state) => state.pendingPatchReview);
   const setDrawioXml = useAppStore((state) => state.setDrawioXml);
   const syncFromSysml = useAppStore((state) => state.syncFromSysml);
+  const reflowDrawioLayout = useAppStore((state) => state.reflowDrawioLayout);
   const syncFromDrawio = useAppStore((state) => state.syncFromDrawio);
   const applyPatch = useAppStore((state) => state.applyPatch);
   const rejectPatch = useAppStore((state) => state.rejectPatch);
@@ -120,6 +121,9 @@ export default function DrawioBridgeView() {
       <div className="drawio-bridge-toolbar">
         <button className="toolbar-btn" onClick={syncFromSysml} title="Regenerate Draw.io from SysML source">
           Regenerate from SysML
+        </button>
+        <button className="toolbar-btn" onClick={reflowDrawioLayout} title="Recompute clean graph layout from SysML semantics">
+          Reflow Layout
         </button>
         <button
           className="toolbar-btn"

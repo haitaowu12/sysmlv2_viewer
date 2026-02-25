@@ -22,7 +22,8 @@ const NODE_STYLE: Record<SemanticNodeKind, string> = {
 };
 
 const EDGE_STYLE: Record<SemanticEdgeKind, string> = {
-  contains: 'edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;',
+  // Keep containment links for deterministic roundtrip, but render them unobtrusively.
+  contains: 'edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#d1d5db;dashed=1;opacity=25;',
   connection: 'edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;',
   satisfy: 'edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;dashed=1;strokeColor=#10b981;',
   verify: 'edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;dashed=1;strokeColor=#ef4444;',
@@ -59,7 +60,7 @@ function serializeNodeCell(node: SemanticNode, geometry: { x: number; y: number;
 
 function serializeEdgeCell(edge: SemanticEdge): string {
   const style = `${EDGE_STYLE[edge.kind] ?? EDGE_STYLE.connection}sysmlEdge=${edge.kind};`;
-  const value = edge.label ? escapeXml(edge.label) : '';
+  const value = edge.kind === 'contains' ? '' : edge.label ? escapeXml(edge.label) : '';
 
   return [
     `<mxCell id="${edge.id}" value="${value}" style="${style}" parent="1" source="${edge.sourceId}" target="${edge.targetId}" edge="1">`,

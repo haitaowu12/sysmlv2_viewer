@@ -74,6 +74,7 @@ export interface AppState {
   syncFromSysml: () => void;
   syncFromDrawio: (xml: string) => void;
   setDrawioXml: (xml: string) => void;
+  reflowDrawioLayout: () => void;
   applyPatch: (patchId: string) => void;
   rejectPatch: (patchId: string) => void;
 
@@ -502,6 +503,35 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setDrawioXml: (xml) => set({ drawioXml: xml }),
+
+  reflowDrawioLayout: () => {
+    const { sourceCode } = get();
+    try {
+      const semantic = buildSemanticModelFromSource(sourceCode, {});
+      const drawioXml = semanticModelToDrawioXml(semantic);
+      const sourceHash = sysmlPathHash(sourceCode);
+      set((state) => ({
+        drawioXml,
+        layoutMap: semantic.layout,
+        syncState: {
+          ...state.syncState,
+          sourceHash,
+          drawioSnapshotHash: sourceHash,
+          lastSyncedAt: new Date().toISOString(),
+          diagnostics: ['Layout reflow applied using semantic graph layout.'],
+          conflict: undefined,
+        },
+      }));
+    } catch (error) {
+      set((state) => ({
+        syncState: {
+          ...state.syncState,
+          conflict: 'Layout reflow failed.',
+          diagnostics: [`Reflow error: ${(error as Error).message}`],
+        },
+      }));
+    }
+  },
 
   applyPatch: (patchId) => {
     const state = get();
