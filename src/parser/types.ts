@@ -36,6 +36,7 @@ export type NodeKind =
     | 'UseCaseUsage'
     | 'AllocationDef'
     | 'AllocationUsage'
+    | 'DependencyUsage'
     | 'ViewDef'
     | 'ViewUsage'
     | 'ViewpointDef'
@@ -225,6 +226,33 @@ export interface BindingUsage extends SysMLNode {
     target: string;
 }
 
+export interface UseCaseDef extends SysMLNode {
+    kind: 'UseCaseDef';
+}
+
+export interface UseCaseUsage extends SysMLNode {
+    kind: 'UseCaseUsage';
+    typeName?: string;
+    includeKind?: 'include' | 'extend' | 'normal';
+}
+
+export interface AllocationDef extends SysMLNode {
+    kind: 'AllocationDef';
+}
+
+export interface AllocationUsage extends SysMLNode {
+    kind: 'AllocationUsage';
+    source?: string;
+    target?: string;
+    typeName?: string;
+}
+
+export interface DependencyUsage extends SysMLNode {
+    kind: 'DependencyUsage';
+    source?: string;
+    targets?: string[];
+}
+
 export interface CommentNode extends SysMLNode {
     kind: 'Comment';
     text: string;
@@ -304,5 +332,5 @@ export interface ParseError {
     location?: SourceLocation;
 }
 
-export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef;
-export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage | ViewpointUsage | ViewUsage | VerificationUsage | AnalysisUsage;
+export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef | UseCaseDef | AllocationDef;
+export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage | ViewpointUsage | ViewUsage | VerificationUsage | AnalysisUsage | UseCaseUsage | AllocationUsage | DependencyUsage;

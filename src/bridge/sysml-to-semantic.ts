@@ -1,9 +1,14 @@
 import { parseSysML } from '../parser/parser';
 import type {
+  AllocationUsage,
+  BindingUsage,
   ConnectionUsage,
+  DependencyUsage,
+  FlowUsage,
   RequirementUsage,
   SysMLModel,
   SysMLNode,
+  TransitionUsage,
   VerificationUsage,
 } from '../parser/types';
 import { buildDefaultLayout } from './layout-map';
@@ -23,11 +28,40 @@ const KIND_MAP: Partial<Record<SysMLNode['kind'], SemanticNodeKind>> = {
   PartUsage: 'PartUsage',
   PortDef: 'PortDef',
   PortUsage: 'PortUsage',
+  ConnectionDef: 'ConnectionDef',
   ConnectionUsage: 'ConnectionUsage',
+  InterfaceDef: 'InterfaceDef',
+  InterfaceUsage: 'InterfaceUsage',
+  ActionDef: 'ActionDef',
+  ActionUsage: 'ActionUsage',
+  StateDef: 'StateDef',
+  StateUsage: 'StateUsage',
+  TransitionUsage: 'TransitionUsage',
+  FlowUsage: 'FlowUsage',
+  BindingUsage: 'BindingUsage',
   RequirementDef: 'RequirementDef',
   RequirementUsage: 'RequirementUsage',
+  ConstraintDef: 'ConstraintDef',
+  ConstraintUsage: 'ConstraintUsage',
+  AttributeUsage: 'AttributeUsage',
+  ItemDef: 'ItemDef',
+  ItemUsage: 'ItemUsage',
+  EnumDef: 'EnumDef',
+  EnumUsage: 'EnumUsage',
+  UseCaseDef: 'UseCaseDef',
+  UseCaseUsage: 'UseCaseUsage',
+  ViewDef: 'ViewDef',
+  ViewUsage: 'ViewUsage',
+  ViewpointDef: 'ViewpointDef',
+  ViewpointUsage: 'ViewpointUsage',
   VerificationDef: 'VerificationDef',
   VerificationUsage: 'VerificationUsage',
+  AnalysisDef: 'AnalysisDef',
+  AnalysisUsage: 'AnalysisUsage',
+  MetadataDef: 'MetadataDef',
+  AllocationDef: 'AllocationDef',
+  AllocationUsage: 'AllocationUsage',
+  DependencyUsage: 'DependencyUsage',
 };
 
 interface SemanticIndexEntry {
@@ -40,8 +74,10 @@ interface SemanticIndexEntry {
 
 interface PendingRelation {
   kind: SemanticEdgeKind;
-  sourceId: string;
-  targetRef: string;
+  sourceId?: string;
+  sourceRef?: string;
+  targetRef?: string;
+  targetRefs?: string[];
   label?: string;
 }
 
@@ -60,11 +96,40 @@ function kindOrder(kind: SemanticNodeKind): number {
     PartUsage: 2,
     PortDef: 3,
     PortUsage: 4,
-    ConnectionUsage: 5,
-    RequirementDef: 6,
-    RequirementUsage: 7,
-    VerificationDef: 8,
-    VerificationUsage: 9,
+    ConnectionDef: 5,
+    ConnectionUsage: 6,
+    InterfaceDef: 7,
+    InterfaceUsage: 8,
+    ActionDef: 9,
+    ActionUsage: 10,
+    StateDef: 11,
+    StateUsage: 12,
+    TransitionUsage: 13,
+    FlowUsage: 14,
+    BindingUsage: 15,
+    RequirementDef: 16,
+    RequirementUsage: 17,
+    ConstraintDef: 18,
+    ConstraintUsage: 19,
+    AttributeUsage: 20,
+    ItemDef: 21,
+    ItemUsage: 22,
+    EnumDef: 23,
+    EnumUsage: 24,
+    UseCaseDef: 25,
+    UseCaseUsage: 26,
+    ViewDef: 27,
+    ViewUsage: 28,
+    ViewpointDef: 29,
+    ViewpointUsage: 30,
+    VerificationDef: 31,
+    VerificationUsage: 32,
+    AnalysisDef: 33,
+    AnalysisUsage: 34,
+    MetadataDef: 35,
+    AllocationDef: 36,
+    AllocationUsage: 37,
+    DependencyUsage: 38,
     Unknown: 99,
   };
   return order[kind] ?? 99;
@@ -199,6 +264,27 @@ export function buildSemanticModelFromSysMLModel(
       semanticNode.sourceRef = connection.source;
       semanticNode.targetRef = connection.target;
     }
+    if (entry.kind === 'FlowUsage') {
+      const flow = astNode as FlowUsage;
+      semanticNode.sourceRef = flow.source;
+      semanticNode.targetRef = flow.target;
+    }
+    if (entry.kind === 'BindingUsage') {
+      const binding = astNode as BindingUsage;
+      semanticNode.sourceRef = binding.source;
+      semanticNode.targetRef = binding.target;
+    }
+    if (entry.kind === 'TransitionUsage') {
+      const transition = astNode as TransitionUsage;
+      semanticNode.sourceRef = transition.source;
+      semanticNode.targetRef = transition.target;
+    }
+    if (entry.kind === 'AllocationUsage') {
+      const allocation = astNode as AllocationUsage;
+      semanticNode.sourceRef = allocation.source;
+      semanticNode.targetRef = allocation.target;
+      if (allocation.typeName) semanticNode.typeName = allocation.typeName;
+    }
 
     semanticNodes.push(semanticNode);
 
@@ -211,7 +297,24 @@ export function buildSemanticModelFromSysMLModel(
       });
     }
 
-    if (entry.kind === 'PartUsage' || entry.kind === 'PortUsage') {
+    const typingUsageKinds = new Set<SemanticNodeKind>([
+      'PartUsage',
+      'PortUsage',
+      'InterfaceUsage',
+      'ActionUsage',
+      'StateUsage',
+      'RequirementUsage',
+      'VerificationUsage',
+      'ItemUsage',
+      'EnumUsage',
+      'UseCaseUsage',
+      'ViewUsage',
+      'ViewpointUsage',
+      'AnalysisUsage',
+      'AllocationUsage',
+    ]);
+
+    if (typingUsageKinds.has(entry.kind) && semanticNode.typeName) {
       if (semanticNode.typeName) {
         pendingRelations.push({
           kind: 'typing',
@@ -282,14 +385,103 @@ export function buildSemanticModelFromSysMLModel(
         });
       }
     }
+
+    if (entry.kind === 'FlowUsage') {
+      const flow = astNode as FlowUsage;
+      if (flow.source && flow.target) {
+        pendingRelations.push({
+          kind: 'flow',
+          sourceRef: flow.source,
+          targetRef: flow.target,
+          label: 'flow',
+        });
+      }
+    }
+
+    if (entry.kind === 'BindingUsage') {
+      const binding = astNode as BindingUsage;
+      if (binding.source && binding.target) {
+        pendingRelations.push({
+          kind: 'binding',
+          sourceRef: binding.source,
+          targetRef: binding.target,
+          label: 'bind',
+        });
+      }
+    }
+
+    if (entry.kind === 'TransitionUsage') {
+      const transition = astNode as TransitionUsage;
+      if (transition.source && transition.target) {
+        pendingRelations.push({
+          kind: 'transition',
+          sourceRef: transition.source,
+          targetRef: transition.target,
+          label: transition.name,
+        });
+      }
+    }
+
+    if (entry.kind === 'AllocationUsage') {
+      const allocation = astNode as AllocationUsage;
+      if (allocation.source && allocation.target) {
+        pendingRelations.push({
+          kind: 'allocation',
+          sourceRef: allocation.source,
+          targetRef: allocation.target,
+          label: 'allocate',
+        });
+      }
+    }
+
+    if (entry.kind === 'DependencyUsage') {
+      const dependency = astNode as DependencyUsage;
+      if (dependency.source && dependency.targets && dependency.targets.length > 0) {
+        pendingRelations.push({
+          kind: 'dependency',
+          sourceRef: dependency.source,
+          targetRefs: dependency.targets,
+          label: dependency.name || 'dependency',
+        });
+      }
+    }
   }
 
   const refIndex = buildNodeRefIndex(semanticNodes);
+  const structuralEndpointKinds: SemanticNodeKind[] = [
+    'PartUsage',
+    'PartDef',
+    'PortUsage',
+    'PortDef',
+    'ActionUsage',
+    'ActionDef',
+    'StateUsage',
+    'StateDef',
+    'ItemUsage',
+    'ItemDef',
+    'UseCaseUsage',
+    'UseCaseDef',
+    'InterfaceUsage',
+    'InterfaceDef',
+    'RequirementUsage',
+    'RequirementDef',
+    'VerificationUsage',
+    'VerificationDef',
+    'AnalysisUsage',
+    'AnalysisDef',
+    'ViewUsage',
+    'ViewDef',
+    'ViewpointUsage',
+    'ViewpointDef',
+    'ConstraintUsage',
+    'ConstraintDef',
+    'ConnectionUsage',
+  ];
 
   for (const relation of pendingRelations) {
     if (relation.kind === 'connection') {
-      const endpointKinds: SemanticNodeKind[] = ['PartUsage', 'PortUsage', 'PartDef', 'PortDef'];
-      const endpoint = resolveRef(refIndex, relation.targetRef, endpointKinds);
+      if (!relation.sourceId || !relation.targetRef) continue;
+      const endpoint = resolveRef(refIndex, relation.targetRef, structuralEndpointKinds);
       if (!endpoint) continue;
 
       semanticEdges.push({
@@ -303,7 +495,24 @@ export function buildSemanticModelFromSysMLModel(
     }
 
     if (relation.kind === 'typing') {
-      const typeKinds: SemanticNodeKind[] = ['PartDef', 'PortDef', 'RequirementDef', 'VerificationDef'];
+      if (!relation.sourceId || !relation.targetRef) continue;
+      const typeKinds: SemanticNodeKind[] = [
+        'PartDef',
+        'PortDef',
+        'InterfaceDef',
+        'ActionDef',
+        'StateDef',
+        'ItemDef',
+        'EnumDef',
+        'UseCaseDef',
+        'ViewDef',
+        'ViewpointDef',
+        'RequirementDef',
+        'VerificationDef',
+        'AnalysisDef',
+        'ConstraintDef',
+        'AllocationDef',
+      ];
       const typeNode = resolveRef(refIndex, relation.targetRef, typeKinds);
       if (!typeNode) continue;
 
@@ -317,6 +526,7 @@ export function buildSemanticModelFromSysMLModel(
     }
 
     if (relation.kind === 'satisfy' || relation.kind === 'verify') {
+      if (!relation.sourceId || !relation.targetRef) continue;
       const requirementKinds: SemanticNodeKind[] = ['RequirementDef', 'RequirementUsage'];
       const requirementNode = resolveRef(refIndex, relation.targetRef, requirementKinds);
       if (!requirementNode) continue;
@@ -328,6 +538,47 @@ export function buildSemanticModelFromSysMLModel(
         targetId: requirementNode.id,
         label: relation.label,
       });
+      continue;
+    }
+
+    if (
+      relation.kind === 'flow' ||
+      relation.kind === 'binding' ||
+      relation.kind === 'transition' ||
+      relation.kind === 'allocation'
+    ) {
+      if (!relation.sourceRef || !relation.targetRef) continue;
+      const sourceNode = resolveRef(refIndex, relation.sourceRef, structuralEndpointKinds);
+      const targetNode = resolveRef(refIndex, relation.targetRef, structuralEndpointKinds);
+      if (!sourceNode || !targetNode) continue;
+
+      semanticEdges.push({
+        id: edgeHash(sourceNode.id, targetNode.id, relation.kind, relation.label),
+        kind: relation.kind,
+        sourceId: sourceNode.id,
+        targetId: targetNode.id,
+        label: relation.label,
+      });
+      continue;
+    }
+
+    if (relation.kind === 'dependency') {
+      if (!relation.sourceRef || !relation.targetRefs || relation.targetRefs.length === 0) continue;
+      const sourceNode = resolveRef(refIndex, relation.sourceRef, structuralEndpointKinds);
+      if (!sourceNode) continue;
+
+      for (const targetRef of relation.targetRefs) {
+        const targetNode = resolveRef(refIndex, targetRef, structuralEndpointKinds);
+        if (!targetNode) continue;
+
+        semanticEdges.push({
+          id: edgeHash(sourceNode.id, targetNode.id, 'dependency', relation.label),
+          kind: 'dependency',
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          label: relation.label,
+        });
+      }
     }
   }
 

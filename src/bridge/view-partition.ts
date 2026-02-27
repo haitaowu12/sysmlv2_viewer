@@ -12,12 +12,26 @@ function includeNodeByView(node: SemanticNode, view: DrawioViewMode): boolean {
       node.kind === 'PartDef' ||
       node.kind === 'PartUsage' ||
       node.kind === 'PortDef' ||
-      node.kind === 'PortUsage'
+      node.kind === 'PortUsage' ||
+      node.kind === 'InterfaceDef' ||
+      node.kind === 'InterfaceUsage' ||
+      node.kind === 'ItemDef' ||
+      node.kind === 'ItemUsage' ||
+      node.kind === 'ConnectionDef'
     );
   }
 
   if (view === 'interconnection') {
-    return node.kind === 'PartUsage' || node.kind === 'PortUsage' || node.kind === 'ConnectionUsage';
+    return (
+      node.kind === 'PartUsage' ||
+      node.kind === 'PortUsage' ||
+      node.kind === 'ConnectionUsage' ||
+      node.kind === 'FlowUsage' ||
+      node.kind === 'BindingUsage' ||
+      node.kind === 'DependencyUsage' ||
+      node.kind === 'AllocationUsage' ||
+      node.kind === 'InterfaceUsage'
+    );
   }
 
   if (view === 'requirements') {
@@ -27,7 +41,11 @@ function includeNodeByView(node: SemanticNode, view: DrawioViewMode): boolean {
       node.kind === 'PartDef' ||
       node.kind === 'PartUsage' ||
       node.kind === 'VerificationDef' ||
-      node.kind === 'VerificationUsage'
+      node.kind === 'VerificationUsage' ||
+      node.kind === 'UseCaseDef' ||
+      node.kind === 'UseCaseUsage' ||
+      node.kind === 'ConstraintDef' ||
+      node.kind === 'ConstraintUsage'
     );
   }
 
@@ -36,7 +54,12 @@ function includeNodeByView(node: SemanticNode, view: DrawioViewMode): boolean {
       node.kind === 'VerificationDef' ||
       node.kind === 'VerificationUsage' ||
       node.kind === 'RequirementDef' ||
-      node.kind === 'RequirementUsage'
+      node.kind === 'RequirementUsage' ||
+      node.kind === 'ActionDef' ||
+      node.kind === 'ActionUsage' ||
+      node.kind === 'StateDef' ||
+      node.kind === 'StateUsage' ||
+      node.kind === 'TransitionUsage'
     );
   }
 
@@ -51,15 +74,34 @@ function includeEdgeByView(edge: SemanticEdge, view: DrawioViewMode): boolean {
   }
 
   if (view === 'interconnection') {
-    return edge.kind === 'connection' || edge.kind === 'typing';
+    return (
+      edge.kind === 'connection' ||
+      edge.kind === 'flow' ||
+      edge.kind === 'binding' ||
+      edge.kind === 'dependency' ||
+      edge.kind === 'allocation' ||
+      edge.kind === 'typing'
+    );
   }
 
   if (view === 'requirements') {
-    return edge.kind === 'satisfy' || edge.kind === 'verify' || edge.kind === 'typing';
+    return (
+      edge.kind === 'satisfy' ||
+      edge.kind === 'verify' ||
+      edge.kind === 'typing' ||
+      edge.kind === 'dependency' ||
+      edge.kind === 'allocation'
+    );
   }
 
   if (view === 'verification') {
-    return edge.kind === 'verify' || edge.kind === 'typing';
+    return (
+      edge.kind === 'verify' ||
+      edge.kind === 'transition' ||
+      edge.kind === 'flow' ||
+      edge.kind === 'binding' ||
+      edge.kind === 'typing'
+    );
   }
 
   return true;

@@ -6,11 +6,40 @@ const KIND_FILL: Record<SemanticNodeKind, string> = {
   PartUsage: '#d5e8d4',
   PortDef: '#fff2cc',
   PortUsage: '#f8cecc',
+  ConnectionDef: '#ece3f7',
   ConnectionUsage: '#e1d5e7',
+  InterfaceDef: '#e0f2fe',
+  InterfaceUsage: '#cffafe',
+  ActionDef: '#dbeafe',
+  ActionUsage: '#dcfce7',
+  StateDef: '#fef3c7',
+  StateUsage: '#fde68a',
+  TransitionUsage: '#f3f4f6',
+  FlowUsage: '#dbeafe',
+  BindingUsage: '#ede9fe',
   RequirementDef: '#ffe6cc',
   RequirementUsage: '#fff2cc',
+  ConstraintDef: '#fee2e2',
+  ConstraintUsage: '#fecaca',
+  AttributeUsage: '#f8fafc',
+  ItemDef: '#f0fdf4',
+  ItemUsage: '#dcfce7',
+  EnumDef: '#ffedd5',
+  EnumUsage: '#fed7aa',
+  UseCaseDef: '#fef9c3',
+  UseCaseUsage: '#fef08a',
+  ViewDef: '#ecfccb',
+  ViewUsage: '#d9f99d',
+  ViewpointDef: '#fce7f3',
+  ViewpointUsage: '#fbcfe8',
   VerificationDef: '#f8cecc',
   VerificationUsage: '#f5f5f5',
+  AnalysisDef: '#e0e7ff',
+  AnalysisUsage: '#c7d2fe',
+  MetadataDef: '#f1f5f9',
+  AllocationDef: '#d1fae5',
+  AllocationUsage: '#a7f3d0',
+  DependencyUsage: '#f3f4f6',
   Unknown: '#e0e0e0',
 };
 
@@ -20,11 +49,40 @@ const KIND_STROKE: Record<SemanticNodeKind, string> = {
   PartUsage: '#82b366',
   PortDef: '#d6b656',
   PortUsage: '#b85450',
+  ConnectionDef: '#6d28d9',
   ConnectionUsage: '#9673a6',
+  InterfaceDef: '#0369a1',
+  InterfaceUsage: '#0891b2',
+  ActionDef: '#2563eb',
+  ActionUsage: '#16a34a',
+  StateDef: '#d97706',
+  StateUsage: '#b45309',
+  TransitionUsage: '#374151',
+  FlowUsage: '#1d4ed8',
+  BindingUsage: '#6d28d9',
   RequirementDef: '#d79b00',
   RequirementUsage: '#d6b656',
+  ConstraintDef: '#dc2626',
+  ConstraintUsage: '#b91c1c',
+  AttributeUsage: '#64748b',
+  ItemDef: '#15803d',
+  ItemUsage: '#16a34a',
+  EnumDef: '#ea580c',
+  EnumUsage: '#c2410c',
+  UseCaseDef: '#ca8a04',
+  UseCaseUsage: '#a16207',
+  ViewDef: '#4d7c0f',
+  ViewUsage: '#3f6212',
+  ViewpointDef: '#be185d',
+  ViewpointUsage: '#9d174d',
   VerificationDef: '#b85450',
   VerificationUsage: '#666666',
+  AnalysisDef: '#3730a3',
+  AnalysisUsage: '#312e81',
+  MetadataDef: '#475569',
+  AllocationDef: '#059669',
+  AllocationUsage: '#047857',
+  DependencyUsage: '#6b7280',
   Unknown: '#9e9e9e',
 };
 
@@ -34,6 +92,11 @@ const EDGE_STROKE: Record<SemanticEdge['kind'], string> = {
   satisfy: '#10b981',
   verify: '#ef4444',
   typing: '#6366f1',
+  flow: '#1d4ed8',
+  binding: '#6d28d9',
+  transition: '#374151',
+  dependency: '#6b7280',
+  allocation: '#059669',
 };
 
 function esc(value: string): string {
@@ -87,7 +150,15 @@ export function semanticModelToSvg(model: SemanticModel): string {
       const path = edgePath(model, edge);
       if (!path) return '';
       const stroke = EDGE_STROKE[edge.kind] ?? '#4b5563';
-      const dash = edge.kind === 'typing' || edge.kind === 'contains' ? ' stroke-dasharray="6 4"' : '';
+      const dash =
+        edge.kind === 'typing' ||
+        edge.kind === 'contains' ||
+        edge.kind === 'flow' ||
+        edge.kind === 'binding' ||
+        edge.kind === 'dependency' ||
+        edge.kind === 'allocation'
+          ? ' stroke-dasharray="6 4"'
+          : '';
       const label = edge.label
         ? `<text x="${(model.layout[edge.sourceId].x + model.layout[edge.targetId].x) / 2}" y="${(model.layout[edge.sourceId].y + model.layout[edge.targetId].y) / 2}" font-size="11" fill="${stroke}">${esc(edge.label)}</text>`
         : '';
