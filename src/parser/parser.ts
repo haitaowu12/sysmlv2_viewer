@@ -41,6 +41,11 @@ import type {
     ImportNode,
     DocNode,
     EndFeature,
+    UseCaseDef,
+    UseCaseUsage,
+    AllocationDef,
+    AllocationUsage,
+    DependencyUsage,
 } from './types';
 
 class Lexer {
@@ -325,6 +330,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseInterfaceUsage(lexer);
     } else if (lexer.lookAhead('action def')) {
         node = parseActionDef(lexer);
+    } else if (lexer.lookAhead('perform action')) {
+        node = parsePerformActionUsage(lexer);
     } else if (lexer.lookAhead('action')) {
         node = parseActionUsage(lexer);
     } else if (lexer.lookAhead('state def')) {
@@ -353,6 +360,10 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseEnumDef(lexer);
     } else if (lexer.lookAhead('enum')) {
         node = parseEnumUsage(lexer);
+    } else if (lexer.lookAhead('succession')) {
+        node = parseSuccession(lexer);
+    } else if (lexer.lookAhead('first')) {
+        node = parseFirstThenSuccession(lexer);
     } else if (lexer.lookAhead('flow')) {
         node = parseFlow(lexer);
     } else if (lexer.lookAhead('bind')) {
@@ -363,10 +374,20 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseDoc(lexer);
     } else if (lexer.lookAhead('entry')) {
         node = parseEntryTransition(lexer);
-    } else if (lexer.lookAhead('allocation def') || lexer.lookAhead('allocation')) {
-        node = parseGenericElement(lexer, lexer.lookAhead('allocation def') ? 'AllocationDef' : 'AllocationUsage');
-    } else if (lexer.lookAhead('use case def') || lexer.lookAhead('use case')) {
-        node = parseGenericElement(lexer, lexer.lookAhead('use case def') ? 'UseCaseDef' : 'UseCaseUsage');
+    } else if (lexer.lookAhead('allocation def')) {
+        node = parseAllocationDef(lexer);
+    } else if (lexer.lookAhead('allocate') || lexer.lookAhead('allocation')) {
+        node = parseAllocationUsage(lexer);
+    } else if (lexer.lookAhead('dependency')) {
+        node = parseDependencyUsage(lexer);
+    } else if (lexer.lookAhead('use case def')) {
+        node = parseUseCaseDef(lexer);
+    } else if (lexer.lookAhead('include use case')) {
+        node = parseUseCaseUsage(lexer, 'include');
+    } else if (lexer.lookAhead('extend use case')) {
+        node = parseUseCaseUsage(lexer, 'extend');
+    } else if (lexer.lookAhead('use case')) {
+        node = parseUseCaseUsage(lexer, 'normal');
     } else if (lexer.lookAhead('viewpoint def')) {
         node = parseViewpointDef(lexer);
     } else if (lexer.lookAhead('viewpoint')) {
@@ -393,6 +414,9 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseGenericElement(lexer, 'VerificationUsage');
     } else if (lexer.lookAhead('satisfy')) {
         node = parseSatisfyUsage(lexer);
+    } else if (lexer.lookAhead('then')) {
+        lexer.match('then');
+        node = parseElement(lexer);
     } else {
         // Unknown element - try to skip it gracefully
         const word = lexer.readIdentifier();
@@ -670,6 +694,37 @@ function parseActionUsage(lexer: Lexer): ActionUsage {
     const children = parseBody(lexer);
 
     return { kind: 'ActionUsage', name, typeName, params, children };
+}
+
+function parsePerformActionUsage(lexer: Lexer): ActionUsage {
+    lexer.expect('perform');
+    lexer.expect('action');
+
+    let name = 'performAction';
+    let typeName: string | undefined;
+
+    if (lexer.match(':>>')) {
+        name = lexer.readQualifiedName();
+    } else if (!lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
+        name = lexer.readIdentifier();
+        lexer.readMultiplicity(); // optional [*] / [1..*]
+    }
+
+    if (lexer.match(':') || lexer.match(':>') || lexer.match(':>>')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    // Consume trailing qualifiers like "ordered" before body/semicolon.
+    while (!lexer.eof && !lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
+        if (lexer.lookAhead('ordered') || lexer.lookAhead('nonunique') || lexer.lookAhead('nonUnique')) {
+            lexer.readIdentifier();
+            continue;
+        }
+        break;
+    }
+
+    const children = parseBody(lexer);
+    return { kind: 'ActionUsage', name, typeName, params: [], children };
 }
 
 function parseActionParams(_lexer: Lexer): ActionParam[] {
@@ -960,6 +1015,8 @@ function parseFlow(lexer: Lexer): FlowUsage {
 
     if (lexer.match('from')) {
         source = readReference(lexer);
+    } else {
+        source = readReference(lexer);
     }
 
     if (lexer.match('to')) {
@@ -981,6 +1038,69 @@ function parseBinding(lexer: Lexer): BindingUsage {
     lexer.match(';');
 
     return { kind: 'BindingUsage', name: `bind_${source}_${target}`, source, target, children: [] };
+}
+
+function parseSuccession(lexer: Lexer): SysMLNode {
+    lexer.expect('succession');
+
+    if (lexer.match('flow')) {
+        let source = '';
+        let target = '';
+        if (lexer.match('from')) {
+            source = readReference(lexer);
+        } else {
+            source = readReference(lexer);
+        }
+        if (lexer.match('to')) {
+            target = readReference(lexer);
+        }
+        lexer.match(';');
+        return {
+            kind: 'FlowUsage',
+            name: `succession_flow_${source}_to_${target}`,
+            source,
+            target,
+            children: [],
+        } as FlowUsage;
+    }
+
+    let name = 'succession';
+    if (!lexer.lookAhead('first') && !lexer.lookAheadChar(';')) {
+        name = lexer.readIdentifier();
+    }
+
+    let source = '';
+    let target = '';
+    if (lexer.match('first')) {
+        source = readReference(lexer);
+    }
+    if (lexer.match('then')) {
+        target = readReference(lexer);
+    }
+
+    lexer.match(';');
+    return {
+        kind: 'TransitionUsage',
+        name,
+        source,
+        target,
+        children: [],
+    } as TransitionUsage;
+}
+
+function parseFirstThenSuccession(lexer: Lexer): TransitionUsage {
+    lexer.expect('first');
+    const source = readReference(lexer);
+    lexer.expect('then');
+    const target = readReference(lexer);
+    lexer.match(';');
+    return {
+        kind: 'TransitionUsage',
+        name: 'succession',
+        source,
+        target,
+        children: [],
+    };
 }
 
 function parseImport(lexer: Lexer): ImportNode {
@@ -1188,6 +1308,36 @@ function readReference(lexer: Lexer): string {
     return ref;
 }
 
+function readEndpointReference(lexer: Lexer, stopWords: string[]): string {
+    lexer.skipWhitespace();
+    let text = '';
+
+    while (!lexer.eof) {
+        if (lexer.lookAheadChar('{') || lexer.lookAheadChar(';') || lexer.lookAheadChar('}')) break;
+        if (stopWords.some((word) => lexer.lookAhead(word))) break;
+        text += lexer.advance();
+    }
+
+    return text
+        .trim()
+        .replace(/^(logical|physical)\s*::>\s*/i, '')
+        .replace(/^references\s+/i, '');
+}
+
+function readEndpointList(lexer: Lexer): string[] {
+    const targets: string[] = [];
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        const target = readEndpointReference(lexer, [',', '{', ';', '}']);
+        if (target) targets.push(target);
+        lexer.skipWhitespace();
+        if (!lexer.match(',')) break;
+    }
+
+    lexer.match(';');
+    return targets;
+}
+
 function parseViewpointDef(lexer: Lexer): SysMLNode {
     lexer.expect('viewpoint');
     lexer.expect('def');
@@ -1345,6 +1495,127 @@ function parseSatisfyUsage(lexer: Lexer): SysMLNode {
         typeName,
         children: [],
     } as SysMLNode;
+}
+
+function parseUseCaseDef(lexer: Lexer): UseCaseDef {
+    lexer.expect('use');
+    lexer.expect('case');
+    lexer.expect('def');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+    return {
+        kind: 'UseCaseDef',
+        name,
+        shortName,
+        children,
+    };
+}
+
+function parseUseCaseUsage(lexer: Lexer, includeKind: 'include' | 'extend' | 'normal'): UseCaseUsage {
+    if (includeKind === 'include') lexer.expect('include');
+    if (includeKind === 'extend') lexer.expect('extend');
+    lexer.expect('use');
+    lexer.expect('case');
+
+    const { name, shortName } = parseNameWithShortName(lexer);
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = lexer.readQualifiedName();
+    }
+
+    const children = parseBody(lexer);
+    return {
+        kind: 'UseCaseUsage',
+        name,
+        shortName,
+        typeName,
+        includeKind,
+        children,
+    };
+}
+
+function parseAllocationDef(lexer: Lexer): AllocationDef {
+    lexer.expect('allocation');
+    lexer.expect('def');
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const children = parseBody(lexer);
+    return {
+        kind: 'AllocationDef',
+        name,
+        shortName,
+        children,
+    };
+}
+
+function parseAllocationUsage(lexer: Lexer): AllocationUsage {
+    let name = 'allocation';
+    let typeName: string | undefined;
+
+    if (lexer.match('allocation')) {
+        if (!lexer.lookAhead('allocate') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
+            name = lexer.readIdentifier();
+            if (lexer.match(':')) {
+                typeName = lexer.readQualifiedName();
+            }
+        }
+    } else {
+        lexer.expect('allocate');
+    }
+
+    let source = '';
+    let target = '';
+
+    if (lexer.match('allocate')) {
+        source = readEndpointReference(lexer, ['to', '{', ';']);
+        lexer.match('to');
+        target = readEndpointReference(lexer, ['{', ';']);
+    }
+
+    const children = parseBody(lexer);
+    return {
+        kind: 'AllocationUsage',
+        name,
+        source,
+        target,
+        typeName,
+        children,
+    };
+}
+
+function parseDependencyUsage(lexer: Lexer): DependencyUsage {
+    lexer.expect('dependency');
+    let name = 'dependency';
+    let source = '';
+    let targets: string[] = [];
+
+    if (!lexer.lookAhead('from') && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{')) {
+        const candidate = lexer.readIdentifier();
+        if (lexer.lookAhead('from')) {
+            name = candidate;
+        } else if (lexer.lookAhead('to')) {
+            source = candidate;
+        } else {
+            name = candidate;
+        }
+    }
+
+    if (lexer.match('from')) {
+        source = readEndpointReference(lexer, ['to', '{', ';']);
+    }
+
+    if (lexer.match('to')) {
+        targets = readEndpointList(lexer);
+    }
+
+    const children = parseBody(lexer);
+    return {
+        kind: 'DependencyUsage',
+        name,
+        source,
+        targets,
+        children,
+    };
 }
 
 export function getNodeDisplayName(node: SysMLNode): string {

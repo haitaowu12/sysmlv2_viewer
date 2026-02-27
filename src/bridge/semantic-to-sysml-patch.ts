@@ -151,10 +151,39 @@ function renderNodeStatement(node: SemanticNode): string {
       return `port def ${quoteName(node.name)};`;
     case 'PortUsage':
       return `port ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ConnectionDef':
+      return `connection def ${quoteName(node.name)};`;
     case 'ConnectionUsage': {
       const source = node.sourceRef ?? 'source';
       const target = node.targetRef ?? 'target';
       return `connect ${source} to ${target};`;
+    }
+    case 'InterfaceDef':
+      return `interface def ${quoteName(node.name)};`;
+    case 'InterfaceUsage':
+      return `interface ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ActionDef':
+      return `action def ${quoteName(node.name)};`;
+    case 'ActionUsage':
+      return `action ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'StateDef':
+      return `state def ${quoteName(node.name)};`;
+    case 'StateUsage':
+      return `state ${quoteName(node.name)};`;
+    case 'TransitionUsage': {
+      const source = node.sourceRef ?? 'source';
+      const target = node.targetRef ?? 'target';
+      return `transition ${quoteName(node.name)}\n\tfirst ${source}\n\tthen ${target};`;
+    }
+    case 'FlowUsage': {
+      const source = node.sourceRef ?? 'source';
+      const target = node.targetRef ?? 'target';
+      return `flow from ${source} to ${target};`;
+    }
+    case 'BindingUsage': {
+      const source = node.sourceRef ?? 'source';
+      const target = node.targetRef ?? 'target';
+      return `bind ${source} = ${target};`;
     }
     case 'RequirementDef':
       return `requirement def ${quoteName(node.name)};`;
@@ -168,6 +197,50 @@ function renderNodeStatement(node: SemanticNode): string {
       return node.typeName
         ? `verification ${quoteName(node.name)} : ${node.typeName};`
         : `verify ${quoteName(node.name)};`;
+    case 'ConstraintDef':
+      return `constraint def ${quoteName(node.name)};`;
+    case 'ConstraintUsage':
+      return `constraint ${quoteName(node.name)};`;
+    case 'AttributeUsage':
+      return `attribute ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ItemDef':
+      return `item def ${quoteName(node.name)};`;
+    case 'ItemUsage':
+      return `item ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'EnumDef':
+      return `enum def ${quoteName(node.name)};`;
+    case 'EnumUsage':
+      return `enum ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'UseCaseDef':
+      return `use case def ${quoteName(node.name)};`;
+    case 'UseCaseUsage':
+      return `use case ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ViewDef':
+      return `view def ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ViewUsage':
+      return `view ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'ViewpointDef':
+      return `viewpoint def ${quoteName(node.name)};`;
+    case 'ViewpointUsage':
+      return `viewpoint ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'AnalysisDef':
+      return `analysis def ${quoteName(node.name)};`;
+    case 'AnalysisUsage':
+      return `analysis ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+    case 'MetadataDef':
+      return `metadata def ${quoteName(node.name)};`;
+    case 'AllocationDef':
+      return `allocation def ${quoteName(node.name)};`;
+    case 'AllocationUsage': {
+      const source = node.sourceRef ?? 'source';
+      const target = node.targetRef ?? 'target';
+      return `allocate ${source} to ${target};`;
+    }
+    case 'DependencyUsage': {
+      const source = node.sourceRef ?? node.name;
+      const target = node.targetRef ?? 'target';
+      return `dependency from ${source} to ${target};`;
+    }
     default:
       return `// Unsupported node ${node.kind} ${node.name}`;
   }
@@ -221,6 +294,42 @@ function applyReconnectPatch(source: string, patch: SyncPatch, semanticModel: Se
       return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
     }
 
+    if (edge.kind === 'flow') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const statement = `flow from ${quoteName(sourceName)} to ${quoteName(targetName)};`;
+      return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
+    }
+
+    if (edge.kind === 'binding') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const statement = `bind ${quoteName(sourceName)} = ${quoteName(targetName)};`;
+      return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
+    }
+
+    if (edge.kind === 'transition') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const transitionName = edge.label && edge.label.trim() ? edge.label.trim() : `t_${sourceName}_to_${targetName}`;
+      const statement = `transition ${quoteName(transitionName)}\n\tfirst ${quoteName(sourceName)}\n\tthen ${quoteName(targetName)};`;
+      return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
+    }
+
+    if (edge.kind === 'allocation') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const statement = `allocate ${quoteName(sourceName)} to ${quoteName(targetName)};`;
+      return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
+    }
+
+    if (edge.kind === 'dependency') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const statement = `dependency from ${quoteName(sourceName)} to ${quoteName(targetName)};`;
+      return { source: source.trimEnd() + `\n\n${statement}\n`, applied: true };
+    }
+
     return { source, applied: false, reason: `Unsupported reconnect add kind: ${edge.kind}` };
   }
 
@@ -242,6 +351,50 @@ function applyReconnectPatch(source: string, patch: SyncPatch, semanticModel: Se
       const removed = removeTextPattern(source, regex);
       if (removed === null) {
         return { source, applied: false, reason: `Could not remove connection ${sourceName} -> ${targetName}.` };
+      }
+      return { source: removed, applied: true };
+    }
+
+    if (edge.kind === 'flow') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const regex = new RegExp(`^.*\\bflow\\s+from\\s+['\\"]?${escapeRegex(sourceName)}['\\"]?\\s+to\\s+['\\"]?${escapeRegex(targetName)}['\\"]?.*\\n?`, 'm');
+      const removed = removeTextPattern(source, regex);
+      if (removed === null) {
+        return { source, applied: false, reason: `Could not remove flow ${sourceName} -> ${targetName}.` };
+      }
+      return { source: removed, applied: true };
+    }
+
+    if (edge.kind === 'binding') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const regex = new RegExp(`^.*\\bbind\\s+['\\"]?${escapeRegex(sourceName)}['\\"]?\\s*=\\s*['\\"]?${escapeRegex(targetName)}['\\"]?.*\\n?`, 'm');
+      const removed = removeTextPattern(source, regex);
+      if (removed === null) {
+        return { source, applied: false, reason: `Could not remove binding ${sourceName} = ${targetName}.` };
+      }
+      return { source: removed, applied: true };
+    }
+
+    if (edge.kind === 'allocation') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const regex = new RegExp(`^.*\\ballocate\\s+['\\"]?${escapeRegex(sourceName)}['\\"]?\\s+to\\s+['\\"]?${escapeRegex(targetName)}['\\"]?.*\\n?`, 'm');
+      const removed = removeTextPattern(source, regex);
+      if (removed === null) {
+        return { source, applied: false, reason: `Could not remove allocation ${sourceName} -> ${targetName}.` };
+      }
+      return { source: removed, applied: true };
+    }
+
+    if (edge.kind === 'dependency') {
+      const sourceName = sourceNameFrom(edge.sourceId);
+      const targetName = sourceNameFrom(edge.targetId);
+      const regex = new RegExp(`^.*\\bdependency\\b.*${escapeRegex(sourceName)}.*${escapeRegex(targetName)}.*\\n?`, 'm');
+      const removed = removeTextPattern(source, regex);
+      if (removed === null) {
+        return { source, applied: false, reason: `Could not remove dependency ${sourceName} -> ${targetName}.` };
       }
       return { source: removed, applied: true };
     }
@@ -270,6 +423,11 @@ interface RenderContext {
   childrenByParent: Map<string, SemanticNode[]>;
   satisfyBySource: Map<string, string[]>;
   verifyBySource: Map<string, string[]>;
+  flowBySource: Map<string, string[]>;
+  bindingBySource: Map<string, string[]>;
+  allocationBySource: Map<string, string[]>;
+  dependencyBySource: Map<string, string[]>;
+  transitionBySource: Map<string, Array<{ target: string; label?: string }>>;
   connectionTargetsByNode: Map<string, { source?: string; target?: string }>;
 }
 
@@ -280,11 +438,40 @@ function nodeRank(kind: SemanticNode['kind']): number {
     PartUsage: 2,
     PortDef: 3,
     PortUsage: 4,
-    ConnectionUsage: 5,
-    RequirementDef: 6,
-    RequirementUsage: 7,
-    VerificationDef: 8,
-    VerificationUsage: 9,
+    ConnectionDef: 5,
+    ConnectionUsage: 6,
+    InterfaceDef: 7,
+    InterfaceUsage: 8,
+    ActionDef: 9,
+    ActionUsage: 10,
+    StateDef: 11,
+    StateUsage: 12,
+    TransitionUsage: 13,
+    FlowUsage: 14,
+    BindingUsage: 15,
+    RequirementDef: 16,
+    RequirementUsage: 17,
+    ConstraintDef: 18,
+    ConstraintUsage: 19,
+    AttributeUsage: 20,
+    ItemDef: 21,
+    ItemUsage: 22,
+    EnumDef: 23,
+    EnumUsage: 24,
+    UseCaseDef: 25,
+    UseCaseUsage: 26,
+    ViewDef: 27,
+    ViewUsage: 28,
+    ViewpointDef: 29,
+    ViewpointUsage: 30,
+    VerificationDef: 31,
+    VerificationUsage: 32,
+    AnalysisDef: 33,
+    AnalysisUsage: 34,
+    MetadataDef: 35,
+    AllocationDef: 36,
+    AllocationUsage: 37,
+    DependencyUsage: 38,
     Unknown: 99,
   };
   return order[kind] ?? 99;
@@ -308,6 +495,22 @@ function renderNode(node: SemanticNode, level: number, ctx: RenderContext): stri
   }
   for (const target of ctx.verifyBySource.get(node.id) ?? []) {
     relationLines.push(`${'\t'.repeat(level + 1)}verify ${quoteName(target)};`);
+  }
+  for (const target of ctx.flowBySource.get(node.id) ?? []) {
+    relationLines.push(`${'\t'.repeat(level + 1)}flow from ${quoteName(node.name)} to ${quoteName(target)};`);
+  }
+  for (const target of ctx.bindingBySource.get(node.id) ?? []) {
+    relationLines.push(`${'\t'.repeat(level + 1)}bind ${quoteName(node.name)} = ${quoteName(target)};`);
+  }
+  for (const target of ctx.allocationBySource.get(node.id) ?? []) {
+    relationLines.push(`${'\t'.repeat(level + 1)}allocate ${quoteName(node.name)} to ${quoteName(target)};`);
+  }
+  for (const target of ctx.dependencyBySource.get(node.id) ?? []) {
+    relationLines.push(`${'\t'.repeat(level + 1)}dependency from ${quoteName(node.name)} to ${quoteName(target)};`);
+  }
+  for (const transition of ctx.transitionBySource.get(node.id) ?? []) {
+    const name = transition.label && transition.label !== 'transition' ? transition.label : `t_${node.name}_to_${transition.target}`;
+    relationLines.push(`${'\t'.repeat(level + 1)}transition ${quoteName(name)} first ${quoteName(node.name)} then ${quoteName(transition.target)};`);
   }
 
   const renderedChildren = children.map((child) => renderNode(child, level + 1, ctx));
@@ -338,11 +541,62 @@ function renderNode(node: SemanticNode, level: number, ctx: RenderContext): stri
     case 'PortUsage':
       return `${i}port ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
 
+    case 'ConnectionDef':
+      return `${i}connection def ${quoteName(node.name)};`;
+
     case 'ConnectionUsage': {
       const endpoints = ctx.connectionTargetsByNode.get(node.id) ?? {};
       const sourceRef = node.sourceRef ?? endpoints.source ?? 'source';
       const targetRef = node.targetRef ?? endpoints.target ?? 'target';
       return `${i}connect ${quoteName(sourceRef)} to ${quoteName(targetRef)};`;
+    }
+
+    case 'InterfaceDef':
+      return `${i}interface def ${quoteName(node.name)};`;
+
+    case 'InterfaceUsage':
+      return `${i}interface ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+
+    case 'ActionDef': {
+      const header = `${i}action def ${quoteName(node.name)}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'ActionUsage': {
+      const header = `${i}action ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'StateDef': {
+      const header = `${i}state def ${quoteName(node.name)}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'StateUsage': {
+      const header = `${i}state ${quoteName(node.name)}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'TransitionUsage': {
+      const sourceRef = node.sourceRef ?? 'source';
+      const targetRef = node.targetRef ?? 'target';
+      return `${i}transition ${quoteName(node.name)}\n${i}\tfirst ${quoteName(sourceRef)}\n${i}\tthen ${quoteName(targetRef)};`;
+    }
+
+    case 'FlowUsage': {
+      const sourceRef = node.sourceRef ?? 'source';
+      const targetRef = node.targetRef ?? 'target';
+      return `${i}flow from ${quoteName(sourceRef)} to ${quoteName(targetRef)};`;
+    }
+
+    case 'BindingUsage': {
+      const sourceRef = node.sourceRef ?? 'source';
+      const targetRef = node.targetRef ?? 'target';
+      return `${i}bind ${quoteName(sourceRef)} = ${quoteName(targetRef)};`;
     }
 
     case 'RequirementDef': {
@@ -358,6 +612,63 @@ function renderNode(node: SemanticNode, level: number, ctx: RenderContext): stri
       return `${i}satisfy ${quoteName(node.name)};`;
     }
 
+    case 'ConstraintDef':
+      return `${i}constraint def ${quoteName(node.name)};`;
+
+    case 'ConstraintUsage':
+      return `${i}constraint ${quoteName(node.name)};`;
+
+    case 'AttributeUsage':
+      return `${i}attribute ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+
+    case 'ItemDef':
+      return `${i}item def ${quoteName(node.name)};`;
+
+    case 'ItemUsage':
+      return `${i}item ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+
+    case 'EnumDef':
+      return `${i}enum def ${quoteName(node.name)};`;
+
+    case 'EnumUsage':
+      return `${i}enum ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+
+    case 'UseCaseDef': {
+      const header = `${i}use case def ${quoteName(node.name)}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'UseCaseUsage': {
+      const header = `${i}use case ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'ViewDef': {
+      const header = `${i}view def ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'ViewUsage': {
+      const header = `${i}view ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'ViewpointDef': {
+      const header = `${i}viewpoint def ${quoteName(node.name)}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
+    case 'ViewpointUsage': {
+      const header = `${i}viewpoint ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''}`;
+      if (bodyLines.length === 0) return `${header};`;
+      return `${header} {\n${bodyLines.join('\n')}\n${i}}`;
+    }
+
     case 'VerificationDef': {
       const header = `${i}verification def ${quoteName(node.name)}`;
       if (bodyLines.length === 0) return `${header};`;
@@ -371,6 +682,30 @@ function renderNode(node: SemanticNode, level: number, ctx: RenderContext): stri
       return `${i}verify ${quoteName(node.name)};`;
     }
 
+    case 'AnalysisDef':
+      return `${i}analysis def ${quoteName(node.name)};`;
+
+    case 'AnalysisUsage':
+      return `${i}analysis ${quoteName(node.name)}${node.typeName ? ` : ${node.typeName}` : ''};`;
+
+    case 'MetadataDef':
+      return `${i}metadata def ${quoteName(node.name)};`;
+
+    case 'AllocationDef':
+      return `${i}allocation def ${quoteName(node.name)};`;
+
+    case 'AllocationUsage': {
+      const sourceRef = node.sourceRef ?? 'source';
+      const targetRef = node.targetRef ?? 'target';
+      return `${i}allocate ${quoteName(sourceRef)} to ${quoteName(targetRef)};`;
+    }
+
+    case 'DependencyUsage': {
+      const sourceRef = node.sourceRef ?? node.name;
+      const targetRef = node.targetRef ?? 'target';
+      return `${i}dependency from ${quoteName(sourceRef)} to ${quoteName(targetRef)};`;
+    }
+
     default:
       return `${i}// Unsupported ${node.kind} ${node.name}`;
   }
@@ -380,6 +715,11 @@ export function semanticModelToSysmlSource(model: SemanticModel): string {
   const childrenByParent = new Map<string, SemanticNode[]>();
   const satisfyBySource = new Map<string, string[]>();
   const verifyBySource = new Map<string, string[]>();
+  const flowBySource = new Map<string, string[]>();
+  const bindingBySource = new Map<string, string[]>();
+  const allocationBySource = new Map<string, string[]>();
+  const dependencyBySource = new Map<string, string[]>();
+  const transitionBySource = new Map<string, Array<{ target: string; label?: string }>>();
   const connectionTargetsByNode = new Map<string, { source?: string; target?: string }>();
   const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
 
@@ -419,12 +759,47 @@ export function semanticModelToSysmlSource(model: SemanticModel): string {
       }
       connectionTargetsByNode.set(edge.sourceId, bucket);
     }
+
+    if (edge.kind === 'flow') {
+      const bucket = flowBySource.get(edge.sourceId) ?? [];
+      bucket.push(targetName);
+      flowBySource.set(edge.sourceId, bucket);
+    }
+
+    if (edge.kind === 'binding') {
+      const bucket = bindingBySource.get(edge.sourceId) ?? [];
+      bucket.push(targetName);
+      bindingBySource.set(edge.sourceId, bucket);
+    }
+
+    if (edge.kind === 'allocation') {
+      const bucket = allocationBySource.get(edge.sourceId) ?? [];
+      bucket.push(targetName);
+      allocationBySource.set(edge.sourceId, bucket);
+    }
+
+    if (edge.kind === 'dependency') {
+      const bucket = dependencyBySource.get(edge.sourceId) ?? [];
+      bucket.push(targetName);
+      dependencyBySource.set(edge.sourceId, bucket);
+    }
+
+    if (edge.kind === 'transition') {
+      const bucket = transitionBySource.get(edge.sourceId) ?? [];
+      bucket.push({ target: targetName, label: edge.label });
+      transitionBySource.set(edge.sourceId, bucket);
+    }
   }
 
   const ctx: RenderContext = {
     childrenByParent,
     satisfyBySource,
     verifyBySource,
+    flowBySource,
+    bindingBySource,
+    allocationBySource,
+    dependencyBySource,
+    transitionBySource,
     connectionTargetsByNode,
   };
 
