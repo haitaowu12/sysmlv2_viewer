@@ -1,3 +1,11 @@
+---
+title: SysML Viewer (Enhanced)
+date_converted: '2026-03-04'
+domain: general
+tags:
+- sysml
+---
+
 # SysML Viewer (Enhanced)
 
 A SysML v2 editor with synchronized Draw.io visualization and in-app AI-assisted model generation/editing.
