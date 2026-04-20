@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/store';
 import type { DrawioViewMode } from '../bridge/view-partition';
 import { describeSyncPatch } from '../bridge/patch-review';
+import LoadingSpinner from './LoadingSpinner';
 
 const DRAWIO_EMBED_URL =
   'https://embed.diagrams.net/?embed=1&spin=1&proto=json&ui=min&libraries=1&saveAndExit=0&autosave=1';
+const DRAWIO_LOAD_TIMEOUT = 15000;
 
 export default function DrawioBridgeView() {
   const drawioXml = useAppStore((state) => state.drawioXml);
@@ -26,9 +28,21 @@ export default function DrawioBridgeView() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoadedXmlRef = useRef<string>('');
   const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [manualXml, setManualXml] = useState(drawioXml);
   const [showXmlEditor, setShowXmlEditor] = useState(false);
   const [libraryDragActive, setLibraryDragActive] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isReady) {
+        setLoadError(true);
+        setIsLoading(false);
+      }
+    }, DRAWIO_LOAD_TIMEOUT);
+    return () => clearTimeout(timer);
+  }, [isReady]);
 
   const summary = useMemo(() => {
     if (syncState.conflict) return syncState.conflict;
@@ -126,6 +140,8 @@ export default function DrawioBridgeView() {
 
       if (eventType === 'init') {
         setIsReady(true);
+        setIsLoading(false);
+        setLoadError(false);
         pushXmlToFrame(drawioXml);
         return;
       }
@@ -198,6 +214,22 @@ export default function DrawioBridgeView() {
       </div>
 
       <div className="drawio-frame-container" onDragOver={handleLibraryDragOver} onDrop={handleLibraryDrop}>
+        {isLoading && !loadError && (
+          <div className="drawio-loading-overlay">
+            <LoadingSpinner size={32} label="Loading Draw.io..." />
+          </div>
+        )}
+        {loadError && (
+          <div className="drawio-error-overlay">
+            <p>Draw.io failed to load. This may be due to network issues or CORS restrictions.</p>
+            <button className="toolbar-btn" onClick={() => { setLoadError(false); setIsLoading(true); setShowXmlEditor(true); }}>
+              Use XML Editor Instead
+            </button>
+            <button className="toolbar-btn" onClick={() => { setLoadError(false); setIsLoading(true); }}>
+              Retry
+            </button>
+          </div>
+        )}
         <iframe
           ref={iframeRef}
           src={DRAWIO_EMBED_URL}

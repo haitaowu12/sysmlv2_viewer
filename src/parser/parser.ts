@@ -4,9 +4,30 @@
  * A recursive-descent parser that converts SysML v2 textual notation
  * into a structured AST (Abstract Syntax Tree).
  * 
- * Supports: packages, part/port/connection/interface/action/state/requirement/
- * constraint/attribute/item/enum definitions and usages, transitions, flows,
- * bindings, imports, comments, and doc annotations.
+ * Feature Support Matrix:
+ * ✅ Package, PartDef, PartUsage, PortDef, PortUsage
+ * ✅ ConnectionDef, ConnectionUsage, InterfaceDef, InterfaceUsage
+ * ✅ ActionDef, ActionUsage (including perform action)
+ * ✅ StateDef, StateUsage, TransitionUsage (including entry, first..then)
+ * ✅ RequirementDef, RequirementUsage (including satisfy, verify)
+ * ✅ ConstraintDef, ConstraintUsage (including require/assume constraint)
+ * ✅ AttributeDef, AttributeUsage (including attr shorthand)
+ * ✅ ItemDef, ItemUsage, EnumDef, EnumUsage
+ * ✅ FlowUsage, BindingUsage, Import, Doc
+ * ✅ ViewpointDef, ViewpointUsage, ViewDef, ViewUsage
+ * ✅ VerificationDef, VerificationUsage (including verify shorthand)
+ * ✅ AnalysisDef, AnalysisUsage
+ * ✅ MetadataDef, AllocationDef, AllocationUsage, DependencyUsage
+ * ✅ UseCaseDef, UseCaseUsage (including include/extend)
+ * ⚠️  Action params: parsed from body as inline params, not from signature
+ * ⚠️  Doc comments: detected by heuristic (preceding 'doc' keyword), may miss edge cases
+ * ⚠️  Block comments: nested block comments supported
+ * ❌ OccurrenceDef/OccurrenceUsage
+ * ❌ IndividualDef/IndividualUsage
+ * ❌ CalcDef/CalcUsage
+ * ❌ Abstract keyword modifier
+ * ❌ Variation keyword
+ * ❌ Alias definitions
  */
 
 import type {
@@ -97,15 +118,23 @@ class Lexer {
                 // Line comment
                 while (!this.eof && this.peek() !== '\n') this.advance();
             } else if (this.peek(2) === '/*') {
-                // Block comment (but not doc /* */)
-                const startPos = this.pos;
-                // Check if it's a doc comment - don't skip those
-                if (this.input.indexOf('doc', startPos - 4) === startPos - 4) {
+                const beforeComment = this.input.slice(Math.max(0, this.pos - 10), this.pos).trimEnd();
+                if (beforeComment.endsWith('doc')) {
                     break;
                 }
                 this.advance(2);
-                while (!this.eof && this.peek(2) !== '*/') this.advance();
-                if (!this.eof) this.advance(2);
+                let depth = 1;
+                while (!this.eof && depth > 0) {
+                    if (this.peek(2) === '/*') {
+                        depth++;
+                        this.advance(2);
+                    } else if (this.peek(2) === '*/') {
+                        depth--;
+                        this.advance(2);
+                    } else {
+                        this.advance();
+                    }
+                }
             } else {
                 break;
             }
@@ -240,11 +269,37 @@ class Lexer {
     error(message: string): Error {
         const loc = this.position;
         const lineContent = this.input.split('\n')[loc.line - 1] || '';
+        const suggestion = this.suggestCorrection();
+        const suggestionText = suggestion ? `\n  Did you mean: ${suggestion}?` : '';
         return new Error(
             `Parse error at line ${loc.line}, column ${loc.column}: ${message}\n` +
             `  ${lineContent}\n` +
-            `  ${' '.repeat(Math.max(0, loc.column - 1))}^`
+            `  ${' '.repeat(Math.max(0, loc.column - 1))}^${suggestionText}`
         );
+    }
+
+    suggestCorrection(): string | null {
+        const remaining = this.remaining.trimStart();
+        const corrections: [string, string][] = [
+            ['partdef ', 'part def '],
+            ['portdef ', 'port def '],
+            ['actiondef ', 'action def '],
+            ['statedef ', 'state def '],
+            ['requirementdef ', 'requirement def '],
+            ['constraintdef ', 'constraint def '],
+            ['connectiondef ', 'connection def '],
+            ['interfacedef ', 'interface def '],
+            ['attributedef ', 'attribute def '],
+            ['itemdef ', 'item def '],
+            ['enumdef ', 'enum def '],
+        ];
+        const lower = remaining.toLowerCase();
+        for (const [wrong, right] of corrections) {
+            if (lower.startsWith(wrong)) {
+                return `'${right.trimEnd()}' instead of '${wrong.trimEnd()}'`;
+            }
+        }
+        return null;
     }
 }
 
@@ -1108,11 +1163,19 @@ function parseImport(lexer: Lexer): ImportNode {
 
     let isAll = false;
 
-    const path = lexer.readQualifiedName();
+    let path = '';
 
-    // Check for ::* wildcard
-    if (path.endsWith('*')) {
-        isAll = true;
+    const firstPart = lexer.readIdentifier();
+    path = firstPart;
+
+    while (lexer.peek(2) === '::') {
+        path += lexer.advance(2);
+        if (lexer.peek() === '*') {
+            path += lexer.advance();
+            isAll = true;
+            break;
+        }
+        path += lexer.readIdentifier();
     }
 
     lexer.match(';');

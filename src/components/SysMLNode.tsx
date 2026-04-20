@@ -2,8 +2,9 @@
  * Custom ReactFlow node for SysML elements
  */
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 
 export interface SysMLNodeData {
     label: string;
@@ -18,6 +19,7 @@ export interface SysMLNodeData {
 
 export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodeProps) {
     const d = data as unknown as SysMLNodeData;
+    const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
     const kindColors: Record<string, string> = {
         Package: '#6366f1',
         PartDef: '#3b82f6',
@@ -55,8 +57,13 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
                 <div className="node-body">
                     {d.compartments.map((comp, i) => (
                         <div key={i} className="node-compartment">
-                            {comp.label && <div className="compartment-label">{comp.label}</div>}
-                            {comp.items.map((item, j) => (
+                            {comp.label && (
+                                <div className="compartment-label" onClick={() => setCollapsed((p) => ({ ...p, [i]: !p[i] }))} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    {collapsed[i] ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+                                    {comp.label}
+                                </div>
+                            )}
+                            {!collapsed[i] && comp.items.map((item, j) => (
                                 <div key={j} className="compartment-item">{item}</div>
                             ))}
                         </div>
@@ -66,7 +73,7 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
 
             {d.doc && (
                 <div className="node-doc">
-                    <span className="doc-icon">📖</span>
+                    <span className="doc-icon"><BookOpen size={12} /></span>
                     <span className="doc-text">{d.doc}</span>
                 </div>
             )}

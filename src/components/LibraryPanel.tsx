@@ -5,141 +5,152 @@
 
 import { useRef } from 'react';
 import { useAppStore } from '../store/store';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Package,
+  Box,
+  BoxSelect,
+  Plug,
+  Plug2,
+  GitBranch,
+  Link,
+  Link2,
+  Zap,
+  RefreshCw,
+  ClipboardList,
+  Lock,
+  Eye,
+  Image,
+  ShieldCheck,
+  BarChart3,
+} from 'lucide-react';
 
 interface LibraryItem {
     kind: string;
     label: string;
-    icon: string;
+    icon: LucideIcon;
     codeTemplate: string;
 }
 
 const LIBRARY_ITEMS: LibraryItem[] = [
-    // Structure
     {
         kind: 'Package',
         label: 'Package',
-        icon: '📦',
+        icon: Package,
         codeTemplate: "package 'NewPackage' {\n\t\n}",
     },
     {
         kind: 'PartDef',
         label: 'Part Def',
-        icon: '🔷',
+        icon: Box,
         codeTemplate: "part def NewPart {\n\t\n}",
     },
     {
         kind: 'PartUsage',
         label: 'Part',
-        icon: '🔹',
+        icon: BoxSelect,
         codeTemplate: "part newPart : PartType;",
     },
     {
         kind: 'PortDef',
         label: 'Port Def',
-        icon: '🔌',
+        icon: Plug,
         codeTemplate: "port def NewPort;",
     },
     {
         kind: 'PortUsage',
         label: 'Port',
-        icon: '🔸',
+        icon: Plug2,
         codeTemplate: "port newPort : PortType;",
     },
-    // Interfaces & Connections
     {
         kind: 'InterfaceDef',
         label: 'Interface Def',
-        icon: '🔀',
+        icon: GitBranch,
         codeTemplate: "interface def NewInterface {\n\tend a;\n\tend b;\n}",
     },
     {
         kind: 'ConnectionDef',
         label: 'Connection Def',
-        icon: '🔗',
+        icon: Link,
         codeTemplate: "connection def NewConnection {\n\tend source;\n\tend target;\n}",
     },
     {
         kind: 'ConnectionUsage',
         label: 'Connection',
-        icon: '🔗',
+        icon: Link2,
         codeTemplate: "connect source to target;",
     },
-    // Behavior
     {
         kind: 'ActionDef',
         label: 'Action Def',
-        icon: '⚡',
+        icon: Zap,
         codeTemplate: "action def NewAction {\n\tin input;\n\tout output;\n}",
     },
     {
         kind: 'ActionUsage',
         label: 'Action',
-        icon: '⚡',
+        icon: Zap,
         codeTemplate: "action newAction : ActionType;",
     },
     {
         kind: 'StateDef',
         label: 'State Def',
-        icon: '🔄',
+        icon: RefreshCw,
         codeTemplate: "state def NewStateDef {\n\tentry; then off;\n\tstate off;\n}",
     },
     {
         kind: 'StateUsage',
         label: 'State',
-        icon: '🔄',
+        icon: RefreshCw,
         codeTemplate: "state newState;",
     },
-    // Requirements
     {
         kind: 'RequirementDef',
         label: 'Requirement Def',
-        icon: '📋',
+        icon: ClipboardList,
         codeTemplate: "requirement def NewRequirement {\n\tdoc /* Description */\n}",
     },
     {
         kind: 'RequirementUsage',
         label: 'Requirement',
-        icon: '📋',
+        icon: ClipboardList,
         codeTemplate: "requirement newRequirement : RequirementType;",
     },
-    // Constraint
     {
         kind: 'ConstraintDef',
         label: 'Constraint Def',
-        icon: '🔒',
+        icon: Lock,
         codeTemplate: "constraint def NewConstraint {\n\t\n}",
     },
     {
         kind: 'ConstraintUsage',
         label: 'Constraint',
-        icon: '🔒',
+        icon: Lock,
         codeTemplate: "constraint { true }",
     },
-    // Viewpoints & Views
     {
         kind: 'ViewpointDef',
         label: 'Viewpoint Def',
-        icon: '👁️',
+        icon: Eye,
         codeTemplate: "viewpoint def NewViewpoint {\n\tdoc /* Stakeholder concerns */\n\tattribute concerns : String;\n}",
     },
     {
         kind: 'ViewDef',
         label: 'View Def',
-        icon: '🖼️',
+        icon: Image,
         codeTemplate: "view def NewView : ViewpointType {\n\t\n}",
     },
-    // Verification
     {
         kind: 'VerificationDef',
         label: 'Verification Def',
-        icon: '✅',
+        icon: ShieldCheck,
         codeTemplate: "verification def NewVerification {\n\tsubject : SystemUnderTest;\n}",
     },
-    // Analysis
     {
         kind: 'AnalysisDef',
         label: 'Analysis Def',
-        icon: '📊',
+        icon: BarChart3,
         codeTemplate: "analysis def NewAnalysis {\n\t\n}",
     },
 ];
@@ -174,7 +185,7 @@ function LibraryItemComponent({ item }: { item: LibraryItem }) {
             onDoubleClick={() => openCreationModal(item.codeTemplate, item.kind)}
             title="Drag to diagram/editor or double-click to create"
         >
-            <span className="library-icon">{item.icon}</span>
+            <span className="library-icon"><item.icon size={14} /></span>
             <span className="library-label">{item.label}</span>
             <span className="library-add">+</span>
         </div>

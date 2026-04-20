@@ -20,6 +20,7 @@ import '@xyflow/react/dist/style.css';
 import { useAppStore, getNodeId } from '../store/store';
 import type { SysMLNode, PartDef, PartUsage, PortDef, ItemDef } from '../parser/types';
 import { SysMLDiagramNode } from '../components/SysMLNode';
+import EmptyState from '../components/EmptyState';
 import { autoLayout } from '../utils/layout';
 import { findRelatedNodeIds } from '../utils/focusUtils';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
@@ -216,6 +217,12 @@ export default function GeneralView() {
 
     return (
         <div className="diagram-container">
+            {initialNodes.length === 0 ? (
+                <EmptyState
+                    title="No elements to display"
+                    description="The General view shows part definitions, their properties, and relationships."
+                />
+            ) : (
             <ReactFlow
                 nodes={nodes}
                 edges={edgesState}
@@ -240,6 +247,7 @@ export default function GeneralView() {
                 />
                 <FocusZoom focusedNodeId={focusedNodeId} />
             </ReactFlow>
+            )}
 
             {contextMenu && (
                 <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
