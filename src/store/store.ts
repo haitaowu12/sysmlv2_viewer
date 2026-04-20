@@ -43,6 +43,11 @@ export interface AppState {
   pendingPatchReview: SyncPatch[];
   appliedSyncPatches: SyncPatch[];
 
+  // Undo/Redo
+  history: string[];
+  historyIndex: number;
+  maxHistorySize: number;
+
   // UI state
   activeView: ViewType;
   selectedNodeId: string | null;
@@ -52,6 +57,8 @@ export interface AppState {
   isDarkMode: boolean;
   showExplorer: boolean;
   showPropertyPanel: boolean;
+  enableAiChat: boolean;
+  enableDrawioBridge: boolean;
 
   // File state
   fileName: string | null;
@@ -109,6 +116,11 @@ export interface AppState {
   updateNodeAttribute: (nodeId: string, attrName: string, updates: { name?: string; type?: string; def?: string }) => void;
   addNodeAttribute: (nodeId: string, attr: { name: string; type?: string; def?: string }) => void;
   deleteNodeAttribute: (nodeId: string, attrName: string) => void;
+
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 const DEMO_CODE = `package 'Vehicle System' {
@@ -248,6 +260,17 @@ function defaultNodeKindForView(view: DrawioViewMode): SemanticNodeKind {
   return 'PartDef';
 }
 
+function pushToHistory(state: { history: string[]; historyIndex: number; maxHistorySize: number; sourceCode: string }): { history: string[]; historyIndex: number } {
+  const { history, historyIndex, maxHistorySize, sourceCode } = state;
+  const newHistory = history.slice(0, historyIndex + 1);
+  newHistory.push(sourceCode);
+  if (newHistory.length > maxHistorySize) {
+    newHistory.shift();
+    return { history: newHistory, historyIndex: newHistory.length - 1 };
+  }
+  return { history: newHistory, historyIndex: newHistory.length - 1 };
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   sourceCode: DEMO_CODE,
   model: INITIAL_MODEL,
@@ -264,6 +287,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   pendingPatchReview: [],
   appliedSyncPatches: [],
+  history: [DEMO_CODE],
+  historyIndex: 0,
+  maxHistorySize: 50,
   activeView: 'general',
   selectedNodeId: null,
   selectedNode: null,
@@ -273,12 +299,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   isDarkMode: true,
   showExplorer: true,
   showPropertyPanel: true,
+  enableAiChat: import.meta.env.VITE_ENABLE_AI_CHAT !== 'false',
+  enableDrawioBridge: import.meta.env.VITE_ENABLE_DRAWIO_BRIDGE !== 'false',
   fileName: null,
   currentModelId: 'vehicle',
   isModified: false,
 
   setSourceCode: (code) => {
-    set({ sourceCode: code, isModified: true });
+    const state = get();
+    const hist = pushToHistory(state);
+    set({ sourceCode: code, isModified: true, ...hist });
   },
 
   parseSource: () => {
@@ -496,7 +526,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const diagnostics: string[] = [];
       const queuedReviewPatches: SyncPatch[] = [...state.pendingPatchReview, ...reviewPatches];
 
+      let hist: { history: string[]; historyIndex: number } | undefined;
       if (!conflict && safePatches.length > 0) {
+        hist = pushToHistory(state);
         const patchResult = applySyncPatches(nextSource, safePatches);
         nextSource = patchResult.sourceCode;
         appliedPatches = patchResult.appliedPatches;
@@ -530,6 +562,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           diagnostics,
           lastSyncedAt: new Date().toISOString(),
         },
+        ...(hist || {}),
       }));
 
       if (!conflict && nextSource !== state.sourceCode && model.errors.length === 0) {
@@ -589,6 +622,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const patch = state.pendingPatchReview.find((item) => item.id === patchId);
     if (!patch) return;
 
+    const hist = pushToHistory(state);
     const patchResult = applySyncPatches(state.sourceCode, [{ ...patch, safety: 'safe' }]);
     const nextSource = patchResult.sourceCode;
     const model = parseSysML(nextSource);
@@ -609,6 +643,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         lastSyncedAt: new Date().toISOString(),
       },
       isModified: true,
+      ...hist,
     }));
 
     if (model.errors.length === 0) {
@@ -626,6 +661,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.pendingPatchReview.length === 0) return;
 
+    const hist = pushToHistory(state);
     const forcedSafe = state.pendingPatchReview.map((patch) => ({ ...patch, safety: 'safe' as const }));
     const patchResult = applySyncPatches(state.sourceCode, forcedSafe);
     const nextSource = patchResult.sourceCode;
@@ -649,6 +685,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         lastSyncedAt: new Date().toISOString(),
       },
       isModified: true,
+      ...hist,
     }));
 
     if (model.errors.length === 0) {
@@ -669,9 +706,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   applyGeneratedModel: ({ sysml, drawioXml, diagnostics = [] }) => {
-    const currentMode = get().drawioViewMode;
+    const state = get();
+    const hist = pushToHistory(state);
+    const currentMode = state.drawioViewMode;
     let resolvedDrawio = drawioXml ?? '';
-    let layout = { ...get().layoutMap };
+    let layout = { ...state.layoutMap };
 
     if (resolvedDrawio) {
       try {
@@ -708,6 +747,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         diagnostics,
         lastSyncedAt: new Date().toISOString(),
       },
+      ...hist,
     });
 
     if (model.errors.length === 0) {
@@ -753,10 +793,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { sourceCode, selectedNode } = get();
     if (!selectedNode || !selectedNode.location) return;
 
+    const hist = pushToHistory(get());
     const { start, end } = selectedNode.location;
     const newCode = sourceCode.slice(0, start.offset) + sourceCode.slice(end.offset);
 
-    set({ sourceCode: newCode, selectedNode: null, selectedNodeId: null, isModified: true });
+    set({ sourceCode: newCode, selectedNode: null, selectedNodeId: null, isModified: true, ...hist });
     get().parseSource();
   },
 
@@ -781,7 +822,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       newCode += '\n\n' + template;
     }
 
-    set({ sourceCode: newCode, isModified: true });
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
 
@@ -819,7 +861,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { start, end } = attrNode.location;
     const newCode = sourceCode.slice(0, start.offset) + newLine + sourceCode.slice(end.offset);
 
-    set({ sourceCode: newCode, isModified: true });
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
 
@@ -834,7 +877,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const insertPos = node.location.end.offset - 1;
     const newCode = sourceCode.slice(0, insertPos) + newLine + sourceCode.slice(insertPos);
 
-    set({ sourceCode: newCode, isModified: true });
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
 
@@ -850,7 +894,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { start, end } = attrNode.location;
     const newCode = sourceCode.slice(0, start.offset) + sourceCode.slice(end.offset);
 
-    set({ sourceCode: newCode, isModified: true });
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
 
@@ -860,5 +905,34 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   closeCreationModal: () => {
     set({ creationModal: null });
+  },
+
+  undo: () => {
+    const { history, historyIndex } = get();
+    if (historyIndex <= 0) return;
+    const newIndex = historyIndex - 1;
+    const restoredCode = history[newIndex];
+    set({ sourceCode: restoredCode, historyIndex: newIndex, isModified: true });
+    get().parseSource();
+    get().syncFromSysml();
+  },
+
+  redo: () => {
+    const { history, historyIndex } = get();
+    if (historyIndex >= history.length - 1) return;
+    const newIndex = historyIndex + 1;
+    const restoredCode = history[newIndex];
+    set({ sourceCode: restoredCode, historyIndex: newIndex, isModified: true });
+    get().parseSource();
+    get().syncFromSysml();
+  },
+
+  canUndo: () => {
+    return get().historyIndex > 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
   },
 }));

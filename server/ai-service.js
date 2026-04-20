@@ -5,6 +5,7 @@ import { sysmlToDrawioXml, validateDrawioXml } from './drawio-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXTRACTOR_SCRIPT = join(__dirname, 'extract_docs.py');
+const AI_REQUEST_TIMEOUT_MS = 30000;
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -215,12 +216,98 @@ function localEditSysml(prompt, sourceCode) {
     }
   }
 
+  const addStateMatch = prompt.match(/add\s+(?:a\s+)?state\s+([A-Za-z_][\w]*)/i);
+  if (addStateMatch) {
+    const stateName = addStateMatch[1];
+    if (!new RegExp(`\\bstate\\s+${stateName}\\b`).test(next)) {
+      next += `\n\nstate ${stateName};`;
+      diagnostics.push(`Added state ${stateName}.`);
+    }
+  }
+
+  const addTransitionMatch = prompt.match(/add\s+(?:a\s+)?transition\s+from\s+([A-Za-z_][\w]*)\s+to\s+([A-Za-z_][\w]*)/i);
+  if (addTransitionMatch) {
+    const src = addTransitionMatch[1];
+    const tgt = addTransitionMatch[2];
+    next += `\n\ntransition t first ${src} then ${tgt};`;
+    diagnostics.push(`Added transition from ${src} to ${tgt}.`);
+  }
+
+  const addConnectionMatch = prompt.match(/add\s+(?:a\s+)?connection\s+from\s+([A-Za-z_][\w]*)\s+to\s+([A-Za-z_][\w]*)/i);
+  if (addConnectionMatch) {
+    const src = addConnectionMatch[1];
+    const tgt = addConnectionMatch[2];
+    next += `\n\nconnect ${src} to ${tgt};`;
+    diagnostics.push(`Added connection from ${src} to ${tgt}.`);
+  }
+
+  const addPortMatch = prompt.match(/add\s+(?:a\s+)?port\s+([A-Za-z_][\w]*)/i);
+  if (addPortMatch) {
+    const portName = addPortMatch[1];
+    if (!new RegExp(`\\bport\\s+${portName}\\b`).test(next)) {
+      next += `\n\nport ${portName};`;
+      diagnostics.push(`Added port ${portName}.`);
+    }
+  }
+
+  const deleteMatch = prompt.match(/(?:delete|remove)\s+([A-Za-z_][\w]*)/i);
+  if (deleteMatch) {
+    const identifier = deleteMatch[1];
+    const lines = next.split('\n');
+    const filtered = lines.filter((line) => !new RegExp(`\\b${identifier}\\b`).test(line));
+    if (filtered.length < lines.length) {
+      next = filtered.join('\n');
+      diagnostics.push(`Removed lines containing ${identifier}.`);
+    }
+  }
+
   if (diagnostics.length === 0) {
     next += `\n\n// AI note: ${prompt.replace(/\n+/g, ' ').slice(0, 160)}`;
     diagnostics.push('No direct structured edit pattern matched; appended AI note.');
   }
 
   return { next, diagnostics };
+}
+
+function categorizeError(error) {
+  if (error.name === 'AbortError' || (error.message && error.message.includes('timed out'))) {
+    return { type: 'timeout', message: 'Request timed out after 30 seconds.' };
+  }
+  if (error.status === 401 || error.status === 403) {
+    return { type: 'auth', message: 'Authentication failed. Please check your API key.' };
+  }
+  if (error.status === 429) {
+    return { type: 'rate_limit', message: 'Rate limit exceeded. Please wait and try again.' };
+  }
+  if (error.message && error.message.includes('JSON')) {
+    return { type: 'invalid_response', message: 'AI provider returned an invalid response.' };
+  }
+  const statusMatch = error.message && error.message.match(/\((\d{3})\)/);
+  if (statusMatch) {
+    const status = parseInt(statusMatch[1], 10);
+    if (status === 401 || status === 403) {
+      return { type: 'auth', message: 'Authentication failed. Please check your API key.' };
+    }
+    if (status === 429) {
+      return { type: 'rate_limit', message: 'Rate limit exceeded. Please wait and try again.' };
+    }
+  }
+  return { type: 'unknown', message: error.message || 'An unknown error occurred.' };
+}
+
+function validateSysmlResponse(sysml) {
+  if (!sysml || typeof sysml !== 'string') {
+    return { valid: false, reason: 'Response is empty or not a string.' };
+  }
+  if (sysml.includes('\0')) {
+    return { valid: false, reason: 'Response contains null bytes.' };
+  }
+  const openBraces = (sysml.match(/{/g) || []).length;
+  const closeBraces = (sysml.match(/}/g) || []).length;
+  if (openBraces !== closeBraces) {
+    return { valid: false, reason: `Unbalanced braces: ${openBraces} opening vs ${closeBraces} closing.` };
+  }
+  return { valid: true };
 }
 
 async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, visionInputs }) {
@@ -233,78 +320,108 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, visionInput
     });
   }
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      input: [
-        { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
-        { role: 'user', content },
-      ],
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed (${response.status}).`);
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        input: [
+          { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
+          { role: 'user', content },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const err = new Error(`OpenAI request failed (${response.status}).`);
+      err.status = response.status;
+      throw err;
+    }
+
+    const data = await response.json();
+    return data.output_text || '';
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return data.output_text || '';
 }
 
 async function callAnthropic({ apiKey, model, systemPrompt, userPrompt }) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Anthropic request failed (${response.status}).`);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const err = new Error(`Anthropic request failed (${response.status}).`);
+      err.status = response.status;
+      throw err;
+    }
+
+    const data = await response.json();
+    const first = Array.isArray(data.content) ? data.content[0] : null;
+    return first?.text || '';
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  const first = Array.isArray(data.content) ? data.content[0] : null;
-  return first?.text || '';
 }
 
 async function callGoogle({ apiKey, model, systemPrompt, userPrompt }) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-      generationConfig: {
-        temperature: 0.2,
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+        generationConfig: {
+          temperature: 0.2,
+        },
+      }),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Google request failed (${response.status}).`);
+    if (!response.ok) {
+      const err = new Error(`Google request failed (${response.status}).`);
+      err.status = response.status;
+      throw err;
+    }
+
+    const data = await response.json();
+    const candidate = data.candidates?.[0];
+    return candidate?.content?.parts?.[0]?.text || '';
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  const candidate = data.candidates?.[0];
-  return candidate?.content?.parts?.[0]?.text || '';
 }
 
 function normalizeResponse(rawText, fallbackPrompt, contextText) {
@@ -373,11 +490,17 @@ export async function generateModel(payload, headers) {
         visionInputs,
       });
       const normalized = normalizeResponse(rawText, prompt, attachmentContext);
-      sysml = normalized.sysml;
-      notes = normalized.notes;
-      diagnostics.push(`Generated with provider ${provider}:${model}.`);
+      const validation = validateSysmlResponse(normalized.sysml);
+      if (validation.valid) {
+        sysml = normalized.sysml;
+        notes = normalized.notes;
+        diagnostics.push(`Generated with provider ${provider}:${model}.`);
+      } else {
+        diagnostics.push(`Provider response validation failed: ${validation.reason}. Falling back to local synthesis.`);
+      }
     } catch (error) {
-      diagnostics.push(`Provider call failed: ${error.message}`);
+      const categorized = categorizeError(error);
+      diagnostics.push(`Provider call failed [${categorized.type}]: ${categorized.message}`);
     }
   }
 
@@ -426,10 +549,16 @@ export async function editModel(payload, headers) {
       });
 
       const normalized = normalizeResponse(rawText, prompt, attachmentContext);
-      sysml = normalized.sysml;
-      diagnostics.push(`Edited with provider ${provider}:${model}.`);
+      const validation = validateSysmlResponse(normalized.sysml);
+      if (validation.valid) {
+        sysml = normalized.sysml;
+        diagnostics.push(`Edited with provider ${provider}:${model}.`);
+      } else {
+        diagnostics.push(`Provider edit validation failed: ${validation.reason}. Falling back to local edit.`);
+      }
     } catch (error) {
-      diagnostics.push(`Provider edit failed: ${error.message}`);
+      const categorized = categorizeError(error);
+      diagnostics.push(`Provider edit failed [${categorized.type}]: ${categorized.message}`);
     }
   }
 

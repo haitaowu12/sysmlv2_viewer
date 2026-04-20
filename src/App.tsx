@@ -2,14 +2,14 @@
  * SysML v2 Visual Editor — Main App Component
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useAppStore, type ViewType } from './store/store';
+import { ErrorBoundary, PanelErrorBoundary } from './components/ErrorBoundary';
 import CodeEditor from './components/CodeEditor';
 import ModelExplorer from './components/ModelExplorer';
 import LibraryPanel from './components/LibraryPanel';
 import PropertyPanel from './components/PropertyPanel';
 import CreationModal from './components/CreationModal';
-import DrawioBridgeView from './components/DrawioBridgeView';
 import AiChatPanel from './components/AiChatPanel';
 import GeneralView from './views/GeneralView';
 import InterconnectionView from './views/InterconnectionView';
@@ -17,6 +17,32 @@ import ActionFlowView from './views/ActionFlowView';
 import StateTransitionView from './views/StateTransitionView';
 import RequirementsView from './views/RequirementsView';
 import ViewpointsView from './views/ViewpointsView';
+import LoadingSpinner from './components/LoadingSpinner';
+
+const DrawioBridgeView = lazy(() => import('./components/DrawioBridgeView'));
+import KeyboardShortcuts from './components/KeyboardShortcuts';
+import ResizablePanel from './components/ResizablePanel';
+import {
+  FolderOpen,
+  Download,
+  PanelLeft,
+  PanelRight,
+  MessageSquare,
+  Sun,
+  Moon,
+  Undo2,
+  Redo2,
+  Box,
+  Link,
+  Zap,
+  RefreshCw,
+  ClipboardList,
+  Eye,
+  Puzzle,
+  AlertTriangle,
+  CheckCircle,
+  FileText,
+} from 'lucide-react';
 import {
   openFileDialog,
   downloadBlob,
@@ -25,16 +51,18 @@ import {
   svgToPngBlob,
 } from './utils/fileIO';
 
+import type { LucideIcon } from 'lucide-react';
+
 type ExportFormat = 'sysml' | 'drawio' | 'svg' | 'png';
 
-const viewTabs: { id: ViewType; label: string; icon: string; description: string }[] = [
-  { id: 'general', label: 'General', icon: '🔷', description: 'Block Definition Diagram' },
-  { id: 'interconnection', label: 'Interconnection', icon: '🔗', description: 'Internal Block Diagram' },
-  { id: 'actionFlow', label: 'Action Flow', icon: '⚡', description: 'Activity Diagram' },
-  { id: 'stateTransition', label: 'State Transition', icon: '🔄', description: 'State Machine Diagram' },
-  { id: 'requirements', label: 'Requirements', icon: '📋', description: 'Requirements Diagram' },
-  { id: 'viewpoints', label: 'Viewpoints', icon: '👁️', description: 'Viewpoint Diagram' },
-  { id: 'drawio', label: 'Draw.io', icon: '🧩', description: 'Interactive Draw.io Bridge' },
+const viewTabs: { id: ViewType; label: string; icon: LucideIcon; description: string }[] = [
+  { id: 'general', label: 'General', icon: Box, description: 'Block Definition Diagram' },
+  { id: 'interconnection', label: 'Interconnection', icon: Link, description: 'Internal Block Diagram' },
+  { id: 'actionFlow', label: 'Action Flow', icon: Zap, description: 'Activity Diagram' },
+  { id: 'stateTransition', label: 'State Transition', icon: RefreshCw, description: 'State Machine Diagram' },
+  { id: 'requirements', label: 'Requirements', icon: ClipboardList, description: 'Requirements Diagram' },
+  { id: 'viewpoints', label: 'Viewpoints', icon: Eye, description: 'Viewpoint Diagram' },
+  { id: 'drawio', label: 'Draw.io', icon: Puzzle, description: 'Interactive Draw.io Bridge' },
 ];
 
 function DiagramArea() {
@@ -81,13 +109,18 @@ export default function App() {
   const model = useAppStore((s) => s.model);
   const openCreationModal = useAppStore((s) => s.openCreationModal);
   const removeSelectedNode = useAppStore((s) => s.removeSelectedNode);
+  const undo = useAppStore((s) => s.undo);
+  const redo = useAppStore((s) => s.redo);
+  const canUndo = useAppStore((s) => s.canUndo);
+  const canRedo = useAppStore((s) => s.canRedo);
   const focusedNodeId = useAppStore((s) => s.focusedNodeId);
   const setFocusedNode = useAppStore((s) => s.setFocusedNode);
 
   const [leftTab, setLeftTab] = useState<'explorer' | 'library'>('explorer');
   const [rightTab, setRightTab] = useState<'properties' | 'chat'>('properties');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('sysml');
-  const [showWhatsNew, setShowWhatsNew] = useState(() => localStorage.getItem('sysml_viewer_whats_new_dismissed') !== '1');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isLibraryDragActive, setIsLibraryDragActive] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,9 +132,34 @@ export default function App() {
   }, [loadFile]);
 
   useEffect(() => {
+    const onStart = () => setIsLibraryDragActive(true);
+    const onEnd = () => setIsLibraryDragActive(false);
+    window.addEventListener('sysml-library-drag-start', onStart as EventListener);
+    window.addEventListener('sysml-library-drag-end', onEnd as EventListener);
+    window.addEventListener('dragend', onEnd);
+    return () => {
+      window.removeEventListener('sysml-library-drag-start', onStart as EventListener);
+      window.removeEventListener('sysml-library-drag-end', onEnd as EventListener);
+      window.removeEventListener('dragend', onEnd);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (e.metaKey || e.ctrlKey) {
+        if (e.shiftKey && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          redo();
+          return;
+        }
+
+        if (!e.shiftKey && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          undo();
+          return;
+        }
+
         if (e.shiftKey && e.key.toLowerCase() === 'd') {
           e.preventDefault();
           setActiveView('drawio');
@@ -116,6 +174,24 @@ export default function App() {
           setRightTab('chat');
           return;
         }
+
+        if (e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          toggleExplorer();
+          return;
+        }
+
+        if (e.key.toLowerCase() === 'j') {
+          e.preventDefault();
+          togglePropertyPanel();
+          return;
+        }
+
+        if (e.key === '/') {
+          e.preventDefault();
+          setShowShortcuts((v) => !v);
+          return;
+        }
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -127,7 +203,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [removeSelectedNode]);
+  }, [removeSelectedNode, undo, redo]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
@@ -166,6 +242,7 @@ export default function App() {
   const elementCount = model ? countElements(model.children) : 0;
 
   return (
+    <ErrorBoundary>
     <div ref={appRef} className={`app ${isDarkMode ? 'dark' : 'light'}`}>
       <header className="toolbar">
         <div className="toolbar-left">
@@ -174,12 +251,20 @@ export default function App() {
             <span className="logo-text">SysML v2 Editor</span>
           </div>
           <div className="toolbar-divider" />
+          <button className="toolbar-btn" onClick={undo} disabled={!canUndo()} title="Undo (Ctrl/Cmd+Z)">
+            <Undo2 size={14} />
+            <span className="btn-label">Undo</span>
+          </button>
+          <button className="toolbar-btn" onClick={redo} disabled={!canRedo()} title="Redo (Ctrl/Cmd+Shift+Z)">
+            <Redo2 size={14} />
+            <span className="btn-label">Redo</span>
+          </button>
           <button className="toolbar-btn" onClick={handleOpen} title="Open .sysml or .drawio file">
-            <span className="btn-icon">📂</span>
+            <FolderOpen size={14} />
             <span className="btn-label">Open</span>
           </button>
           <button className="toolbar-btn" onClick={() => void handleExport()} title="Export model">
-            <span className="btn-icon">💾</span>
+            <Download size={14} />
             <span className="btn-label">Export</span>
           </button>
           <select
@@ -201,22 +286,22 @@ export default function App() {
             onChange={(event) => resetToExample(event.target.value as 'vehicle' | 'mars' | 'radio')}
             title="Load Example"
           >
-            <option value="vehicle">🚗 Vehicle Demo</option>
-            <option value="mars">🚀 Mars Rover</option>
-            <option value="radio">📡 Radio System</option>
-            {currentModelId === 'custom' && <option value="custom">📄 {fileName || 'Imported Model'}</option>}
+            <option value="vehicle">Vehicle Demo</option>
+            <option value="mars">Mars Rover</option>
+            <option value="radio">Radio System</option>
+            {currentModelId === 'custom' && <option value="custom">{fileName || 'Imported Model'}</option>}
           </select>
 
           <div className="toolbar-divider" />
           <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle explorer">
-            <span className="btn-icon">🗂️</span>
+            <PanelLeft size={14} />
           </button>
           <button
             className="toolbar-btn"
             onClick={() => setActiveView('drawio')}
             title="Open Draw.io bridge (Ctrl/Cmd+Shift+D)"
           >
-            <span className="btn-icon">🧩</span>
+            <Puzzle size={14} />
             <span className="btn-label">Draw.io</span>
           </button>
           <button
@@ -224,7 +309,7 @@ export default function App() {
             onClick={togglePropertyPanel}
             title="Toggle right panel"
           >
-            <span className="btn-icon">📝</span>
+            <PanelRight size={14} />
           </button>
           <button
             className="toolbar-btn"
@@ -236,7 +321,7 @@ export default function App() {
             }}
             title="Open AI chat (Ctrl/Cmd+Shift+I)"
           >
-            <span className="btn-icon">💬</span>
+            <MessageSquare size={14} />
             <span className="btn-label">AI</span>
           </button>
         </div>
@@ -250,7 +335,7 @@ export default function App() {
                 onClick={() => setActiveView(tab.id)}
                 title={tab.description}
               >
-                <span className="tab-icon">{tab.icon}</span>
+                <tab.icon size={14} className="tab-icon" />
                 <span className="tab-label">{tab.label}</span>
               </button>
             ))}
@@ -259,32 +344,15 @@ export default function App() {
 
         <div className="toolbar-right">
           <button className="toolbar-btn theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
-            <span className="btn-icon">{isDarkMode ? '☀️' : '🌙'}</span>
+            {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
       </header>
 
-      {showWhatsNew && (
-        <div className="whats-new-banner">
-          <div className="whats-new-text">
-            New in this build: interactive Draw.io sync + AI chat. Use the <strong>Draw.io</strong> tab or press
-            <code> Ctrl/Cmd+Shift+D</code>. Open AI chat with <code>Ctrl/Cmd+Shift+I</code>.
-          </div>
-          <button
-            className="toolbar-btn"
-            onClick={() => {
-              localStorage.setItem('sysml_viewer_whats_new_dismissed', '1');
-              setShowWhatsNew(false);
-            }}
-            title="Dismiss"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       <div className="main-content">
         {showExplorer && (
+          <PanelErrorBoundary panelName="left">
+          <ResizablePanel defaultWidth={250} minWidth={180} maxWidth={400} side="left" persistKey="sysml-left-panel">
           <div className="panel-left">
             <div className="panel-tab-bar">
               <button
@@ -302,14 +370,18 @@ export default function App() {
             </div>
             {leftTab === 'explorer' ? <ModelExplorer /> : <LibraryPanel />}
           </div>
+          </ResizablePanel>
+          </PanelErrorBoundary>
         )}
 
+        <PanelErrorBoundary panelName="center">
         <div className="panel-center">
           <div className="split-panel">
             <div className="split-code">
               <div className="panel-tab-bar">
                 <span className="panel-tab active">
-                  📄 {fileName || 'untitled.sysml'}
+                  <FileText size={12} style={{display:'inline',verticalAlign:'middle',marginRight:4}} />
+                  {fileName || 'untitled.sysml'}
                   {isModified ? ' •' : ''}
                 </span>
               </div>
@@ -317,7 +389,7 @@ export default function App() {
             </div>
             <div className="split-divider" />
             <div
-              className="split-diagram"
+              className={`split-diagram ${isLibraryDragActive ? 'drop-zone-active' : ''}`}
               style={{ position: 'relative' }}
               onDragOver={(e) => {
                 if (e.dataTransfer.types.includes('Files')) return;
@@ -347,40 +419,16 @@ export default function App() {
             >
               <div className="panel-tab-bar diagram-tab-bar">
                 <span className="panel-tab active">
-                  {viewTabs.find((tab) => tab.id === activeView)?.icon}{' '}
-                  {viewTabs.find((tab) => tab.id === activeView)?.description}
+                  {(() => { const t = viewTabs.find((tab) => tab.id === activeView); return t ? <><t.icon size={12} style={{display:'inline',verticalAlign:'middle',marginRight:4}} /> {t.description}</> : null; })()}
                 </span>
               </div>
               <DiagramArea />
               {focusedNodeId && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 10,
-                    left: 10,
-                    zIndex: 5,
-                    background: 'var(--bg-elevated)',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--accent)',
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Focused View</span>
+                <div className="focused-view-badge">
+                  <span className="focused-view-label">Focused View</span>
                   <button
+                    className="focused-view-clear-btn"
                     onClick={() => setFocusedNode(null)}
-                    style={{
-                      background: 'var(--accent)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '2px',
-                      padding: '2px 6px',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                    }}
                   >
                     Clear Focus
                   </button>
@@ -389,8 +437,11 @@ export default function App() {
             </div>
           </div>
         </div>
+        </PanelErrorBoundary>
 
         {showPropertyPanel && (
+          <PanelErrorBoundary panelName="right">
+          <ResizablePanel defaultWidth={280} minWidth={200} maxWidth={450} side="right" persistKey="sysml-right-panel">
           <div className="panel-right">
             <div className="panel-tab-bar">
               <button
@@ -408,13 +459,15 @@ export default function App() {
             </div>
             {rightTab === 'properties' ? <PropertyPanel /> : <AiChatPanel />}
           </div>
+          </ResizablePanel>
+          </PanelErrorBoundary>
         )}
       </div>
 
       <footer className="status-bar">
         <div className="status-left">
           <span className={`status-indicator ${parseErrors.length > 0 ? 'error' : 'ok'}`}>
-            {parseErrors.length > 0 ? '⚠️' : '✅'}
+            {parseErrors.length > 0 ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}
           </span>
           <span className="status-text">{parseErrors.length > 0 ? `${parseErrors.length} error(s)` : 'Ready'}</span>
         </div>
@@ -427,7 +480,9 @@ export default function App() {
       </footer>
 
       <CreationModal />
+      <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
+    </ErrorBoundary>
   );
 }
 
