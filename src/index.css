@@ -1808,3 +1808,35 @@ select:hover,
   display: inline-flex;
   align-items: center;
 }
+
+.toolbar-btn:focus-visible,
+.view-tab:focus-visible,
+.panel-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (max-width: 1024px) {
+  .panel-left {
+    min-width: 160px !important;
+  }
+  .panel-right {
+    min-width: 180px !important;
+  }
+  .toolbar-btn .btn-label {
+    display: none;
+  }
+  .tab-label {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .panel-left,
+  .panel-right {
+    display: none !important;
+  }
+  .app {
+    flex-direction: column;
+  }
+}
