@@ -82,7 +82,11 @@ function DiagramArea() {
     case 'viewpoints':
       return <ViewpointsView />;
     case 'drawio':
-      return <DrawioBridgeView />;
+      return (
+        <Suspense fallback={<LoadingSpinner size={32} label="Loading Draw.io Bridge..." />}>
+          <DrawioBridgeView />
+        </Suspense>
+      );
     default:
       return <GeneralView />;
   }
