@@ -196,14 +196,29 @@ export default function CodeEditor() {
         const model = editor.getModel();
         if (!model) return;
 
-        const markers = parseErrors.map(err => ({
-            severity: monaco.MarkerSeverity.Error,
-            message: err.message,
-            startLineNumber: err.location?.start.line || 1,
-            startColumn: err.location?.start.column || 1,
-            endLineNumber: err.location?.end.line || 1,
-            endColumn: err.location?.end.column || 1,
-        }));
+        const severityMap: Record<string, number> = {
+            error: monaco.MarkerSeverity.Error,
+            warning: monaco.MarkerSeverity.Warning,
+            info: monaco.MarkerSeverity.Info,
+        };
+
+        const markers = parseErrors.map(err => {
+            let message = err.message;
+            if (err.suggestion) {
+                message += `\n\nSuggestion: ${err.suggestion}`;
+            }
+            if (err.context) {
+                message += `\n\nContext:\n${err.context}`;
+            }
+            return {
+                severity: severityMap[err.severity || 'error'] ?? monaco.MarkerSeverity.Error,
+                message,
+                startLineNumber: err.location?.start.line || 1,
+                startColumn: err.location?.start.column || 1,
+                endLineNumber: err.location?.end.line || 1,
+                endColumn: err.location?.end.column || 1,
+            };
+        });
 
         monaco.editor.setModelMarkers(model, 'sysml', markers);
     }, [parseErrors]);
@@ -238,48 +253,7 @@ export default function CodeEditor() {
         const domNode = editor.getDomNode();
         if (!domNode) return;
 
-        const onDragOver = (event: DragEvent) => {
-            const dataTransfer = event.dataTransfer;
-            if (!dataTransfer?.types.includes('application/sysml-template')) return;
-            event.preventDefault();
-            dataTransfer.dropEffect = 'copy';
-        };
-
-        const onDrop = (event: DragEvent) => {
-            const dataTransfer = event.dataTransfer;
-            const template = dataTransfer?.getData('application/sysml-template');
-            if (!template) return;
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            const position = editor.getPosition();
-            const selection = editor.getSelection();
-            if (!position) return;
-
-            const range = selection ?? {
-                startLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endLineNumber: position.lineNumber,
-                endColumn: position.column,
-            };
-
-            editor.executeEdits('sysml-library-drop', [
-                {
-                    range,
-                    text: `\n${template}\n`,
-                    forceMoveMarkers: true,
-                },
-            ]);
-            editor.focus();
-        };
-
-        domNode.addEventListener('dragover', onDragOver);
-        domNode.addEventListener('drop', onDrop);
-        return () => {
-            domNode.removeEventListener('dragover', onDragOver);
-            domNode.removeEventListener('drop', onDrop);
-        };
+        return () => {};
     }, []);
 
     return (

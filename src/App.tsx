@@ -10,6 +10,7 @@ import ModelExplorer from './components/ModelExplorer';
 import LibraryPanel from './components/LibraryPanel';
 import PropertyPanel from './components/PropertyPanel';
 import CreationModal from './components/CreationModal';
+import { RelationshipModalContainer } from './components/RelationshipModal';
 import AiChatPanel from './components/AiChatPanel';
 import GeneralView from './views/GeneralView';
 import InterconnectionView from './views/InterconnectionView';
@@ -22,6 +23,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 const DrawioBridgeView = lazy(() => import('./components/DrawioBridgeView'));
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import ResizablePanel from './components/ResizablePanel';
+import ToastContainer from './components/Toast';
 import {
   FolderOpen,
   Download,
@@ -111,7 +113,6 @@ export default function App() {
   const isModified = useAppStore((s) => s.isModified);
   const parseErrors = useAppStore((s) => s.parseErrors);
   const model = useAppStore((s) => s.model);
-  const openCreationModal = useAppStore((s) => s.openCreationModal);
   const removeSelectedNode = useAppStore((s) => s.removeSelectedNode);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
@@ -124,8 +125,17 @@ export default function App() {
   const [rightTab, setRightTab] = useState<'properties' | 'chat'>('properties');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('sysml');
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [isLibraryDragActive, setIsLibraryDragActive] = useState(false);
+  const [codePanelWidth, setCodePanelWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sysml-code-panel-width');
+      return saved ? Number(saved) : 40;
+    } catch { return 40; }
+  });
+  const [isCenterResizing, setIsCenterResizing] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
+  const diagramContainerRef = useRef<HTMLDivElement>(null);
+
+  const viewCycle: ViewType[] = ['general', 'interconnection', 'actionFlow', 'stateTransition', 'requirements', 'viewpoints', 'drawio'];
 
   useEffect(() => {
     if (appRef.current) {
@@ -134,19 +144,6 @@ export default function App() {
       });
     }
   }, [loadFile]);
-
-  useEffect(() => {
-    const onStart = () => setIsLibraryDragActive(true);
-    const onEnd = () => setIsLibraryDragActive(false);
-    window.addEventListener('sysml-library-drag-start', onStart as EventListener);
-    window.addEventListener('sysml-library-drag-end', onEnd as EventListener);
-    window.addEventListener('dragend', onEnd);
-    return () => {
-      window.removeEventListener('sysml-library-drag-start', onStart as EventListener);
-      window.removeEventListener('sysml-library-drag-end', onEnd as EventListener);
-      window.removeEventListener('dragend', onEnd);
-    };
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -191,6 +188,21 @@ export default function App() {
           return;
         }
 
+        if (e.shiftKey && e.key.toLowerCase() === 'l') {
+          e.preventDefault();
+          toggleExplorer();
+          setLeftTab((prev) => (prev === 'explorer' ? 'library' : 'explorer'));
+          return;
+        }
+
+        if (e.shiftKey && e.key.toLowerCase() === 'v') {
+          e.preventDefault();
+          const idx = viewCycle.indexOf(activeView);
+          const next = viewCycle[(idx + 1) % viewCycle.length];
+          setActiveView(next);
+          return;
+        }
+
         if (e.key === '/') {
           e.preventDefault();
           setShowShortcuts((v) => !v);
@@ -207,11 +219,17 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [removeSelectedNode, undo, redo]);
+  }, [removeSelectedNode, undo, redo, showPropertyPanel, toggleExplorer, togglePropertyPanel, setActiveView, setRightTab, activeView]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sysml-code-panel-width', String(codePanelWidth));
+    } catch {}
+  }, [codePanelWidth]);
 
   const handleOpen = useCallback(async () => {
     const result = await openFileDialog();
@@ -243,6 +261,35 @@ export default function App() {
     downloadBlob(pngBlob, `${basename}.png`);
   }, [exportDrawio, exportFormat, exportSvg, exportSysML, fileName]);
 
+  const handleCenterDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsCenterResizing(true);
+    const startX = e.clientX;
+    const startPercent = codePanelWidth;
+    const container = (e.target as HTMLElement).parentElement;
+    const containerWidth = container?.offsetWidth || 1;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const deltaPercent = (delta / containerWidth) * 100;
+      const newPercent = Math.min(70, Math.max(15, startPercent + deltaPercent));
+      setCodePanelWidth(newPercent);
+    };
+
+    const handleMouseUp = () => {
+      setIsCenterResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [codePanelWidth]);
+
   const elementCount = model ? countElements(model.children) : 0;
 
   return (
@@ -252,37 +299,35 @@ export default function App() {
         <div className="toolbar-left">
           <div className="app-logo">
             <span className="logo-icon">◆</span>
-            <span className="logo-text">SysML v2 Editor</span>
+            <span className="logo-text">SysML v2</span>
           </div>
           <div className="toolbar-divider" />
           <button className="toolbar-btn" onClick={undo} disabled={!canUndo()} title="Undo (Ctrl/Cmd+Z)">
             <Undo2 size={14} />
-            <span className="btn-label">Undo</span>
           </button>
           <button className="toolbar-btn" onClick={redo} disabled={!canRedo()} title="Redo (Ctrl/Cmd+Shift+Z)">
             <Redo2 size={14} />
-            <span className="btn-label">Redo</span>
           </button>
+          <div className="toolbar-divider" />
           <button className="toolbar-btn" onClick={handleOpen} title="Open .sysml or .drawio file">
             <FolderOpen size={14} />
-            <span className="btn-label">Open</span>
           </button>
-          <button className="toolbar-btn" onClick={() => void handleExport()} title="Export model">
-            <Download size={14} />
-            <span className="btn-label">Export</span>
-          </button>
-          <select
-            className="toolbar-select"
-            value={exportFormat}
-            onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-            title="Export format"
-          >
-            <option value="sysml">.sysml</option>
-            <option value="drawio">.drawio</option>
-            <option value="svg">.svg</option>
-            <option value="png">.png</option>
-          </select>
-
+          <div className="toolbar-btn-group">
+            <button className="toolbar-btn" onClick={() => void handleExport()} title="Export model">
+              <Download size={14} />
+            </button>
+            <select
+              className="toolbar-select toolbar-select-mini"
+              value={exportFormat}
+              onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+              title="Export format"
+            >
+              <option value="sysml">.sysml</option>
+              <option value="drawio">.drawio</option>
+              <option value="svg">.svg</option>
+              <option value="png">.png</option>
+            </select>
+          </div>
           <div className="toolbar-divider" />
           <select
             className="toolbar-select"
@@ -295,24 +340,11 @@ export default function App() {
             <option value="radio">Radio System</option>
             {currentModelId === 'custom' && <option value="custom">{fileName || 'Imported Model'}</option>}
           </select>
-
           <div className="toolbar-divider" />
-          <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle explorer">
+          <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle Explorer (Ctrl/Cmd+B)">
             <PanelLeft size={14} />
           </button>
-          <button
-            className="toolbar-btn"
-            onClick={() => setActiveView('drawio')}
-            title="Open Draw.io bridge (Ctrl/Cmd+Shift+D)"
-          >
-            <Puzzle size={14} />
-            <span className="btn-label">Draw.io</span>
-          </button>
-          <button
-            className="toolbar-btn"
-            onClick={togglePropertyPanel}
-            title="Toggle right panel"
-          >
+          <button className="toolbar-btn" onClick={togglePropertyPanel} title="Toggle Properties (Ctrl/Cmd+J)">
             <PanelRight size={14} />
           </button>
           <button
@@ -323,10 +355,9 @@ export default function App() {
               }
               setRightTab('chat');
             }}
-            title="Open AI chat (Ctrl/Cmd+Shift+I)"
+            title="Open AI Chat (Ctrl/Cmd+Shift+I)"
           >
             <MessageSquare size={14} />
-            <span className="btn-label">AI</span>
           </button>
         </div>
 
@@ -380,8 +411,8 @@ export default function App() {
 
         <PanelErrorBoundary panelName="center">
         <div className="panel-center">
-          <div className="split-panel">
-            <div className="split-code">
+          <div className={`split-panel ${isCenterResizing ? 'resizing' : ''}`}>
+            <div className="split-code" style={{ width: `${codePanelWidth}%` }}>
               <div className="panel-tab-bar">
                 <span className="panel-tab active">
                   <FileText size={12} style={{display:'inline',verticalAlign:'middle',marginRight:4}} />
@@ -391,35 +422,15 @@ export default function App() {
               </div>
               <CodeEditor />
             </div>
-            <div className="split-divider" />
             <div
-              className={`split-diagram ${isLibraryDragActive ? 'drop-zone-active' : ''}`}
+              className={`split-divider ${isCenterResizing ? 'active' : ''}`}
+              onMouseDown={handleCenterDividerMouseDown}
+              onDoubleClick={() => setCodePanelWidth(40)}
+            />
+            <div
+              ref={diagramContainerRef}
+              className="split-diagram"
               style={{ position: 'relative' }}
-              onDragOver={(e) => {
-                if (e.dataTransfer.types.includes('Files')) return;
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = 'copy';
-              }}
-              onDrop={(e) => {
-                const types = Array.from(e.dataTransfer.types);
-                if (types.includes('Files')) return;
-
-                const template = e.dataTransfer.getData('application/sysml-template');
-                if (template) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const kind = e.dataTransfer.getData('application/sysml-kind') || 'Element';
-                  const elem = document.elementFromPoint(e.clientX, e.clientY);
-                  const nodeElem = elem?.closest('.react-flow__node');
-                  let targetId: string | undefined;
-                  if (nodeElem && nodeElem instanceof HTMLElement) {
-                    targetId = nodeElem.dataset.id;
-                  }
-
-                  openCreationModal(template, kind, targetId);
-                }
-              }}
             >
               <div className="panel-tab-bar diagram-tab-bar">
                 <span className="panel-tab active">
@@ -484,7 +495,9 @@ export default function App() {
       </footer>
 
       <CreationModal />
+      <RelationshipModalContainer />
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <ToastContainer />
     </div>
     </ErrorBoundary>
   );

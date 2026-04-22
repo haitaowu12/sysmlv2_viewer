@@ -133,7 +133,11 @@ export default function TypeSelector({ value, onChange, placeholder, className }
     };
 
     return (
-        <div ref={containerRef} className={`type-selector ${className || ''}`}>
+        <div
+            ref={containerRef}
+            className={`type-selector ${className || ''}`}
+            style={{ position: 'relative', width: '100%' }}
+        >
             <input
                 ref={inputRef}
                 type="text"
@@ -146,11 +150,18 @@ export default function TypeSelector({ value, onChange, placeholder, className }
                 className="prop-input"
                 style={{ width: '100%' }}
                 autoComplete="off"
+                role="combobox"
+                aria-expanded={isOpen}
+                aria-autocomplete="list"
+                aria-controls="type-selector-listbox"
+                aria-activedescendant={isOpen && filteredOptions[highlightedIndex] ? `type-option-${filteredOptions[highlightedIndex]}` : undefined}
             />
             {isOpen && filteredOptions.length > 0 && (
                 <div
+                    id="type-selector-listbox"
                     ref={listRef}
                     className="type-selector-dropdown"
+                    role="listbox"
                     style={{
                         position: 'absolute',
                         top: '100%',
@@ -161,14 +172,17 @@ export default function TypeSelector({ value, onChange, placeholder, className }
                         borderRadius: 'var(--radius-sm)',
                         maxHeight: '200px',
                         overflowY: 'auto',
-                        zIndex: 1000,
+                        zIndex: 10000,
                         boxShadow: 'var(--shadow-md)',
                     }}
                 >
                     {filteredOptions.map((option, index) => (
                         <div
                             key={option}
+                            id={`type-option-${option}`}
                             className={`type-selector-option ${index === highlightedIndex ? 'highlighted' : ''}`}
+                            role="option"
+                            aria-selected={index === highlightedIndex}
                             style={{
                                 padding: '6px 10px',
                                 cursor: 'pointer',

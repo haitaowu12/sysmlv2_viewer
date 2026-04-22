@@ -3,38 +3,17 @@
  * Shows viewpoints, views, and their relationships
  */
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
-import {
-    ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
-    type Node,
-    type Edge,
-    useNodesState,
-    useEdgesState,
-    useReactFlow,
-    MarkerType,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useMemo, useCallback, useState } from 'react';
+import { type Node, type Edge, MarkerType, type Connection } from '@xyflow/react';
 import { useAppStore, getNodeId } from '../store/store';
 import type { SysMLNode, DocNode } from '../parser/types';
 import { SysMLDiagramNode } from '../components/SysMLNode';
 import { autoLayout } from '../utils/layout';
+import { buildRelationshipEdges } from '../utils/relationshipEdges';
 import { findRelatedNodeIds } from '../utils/focusUtils';
+import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
-
-function FocusZoom({ focusedNodeId }: { focusedNodeId: string | null }) {
-    const { fitView } = useReactFlow();
-
-    useEffect(() => {
-        if (focusedNodeId) {
-            fitView({ nodes: [{ id: focusedNodeId }], duration: 800, padding: 0.5 });
-        }
-    }, [focusedNodeId, fitView]);
-
-    return null;
-}
+import { Focus } from 'lucide-react';
 
 function ViewpointNode({ data }: { data: any }) {
     return (
@@ -84,7 +63,7 @@ function ViewNode({ data }: { data: any }) {
     );
 }
 
-const customNodeTypes = {
+const nodeTypes = {
     sysmlNode: SysMLDiagramNode,
     viewpointNode: ViewpointNode,
     viewNode: ViewNode,
@@ -96,6 +75,7 @@ export default function ViewpointsView() {
     const focusedNodeId = useAppStore(s => s.focusedNodeId);
     const selectNode = useAppStore(s => s.selectNode);
     const setFocusedNode = useAppStore(s => s.setFocusedNode);
+    const createRelationship = useAppStore(s => s.createRelationship);
 
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
@@ -136,6 +116,7 @@ export default function ViewpointsView() {
                             doc: doc?.text,
                             isSelected: itemId === selectedNodeId,
                         },
+                        connectable: true,
                     });
 
                     viewpointMap.set(item.name, itemId);
@@ -157,6 +138,7 @@ export default function ViewpointsView() {
                             doc: doc?.text,
                             isSelected: itemId === selectedNodeId,
                         },
+                        connectable: true,
                     });
 
                     if (viewpoint && viewpointMap.has(viewpoint)) {
@@ -186,56 +168,46 @@ export default function ViewpointsView() {
 
         findViewpoints(model.children);
 
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const relEdges = buildRelationshipEdges(model, nodeIds);
+        edges.push(...relEdges);
+
         if (nodes.length > 0) {
-            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 100, rankSpacing: 150 });
+            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 100, rankSpacing: 150, edgeRouting: true });
             return { initialNodes: layouted.nodes, initialEdges: layouted.edges };
         }
 
         return { initialNodes: nodes, initialEdges: edges };
     }, [model, selectedNodeId, focusedNodeId]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    useEffect(() => {
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-    }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        selectNode(node.id);
+    const handleNodeClick = useCallback((nodeId: string) => {
+        selectNode(nodeId);
     }, [selectNode]);
 
-    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    const handleNodeContextMenu = useCallback((event: React.MouseEvent, nodeId: string) => {
         event.preventDefault();
-        setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            nodeId: node.id,
-        });
+        setContextMenu({ x: event.clientX, y: event.clientY, nodeId });
     }, []);
 
-    return (
-        <div className="diagram-container">
-            <ReactFlow
-                nodes={nodes}
-                edges={edgesState}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onNodeContextMenu={onNodeContextMenu}
-                nodeTypes={customNodeTypes}
-                fitView
-                minZoom={0.1}
-                maxZoom={3}
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background gap={20} size={1} color="var(--grid-color)" />
-                <Controls />
-                <MiniMap nodeColor={(n) => n.type === 'viewpointNode' ? '#8b5cf6' : '#06b6d4'} />
-                <FocusZoom focusedNodeId={focusedNodeId} />
-            </ReactFlow>
+    const handleConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        createRelationship(String(connection.source), String(connection.target));
+    }, [createRelationship]);
 
+    return (
+        <>
+            <DiagramView
+                nodes={initialNodes}
+                edges={initialEdges}
+                nodeTypes={nodeTypes}
+                focusedNodeId={focusedNodeId}
+                onNodeClick={handleNodeClick}
+                onNodeContextMenu={handleNodeContextMenu}
+                onConnect={handleConnect}
+                emptyTitle="No viewpoints to display"
+                emptyDescription="The Viewpoints view shows viewpoints, views, and their relationships."
+                minimapNodeColor={(n) => n.type === 'viewpointNode' ? '#8b5cf6' : '#06b6d4'}
+            />
             {contextMenu && (
                 <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
                     <MenuItem
@@ -243,12 +215,12 @@ export default function ViewpointsView() {
                             setFocusedNode(contextMenu.nodeId);
                             closeContextMenu();
                         }}
-                        icon="🔍"
+                        icon={Focus}
                     >
                         Focus This Item
                     </MenuItem>
                 </ContextMenu>
             )}
-        </div>
+        </>
     );
 }

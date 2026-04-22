@@ -3,41 +3,19 @@
  * Shows states and transitions with triggers, guards, and effects
  */
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
-import {
-    ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
-    type Node,
-    type Edge,
-    useNodesState,
-    useEdgesState,
-    useReactFlow,
-    MarkerType,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useMemo, useCallback, useState } from 'react';
+import { type Node, type Edge, MarkerType, type Connection } from '@xyflow/react';
 import { useAppStore, getNodeId } from '../store/store';
 import type { SysMLNode, TransitionUsage } from '../parser/types';
 import { StateNode, PseudoStateNode } from '../components/SysMLNode';
 import { autoLayout } from '../utils/layout';
+import { buildRelationshipEdges } from '../utils/relationshipEdges';
 import { findRelatedNodeIds } from '../utils/focusUtils';
+import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
+import { Focus } from 'lucide-react';
 
 const nodeTypes = { stateNode: StateNode, pseudoState: PseudoStateNode };
-
-// Helper to center view on focused node
-function FocusZoom({ focusedNodeId }: { focusedNodeId: string | null }) {
-    const { fitView } = useReactFlow();
-
-    useEffect(() => {
-        if (focusedNodeId) {
-            fitView({ nodes: [{ id: focusedNodeId }], duration: 800, padding: 0.5 });
-        }
-    }, [focusedNodeId, fitView]);
-
-    return null;
-}
 
 export default function StateTransitionView() {
     const model = useAppStore(s => s.model);
@@ -45,6 +23,7 @@ export default function StateTransitionView() {
     const focusedNodeId = useAppStore(s => s.focusedNodeId);
     const selectNode = useAppStore(s => s.selectNode);
     const setFocusedNode = useAppStore(s => s.setFocusedNode);
+    const openRelationshipModal = useAppStore(s => s.openRelationshipModal);
 
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
@@ -69,13 +48,11 @@ export default function StateTransitionView() {
         }
 
         function processStateDef(stateDef: SysMLNode) {
-            // Focus check for container
             if (visibleNodeIds && !visibleNodeIds.has(getNodeId(stateDef))) return;
 
             const states = stateDef.children.filter(c => c.kind === 'StateUsage');
             const transitions = stateDef.children.filter(c => c.kind === 'TransitionUsage') as TransitionUsage[];
 
-            // Add initial pseudo-state if there's an entry transition
             const entryTransition = transitions.find(t => t.name === 'entry' || t.source === '__initial__');
             if (entryTransition) {
                 nodes.push({
@@ -83,6 +60,7 @@ export default function StateTransitionView() {
                     type: 'pseudoState',
                     position: { x: 0, y: 0 },
                     data: { label: '', kind: 'initial', icon: '' },
+                    connectable: true,
                 });
 
                 if (entryTransition.target) {
@@ -101,24 +79,23 @@ export default function StateTransitionView() {
                 }
             }
 
-            // Add state nodes
             for (const state of states) {
-                const sId = getNodeId(state);
-                nodes.push({
-                    id: sId,
-                    type: 'stateNode',
-                    position: { x: 0, y: 0 },
-                    data: {
-                        label: state.name,
-                        kind: 'StateUsage',
-                        icon: '🔄',
-                        isSelected: sId === selectedNodeId,
-                        compartments: [],
-                    },
-                });
-            }
+                    const sId = getNodeId(state);
+                    nodes.push({
+                        id: sId,
+                        type: 'stateNode',
+                        position: { x: 0, y: 0 },
+                        data: {
+                            label: state.name,
+                            kind: 'StateUsage',
+                            icon: '🔄',
+                            isSelected: sId === selectedNodeId,
+                            compartments: [],
+                        },
+                        connectable: true,
+                    });
+                }
 
-            // Add transition edges
             for (const trans of transitions) {
                 if (trans.name === 'entry' || trans.source === '__initial__') continue;
 
@@ -150,56 +127,46 @@ export default function StateTransitionView() {
 
         findStateDefs(model.children);
 
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const relEdges = buildRelationshipEdges(model, nodeIds);
+        edges.push(...relEdges);
+
         if (nodes.length > 0) {
-            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 80, rankSpacing: 100 });
+            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 80, rankSpacing: 100, edgeRouting: true });
             return { initialNodes: layouted.nodes, initialEdges: layouted.edges };
         }
 
         return { initialNodes: nodes, initialEdges: edges };
     }, [model, selectedNodeId, focusedNodeId]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    useEffect(() => {
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-    }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        selectNode(node.id);
+    const handleNodeClick = useCallback((nodeId: string) => {
+        selectNode(nodeId);
     }, [selectNode]);
 
-    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    const handleNodeContextMenu = useCallback((event: React.MouseEvent, nodeId: string) => {
         event.preventDefault();
-        setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            nodeId: node.id,
-        });
+        setContextMenu({ x: event.clientX, y: event.clientY, nodeId });
     }, []);
 
-    return (
-        <div className="diagram-container">
-            <ReactFlow
-                nodes={nodes}
-                edges={edgesState}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onNodeContextMenu={onNodeContextMenu}
-                nodeTypes={nodeTypes}
-                fitView
-                minZoom={0.1}
-                maxZoom={3}
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background gap={20} size={1} color="var(--grid-color)" />
-                <Controls />
-                <MiniMap nodeColor={() => '#ec4899'} />
-                <FocusZoom focusedNodeId={focusedNodeId} />
-            </ReactFlow>
+    const handleConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        openRelationshipModal(String(connection.source), String(connection.target), 'transition');
+    }, [openRelationshipModal]);
 
+    return (
+        <>
+            <DiagramView
+                nodes={initialNodes}
+                edges={initialEdges}
+                nodeTypes={nodeTypes}
+                focusedNodeId={focusedNodeId}
+                onNodeClick={handleNodeClick}
+                onNodeContextMenu={handleNodeContextMenu}
+                onConnect={handleConnect}
+                emptyTitle="No states to display"
+                emptyDescription="The State Transition view shows states and transitions with triggers, guards, and effects."
+                minimapNodeColor={() => '#ec4899'}
+            />
             {contextMenu && (
                 <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
                     <MenuItem
@@ -207,12 +174,12 @@ export default function StateTransitionView() {
                             setFocusedNode(contextMenu.nodeId);
                             closeContextMenu();
                         }}
-                        icon="🔍"
+                        icon={Focus}
                     >
                         Focus This Item
                     </MenuItem>
                 </ContextMenu>
             )}
-        </div>
+        </>
     );
 }

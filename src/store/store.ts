@@ -97,6 +97,7 @@ export interface AppState {
   resetToExample: (exampleType?: 'vehicle' | 'mars' | 'radio') => void;
   removeSelectedNode: () => void;
   insertCode: (code: string, targetNodeId?: string) => void;
+  insertLibraryComponent: (kind: string, targetNodeId?: string, customName?: string) => void;
 
   // Advanced UI Actions
   setFocusedNode: (nodeId: string | null) => void;
@@ -112,10 +113,27 @@ export interface AppState {
   openCreationModal: (template: string, kind: string, targetId?: string) => void;
   closeCreationModal: () => void;
 
+  // Relationship Modal
+  relationshipModal: {
+    isOpen: boolean;
+    sourceNodeId: string;
+    targetNodeId: string;
+    inferredType: string;
+  } | null;
+  openRelationshipModal: (sourceNodeId: string, targetNodeId: string, inferredType: string) => void;
+  closeRelationshipModal: () => void;
+
+  // Relationship creation
+  createRelationship: (sourceNodeId: string, targetNodeId: string, relationshipType?: string, details?: string) => void;
+
   // Attribute Editing
   updateNodeAttribute: (nodeId: string, attrName: string, updates: { name?: string; type?: string; def?: string }) => void;
   addNodeAttribute: (nodeId: string, attr: { name: string; type?: string; def?: string }) => void;
   deleteNodeAttribute: (nodeId: string, attrName: string) => void;
+
+  // Property Editing
+  updateNodeProperty: (nodeId: string, property: string, value: string) => void;
+  updateNodeDoc: (nodeId: string, doc: string) => void;
 
   undo: () => void;
   redo: () => void;
@@ -296,6 +314,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   focusedNodeId: null,
   hiddenAttributes: {},
   creationModal: null,
+  relationshipModal: null,
   isDarkMode: true,
   showExplorer: true,
   showPropertyPanel: true,
@@ -318,9 +337,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const newSelectedNode = refreshModelSelection(model, selectedNode);
       set({ model, parseErrors: model.errors, selectedNode: newSelectedNode });
 
-      if (model.errors.length === 0) {
-        get().syncFromSysml();
-      }
+      get().syncFromSysml();
     } catch (e) {
       set({
         parseErrors: [
@@ -827,6 +844,118 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().parseSource();
   },
 
+  insertLibraryComponent: (kind: string, targetNodeId?: string, customName?: string) => {
+    const { sourceCode, model } = get();
+    if (!model) return;
+
+    // Collect all existing names to ensure uniqueness
+    const existingNames = new Set<string>();
+    function collectNames(nodes: SysMLNode[]) {
+      for (const node of nodes) {
+        existingNames.add(node.name);
+        collectNames(node.children);
+      }
+    }
+    collectNames(model.children);
+
+    // Generate a unique name
+    const baseName = customName || kind.replace(/\s+/g, '');
+    let name = baseName;
+    let counter = 1;
+    while (existingNames.has(name)) {
+      name = `${baseName}_${counter}`;
+      counter++;
+    }
+
+    // Build the SysML template based on kind
+    const templates: Record<string, string> = {
+      'part def': `part def ${name} {\n\t\n}`,
+      'part': `part ${name} : PartType;`,
+      'port def': `port def ${name};`,
+      'port': `port ${name} : PortType;`,
+      'action def': `action def ${name} {\n\tin input : ScalarValue;\n\tout output : ScalarValue;\n}`,
+      'action': `action ${name} : ActionType;`,
+      'state def': `state def ${name} {\n\tentry; then idle;\n\tstate idle;\n}`,
+      'state': `state ${name};`,
+      'requirement def': `requirement def ${name} {\n\tdoc /* Description of ${name} */\n}`,
+      'requirement': `requirement ${name} : RequirementType;`,
+      'package': `package '${name}' {\n\t\n}`,
+      'attribute': `attribute ${name} : ScalarValue;`,
+      'connection': `connect a to b;`,
+      'interface': `interface def ${name} {\n\tend p1 : Port;\n\tend p2 : Port;\n}`,
+      'item def': `item def ${name};`,
+      'item': `item ${name} : ItemType;`,
+      'enum def': `enum def ${name} {\n\tVALUE_A,\n\tVALUE_B\n}`,
+      'enum': `enum ${name} : EnumType;`,
+      'constraint def': `constraint def ${name};`,
+      'constraint': `constraint { true }`,
+      'verification def': `verification def ${name} {\n\tsubject : SystemUnderTest;\n}`,
+      'analysis def': `analysis def ${name};`,
+      'flow': `flow from source to target;`,
+      'binding': `bind source = target;`,
+      'transition': `transition first source accept Trigger then target;`,
+      'dependency': `dependency ${name} from source to target;`,
+      'satisfy': `satisfy RequirementName;`,
+      'viewpoint def': `viewpoint def ${name} {\n\tdoc /* Stakeholder concerns */\n}`,
+      'view def': `view def ${name} : ViewpointType;`,
+    };
+
+    const template = templates[kind] || `${kind} ${name};`;
+
+    const definitionKinds = new Set(['part def', 'port def', 'action def', 'state def', 'requirement def', 'constraint def', 'item def', 'enum def', 'interface', 'connection def', 'verification def', 'analysis def', 'viewpoint def', 'view def', 'package']);
+
+    if (targetNodeId) {
+      const foundTarget = findNodeById(model.children, targetNodeId);
+      if (foundTarget) {
+        const targetKind = foundTarget.kind;
+        if (definitionKinds.has(kind) && targetKind !== 'Package') {
+          window.dispatchEvent(new CustomEvent('sysml-toast', {
+            detail: { message: `Cannot place a definition inside ${targetKind}. Definitions belong at package level.`, type: 'error' },
+          }));
+          return;
+        }
+        if (kind === 'package' && targetKind !== 'Package') {
+          window.dispatchEvent(new CustomEvent('sysml-toast', {
+            detail: { message: `Packages can only be nested inside other packages.`, type: 'error' },
+          }));
+          return;
+        }
+      }
+    }
+
+    // Scope detection
+    let targetNode: SysMLNode | null = null;
+    if (targetNodeId) {
+      const found = findNodeById(model.children, targetNodeId);
+      if (found && (found.kind === 'Package' || found.kind.endsWith('Def'))) {
+        targetNode = found;
+      }
+    }
+
+    // If no valid target, find the first package in the model
+    if (!targetNode) {
+      for (const child of model.children) {
+        if (child.kind === 'Package') {
+          targetNode = child;
+          break;
+        }
+      }
+    }
+
+    let newCode = sourceCode;
+    if (targetNode && targetNode.location) {
+      const insertPos = targetNode.location.end.offset - 1;
+      newCode = sourceCode.slice(0, insertPos) + '\n\t' + template + '\n' + sourceCode.slice(insertPos);
+    } else {
+      newCode += '\n\n' + template;
+    }
+
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
+    get().parseSource();
+    get().syncFromSysml();
+  },
+
   setFocusedNode: (nodeId) => set({ focusedNodeId: nodeId }),
 
   toggleAttributeVisibility: (nodeId) =>
@@ -899,12 +1028,189 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().parseSource();
   },
 
+  updateNodeProperty: (nodeId, property, value) => {
+    const { sourceCode, model } = get();
+    if (!model) return;
+    const node = findNodeById(model.children, nodeId);
+    if (!node || !node.location) return;
+
+    const { start, end } = node.location;
+    const nodeSource = sourceCode.slice(start.offset, end.offset);
+    let newNodeSource = nodeSource;
+
+    switch (property) {
+      case 'name': {
+        const nameRegex = new RegExp(`\\b${node.name}\\b`);
+        newNodeSource = nodeSource.replace(nameRegex, value);
+        break;
+      }
+      case 'multiplicity': {
+        const multPattern = /\[[^\]]*\]/;
+        const newMult = value.startsWith('[') && value.endsWith(']') ? value : `[${value}]`;
+        if (multPattern.test(nodeSource)) {
+          newNodeSource = nodeSource.replace(multPattern, newMult);
+        } else {
+          newNodeSource = nodeSource.replace(new RegExp(`(\\b${node.name}\\b)`), `$1${newMult}`);
+        }
+        break;
+      }
+      case 'direction': {
+        const dirPattern = /\b(in|out|inout)\b/;
+        if (dirPattern.test(nodeSource)) {
+          newNodeSource = nodeSource.replace(dirPattern, value);
+        } else {
+          newNodeSource = `${value} ${nodeSource}`;
+        }
+        break;
+      }
+      case 'visibility': {
+        const visPattern = /\b(public|private|protected)\b/;
+        if (visPattern.test(nodeSource)) {
+          newNodeSource = nodeSource.replace(visPattern, value);
+        } else {
+          newNodeSource = `${value} ${nodeSource}`;
+        }
+        break;
+      }
+      case 'defaultValue': {
+        const defPattern = /=\s*([^;]+)/;
+        if (defPattern.test(nodeSource)) {
+          newNodeSource = nodeSource.replace(defPattern, `= ${value}`);
+        } else {
+          newNodeSource = nodeSource.replace(/;/, ` = ${value};`);
+        }
+        break;
+      }
+      default:
+        return;
+    }
+
+    const newCode = sourceCode.slice(0, start.offset) + newNodeSource + sourceCode.slice(end.offset);
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
+    get().parseSource();
+  },
+
+  updateNodeDoc: (nodeId, doc) => {
+    const { sourceCode, model } = get();
+    if (!model) return;
+    const node = findNodeById(model.children, nodeId);
+    if (!node || !node.location) return;
+
+    const docNode = node.children.find((c) => c.kind === 'Doc') as { location?: { start: { offset: number }; end: { offset: number } }; text?: string } | undefined;
+
+    const end = node.location.end;
+    let newCode: string;
+
+    if (docNode && docNode.location) {
+      const docStart = docNode.location.start.offset;
+      const docEnd = docNode.location.end.offset;
+      const newDoc = `doc /* ${doc} */`;
+      newCode = sourceCode.slice(0, docStart) + newDoc + sourceCode.slice(docEnd);
+    } else {
+      const newDoc = `\n\tdoc /* ${doc} */`;
+      const insertPos = end.offset - 1;
+      newCode = sourceCode.slice(0, insertPos) + newDoc + sourceCode.slice(insertPos);
+    }
+
+    const hist = pushToHistory(get());
+    set({ sourceCode: newCode, isModified: true, ...hist });
+    get().parseSource();
+  },
+
   openCreationModal: (template, kind, targetId) => {
     set({ creationModal: { isOpen: true, template, kind, targetId } });
   },
 
   closeCreationModal: () => {
     set({ creationModal: null });
+  },
+
+  openRelationshipModal: (sourceNodeId, targetNodeId, inferredType) => {
+    set({ relationshipModal: { isOpen: true, sourceNodeId, targetNodeId, inferredType } });
+  },
+
+  closeRelationshipModal: () => {
+    set({ relationshipModal: null });
+  },
+
+  createRelationship: (sourceNodeId, targetNodeId, relationshipType, details) => {
+    const { sourceCode, model } = get();
+    if (!model) return;
+
+    const sourceNode = findNodeById(model.children, sourceNodeId);
+    const targetNode = findNodeById(model.children, targetNodeId);
+    if (!sourceNode || !targetNode) return;
+
+    const sourceKind = sourceNode.kind;
+    const targetKind = targetNode.kind;
+
+    const inferRelationshipType = (): string => {
+      if (relationshipType) return relationshipType;
+      if (sourceKind === 'PartDef' && targetKind === 'PartDef') return 'part';
+      if (sourceKind === 'StateUsage' && targetKind === 'StateUsage') return 'transition';
+      if (sourceKind === 'StateDef' && targetKind === 'StateDef') return 'transition';
+      if ((sourceKind === 'RequirementDef' || sourceKind === 'RequirementUsage') && (targetKind === 'PartDef' || targetKind === 'PartUsage')) return 'satisfy';
+      if ((sourceKind === 'ActionDef' || sourceKind === 'ActionUsage') && (targetKind === 'ActionDef' || targetKind === 'ActionUsage')) return 'flow';
+      if ((sourceKind === 'PortDef' || sourceKind === 'PortUsage') && (targetKind === 'PortDef' || targetKind === 'PortUsage')) return 'connect';
+      if ((sourceKind === 'PartDef' || sourceKind === 'PartUsage') && (targetKind === 'PortDef' || targetKind === 'PortUsage')) return 'port';
+      return 'dependency';
+    };
+
+    const relType = inferRelationshipType();
+    let codeToInsert = '';
+
+    switch (relType) {
+      case 'part': {
+        codeToInsert = `\tpart ${targetNode.name.toLowerCase()} : ${targetNode.name};\n`;
+        break;
+      }
+      case 'transition': {
+        const trigger = details || 'Trigger';
+        codeToInsert = `\ttransition ${sourceNode.name}_to_${targetNode.name}\n\t\tfirst ${sourceNode.name}\n\t\taccept ${trigger}\n\t\tthen ${targetNode.name};\n`;
+        break;
+      }
+      case 'satisfy': {
+        codeToInsert = `\tsatisfy ${targetNode.name};\n`;
+        break;
+      }
+      case 'flow': {
+        codeToInsert = `\tflow from ${sourceNode.name} to ${targetNode.name};\n`;
+        break;
+      }
+      case 'bind': {
+        codeToInsert = `\tbind ${sourceNode.name} = ${targetNode.name};\n`;
+        break;
+      }
+      case 'connect': {
+        codeToInsert = `\tconnect ${sourceNode.name} to ${targetNode.name};\n`;
+        break;
+      }
+      case 'port': {
+        codeToInsert = `\tport ${targetNode.name.toLowerCase()} : ${targetNode.name};\n`;
+        break;
+      }
+      default: {
+        codeToInsert = `\tdependency ${sourceNode.name}_to_${targetNode.name} from ${sourceNode.name} to ${targetNode.name};\n`;
+      }
+    }
+
+    let newCode = sourceCode;
+    if (sourceNode.location) {
+      const insertPos = sourceNode.location.end.offset - 1;
+      newCode = sourceCode.slice(0, insertPos) + '\n' + codeToInsert + sourceCode.slice(insertPos);
+    } else {
+      newCode += '\n\n' + codeToInsert;
+    }
+
+    const hist = pushToHistory(get());
+    const parseResult = parseSysML(newCode);
+    if (parseResult.errors.length > 0) {
+      window.dispatchEvent(new CustomEvent('sysml-toast', { detail: { message: 'Warning: generated code has parse errors', type: 'warning' } }));
+    }
+    set({ sourceCode: newCode, isModified: true, ...hist });
+    get().parseSource();
+    get().syncFromSysml();
   },
 
   undo: () => {

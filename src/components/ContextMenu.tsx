@@ -1,13 +1,14 @@
 /**
  * Reusable Context Menu Component
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 interface ContextMenuProps {
     x: number;
     y: number;
     onClose: () => void;
-    children: React.ReactNode;
+    children: ReactNode;
 }
 
 export default function ContextMenu({ x, y, onClose, children }: ContextMenuProps) {
@@ -46,7 +47,7 @@ export default function ContextMenu({ x, y, onClose, children }: ContextMenuProp
     );
 }
 
-export function MenuItem({ onClick, children, icon }: { onClick: () => void; children: React.ReactNode; icon?: string }) {
+export function MenuItem({ onClick, children, icon: Icon }: { onClick: () => void; children: ReactNode; icon?: LucideIcon }) {
     return (
         <div
             className="ctx-menu-item"
@@ -56,7 +57,7 @@ export function MenuItem({ onClick, children, icon }: { onClick: () => void; chi
             }}
             style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center' }}
         >
-            {icon && <span>{icon}</span>}
+            {Icon && <Icon size={14} />}
             <span>{children}</span>
         </div>
     );
