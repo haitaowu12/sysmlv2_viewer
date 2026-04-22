@@ -45,6 +45,7 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
         <div className={`sysml-node ${d.isSelected ? 'selected' : ''}`}
             style={{ borderColor: bgColor }}>
             <Handle type="target" position={Position.Top} className="node-handle" />
+            <Handle type="target" position={Position.Left} id="left" className="node-handle" />
 
             <div className="node-header" style={{ backgroundColor: bgColor }}>
                 <span className="node-stereotype">
@@ -79,6 +80,7 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
             )}
 
             <Handle type="source" position={Position.Bottom} className="node-handle" />
+            <Handle type="source" position={Position.Right} id="right" className="node-handle" />
         </div>
     );
 });
@@ -90,6 +92,7 @@ export const StateNode = memo(function StateNode({ data }: NodeProps) {
     return (
         <div className={`sysml-node state-node ${d.isSelected ? 'selected' : ''}`}>
             <Handle type="target" position={Position.Top} className="node-handle" />
+            <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="state-header">
                 <span className="node-label">{d.label}</span>
             </div>
@@ -105,6 +108,7 @@ export const StateNode = memo(function StateNode({ data }: NodeProps) {
                 </div>
             )}
             <Handle type="source" position={Position.Bottom} className="node-handle" />
+            <Handle type="source" position={Position.Right} id="right" className="node-handle" />
         </div>
     );
 });
@@ -117,8 +121,10 @@ export const PseudoStateNode = memo(function PseudoStateNode({ data }: NodeProps
     return (
         <div className={`pseudo-state-node ${isFinal ? 'final' : 'initial'}`}>
             <Handle type="target" position={Position.Top} className="node-handle" />
+            <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             {isFinal && <div className="inner-circle" />}
             <Handle type="source" position={Position.Bottom} className="node-handle" />
+            <Handle type="source" position={Position.Right} id="right" className="node-handle" />
         </div>
     );
 });
@@ -159,6 +165,7 @@ export const RequirementNode = memo(function RequirementNode({ data }: NodeProps
     return (
         <div className={`sysml-node requirement-node ${d.isSelected ? 'selected' : ''}`}>
             <Handle type="target" position={Position.Top} className="node-handle" />
+            <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="requirement-header">
                 <span className="node-stereotype">
                     {d.stereotype || '«requirement»'}
@@ -182,6 +189,7 @@ export const RequirementNode = memo(function RequirementNode({ data }: NodeProps
                 </div>
             )}
             <Handle type="source" position={Position.Bottom} className="node-handle" />
+            <Handle type="source" position={Position.Right} id="right" className="node-handle" />
         </div>
     );
 });
@@ -191,8 +199,10 @@ export const PortNode = memo(function PortNode({ data }: NodeProps) {
     return (
         <div className={`port-node ${d.isSelected ? 'selected' : ''}`}>
             <Handle type="target" position={Position.Top} className="node-handle" />
+            <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="port-label">{d.label}</div>
             <Handle type="source" position={Position.Bottom} className="node-handle" />
+            <Handle type="source" position={Position.Right} id="right" className="node-handle" />
         </div>
     );
 });

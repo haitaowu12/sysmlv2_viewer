@@ -323,22 +323,54 @@ body {
   min-width: 0;
 }
 
+.split-panel.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.split-panel.resizing iframe,
+.split-panel.resizing .monaco-editor {
+  pointer-events: none;
+}
+
 .split-code {
-  width: 40%;
-  min-width: 300px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-primary);
+  overflow: hidden;
 }
 
 .split-divider {
-  width: 3px;
+  width: 5px;
   background: var(--border-primary);
   cursor: col-resize;
   transition: background var(--transition);
+  flex-shrink: 0;
+  position: relative;
 }
 
-.split-divider:hover {
+.split-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.split-divider:hover::after,
+.split-divider.active::after {
+  opacity: 1;
+}
+
+.split-divider:hover,
+.split-divider.active {
   background: var(--accent);
 }
 
@@ -525,6 +557,23 @@ body {
   height: 8px;
   background: var(--accent);
   border: 2px solid var(--bg-elevated);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.sysml-node:hover .node-handle,
+.state-node:hover .node-handle,
+.action-node:hover .node-handle,
+.requirement-node:hover .node-handle,
+.port-node:hover .node-handle,
+.pseudo-state-node:hover .node-handle {
+  opacity: 1;
+}
+
+.node-handle:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
 }
 
 /* State Node */
@@ -957,6 +1006,82 @@ body {
   overflow: hidden;
 }
 
+/* Search */
+.library-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.library-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.library-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.library-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Category */
+.library-category {
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.library-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--transition);
+}
+
+.library-category-header:hover {
+  background: var(--bg-hover);
+}
+
+.library-category-icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.library-category-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.library-category-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* Grid & Items */
 .library-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -1015,6 +1140,18 @@ body {
   opacity: 1;
 }
 
+/* Empty state */
+.library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .library-hint {
   padding: 12px;
   font-size: 11px;
@@ -1040,6 +1177,22 @@ body {
 .toolbar-select:hover {
   background: var(--bg-hover);
   border-color: var(--accent);
+}
+
+.toolbar-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.toolbar-select-mini {
+  width: auto;
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: 11px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
 }
 
 /* Context Menu Hover Effect */
@@ -1787,9 +1940,16 @@ select:hover,
   gap: var(--space-3);
 }
 
-.empty-state-icon {
-  font-size: 32px;
-  opacity: 0.5;
+.empty-state-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--text-accent);
+  margin-bottom: var(--space-3);
 }
 
 .empty-state-title {
@@ -1816,6 +1976,70 @@ select:hover,
   outline-offset: -2px;
 }
 
+/* ============================================
+   Focus Indicators (Accessibility)
+   ============================================ */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   Confirmation Dialog Styles
+   ============================================ */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.confirm-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  max-width: 400px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.confirm-dialog-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.confirm-dialog-message {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--text-sm--line-height);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
 @media (max-width: 1024px) {
   .panel-left {
     min-width: 160px !important;
@@ -1840,3 +2064,301 @@ select:hover,
     flex-direction: column;
   }
 }
+
+/* ============================================
+   Drag Ghost Overlay
+   ============================================ */
+.drag-ghost {
+  opacity: 0.85;
+  transform: translate(0, 0);
+  animation: ghostFadeIn 0.1s ease-out;
+}
+
+@keyframes ghostFadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 0.85; transform: scale(1); }
+}
+
+.drag-ghost-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(8px);
+}
+
+.drag-ghost-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.drag-ghost-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* ============================================
+   Toast Notifications
+   ============================================ */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid;
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  min-width: 240px;
+  max-width: 360px;
+  animation: toastSlideIn 0.25s ease-out;
+}
+
+.toast-enter {
+  animation: toastSlideIn 0.25s ease-out forwards;
+}
+
+.toast-exit {
+  animation: toastSlideOut 0.25s ease-in forwards;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.toast-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+}
+
+.toast-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* ============================================
+   Error Panel
+   ============================================ */
+.error-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.error-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.error-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.error-counts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.error-count-badge.error {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.error-count-badge.warning {
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.error-count-badge.info {
+  color: var(--text-accent);
+  background: var(--accent-bg);
+}
+
+.error-count-badge.ok {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.error-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.error-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.error-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition);
+  width: 100%;
+}
+
+.error-item:hover {
+  background: var(--bg-hover);
+}
+
+.error-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.error-item-message {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.error-item-suggestion {
+  font-size: 11px;
+  color: var(--text-accent);
+  font-style: italic;
+}
+
+.error-item-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ============================================
+   Grid Overlay
+   ============================================ */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle, var(--border-secondary) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ============================================
+   Drop Zone & Target Highlighting
+   ============================================ */
+.drop-zone-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-bg);
+}
+
+.drop-target-highlight {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.3) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Connection-point hints rendered via injected <style> in App.tsx use
+   these class names for left / right markers. Top / bottom are handled
+   by ::before / ::after pseudo-elements on the highlighted node. */
+.connection-hint-left,
+.connection-hint-right {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 6px var(--accent);
+  z-index: 10;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.connection-hint-left { left: -4px; }
+.connection-hint-right { right: -4px; }

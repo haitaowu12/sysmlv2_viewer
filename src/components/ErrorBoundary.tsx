@@ -3,6 +3,7 @@ import { Component, type ReactNode } from 'react';
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: () => void;
 }
 
 interface ErrorBoundaryState {
@@ -30,6 +31,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       componentStack: errorInfo.componentStack,
       timestamp: new Date().toISOString(),
     });
+    this.props.onError?.();
   }
 
   render(): ReactNode {

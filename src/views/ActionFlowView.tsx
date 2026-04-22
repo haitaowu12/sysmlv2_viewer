@@ -3,41 +3,19 @@
  * Shows actions, their decomposition, and flows between them
  */
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
-import {
-    ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
-    useNodesState,
-    useEdgesState,
-    useReactFlow,
-    type Node,
-    type Edge,
-    MarkerType,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useMemo, useCallback, useState } from 'react';
+import { type Node, type Edge, MarkerType, type Connection } from '@xyflow/react';
 import { useAppStore, getNodeId } from '../store/store';
 import type { SysMLNode, FlowUsage, BindingUsage } from '../parser/types';
 import { ActionNode, PseudoStateNode } from '../components/SysMLNode';
 import { autoLayout } from '../utils/layout';
+import { buildRelationshipEdges } from '../utils/relationshipEdges';
 import { findRelatedNodeIds } from '../utils/focusUtils';
+import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
+import { Focus } from 'lucide-react';
 
 const nodeTypes = { actionNode: ActionNode, pseudoState: PseudoStateNode };
-
-// Helper to center view on focused node
-function FocusZoom({ focusedNodeId }: { focusedNodeId: string | null }) {
-    const { fitView } = useReactFlow();
-
-    useEffect(() => {
-        if (focusedNodeId) {
-            fitView({ nodes: [{ id: focusedNodeId }], duration: 800, padding: 0.5 });
-        }
-    }, [focusedNodeId, fitView]);
-
-    return null;
-}
 
 export default function ActionFlowView() {
     const model = useAppStore(s => s.model);
@@ -45,6 +23,7 @@ export default function ActionFlowView() {
     const focusedNodeId = useAppStore(s => s.focusedNodeId);
     const selectNode = useAppStore(s => s.selectNode);
     const setFocusedNode = useAppStore(s => s.setFocusedNode);
+    const createRelationship = useAppStore(s => s.createRelationship);
 
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
@@ -71,10 +50,8 @@ export default function ActionFlowView() {
         function processActionDef(actionDef: SysMLNode) {
             const actionId = getNodeId(actionDef);
 
-            // Focus Filter
             if (visibleNodeIds && !visibleNodeIds.has(actionId)) return;
 
-            // Gather params from children
             const params = actionDef.children.filter(c =>
                 c.kind === 'AttributeUsage' && (c as any).direction
             );
@@ -107,9 +84,9 @@ export default function ActionFlowView() {
                     compartments,
                     isSelected: actionId === selectedNodeId,
                 },
+                connectable: true,
             });
 
-            // Sub-actions
             const subActions = actionDef.children.filter(c => c.kind === 'ActionUsage');
             for (const sub of subActions) {
                 const subId = getNodeId(sub);
@@ -140,9 +117,9 @@ export default function ActionFlowView() {
                         compartments: subCompartments,
                         isSelected: subId === selectedNodeId,
                     },
+                    connectable: true,
                 });
 
-                // Composition edge
                 edges.push({
                     id: `${actionId}->${subId}`,
                     source: actionId,
@@ -152,10 +129,8 @@ export default function ActionFlowView() {
                 });
             }
 
-            // Flow edges
             const flows = actionDef.children.filter(c => c.kind === 'FlowUsage') as FlowUsage[];
             for (const flow of flows) {
-                // Try to match source/target to sub-actions
                 const sourceParts = flow.source.split('.');
                 const targetParts = flow.target.split('.');
 
@@ -180,12 +155,10 @@ export default function ActionFlowView() {
                 }
             }
 
-            // Binding edges
             const bindings = actionDef.children.filter(c => c.kind === 'BindingUsage') as BindingUsage[];
             for (const bind of bindings) {
                 const sourceParts = bind.source.split('.');
 
-                // These are typically param bindings
                 const sourceAction = subActions.find(a => sourceParts[0] === a.name);
                 if (sourceAction) {
                     edges.push({
@@ -203,56 +176,46 @@ export default function ActionFlowView() {
 
         findActionDefs(model.children);
 
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const relEdges = buildRelationshipEdges(model, nodeIds);
+        edges.push(...relEdges);
+
         if (nodes.length > 0) {
-            const layouted = autoLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120 });
+            const layouted = autoLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120, edgeRouting: true });
             return { initialNodes: layouted.nodes, initialEdges: layouted.edges };
         }
 
         return { initialNodes: nodes, initialEdges: edges };
     }, [model, selectedNodeId, focusedNodeId]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    useEffect(() => {
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-    }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        selectNode(node.id);
+    const handleNodeClick = useCallback((nodeId: string) => {
+        selectNode(nodeId);
     }, [selectNode]);
 
-    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    const handleNodeContextMenu = useCallback((event: React.MouseEvent, nodeId: string) => {
         event.preventDefault();
-        setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            nodeId: node.id,
-        });
+        setContextMenu({ x: event.clientX, y: event.clientY, nodeId });
     }, []);
 
-    return (
-        <div className="diagram-container">
-            <ReactFlow
-                nodes={nodes}
-                edges={edgesState}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onNodeContextMenu={onNodeContextMenu}
-                nodeTypes={nodeTypes}
-                fitView
-                minZoom={0.1}
-                maxZoom={3}
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background gap={20} size={1} color="var(--grid-color)" />
-                <Controls />
-                <MiniMap nodeColor={() => '#8b5cf6'} />
-                <FocusZoom focusedNodeId={focusedNodeId} />
-            </ReactFlow>
+    const handleConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        createRelationship(String(connection.source), String(connection.target));
+    }, [createRelationship]);
 
+    return (
+        <>
+            <DiagramView
+                nodes={initialNodes}
+                edges={initialEdges}
+                nodeTypes={nodeTypes}
+                focusedNodeId={focusedNodeId}
+                onNodeClick={handleNodeClick}
+                onNodeContextMenu={handleNodeContextMenu}
+                onConnect={handleConnect}
+                emptyTitle="No actions to display"
+                emptyDescription="The Action Flow view shows actions, their decomposition, and flows between them."
+                minimapNodeColor={() => '#8b5cf6'}
+            />
             {contextMenu && (
                 <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
                     <MenuItem
@@ -260,12 +223,12 @@ export default function ActionFlowView() {
                             setFocusedNode(contextMenu.nodeId);
                             closeContextMenu();
                         }}
-                        icon="🔍"
+                        icon={Focus}
                     >
                         Focus This Item
                     </MenuItem>
                 </ContextMenu>
             )}
-        </div>
+        </>
     );
 }

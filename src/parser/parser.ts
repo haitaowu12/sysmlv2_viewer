@@ -83,6 +83,10 @@ class Lexer {
         return { line: this.line, column: this.col, offset: this.pos };
     }
 
+    get currentLine() {
+        return this.line;
+    }
+
     get remaining() {
         return this.input.slice(this.pos);
     }
@@ -252,13 +256,15 @@ class Lexer {
         this.skipWhitespace();
         if (this.peek() !== '{') return '';
         this.advance(); // {
+        this.enterBrace();
         let content = '';
         let depth = 1;
         while (!this.eof && depth > 0) {
             const ch = this.peek();
-            if (ch === '{') depth++;
+            if (ch === '{') { depth++; this.enterBrace(); }
             else if (ch === '}') {
                 depth--;
+                this.exitBrace();
                 if (depth === 0) { this.advance(); break; }
             }
             content += this.advance();
@@ -266,16 +272,42 @@ class Lexer {
         return content.trim();
     }
 
+    private braceDepth = 0;
+
+    enterBrace() { this.braceDepth++; }
+    exitBrace() { this.braceDepth = Math.max(0, this.braceDepth - 1); }
+
     error(message: string): Error {
+        return this.errorWithSeverity(message, 'error');
+    }
+
+    errorWithSeverity(message: string, severity: 'error' | 'warning' | 'info'): Error {
         const loc = this.position;
-        const lineContent = this.input.split('\n')[loc.line - 1] || '';
+        const lines = this.input.split('\n');
+        const lineContent = lines[loc.line - 1] || '';
         const suggestion = this.suggestCorrection();
         const suggestionText = suggestion ? `\n  Did you mean: ${suggestion}?` : '';
+        const context = this.extractContext(loc.line);
+        const severityLabel = severity === 'error' ? 'Error' : severity === 'warning' ? 'Warning' : 'Info';
         return new Error(
-            `Parse error at line ${loc.line}, column ${loc.column}: ${message}\n` +
+            `[${severityLabel}] Parse error at line ${loc.line}, column ${loc.column}: ${message}\n` +
             `  ${lineContent}\n` +
-            `  ${' '.repeat(Math.max(0, loc.column - 1))}^${suggestionText}`
+            `  ${' '.repeat(Math.max(0, loc.column - 1))}^${suggestionText}\n` +
+            `${context}`
         );
+    }
+
+    private extractContext(errorLine: number): string {
+        const lines = this.input.split('\n');
+        const start = Math.max(0, errorLine - 3);
+        const end = Math.min(lines.length, errorLine + 2);
+        const contextLines: string[] = [];
+        for (let i = start; i < end; i++) {
+            const lineNum = i + 1;
+            const marker = lineNum === errorLine ? '>' : ' ';
+            contextLines.push(`${marker} ${lineNum.toString().padStart(4, ' ')} | ${lines[i]}`);
+        }
+        return contextLines.length > 0 ? `Context:\n${contextLines.join('\n')}` : '';
     }
 
     suggestCorrection(): string | null {
@@ -299,6 +331,22 @@ class Lexer {
                 return `'${right.trimEnd()}' instead of '${wrong.trimEnd()}'`;
             }
         }
+
+        // Detect missing semicolon at end of line
+        const currentLine = this.input.split('\n')[this.line - 1] || '';
+        const trimmed = currentLine.trim();
+        if (trimmed && !trimmed.endsWith(';') && !trimmed.endsWith('{') && !trimmed.endsWith('}')) {
+            const nextTok = remaining.split(/\s/)[0];
+            if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+                return `add ';' at end of line`;
+            }
+        }
+
+        // Detect unmatched opening brace at EOF
+        if (this.eof && this.braceDepth > 0) {
+            return `close ${this.braceDepth} unmatched opening brace(s) with '}'`;
+        }
+
         return null;
     }
 }
@@ -312,26 +360,100 @@ export function parseSysML(input: string): SysMLModel {
         lexer.skipWhitespace();
         if (lexer.eof) break;
 
+        const lineBefore = lexer.currentLine;
         try {
             const node = parseElement(lexer);
             if (node) {
                 children.push(node);
             }
+            // Check for missing semicolon between elements on the same line
+            const lineAfter = lexer.currentLine;
+            if (lineAfter === lineBefore) {
+                lexer.skipWhitespace();
+                if (!lexer.eof) {
+                    const remaining = lexer.remaining.trimStart();
+                    const nextTok = remaining.split(/\s/)[0];
+                    if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+                        const currentLineText = input.split('\n')[lineAfter - 1] || '';
+                        const trimmed = currentLineText.trim();
+                        if (trimmed && !trimmed.endsWith(';') && !trimmed.endsWith('{') && !trimmed.endsWith('}')) {
+                            const suggestion = `add ';' at end of line`;
+                            errors.push({
+                                message: `Missing semicolon before '${nextTok}'`,
+                                location: {
+                                    start: lexer.position,
+                                    end: lexer.position,
+                                },
+                                severity: 'error',
+                                suggestion,
+                                context: lexer['extractContext'](lineAfter),
+                            });
+                        }
+                    }
+                }
+            }
         } catch (e) {
             const err = e as Error;
+            const parsedSeverity = parseSeverityFromMessage(err.message);
+            const suggestion = extractSuggestionFromMessage(err.message);
+            const context = extractContextFromMessage(err.message);
             errors.push({
-                message: err.message,
+                message: stripSeverityPrefix(err.message),
                 location: {
                     start: lexer.position,
                     end: lexer.position,
                 },
+                severity: parsedSeverity,
+                suggestion,
+                context,
             });
             // Skip to next semicolon or closing brace to recover
             skipToRecovery(lexer);
         }
     }
 
+    // Check for unmatched braces at EOF
+    if (lexer['braceDepth'] > 0) {
+        const suggestion = `close ${lexer['braceDepth']} unmatched opening brace(s) with '}'`;
+        errors.push({
+            message: `Unmatched opening brace at end of file`,
+            location: {
+                start: lexer.position,
+                end: lexer.position,
+            },
+            severity: 'error',
+            suggestion,
+            context: lexer['extractContext'](lexer.position.line),
+        });
+    }
+
     return { children, errors };
+}
+
+function parseSeverityFromMessage(message: string): 'error' | 'warning' | 'info' {
+    const m = message.match(/^\[(Error|Warning|Info)\]/);
+    if (m) {
+        const s = m[1].toLowerCase();
+        if (s === 'warning' || s === 'info') return s;
+    }
+    return 'error';
+}
+
+function stripSeverityPrefix(message: string): string {
+    return message.replace(/^\[(Error|Warning|Info)\]\s*/, '');
+}
+
+function extractSuggestionFromMessage(message: string): string | undefined {
+    const m = message.match(/Did you mean: (.+)\?/) || message.match(/Did you mean '(.+)'\?/);
+    return m ? m[1] : undefined;
+}
+
+function extractContextFromMessage(message: string): string | undefined {
+    const idx = message.indexOf('Context:\n');
+    if (idx >= 0) {
+        return message.slice(idx + 'Context:\n'.length);
+    }
+    return undefined;
 }
 
 function skipToRecovery(lexer: Lexer) {
@@ -473,8 +595,28 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         lexer.match('then');
         node = parseElement(lexer);
     } else {
-        // Unknown element - try to skip it gracefully
+        // Unknown element - check for common misspellings first
         const word = lexer.readIdentifier();
+        const corrections: Record<string, string> = {
+            partdef: 'part def',
+            portdef: 'port def',
+            actiondef: 'action def',
+            statedef: 'state def',
+            requirementdef: 'requirement def',
+            constraintdef: 'constraint def',
+            connectiondef: 'connection def',
+            interfacedef: 'interface def',
+            attributedef: 'attribute def',
+            itemdef: 'item def',
+            enumdef: 'enum def',
+        };
+        const lower = word.toLowerCase();
+        if (corrections[lower]) {
+            throw lexer.errorWithSeverity(
+                `Unknown keyword '${word}'. Did you mean '${corrections[lower]}'?`,
+                'error'
+            );
+        }
         node = parseGenericAfterKeyword(lexer, word);
     }
 
@@ -1274,10 +1416,24 @@ function parseBody(lexer: Lexer): SysMLNode[] {
     }
 
     if (!lexer.lookAheadChar('{')) {
+        // Check for missing semicolon before next keyword on same line
+        const lineBefore = lexer.currentLine;
+        lexer.skipWhitespace();
+        if (!lexer.eof && lexer.currentLine === lineBefore) {
+            const remaining = lexer.remaining.trimStart();
+            const nextTok = remaining.split(/\s/)[0];
+            if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+                throw lexer.errorWithSeverity(
+                    `Missing semicolon before '${nextTok}'. Did you mean: add ';' at end of line?`,
+                    'error'
+                );
+            }
+        }
         return [];
     }
 
     lexer.expect('{');
+    lexer.enterBrace();
     const children: SysMLNode[] = [];
 
     while (!lexer.eof && !lexer.lookAheadChar('}')) {
@@ -1311,7 +1467,12 @@ function parseBody(lexer: Lexer): SysMLNode[] {
         }
     }
 
-    lexer.match('}');
+    if (lexer.match('}')) {
+        lexer.exitBrace();
+    } else {
+        // Missing closing brace - keep braceDepth > 0 so EOF check catches it
+        throw lexer.errorWithSeverity("Expected '}'", 'error');
+    }
     return children;
 }
 

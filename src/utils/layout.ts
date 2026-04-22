@@ -4,11 +4,33 @@
 
 import dagre from 'dagre';
 import type { Node, Edge } from '@xyflow/react';
+import { routeEdges } from './edgeRouting';
 
 export interface LayoutOptions {
     direction?: 'TB' | 'LR' | 'BT' | 'RL';
     nodeSpacing?: number;
     rankSpacing?: number;
+    /** When true, compute orthogonal edge paths with obstacle avoidance. */
+    edgeRouting?: boolean;
+}
+
+export interface LayoutPreset {
+    direction: 'TB' | 'LR' | 'BT' | 'RL';
+    nodesep: number;
+    ranksep: number;
+}
+
+const LAYOUT_PRESETS: Record<string, LayoutPreset> = {
+    general: { direction: 'TB', nodesep: 80, ranksep: 100 },
+    interconnection: { direction: 'LR', nodesep: 80, ranksep: 120 },
+    stateTransition: { direction: 'TB', nodesep: 80, ranksep: 100 },
+    actionFlow: { direction: 'LR', nodesep: 60, ranksep: 120 },
+    requirements: { direction: 'TB', nodesep: 100, ranksep: 150 },
+    viewpoints: { direction: 'TB', nodesep: 100, ranksep: 150 },
+};
+
+export function getLayoutPreset(viewType: string): LayoutPreset {
+    return LAYOUT_PRESETS[viewType] ?? { direction: 'TB', nodesep: 80, ranksep: 100 };
 }
 
 export function autoLayout(
@@ -16,7 +38,7 @@ export function autoLayout(
     edges: Edge[],
     options: LayoutOptions = {}
 ): { nodes: Node[]; edges: Edge[] } {
-    const { direction = 'TB', nodeSpacing = 60, rankSpacing = 80 } = options;
+    const { direction = 'TB', nodeSpacing = 60, rankSpacing = 80, edgeRouting = false } = options;
 
     const g = new dagre.graphlib.Graph();
     g.setDefaultEdgeLabel(() => ({}));
@@ -55,6 +77,11 @@ export function autoLayout(
             },
         };
     });
+
+    if (edgeRouting) {
+        const routedEdges = routeEdges(edges, layoutedNodes, true);
+        return { nodes: layoutedNodes, edges: routedEdges };
+    }
 
     return { nodes: layoutedNodes, edges };
 }

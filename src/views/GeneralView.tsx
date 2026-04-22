@@ -3,42 +3,19 @@
  * Shows part definitions, their properties, and relationships (specialization, composition)
  */
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
-import {
-    ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
-    useNodesState,
-    useEdgesState,
-    useReactFlow,
-    type Node,
-    type Edge,
-    MarkerType,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import { useMemo, useCallback, useState } from 'react';
+import { type Node, type Edge, MarkerType, type Connection } from '@xyflow/react';
 import { useAppStore, getNodeId } from '../store/store';
 import type { SysMLNode, PartDef, PartUsage, PortDef, ItemDef } from '../parser/types';
 import { SysMLDiagramNode } from '../components/SysMLNode';
-import EmptyState from '../components/EmptyState';
 import { autoLayout } from '../utils/layout';
+import { buildRelationshipEdges } from '../utils/relationshipEdges';
 import { findRelatedNodeIds } from '../utils/focusUtils';
+import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
+import { Focus, Eye, EyeOff } from 'lucide-react';
 
 const nodeTypes = { sysmlNode: SysMLDiagramNode };
-
-// Helper to center view on focused node
-function FocusZoom({ focusedNodeId }: { focusedNodeId: string | null }) {
-    const { fitView } = useReactFlow();
-
-    useEffect(() => {
-        if (focusedNodeId) {
-            fitView({ nodes: [{ id: focusedNodeId }], duration: 800, padding: 0.5 });
-        }
-    }, [focusedNodeId, fitView]);
-
-    return null;
-}
 
 export default function GeneralView() {
     const model = useAppStore(s => s.model);
@@ -48,10 +25,10 @@ export default function GeneralView() {
     const selectNode = useAppStore(s => s.selectNode);
     const setFocusedNode = useAppStore(s => s.setFocusedNode);
     const toggleAttributeVisibility = useAppStore(s => s.toggleAttributeVisibility);
+    const createRelationship = useAppStore(s => s.createRelationship);
+    const openRelationshipModal = useAppStore(s => s.openRelationshipModal);
 
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
-
-    // Close context menu on click outside is handled by ContextMenu component now
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
     const { initialNodes, initialEdges } = useMemo(() => {
@@ -61,32 +38,12 @@ export default function GeneralView() {
         const edges: Edge[] = [];
         const processed = new Set<string>();
 
-        // Find node helper
-        const findNode = (id: string, list: SysMLNode[]): SysMLNode | null => {
-            for (const n of list) {
-                if (getNodeId(n) === id) return n;
-                const found = findNode(id, n.children);
-                if (found) return found;
-            }
-            return null;
-        };
-
         const visibleNodeIds = focusedNodeId ? findRelatedNodeIds(model.children, focusedNodeId) : null;
 
         function processNode(node: SysMLNode, parentId?: string) {
             const nodeId = getNodeId(node);
 
-            // Focus Filter
-            if (visibleNodeIds && !visibleNodeIds.has(nodeId)) {
-                // If this node is NOT visible, check if we should still process children?
-                // findRelatedNodeIds includes descendants. So no need to check further if not in set.
-                // However, we must ensure 'parentId' is valid.
-                // If parent is NOT in set, but child IS (e.g. focusing on child?), relatedIds includes descendants.
-                // If focusing on child, parent is included. 
-                // So if node is not in set, skip it entirely.
-                return;
-            }
-
+            if (visibleNodeIds && !visibleNodeIds.has(nodeId)) return;
             if (processed.has(nodeId)) return;
             processed.add(nodeId);
 
@@ -95,7 +52,6 @@ export default function GeneralView() {
             if (isDefNode || node.kind === 'PartUsage' || node.kind === 'ItemUsage') {
                 const compartments: { label: string; items: string[] }[] = [];
 
-                // Properties compartment - ONLY if not hidden
                 if (!hiddenAttributes[nodeId]) {
                     const props = node.children.filter(c =>
                         c.kind === 'AttributeUsage' || c.kind === 'PartUsage' || c.kind === 'PortUsage'
@@ -112,7 +68,6 @@ export default function GeneralView() {
                     }
                 }
 
-                // Ports compartment
                 const ports = node.children.filter(c => c.kind === 'PortDef' || c.kind === 'PortUsage');
                 if (ports.length > 0) {
                     compartments.push({
@@ -132,6 +87,7 @@ export default function GeneralView() {
                         compartments,
                         isSelected: nodeId === selectedNodeId,
                     },
+                    connectable: true,
                 });
 
                 if (parentId) {
@@ -146,7 +102,6 @@ export default function GeneralView() {
                     });
                 }
 
-                // Specialization edges
                 if ('superTypes' in node) {
                     const superTypes = (node as PartDef | PortDef | ItemDef).superTypes;
                     for (const sup of superTypes) {
@@ -172,11 +127,6 @@ export default function GeneralView() {
             }
         }
 
-        // If focused, we still iterate from root but filter inside processNode
-        // Or better: Iterate visibleNodeIds if available?
-        // But we need structure (parent-child edges).
-        // Safest: Iterate model tree and filter.
-
         for (const child of model.children) {
             processNode(child);
             if (child.kind === 'Package') {
@@ -186,69 +136,62 @@ export default function GeneralView() {
             }
         }
 
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const relEdges = buildRelationshipEdges(model, nodeIds);
+        edges.push(...relEdges);
+
         if (nodes.length > 0) {
-            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 80, rankSpacing: 100 });
+            const layouted = autoLayout(nodes, edges, { direction: 'TB', nodeSpacing: 80, rankSpacing: 100, edgeRouting: true });
             return { initialNodes: layouted.nodes, initialEdges: layouted.edges };
         }
 
         return { initialNodes: nodes, initialEdges: edges };
     }, [model, selectedNodeId, focusedNodeId, hiddenAttributes]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    useEffect(() => {
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-    }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        selectNode(String(node.id));
+    const handleNodeClick = useCallback((nodeId: string) => {
+        selectNode(nodeId);
     }, [selectNode]);
 
-    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    const handleNodeContextMenu = useCallback((event: React.MouseEvent, nodeId: string) => {
         event.preventDefault();
-        setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            nodeId: node.id,
-        });
+        setContextMenu({ x: event.clientX, y: event.clientY, nodeId });
     }, []);
 
-    return (
-        <div className="diagram-container">
-            {initialNodes.length === 0 ? (
-                <EmptyState
-                    title="No elements to display"
-                    description="The General view shows part definitions, their properties, and relationships."
-                />
-            ) : (
-            <ReactFlow
-                nodes={nodes}
-                edges={edgesState}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onNodeContextMenu={onNodeContextMenu}
-                nodeTypes={nodeTypes}
-                fitView
-                minZoom={0.1}
-                maxZoom={3}
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background gap={20} size={1} color="var(--grid-color)" />
-                <Controls />
-                <MiniMap
-                    nodeStrokeWidth={3}
-                    nodeColor={(n) => {
-                        const d = n.data as any;
-                        return d?.kind === 'Package' ? '#6366f1' : '#3b82f6';
-                    }}
-                />
-                <FocusZoom focusedNodeId={focusedNodeId} />
-            </ReactFlow>
-            )}
+    const handleConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        const sourceId = String(connection.source);
+        const targetId = String(connection.target);
 
+        const sourceNode = model?.children.flatMap(n => [n, ...n.children]).find(n => getNodeId(n) === sourceId);
+        const targetNode = model?.children.flatMap(n => [n, ...n.children]).find(n => getNodeId(n) === targetId);
+
+        const sourceKind = sourceNode?.kind || '';
+        const targetKind = targetNode?.kind || '';
+
+        if ((sourceKind === 'StateUsage' || sourceKind === 'StateDef') && (targetKind === 'StateUsage' || targetKind === 'StateDef')) {
+            openRelationshipModal(sourceId, targetId, 'transition');
+        } else {
+            createRelationship(sourceId, targetId);
+        }
+    }, [model, createRelationship, openRelationshipModal]);
+
+    return (
+        <>
+            <DiagramView
+                nodes={initialNodes}
+                edges={initialEdges}
+                nodeTypes={nodeTypes}
+                focusedNodeId={focusedNodeId}
+                onNodeClick={handleNodeClick}
+                onNodeContextMenu={handleNodeContextMenu}
+                onConnect={handleConnect}
+                emptyTitle="No elements to display"
+                emptyDescription="The General view shows part definitions, their properties, and relationships."
+                minimapNodeColor={(n) => {
+                    const d = n.data as any;
+                    return d?.kind === 'Package' ? '#6366f1' : '#3b82f6';
+                }}
+            />
             {contextMenu && (
                 <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
                     <MenuItem
@@ -256,7 +199,7 @@ export default function GeneralView() {
                             setFocusedNode(contextMenu.nodeId);
                             closeContextMenu();
                         }}
-                        icon="🔍"
+                        icon={Focus}
                     >
                         Focus This Item
                     </MenuItem>
@@ -265,12 +208,12 @@ export default function GeneralView() {
                             toggleAttributeVisibility(contextMenu.nodeId);
                             closeContextMenu();
                         }}
-                        icon={hiddenAttributes[contextMenu.nodeId] ? '👁️' : '🚫'}
+                        icon={hiddenAttributes[contextMenu.nodeId] ? Eye : EyeOff}
                     >
                         {hiddenAttributes[contextMenu.nodeId] ? 'Show Attributes' : 'Hide Attributes'}
                     </MenuItem>
                 </ContextMenu>
             )}
-        </div>
+        </>
     );
 }

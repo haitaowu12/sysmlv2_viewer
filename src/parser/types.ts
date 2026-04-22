@@ -327,9 +327,14 @@ export interface SysMLModel {
     errors: ParseError[];
 }
 
+export type ErrorSeverity = 'error' | 'warning' | 'info';
+
 export interface ParseError {
     message: string;
     location?: SourceLocation;
+    severity?: ErrorSeverity;
+    suggestion?: string;
+    context?: string;
 }
 
 export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef | UseCaseDef | AllocationDef;
