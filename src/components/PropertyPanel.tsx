@@ -645,6 +645,7 @@ export default function PropertyPanel() {
                                 </div>
                             )}
                             <button
+                                type="button"
                                 onClick={handleAddAttribute}
                                 disabled={!newAttr.name.trim()}
                                 style={{
@@ -658,7 +659,9 @@ export default function PropertyPanel() {
                                     cursor: newAttr.name.trim() ? 'pointer' : 'not-allowed',
                                     fontSize: '12px',
                                     fontWeight: '500',
-                                    transition: 'all var(--transition)'
+                                    transition: 'all var(--transition)',
+                                    position: 'relative',
+                                    zIndex: 1,
                                 }}
                             >
                                 Add Attribute
