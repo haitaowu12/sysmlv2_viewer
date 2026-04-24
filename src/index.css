@@ -289,13 +289,13 @@ body {
 
 /* Left Panel — Explorer */
 .panel-left {
-  width: 250px;
-  min-width: 200px;
+  min-width: 180px;
   border-right: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Center Panel — Editor + Diagram */
@@ -307,13 +307,13 @@ body {
 
 /* Right Panel — Properties */
 .panel-right {
-  width: 280px;
-  min-width: 220px;
+  min-width: 200px;
   border-left: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Split Panel */
@@ -1886,11 +1886,31 @@ select:hover,
 }
 
 .resizable-divider {
-  width: 4px;
+  width: 6px;
   cursor: col-resize;
   background: var(--border-primary);
   transition: background var(--transition);
   flex-shrink: 0;
+  position: relative;
+}
+
+.resizable-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.resizable-divider:hover::after,
+.resizable-divider.active::after {
+  opacity: 0.5;
 }
 
 .resizable-divider:hover,
