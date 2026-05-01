@@ -2,7 +2,7 @@
  * Modal dialog for confirming and customizing relationships between nodes.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store/store';
 
 export interface RelationshipModalProps {
@@ -15,12 +15,6 @@ export interface RelationshipModalProps {
 
 export default function RelationshipModal({ isOpen, sourceKind, targetKind, onConfirm, onCancel }: RelationshipModalProps) {
   const [details, setDetails] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      setDetails('');
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -37,6 +31,14 @@ export default function RelationshipModal({ isOpen, sourceKind, targetKind, onCo
   const relType = inferRelationshipType();
 
   const showDetailsInput = relType === 'transition';
+  const handleCancel = () => {
+    setDetails('');
+    onCancel();
+  };
+  const handleConfirm = () => {
+    onConfirm(details);
+    setDetails('');
+  };
 
   return (
     <div
@@ -49,7 +51,7 @@ export default function RelationshipModal({ isOpen, sourceKind, targetKind, onCo
         justifyContent: 'center',
         zIndex: 1000,
       }}
-      onClick={onCancel}
+      onClick={handleCancel}
     >
       <div
         style={{
@@ -140,7 +142,7 @@ export default function RelationshipModal({ isOpen, sourceKind, targetKind, onCo
           }}
         >
           <button
-            onClick={onCancel}
+              onClick={handleCancel}
             style={{
               padding: '8px 16px',
               borderRadius: 'var(--radius-md, 8px)',
@@ -154,7 +156,7 @@ export default function RelationshipModal({ isOpen, sourceKind, targetKind, onCo
             Cancel
           </button>
           <button
-            onClick={() => onConfirm(details)}
+              onClick={handleConfirm}
             style={{
               padding: '8px 16px',
               borderRadius: 'var(--radius-md, 8px)',

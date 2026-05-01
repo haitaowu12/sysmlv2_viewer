@@ -16,6 +16,7 @@ function pickProvider(payload, headers) {
     payload.provider ||
     headers['x-ai-provider'] ||
     headers['x-provider'] ||
+    process.env.SYSML_AI_PROVIDER ||
     'local'
   ).toString().toLowerCase();
 }
@@ -25,17 +26,28 @@ function pickModel(payload, headers) {
     payload.model ||
     headers['x-ai-model'] ||
     headers['x-model'] ||
+    process.env.SYSML_AI_MODEL ||
     'gpt-4.1-mini'
   ).toString();
 }
 
-function pickApiKey(payload, headers) {
-  return (
-    payload.apiKey ||
-    headers['x-ai-key'] ||
-    headers['authorization']?.replace(/^Bearer\s+/i, '') ||
-    ''
-  ).toString();
+function pickApiKey(provider) {
+  if (provider === 'openai') return process.env.OPENAI_API_KEY || '';
+  if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || '';
+  if (provider === 'google') return process.env.GOOGLE_API_KEY || '';
+  return '';
+}
+
+export function getAiRuntimeConfig() {
+  return {
+    defaultProvider: process.env.SYSML_AI_PROVIDER || 'local',
+    defaultModel: process.env.SYSML_AI_MODEL || 'gpt-4.1-mini',
+    configuredProviders: {
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      google: Boolean(process.env.GOOGLE_API_KEY),
+    },
+  };
 }
 
 function decodeBase64(base64Data) {
@@ -464,7 +476,7 @@ function buildSystemPrompt() {
 export async function generateModel(payload, headers) {
   const provider = pickProvider(payload, headers);
   const model = pickModel(payload, headers);
-  const apiKey = pickApiKey(payload, headers);
+  const apiKey = pickApiKey(provider);
   const prompt = String(payload.prompt || '').trim();
 
   const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
@@ -521,7 +533,7 @@ export async function generateModel(payload, headers) {
 export async function editModel(payload, headers) {
   const provider = pickProvider(payload, headers);
   const model = pickModel(payload, headers);
-  const apiKey = pickApiKey(payload, headers);
+  const apiKey = pickApiKey(provider);
   const prompt = String(payload.prompt || '').trim();
   const sourceCode = String(payload.sourceCode || '');
 

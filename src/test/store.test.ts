@@ -47,6 +47,17 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().canUndo()).toBe(true);
   });
 
+  it('redo restores the edited source after undo', () => {
+    useAppStore.getState().setSourceCode('part def UndoRedoA;');
+    useAppStore.getState().setSourceCode('part def UndoRedoB;');
+
+    useAppStore.getState().undo();
+    expect(useAppStore.getState().sourceCode).toBe('part def UndoRedoA;');
+
+    useAppStore.getState().redo();
+    expect(useAppStore.getState().sourceCode).toBe('part def UndoRedoB;');
+  });
+
   it('sets active view', () => {
     useAppStore.getState().setActiveView('actionFlow');
     expect(useAppStore.getState().activeView).toBe('actionFlow');

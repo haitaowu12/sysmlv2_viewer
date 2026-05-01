@@ -14,6 +14,7 @@ import { findRelatedNodeIds } from '../utils/focusUtils';
 import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
 import { Focus } from 'lucide-react';
+import { nodeProperties } from '../utils/nodeProperties';
 
 const nodeTypes = { actionNode: ActionNode, pseudoState: PseudoStateNode };
 
@@ -53,23 +54,23 @@ export default function ActionFlowView() {
             if (visibleNodeIds && !visibleNodeIds.has(actionId)) return;
 
             const params = actionDef.children.filter(c =>
-                c.kind === 'AttributeUsage' && (c as any).direction
+                c.kind === 'AttributeUsage' && nodeProperties(c).direction
             );
 
-            const inParams = params.filter(p => (p as any).direction === 'in');
-            const outParams = params.filter(p => (p as any).direction === 'out');
+            const inParams = params.filter(p => nodeProperties(p).direction === 'in');
+            const outParams = params.filter(p => nodeProperties(p).direction === 'out');
 
             const compartments: { label: string; items: string[] }[] = [];
             if (inParams.length > 0) {
                 compartments.push({
                     label: 'in',
-                    items: inParams.map(p => `${p.name}${(p as any).typeName ? ': ' + (p as any).typeName : ''}`),
+                    items: inParams.map(p => `${p.name}${nodeProperties(p).typeName ? ': ' + nodeProperties(p).typeName : ''}`),
                 });
             }
             if (outParams.length > 0) {
                 compartments.push({
                     label: 'out',
-                    items: outParams.map(p => `${p.name}${(p as any).typeName ? ': ' + (p as any).typeName : ''}`),
+                    items: outParams.map(p => `${p.name}${nodeProperties(p).typeName ? ': ' + nodeProperties(p).typeName : ''}`),
                 });
             }
 
@@ -92,12 +93,12 @@ export default function ActionFlowView() {
                 const subId = getNodeId(sub);
 
                 const subParams = sub.children.filter(c =>
-                    c.kind === 'AttributeUsage' && (c as any).direction
+                    c.kind === 'AttributeUsage' && nodeProperties(c).direction
                 );
                 const subCompartments: { label: string; items: string[] }[] = [];
 
-                const subIn = subParams.filter(p => (p as any).direction === 'in');
-                const subOut = subParams.filter(p => (p as any).direction === 'out');
+                const subIn = subParams.filter(p => nodeProperties(p).direction === 'in');
+                const subOut = subParams.filter(p => nodeProperties(p).direction === 'out');
 
                 if (subIn.length > 0) {
                     subCompartments.push({ label: 'in', items: subIn.map(p => p.name) });
@@ -111,7 +112,7 @@ export default function ActionFlowView() {
                     type: 'actionNode',
                     position: { x: 0, y: 0 },
                     data: {
-                        label: `${sub.name}${(sub as any).typeName ? ': ' + (sub as any).typeName : ''}`,
+                        label: `${sub.name}${nodeProperties(sub).typeName ? ': ' + nodeProperties(sub).typeName : ''}`,
                         kind: 'ActionUsage',
                         icon: '⚡',
                         compartments: subCompartments,

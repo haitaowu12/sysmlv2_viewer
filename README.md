@@ -1,63 +1,71 @@
----
-title: SysML Viewer (Enhanced)
-date_converted: '2026-03-04'
-domain: general
-tags:
-- sysml
----
+# SysML Viewer
 
-# SysML Viewer (Enhanced)
+Private/local SysML v2 visual editor with synchronized text, diagram, Draw.io, SVG, and AI-assisted modeling workflows.
 
-A SysML v2 editor with synchronized Draw.io visualization and in-app AI-assisted model generation/editing.
+## Features
 
-## What changed
+- SysML v2 text editor with live parsing and diagnostics.
+- Diagram views for General, Interconnection, Action Flow, State Transition, Requirements, Viewpoints, and Draw.io.
+- Import/export for `.sysml`, `.drawio`, `.svg`, and `.png`.
+- Bidirectional SysML v2 to Draw.io synchronization for the supported structural subset.
+- Local AI API with server-held provider keys and local heuristic fallback.
+- Undo/redo, panel resizing, dark/light theme, keyboard shortcuts, and component library insertion.
 
-This workspace now includes:
-
-- Bidirectional SysML v2 <-> Draw.io synchronization (structural V1 subset)
-- Interactive Draw.io embed tab in the main UI
-- View-scoped Draw.io generation mode (`General`, `Interconnection`, `Requirements`, `Verification`, `All`)
-- Hybrid patch safety flow (`safe` auto-apply, `review_required` manual)
-- Export support for `.sysml`, `.drawio`, `.svg`, `.png`
-- In-app AI chat panel with BYOK provider headers and local fallback generator
-- API endpoints:
-  - `POST /api/ai/generate-model`
-  - `POST /api/ai/edit-model`
-  - `POST /api/validate/drawio`
-  - `GET /api/health`
-
-## Launch the updated app
-
-From this folder:
+## Quickstart
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (typically `http://localhost:5173/sysmlv2_viewer/`).
+Open the Vite URL, normally `http://localhost:5173/sysmlv2_viewer/`.
 
-### Confirm you are in the enhanced build
+For the standalone API server:
 
-1. Top toolbar shows a `Draw.io` button (`🧩`).
-2. View tabs include `Draw.io`.
-3. Right panel has `AI Chat` tab.
-4. Export format selector includes `.drawio`, `.svg`, `.png`.
-5. Draw.io toolbar includes a view selector so diagrams stay logically grouped by concern.
+```bash
+npm run dev:api
+```
 
-If these are missing, you are likely running a different project or an old deployed build.
+## AI Configuration
 
-## Shortcuts
+Browser requests never send provider API keys. Configure keys on the local API server:
 
-- Open Draw.io bridge: `Ctrl/Cmd + Shift + D`
-- Open AI chat panel: `Ctrl/Cmd + Shift + I`
+```bash
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+GOOGLE_API_KEY=...
+SYSML_AI_PROVIDER=openai
+SYSML_AI_MODEL=gpt-4.1-mini
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+```
 
-## Scope status
+If no provider key is configured, AI generation falls back to the local heuristic generator.
 
-V1 focuses on structural roundtrip for:
+## Scripts
 
-- `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`
-- `RequirementDef`, `RequirementUsage`, `satisfy`
-- `VerificationDef`, `VerificationUsage`, `verify`
+- `npm run dev` - Vite development app with the local API plugin.
+- `npm run dev:api` - standalone Node API server on `PORT` or `8787`.
+- `npm run build` - TypeScript and production Vite build.
+- `npm run lint` - ESLint production gate.
+- `npm run test` - Vitest suite.
+- `npm run preview` - serve the production build.
 
-SysML text remains canonical semantics; visual/layout edits are synchronized with patch safety classification.
+## Security Notes
+
+- Default CORS is restricted to local Vite/preview origins.
+- AI provider keys are read from server environment variables only.
+- Draw.io embed messaging is restricted to `https://embed.diagrams.net`.
+- The app is intended for private/local use. Do not expose the API server publicly without adding authentication, request logging policy, and stricter deployment controls.
+
+## Supported SysML Subset
+
+Primary roundtrip coverage includes `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
+
+The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable.
+
+## Troubleshooting
+
+- Draw.io not loading: use the Draw.io tab's advanced XML editor fallback.
+- AI provider call falls back locally: confirm the matching provider env key is present on the API server.
+- Diagram appears offscreen after heavy edits: switch views or use the Draw.io reflow action.
+- Import has parse errors: check the editor markers and status bar diagnostics.

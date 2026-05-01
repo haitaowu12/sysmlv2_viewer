@@ -14,6 +14,7 @@ import { findRelatedNodeIds } from '../utils/focusUtils';
 import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
 import { Focus } from 'lucide-react';
+import { nodeProperties } from '../utils/nodeProperties';
 
 const nodeTypes = {
     sysmlNode: SysMLDiagramNode,
@@ -87,7 +88,7 @@ export default function InterconnectionView() {
                 if (childParts.length > 0) {
                     compartments.push({
                         label: 'parts',
-                        items: childParts.map(p => `${p.name}${(p as any).typeName ? ': ' + (p as any).typeName : ''}${(p as any).multiplicity ? '[' + (p as any).multiplicity + ']' : ''}`),
+                        items: childParts.map(p => `${p.name}${nodeProperties(p).typeName ? ': ' + nodeProperties(p).typeName : ''}${nodeProperties(p).multiplicity ? '[' + nodeProperties(p).multiplicity + ']' : ''}`),
                     });
                 }
                 if (childPorts.length > 0) {
@@ -102,7 +103,7 @@ export default function InterconnectionView() {
                     type: 'sysmlNode',
                     position: { x: 0, y: 0 },
                     data: {
-                        label: `${child.name}${(child as any).typeName ? ': ' + (child as any).typeName : ''}`,
+                        label: `${child.name}${nodeProperties(child).typeName ? ': ' + nodeProperties(child).typeName : ''}`,
                         kind: 'PartUsage',
                         icon: '',
                         compartments,

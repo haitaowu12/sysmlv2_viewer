@@ -278,10 +278,13 @@ function defaultNodeKindForView(view: DrawioViewMode): SemanticNodeKind {
   return 'PartDef';
 }
 
-function pushToHistory(state: { history: string[]; historyIndex: number; maxHistorySize: number; sourceCode: string }): { history: string[]; historyIndex: number } {
-  const { history, historyIndex, maxHistorySize, sourceCode } = state;
+function pushToHistory(state: { history: string[]; historyIndex: number; maxHistorySize: number; sourceCode: string }, nextSource = state.sourceCode): { history: string[]; historyIndex: number } {
+  const { history, historyIndex, maxHistorySize } = state;
   const newHistory = history.slice(0, historyIndex + 1);
-  newHistory.push(sourceCode);
+  if (newHistory[newHistory.length - 1] === nextSource) {
+    return { history: newHistory, historyIndex: newHistory.length - 1 };
+  }
+  newHistory.push(nextSource);
   if (newHistory.length > maxHistorySize) {
     newHistory.shift();
     return { history: newHistory, historyIndex: newHistory.length - 1 };
@@ -326,7 +329,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setSourceCode: (code) => {
     const state = get();
-    const hist = pushToHistory(state);
+    const hist = pushToHistory(state, code);
     set({ sourceCode: code, isModified: true, ...hist });
   },
 
@@ -545,9 +548,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       let hist: { history: string[]; historyIndex: number } | undefined;
       if (!conflict && safePatches.length > 0) {
-        hist = pushToHistory(state);
         const patchResult = applySyncPatches(nextSource, safePatches);
         nextSource = patchResult.sourceCode;
+        hist = pushToHistory(state, nextSource);
         appliedPatches = patchResult.appliedPatches;
         queuedReviewPatches.push(...patchResult.reviewPatches);
         diagnostics.push(...patchResult.diagnostics);
@@ -639,9 +642,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const patch = state.pendingPatchReview.find((item) => item.id === patchId);
     if (!patch) return;
 
-    const hist = pushToHistory(state);
     const patchResult = applySyncPatches(state.sourceCode, [{ ...patch, safety: 'safe' }]);
     const nextSource = patchResult.sourceCode;
+    const hist = pushToHistory(state, nextSource);
     const model = parseSysML(nextSource);
 
     set((prev) => ({
@@ -678,10 +681,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.pendingPatchReview.length === 0) return;
 
-    const hist = pushToHistory(state);
     const forcedSafe = state.pendingPatchReview.map((patch) => ({ ...patch, safety: 'safe' as const }));
     const patchResult = applySyncPatches(state.sourceCode, forcedSafe);
     const nextSource = patchResult.sourceCode;
+    const hist = pushToHistory(state, nextSource);
     const model = parseSysML(nextSource);
     const nextHash = sysmlPathHash(nextSource);
     const newSelectedNode = refreshModelSelection(model, state.selectedNode);
@@ -724,7 +727,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   applyGeneratedModel: ({ sysml, drawioXml, diagnostics = [] }) => {
     const state = get();
-    const hist = pushToHistory(state);
     const currentMode = state.drawioViewMode;
     let resolvedDrawio = drawioXml ?? '';
     let layout = { ...state.layoutMap };
@@ -747,6 +749,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const model = parseSysML(sysml);
     const sourceHash = sysmlPathHash(sysml);
+    const hist = pushToHistory(state, sysml);
 
     set({
       sourceCode: sysml,
@@ -810,9 +813,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { sourceCode, selectedNode } = get();
     if (!selectedNode || !selectedNode.location) return;
 
-    const hist = pushToHistory(get());
     const { start, end } = selectedNode.location;
     const newCode = sourceCode.slice(0, start.offset) + sourceCode.slice(end.offset);
+    const hist = pushToHistory(get(), newCode);
 
     set({ sourceCode: newCode, selectedNode: null, selectedNodeId: null, isModified: true, ...hist });
     get().parseSource();
@@ -839,7 +842,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       newCode += '\n\n' + template;
     }
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -950,7 +953,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       newCode += '\n\n' + template;
     }
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
     get().syncFromSysml();
@@ -990,7 +993,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { start, end } = attrNode.location;
     const newCode = sourceCode.slice(0, start.offset) + newLine + sourceCode.slice(end.offset);
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -1006,7 +1009,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const insertPos = node.location.end.offset - 1;
     const newCode = sourceCode.slice(0, insertPos) + newLine + sourceCode.slice(insertPos);
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -1023,7 +1026,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { start, end } = attrNode.location;
     const newCode = sourceCode.slice(0, start.offset) + sourceCode.slice(end.offset);
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -1086,7 +1089,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const newCode = sourceCode.slice(0, start.offset) + newNodeSource + sourceCode.slice(end.offset);
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -1113,7 +1116,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       newCode = sourceCode.slice(0, insertPos) + newDoc + sourceCode.slice(insertPos);
     }
 
-    const hist = pushToHistory(get());
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
   },
@@ -1203,11 +1206,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       newCode += '\n\n' + codeToInsert;
     }
 
-    const hist = pushToHistory(get());
     const parseResult = parseSysML(newCode);
     if (parseResult.errors.length > 0) {
       window.dispatchEvent(new CustomEvent('sysml-toast', { detail: { message: 'Warning: generated code has parse errors', type: 'warning' } }));
     }
+    const hist = pushToHistory(get(), newCode);
     set({ sourceCode: newCode, isModified: true, ...hist });
     get().parseSource();
     get().syncFromSysml();
