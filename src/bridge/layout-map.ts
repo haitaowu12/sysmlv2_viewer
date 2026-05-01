@@ -1,5 +1,5 @@
 import type { LayoutMap, SemanticModel } from './semantic-types';
-import dagre from 'dagre';
+import dagre from '@dagrejs/dagre';
 
 const START_X = 40;
 const START_Y = 40;
@@ -166,7 +166,7 @@ function buildSmartLayout(model: SemanticModel, userPositions: LayoutMap = {}): 
     const height = DEFAULT_HEIGHT[node.kind] ?? 90;
     const bandOffset = nodeBand(node.kind) * 320;
 
-    let x = snap((measured?.x ?? START_X + width / 2) - width / 2);
+    const x = snap((measured?.x ?? START_X + width / 2) - width / 2);
     let y = snap((measured?.y ?? START_Y + height / 2) - height / 2 + bandOffset);
 
     let attempts = 0;

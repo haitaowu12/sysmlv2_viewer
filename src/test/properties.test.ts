@@ -178,8 +178,7 @@ describe('updateNodeProperty validation', () => {
     const engineId = getNodeId(engine);
 
     const codeBefore = useAppStore.getState().sourceCode;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (useAppStore.getState().updateNodeProperty as any)(engineId, 'unknownProperty', 'value');
+    useAppStore.getState().updateNodeProperty(engineId, 'unknownProperty', 'value');
     const newCode = useAppStore.getState().sourceCode;
 
     // The store returns early for unknown properties, so code should be unchanged

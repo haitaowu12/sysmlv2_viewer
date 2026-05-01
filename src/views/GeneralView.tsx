@@ -188,8 +188,7 @@ export default function GeneralView() {
                 emptyTitle="No elements to display"
                 emptyDescription="The General view shows part definitions, their properties, and relationships."
                 minimapNodeColor={(n) => {
-                    const d = n.data as any;
-                    return d?.kind === 'Package' ? '#6366f1' : '#3b82f6';
+                    return n.data?.kind === 'Package' ? '#0891b2' : '#3b82f6';
                 }}
             />
             {contextMenu && (

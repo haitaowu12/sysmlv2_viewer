@@ -14,6 +14,7 @@ import { findRelatedNodeIds } from '../utils/focusUtils';
 import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
 import { Focus } from 'lucide-react';
+import { nodeProperties } from '../utils/nodeProperties';
 
 const nodeTypes = {
     requirementNode: RequirementNode,
@@ -70,7 +71,7 @@ export default function RequirementsView() {
             if (attrs.length > 0) {
                 compartments.push({
                     label: 'attributes',
-                    items: attrs.map(a => `${a.name}${(a as any).typeName ? ': ' + (a as any).typeName : ''}`),
+                    items: attrs.map(a => `${a.name}${nodeProperties(a).typeName ? ': ' + nodeProperties(a).typeName : ''}`),
                 });
             }
 
@@ -116,7 +117,7 @@ export default function RequirementsView() {
 
                 const satisfies = item.children.filter(c => c.kind === 'RequirementUsage' || c.kind === 'RequirementDef');
                 for (const sat of satisfies) {
-                    const targetReqName = sat.name || (sat as any).typeName;
+                    const targetReqName = sat.name || nodeProperties(sat).typeName;
                     if (targetReqName && reqDefs.has(targetReqName)) {
                         const targetReqId = reqDefs.get(targetReqName)!;
 

@@ -3,7 +3,8 @@
  * Converts the AST back to SysML v2 textual notation
  */
 
-import type { SysMLNode, SysMLModel, DocNode, TransitionUsage, FlowUsage, BindingUsage, ImportNode, ConstraintUsage, AttributeUsage } from './types';
+import type { SysMLNode, SysMLModel, DocNode, TransitionUsage, FlowUsage, BindingUsage, ImportNode, ConstraintUsage, AttributeUsage, CommentNode, ConnectionUsage, StateUsage } from './types';
+import { nodeProperties } from '../utils/nodeProperties';
 
 export function serializeModel(model: SysMLModel): string {
     return model.children.map(node => serializeNode(node, 0)).join('\n\n');
@@ -73,7 +74,7 @@ function serializeNode(node: SysMLNode, level: number): string {
         case 'Doc':
             return `${i}doc /* ${(node as DocNode).text} */`;
         case 'Comment':
-            return `${i}/* ${(node as any).text} */`;
+            return `${i}/* ${(node as CommentNode).text} */`;
         default:
             return `${i}// ${node.kind}: ${node.name}`;
     }
@@ -95,8 +96,9 @@ function serializeDefinition(node: SysMLNode, keyword: string, level: number, vi
     const name = node.name.includes(' ') ? `'${node.name}'` : node.name;
 
     let supers = '';
-    if ('superTypes' in node && (node as any).superTypes?.length) {
-        supers = ` :> ${(node as any).superTypes.join(', ')}`;
+    const props = nodeProperties(node);
+    if (props.superTypes?.length) {
+        supers = ` :> ${props.superTypes.join(', ')}`;
     }
 
     if (node.children.length === 0) {
@@ -109,9 +111,10 @@ function serializeDefinition(node: SysMLNode, keyword: string, level: number, vi
 
 function serializeUsage(node: SysMLNode, keyword: string, level: number, vis: string): string {
     const i = indent(level);
-    const typed = 'typeName' in node && (node as any).typeName ? ` : ${(node as any).typeName}` : '';
-    const redef = 'isRedefine' in node && (node as any).isRedefine ? 'redefines ' : '';
-    const mult = 'multiplicity' in node && (node as any).multiplicity ? `[${(node as any).multiplicity}]` : '';
+    const props = nodeProperties(node);
+    const typed = props.typeName ? ` : ${props.typeName}` : '';
+    const redef = props.isRedefine ? 'redefines ' : '';
+    const mult = props.multiplicity ? `[${props.multiplicity}]` : '';
 
     if (node.children.length === 0) {
         return `${i}${vis}${keyword} ${redef}${node.name}${typed}${mult};`;
@@ -123,14 +126,14 @@ function serializeUsage(node: SysMLNode, keyword: string, level: number, vis: st
 
 function serializeConnectionUsage(node: SysMLNode, level: number, vis: string): string {
     const i = indent(level);
-    const conn = node as any;
+    const conn = node as ConnectionUsage;
     const typed = conn.typeName ? ` : ${conn.typeName}` : '';
     return `${i}${vis}connect${typed} ${conn.source} to ${conn.target};`;
 }
 
 function serializeStateUsage(node: SysMLNode, level: number): string {
     const i = indent(level);
-    const state = node as any;
+    const state = node as StateUsage;
     const parallel = state.isParallel ? 'parallel ' : '';
 
     if (node.children.length === 0) {

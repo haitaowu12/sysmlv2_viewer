@@ -14,8 +14,17 @@ import { findRelatedNodeIds } from '../utils/focusUtils';
 import DiagramView from '../components/DiagramView';
 import ContextMenu, { MenuItem } from '../components/ContextMenu';
 import { Focus } from 'lucide-react';
+import { nodeProperties } from '../utils/nodeProperties';
 
-function ViewpointNode({ data }: { data: any }) {
+interface ViewpointNodeData {
+    concerns?: string[];
+    doc?: string;
+    isSelected?: boolean;
+    label?: string;
+    viewpoint?: string;
+}
+
+function ViewpointNode({ data }: { data: ViewpointNodeData }) {
     return (
         <div className={`sysml-node viewpoint-node ${data.isSelected ? 'selected' : ''}`}
             style={{ borderColor: '#8b5cf6' }}>
@@ -40,7 +49,7 @@ function ViewpointNode({ data }: { data: any }) {
     );
 }
 
-function ViewNode({ data }: { data: any }) {
+function ViewNode({ data }: { data: ViewpointNodeData }) {
     return (
         <div className={`sysml-node view-node ${data.isSelected ? 'selected' : ''}`}
             style={{ borderColor: '#06b6d4' }}>
@@ -103,7 +112,7 @@ export default function ViewpointsView() {
 
                 if (item.kind === 'ViewpointDef' || item.kind === 'ViewpointUsage') {
                     const doc = item.children.find(c => c.kind === 'Doc') as DocNode | undefined;
-                    const concerns = (item as any).concerns || [];
+                    const concerns = nodeProperties(item).concerns || [];
 
                     nodes.push({
                         id: itemId,
@@ -125,7 +134,7 @@ export default function ViewpointsView() {
 
                 if (item.kind === 'ViewDef' || item.kind === 'ViewUsage') {
                     const doc = item.children.find(c => c.kind === 'Doc') as DocNode | undefined;
-                    const viewpoint = (item as any).viewpoint;
+                    const viewpoint = nodeProperties(item).viewpoint;
 
                     nodes.push({
                         id: itemId,

@@ -11,6 +11,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useNodesInitialized,
   useReactFlow,
   type Node,
   type Edge,
@@ -43,6 +44,21 @@ function FocusZoom({ focusedNodeId }: { focusedNodeId: string | null }) {
       fitView({ nodes: [{ id: focusedNodeId }], duration: 800, padding: 0.5 });
     }
   }, [focusedNodeId, fitView]);
+
+  return null;
+}
+
+function AutoFit({ nodeIds }: { nodeIds: string }) {
+  const { fitView } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
+
+  useEffect(() => {
+    if (!nodeIds || !nodesInitialized) return;
+    const frame = window.requestAnimationFrame(() => {
+      fitView({ duration: 300, padding: 0.25, minZoom: 0.22, maxZoom: 1 });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [fitView, nodeIds, nodesInitialized]);
 
   return null;
 }
@@ -88,10 +104,6 @@ export default function DiagramView({
   const isEmpty = initialNodes.length === 0;
 
   const [hasRenderError, setHasRenderError] = useState(false);
-
-  useEffect(() => {
-    setHasRenderError(false);
-  }, [initialNodes, initialEdges]);
 
   if (hasRenderError) {
     return (
@@ -166,7 +178,8 @@ export default function DiagramView({
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             fitView
-            minZoom={0.1}
+            fitViewOptions={{ padding: 0.25, minZoom: 0.22, maxZoom: 1 }}
+            minZoom={0.2}
             maxZoom={3}
             proOptions={{ hideAttribution: true }}
           >
@@ -177,6 +190,7 @@ export default function DiagramView({
               nodeColor={minimapNodeColor ? (n) => minimapNodeColor(n as Node) : undefined}
             />
             <FocusZoom focusedNodeId={focusedNodeId ?? null} />
+            <AutoFit nodeIds={flowNodes.map((node) => node.id).join('|')} />
             {children}
           </ReactFlow>
         )}

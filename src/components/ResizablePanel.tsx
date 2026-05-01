@@ -26,7 +26,9 @@ export default function ResizablePanel({ defaultWidth, minWidth, maxWidth, side,
   useEffect(() => {
     try {
       localStorage.setItem(persistKey, String(width));
-    } catch {}
+    } catch {
+      // Storage can be unavailable in private or managed browser contexts.
+    }
   }, [width, persistKey]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

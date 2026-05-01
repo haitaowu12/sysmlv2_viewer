@@ -192,6 +192,7 @@ export interface AttributeUsage extends SysMLNode {
     kind: 'AttributeUsage';
     typeName?: string;
     defaultValue?: string;
+    direction?: 'in' | 'out' | 'inout';
     isRedefine?: boolean;
 }
 

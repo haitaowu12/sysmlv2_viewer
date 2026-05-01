@@ -1,4 +1,4 @@
-import { editModel, generateModel, validateDrawio } from './ai-service.js';
+import { editModel, generateModel, getAiRuntimeConfig, validateDrawio } from './ai-service.js';
 
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode;
@@ -75,6 +75,9 @@ function validateGenerateModel(payload) {
       return `provider must be one of: ${VALID_PROVIDERS.join(', ')}.`;
     }
   }
+  if (payload.apiKey !== undefined) {
+    return 'apiKey is not accepted in browser requests. Configure provider keys on the local API server.';
+  }
   if (payload.model !== undefined) {
     if (typeof payload.model !== 'string') {
       return 'model must be a string.';
@@ -142,6 +145,7 @@ export async function handleApiRequest(req, res) {
         'ai-edit-model',
         'drawio-validate',
       ],
+      ai: getAiRuntimeConfig(),
       date: new Date().toISOString(),
     });
     return true;

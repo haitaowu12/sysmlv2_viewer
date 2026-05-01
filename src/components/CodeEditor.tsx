@@ -4,10 +4,15 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
-import type { editor } from 'monaco-editor';
+import type { editor, Position } from 'monaco-editor';
 import { useAppStore } from '../store/store';
 
+let sysmlLanguageRegistered = false;
+
 function registerSysMLLanguage(monaco: Monaco) {
+    if (sysmlLanguageRegistered) return;
+    sysmlLanguageRegistered = true;
+
     // Register language
     monaco.languages.register({ id: 'sysml' });
 
@@ -40,7 +45,7 @@ function registerSysMLLanguage(monaco: Monaco) {
                         '@default': 'identifier',
                     },
                 }],
-                [/[{}()\[\]]/, '@brackets'],
+                [/[{}()[\]]/, '@brackets'],
                 [/[;,.]/, 'delimiter'],
                 [/:>/, 'operator'],
                 [/[=><!~?:&|+\-*/^%]+/, 'operator'],
@@ -131,7 +136,7 @@ function registerSysMLLanguage(monaco: Monaco) {
 
     // Basic completions
     monaco.languages.registerCompletionItemProvider('sysml', {
-        provideCompletionItems: (model: any, position: any) => {
+        provideCompletionItems: (model: editor.ITextModel, position: Position) => {
             const word = model.getWordUntilPosition(position);
             const range = {
                 startLineNumber: position.lineNumber,
@@ -245,7 +250,7 @@ export default function CodeEditor() {
     // Parse on mount
     useEffect(() => {
         parseSource();
-    }, []);
+    }, [parseSource]);
 
     useEffect(() => {
         const editor = editorRef.current;

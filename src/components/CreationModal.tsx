@@ -2,45 +2,38 @@
  * CreationModal - Popup for defining new elements on drop
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/store';
 import TypeSelector from './TypeSelector';
+
+function getInitialName(template: string): string {
+    const defMatch = template.match(/def\s+(\w+)/);
+    if (defMatch) return defMatch[1];
+
+    const packageMatch = template.match(/package\s+'?(\w+)'?/);
+    if (packageMatch) return packageMatch[1];
+
+    return 'NewElement';
+}
 
 export default function CreationModal() {
     const creationModal = useAppStore(s => s.creationModal);
     const closeCreationModal = useAppStore(s => s.closeCreationModal);
     const insertCode = useAppStore(s => s.insertCode);
 
-    const [name, setName] = useState('');
+    const initialName = creationModal ? getInitialName(creationModal.template) : '';
+    const [name, setName] = useState(initialName);
     const [isUsage, setIsUsage] = useState(false);
     const [typeName, setTypeName] = useState('');
 
-    // Reset state when modal opens
     useEffect(() => {
-        if (creationModal && creationModal.isOpen) {
-            // Extract initial name from template or kind
-            // Template: "part def Part1;" -> "Part1"
-            // Simple regex
-            const match = creationModal.template.match(/def\s+(\w+)/);
-            if (match) {
-                setName(match[1]);
-                setIsUsage(false);
-            } else {
-                // e.g. "package Package1"
-                const matchPkg = creationModal.template.match(/package\s+'?(\w+)'?/);
-                if (matchPkg) {
-                    setName(matchPkg[1]);
-                    setIsUsage(false);
-                } else {
-                    setName('NewElement');
-                }
-            }
+        if (!creationModal?.isOpen) return;
+        const timer = window.setTimeout(() => {
+            setName(getInitialName(creationModal.template));
+            setIsUsage(false);
             setTypeName('');
-
-            // Heuristic: If dropping into a PartDef, default to Usage?
-            // We don't have easy access to target node kind here without querying store.
-            // But user can toggle.
-        }
+        }, 0);
+        return () => window.clearTimeout(timer);
     }, [creationModal]);
 
     if (!creationModal || !creationModal.isOpen) return null;

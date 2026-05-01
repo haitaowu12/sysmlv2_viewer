@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 
 const DRAWIO_EMBED_URL =
   'https://embed.diagrams.net/?embed=1&spin=1&proto=json&ui=min&libraries=1&saveAndExit=0&autosave=1';
+const DRAWIO_ORIGIN = 'https://embed.diagrams.net';
 const DRAWIO_LOAD_TIMEOUT = 15000;
 
 export default function DrawioBridgeView() {
@@ -57,7 +58,7 @@ export default function DrawioBridgeView() {
   const postToFrame = useCallback((payload: Record<string, unknown>) => {
     const frameWindow = iframeRef.current?.contentWindow;
     if (!frameWindow) return;
-    frameWindow.postMessage(JSON.stringify(payload), '*');
+    frameWindow.postMessage(JSON.stringify(payload), DRAWIO_ORIGIN);
   }, []);
 
   const pushXmlToFrame = useCallback(
@@ -122,6 +123,10 @@ export default function DrawioBridgeView() {
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
+      if (event.origin !== DRAWIO_ORIGIN) {
+        return;
+      }
+
       let payload: unknown = event.data;
       if (typeof payload === 'string') {
         try {
@@ -196,6 +201,9 @@ export default function DrawioBridgeView() {
         <button
           className="toolbar-btn"
           onClick={() => {
+            if (!manualXml.trim().startsWith('<')) {
+              return;
+            }
             setDrawioXml(manualXml);
             syncFromDrawio(manualXml);
           }}
@@ -246,7 +254,7 @@ export default function DrawioBridgeView() {
 
       {showXmlEditor && (
         <div className="drawio-fallback-panel">
-          <div className="drawio-review-title">Advanced Raw XML Editor</div>
+          <div className="drawio-review-title">Advanced Draw.io XML Editor</div>
           <textarea
             value={manualXml}
             onChange={(event) => setManualXml(event.target.value)}

@@ -67,7 +67,9 @@ import type {
     AllocationDef,
     AllocationUsage,
     DependencyUsage,
+    NodeKind,
 } from './types';
+import { nodeProperties } from '../utils/nodeProperties';
 
 class Lexer {
     private pos = 0;
@@ -925,6 +927,7 @@ function parsePerformActionUsage(lexer: Lexer): ActionUsage {
 }
 
 function parseActionParams(_lexer: Lexer): ActionParam[] {
+    void _lexer;
     const params: ActionParam[] = [];
     // Params are parsed from the body as "in name : Type;" / "out name : Type;"
     return params;
@@ -1347,7 +1350,7 @@ function parseDoc(lexer: Lexer): DocNode {
     return { kind: 'Doc', name: 'doc', text: text.trim(), children: [] };
 }
 
-function parseGenericElement(lexer: Lexer, kind: string): SysMLNode {
+function parseGenericElement(lexer: Lexer, kind: NodeKind): SysMLNode {
     // Consume keyword(s)
     while (!lexer.eof && !lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
         if (lexer.lookAheadChar("'")) {
@@ -1357,11 +1360,11 @@ function parseGenericElement(lexer: Lexer, kind: string): SysMLNode {
         const id = lexer.readIdentifier();
         if (lexer.lookAheadChar(':') || lexer.lookAheadChar('{') || lexer.lookAheadChar(';')) {
             const children = parseBody(lexer);
-            return { kind: kind as any, name: id, children };
+            return { kind, name: id, children };
         }
     }
     const children = parseBody(lexer);
-    return { kind: kind as any, name: '', children };
+    return { kind, name: '', children };
 }
 
 function parseGenericAfterKeyword(lexer: Lexer, keyword: string): SysMLNode {
@@ -1462,7 +1465,7 @@ function parseBody(lexer: Lexer): SysMLNode[] {
             if (child) {
                 children.push(child);
             }
-        } catch (e) {
+        } catch {
             skipToRecovery(lexer);
         }
     }
@@ -1476,7 +1479,7 @@ function parseBody(lexer: Lexer): SysMLNode[] {
     return children;
 }
 
-function parseInlineParam(lexer: Lexer): SysMLNode | null {
+function parseInlineParam(lexer: Lexer): AttributeUsage | null {
     let direction: 'in' | 'out' | 'inout' = 'in';
     if (lexer.match('inout')) direction = 'inout';
     else if (lexer.match('out')) direction = 'out';
@@ -1498,10 +1501,10 @@ function parseInlineParam(lexer: Lexer): SysMLNode | null {
         children: [],
         visibility: undefined,
         direction,
-    } as any;
+    };
 }
 
-function parseSubject(lexer: Lexer): SysMLNode | null {
+function parseSubject(lexer: Lexer): AttributeUsage | null {
     lexer.expect('subject');
 
     const name = lexer.readIdentifier();
@@ -1517,7 +1520,7 @@ function parseSubject(lexer: Lexer): SysMLNode | null {
         name: `subject:${name}`,
         typeName,
         children: [],
-    } as any;
+    };
 }
 
 function readReference(lexer: Lexer): string {
@@ -1572,7 +1575,7 @@ function parseViewpointDef(lexer: Lexer): SysMLNode {
     const concerns: string[] = [];
     for (const child of children) {
         if (child.kind === 'AttributeUsage' && child.name === 'concerns') {
-            const val = (child as any).defaultValue;
+            const val = nodeProperties(child).defaultValue;
             if (val) concerns.push(val);
         }
     }
@@ -1639,7 +1642,7 @@ function parseVerificationDef(lexer: Lexer): SysMLNode {
         if (child.name.startsWith('subject:')) {
             subject = {
                 name: child.name.replace('subject:', ''),
-                typeName: (child as any).typeName,
+                typeName: nodeProperties(child).typeName,
             };
         }
     }

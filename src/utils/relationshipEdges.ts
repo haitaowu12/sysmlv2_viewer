@@ -1,6 +1,7 @@
 import { type Edge, MarkerType } from '@xyflow/react';
 import type { SysMLNode, SysMLModel, ConnectionUsage, FlowUsage, DependencyUsage, TransitionUsage } from '../parser/types';
 import { getNodeId } from '../store/store';
+import { nodeProperties } from './nodeProperties';
 
 const EDGE_STYLES: Record<string, { stroke: string; label: string; animated?: boolean; dashed?: boolean }> = {
     connection: { stroke: '#10b981', label: '«connect»', animated: true },
@@ -126,9 +127,9 @@ export function buildRelationshipEdges(model: SysMLModel, existingNodeIds: Set<s
             }
 
             if (node.kind === 'RequirementUsage' && node.name === 'satisfy') {
-                const req = node as any;
-                if (req.typeName) {
-                    const targetId = findNodeIdByName(nodeMap, req.typeName);
+                const requirementName = nodeProperties(node).typeName;
+                if (requirementName) {
+                    const targetId = findNodeIdByName(nodeMap, requirementName);
                     if (targetId) {
                         const style = EDGE_STYLES.satisfy;
                         edges.push({

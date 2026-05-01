@@ -2,7 +2,7 @@
  * Layout utility using Dagre for auto-layout of diagram nodes
  */
 
-import dagre from 'dagre';
+import dagre from '@dagrejs/dagre';
 import type { Node, Edge } from '@xyflow/react';
 import { routeEdges } from './edgeRouting';
 

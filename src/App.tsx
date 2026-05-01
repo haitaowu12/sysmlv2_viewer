@@ -67,6 +67,8 @@ const viewTabs: { id: ViewType; label: string; icon: LucideIcon; description: st
   { id: 'drawio', label: 'Draw.io', icon: Puzzle, description: 'Interactive Draw.io Bridge' },
 ];
 
+const viewCycle: ViewType[] = ['general', 'interconnection', 'actionFlow', 'stateTransition', 'requirements', 'viewpoints', 'drawio'];
+
 function DiagramArea() {
   const activeView = useAppStore((s) => s.activeView);
 
@@ -134,8 +136,6 @@ export default function App() {
   const [isCenterResizing, setIsCenterResizing] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
   const diagramContainerRef = useRef<HTMLDivElement>(null);
-
-  const viewCycle: ViewType[] = ['general', 'interconnection', 'actionFlow', 'stateTransition', 'requirements', 'viewpoints', 'drawio'];
 
   useEffect(() => {
     if (appRef.current) {
@@ -228,7 +228,9 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('sysml-code-panel-width', String(codePanelWidth));
-    } catch {}
+    } catch {
+      // Storage can be disabled in private or locked-down browser contexts.
+    }
   }, [codePanelWidth]);
 
   const handleOpen = useCallback(async () => {

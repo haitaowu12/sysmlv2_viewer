@@ -7,6 +7,7 @@ import { useAppStore, getNodeId } from '../store/store';
 import TypeSelector from './TypeSelector';
 import { Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { SysMLNode, DocNode } from '../parser/types';
+import { nodeProperties } from '../utils/nodeProperties';
 
 function getPropertiesForNode(node: SysMLNode): { label: string; value: string }[] {
     const props: { label: string; value: string }[] = [
@@ -22,52 +23,54 @@ function getPropertiesForNode(node: SysMLNode): { label: string; value: string }
         props.push({ label: 'Visibility', value: node.visibility });
     }
 
-    if ('typeName' in node && (node as any).typeName) {
-        props.push({ label: 'Type', value: (node as any).typeName });
+    const nodeProps = nodeProperties(node);
+
+    if (nodeProps.typeName) {
+        props.push({ label: 'Type', value: nodeProps.typeName });
     }
 
-    if ('superTypes' in node && (node as any).superTypes?.length) {
-        props.push({ label: 'Specializes', value: (node as any).superTypes.join(', ') });
+    if (nodeProps.superTypes?.length) {
+        props.push({ label: 'Specializes', value: nodeProps.superTypes.join(', ') });
     }
 
-    if ('multiplicity' in node && (node as any).multiplicity) {
-        props.push({ label: 'Multiplicity', value: `[${(node as any).multiplicity}]` });
+    if (nodeProps.multiplicity) {
+        props.push({ label: 'Multiplicity', value: `[${nodeProps.multiplicity}]` });
     }
 
-    if ('isRedefine' in node && (node as any).isRedefine) {
+    if (nodeProps.isRedefine) {
         props.push({ label: 'Redefines', value: 'yes' });
     }
 
-    if ('direction' in node && (node as any).direction) {
-        props.push({ label: 'Direction', value: (node as any).direction });
+    if (nodeProps.direction) {
+        props.push({ label: 'Direction', value: nodeProps.direction });
     }
 
-    if ('expression' in node && (node as any).expression) {
-        props.push({ label: 'Expression', value: (node as any).expression });
+    if (nodeProps.expression) {
+        props.push({ label: 'Expression', value: nodeProps.expression });
     }
 
-    if ('source' in node && (node as any).source) {
-        props.push({ label: 'Source', value: (node as any).source });
+    if (nodeProps.source) {
+        props.push({ label: 'Source', value: nodeProps.source });
     }
 
-    if ('target' in node && (node as any).target) {
-        props.push({ label: 'Target', value: (node as any).target });
+    if (nodeProps.target) {
+        props.push({ label: 'Target', value: nodeProps.target });
     }
 
-    if ('trigger' in node && (node as any).trigger) {
-        props.push({ label: 'Trigger', value: (node as any).trigger });
+    if (nodeProps.trigger) {
+        props.push({ label: 'Trigger', value: nodeProps.trigger });
     }
 
-    if ('defaultValue' in node && (node as any).defaultValue) {
-        props.push({ label: 'Default Value', value: (node as any).defaultValue });
+    if (nodeProps.defaultValue) {
+        props.push({ label: 'Default Value', value: nodeProps.defaultValue });
     }
 
-    if ('viewpoint' in node && (node as any).viewpoint) {
-        props.push({ label: 'Viewpoint', value: (node as any).viewpoint });
+    if (nodeProps.viewpoint) {
+        props.push({ label: 'Viewpoint', value: nodeProps.viewpoint });
     }
 
-    if ('concerns' in node && (node as any).concerns?.length) {
-        props.push({ label: 'Concerns', value: (node as any).concerns.join(', ') });
+    if (nodeProps.concerns?.length) {
+        props.push({ label: 'Concerns', value: nodeProps.concerns.join(', ') });
     }
 
     const doc = node.children.find(c => c.kind === 'Doc') as DocNode | undefined;
@@ -122,16 +125,16 @@ interface EditableValues {
 }
 
 function getInitialEditableValues(node: SysMLNode): EditableValues {
-    const nodeAny = node as any;
+    const nodeProps = nodeProperties(node);
     const docNode = node.children.find(c => c.kind === 'Doc') as DocNode | undefined;
     return {
         name: node.name || '',
-        multiplicity: nodeAny.multiplicity ? `[${nodeAny.multiplicity}]` : '',
-        direction: nodeAny.direction || '',
-        visibility: nodeAny.visibility || 'public',
-        redefines: nodeAny.isRedefine ? 'yes' : '',
-        subsets: nodeAny.subsets || '',
-        defaultValue: nodeAny.defaultValue || '',
+        multiplicity: nodeProps.multiplicity ? `[${nodeProps.multiplicity}]` : '',
+        direction: nodeProps.direction || '',
+        visibility: node.visibility || 'public',
+        redefines: nodeProps.isRedefine ? 'yes' : '',
+        subsets: nodeProps.subsets || '',
+        defaultValue: nodeProps.defaultValue || '',
         documentation: docNode?.text || '',
     };
 }
@@ -322,11 +325,11 @@ export default function PropertyPanel() {
     const attributeChildren = selectedNode.children.filter(c => c.kind === 'AttributeUsage');
     const canEditAttributes = selectedNode.kind.endsWith('Def') || selectedNode.kind === 'Package';
 
-    const nodeAny = selectedNode as any;
-    const hasMultiplicity = 'multiplicity' in nodeAny;
-    const hasDirection = 'direction' in nodeAny;
-    const hasVisibility = 'visibility' in nodeAny;
-    const hasDefaultValue = 'defaultValue' in nodeAny;
+    const selectedProps = nodeProperties(selectedNode);
+    const hasMultiplicity = selectedProps.multiplicity !== undefined;
+    const hasDirection = selectedProps.direction !== undefined;
+    const hasVisibility = selectedNode.visibility !== undefined;
+    const hasDefaultValue = selectedProps.defaultValue !== undefined;
     const hasDoc = true;
 
     const canShowDirection = hasDirection || selectedNode.kind === 'PortUsage' || selectedNode.kind === 'ActionUsage' || selectedNode.kind === 'ActionDef';
@@ -480,7 +483,7 @@ export default function PropertyPanel() {
                         </div>
                     )}
 
-                    {'isRedefine' in nodeAny && (
+                    {selectedProps.isRedefine !== undefined && (
                         <div className="input-group">
                             <label>Redefines</label>
                             <input
@@ -493,7 +496,7 @@ export default function PropertyPanel() {
                         </div>
                     )}
 
-                    {'subsets' in nodeAny && (
+                    {selectedProps.subsets !== undefined && (
                         <div className="input-group">
                             <label>Subsets</label>
                             <input
@@ -539,8 +542,9 @@ export default function PropertyPanel() {
                     <div className="prop-section">
                         <div className="prop-section-header">Attributes ({attributeChildren.length})</div>
                         {attributeChildren.map((attr, i) => {
-                            const typeName = (attr as any).typeName || '';
-                            const defValue = (attr as any).defaultValue || '';
+                            const attrProps = nodeProperties(attr);
+                            const typeName = attrProps.typeName || '';
+                            const defValue = attrProps.defaultValue || '';
 
                             return (
                                 <div key={attr.location?.start.offset || i} className="attr-edit-row">

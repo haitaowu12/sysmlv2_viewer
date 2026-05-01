@@ -37,9 +37,6 @@ export default function AiChatPanel() {
 
   const [provider, setProvider] = useState<'local' | 'openai' | 'anthropic' | 'google'>('local');
   const [model, setModel] = useState('gpt-4.1-mini');
-  const [apiKey, setApiKey] = useState(() => {
-    try { return sessionStorage.getItem('sysml_ai_key') || ''; } catch { return ''; }
-  });
   const [prompt, setPrompt] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -47,11 +44,6 @@ export default function AiChatPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isLoading, [prompt, isLoading]);
-
-  const handleApiKeyChange = (value: string) => {
-    setApiKey(value);
-    try { sessionStorage.setItem('sysml_ai_key', value); } catch {}
-  };
 
   const handleSubmit = async () => {
     if (!canSend) return;
@@ -76,12 +68,10 @@ export default function AiChatPanel() {
           'Content-Type': 'application/json',
           'x-ai-provider': provider,
           'x-ai-model': model,
-          ...(apiKey.trim() ? { 'x-ai-key': apiKey.trim() } : {}),
         },
         body: JSON.stringify({
           provider,
           model,
-          apiKey: apiKey.trim() || undefined,
           prompt: userMessage.content,
           sourceCode,
           drawioXml,
@@ -152,9 +142,9 @@ export default function AiChatPanel() {
       <div className="ai-chat-controls">
         <select value={provider} onChange={(event) => setProvider(event.target.value as typeof provider)}>
           <option value="local">Local Heuristic</option>
-          <option value="openai">OpenAI (BYOK)</option>
-          <option value="anthropic">Anthropic (BYOK)</option>
-          <option value="google">Google (BYOK)</option>
+          <option value="openai">OpenAI Server Key</option>
+          <option value="anthropic">Anthropic Server Key</option>
+          <option value="google">Google Server Key</option>
         </select>
         <input
           value={model}
@@ -163,14 +153,7 @@ export default function AiChatPanel() {
           className="ai-chat-model-input"
         />
       </div>
-
-      <input
-        value={apiKey}
-        onChange={(event) => handleApiKeyChange(event.target.value)}
-        type="password"
-        placeholder="API Key (session-only, never stored permanently)"
-        className="ai-chat-key-input"
-      />
+      <div className="ai-chat-config-note">Provider keys are read by the local API server from environment variables.</div>
 
       <textarea
         value={prompt}
