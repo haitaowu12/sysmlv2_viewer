@@ -15,6 +15,8 @@
 
 Source text is canonical. Diagrams and Draw.io XML are derived from parsed SysML, then synced back through semantic diffs and safety-classified patches.
 
+Use `docs/r2-product-contract.md` as the product boundary for R2 claims. New parser, bridge, AI, or deployment work should update that contract when support status changes.
+
 ## Data Flow
 
 1. `parseSysML(sourceCode)` builds an AST with recoverable diagnostics.
@@ -48,13 +50,17 @@ If no matching provider key exists, generation/editing falls back to local heuri
 Run these before shipping:
 
 ```bash
+npm ci
 npm run lint
 npm run test
+npm run test:release
 npm run build
 npm audit --omit=dev
 ```
 
 Bridge changes need roundtrip coverage: SysML to semantic to Draw.io to semantic to SysML. Parser changes need syntax and recovery tests. Store changes need undo/redo and sync-state tests.
+
+`npm run test:release` must always pass for in-repo release baseline tests. Upstream corpus fixtures are optional in CI and run only when `SYSML_V2_RELEASE_DIR` points to a local `Systems-Modeling/SysML-v2-Release` checkout.
 
 ## SysML v2 Release Baseline
 
@@ -94,3 +100,4 @@ Do not expand visual roundtrip claims until the release fixture gate and screens
 - Keep Draw.io messaging origin-scoped to `https://embed.diagrams.net`.
 - Keep app UI dense, restrained, and workspace-first.
 - Do not expose the local API server publicly without adding authentication and deployment hardening.
+- Keep README and user docs aligned to `docs/r2-product-contract.md`; do not expand support claims without tests.

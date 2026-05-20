@@ -107,4 +107,46 @@ describe('parser error recovery', () => {
     );
     expect(hasUnmatchedBrace).toBe(true);
   });
+
+  it('reports unsupported constructs when recovering as Unknown nodes', () => {
+    const result = parseSysML('calc def FuelEconomy;');
+
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0].kind).toBe('Unknown');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported:calc',
+          severity: 'warning',
+          location: expect.objectContaining({
+            start: expect.objectContaining({ line: 1, column: 1 }),
+            end: expect.objectContaining({ line: 1 }),
+          }),
+        }),
+      ])
+    );
+  });
+
+  it('reports nested parse failures while keeping body recovery', () => {
+    const result = parseSysML('package Test {\n  part def ;\n  part def Engine;\n}');
+
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0].children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'PartDef', name: 'Engine' }),
+      ])
+    );
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'recovery:nested-parse-failure',
+          severity: 'error',
+          location: expect.objectContaining({
+            start: expect.objectContaining({ line: 2 }),
+            end: expect.objectContaining({ line: 2 }),
+          }),
+        }),
+      ])
+    );
+  });
 });

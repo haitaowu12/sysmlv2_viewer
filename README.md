@@ -1,6 +1,6 @@
 # SysML Viewer
 
-Private/local SysML v2 visual editor with synchronized text, diagram, Draw.io, SVG, and AI-assisted modeling workflows.
+Private/local SysML v2 visual editor for a practical supported subset, with synchronized text, diagram, Draw.io, SVG, and AI-assisted modeling workflows.
 
 Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) - systems engineering tools, assurance workflows, and learning simulations.
 
@@ -13,6 +13,8 @@ Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) - systems enginee
 - Local AI API with server-held provider keys and local heuristic fallback.
 - Undo/redo, panel resizing, dark/light theme, keyboard shortcuts, and component library insertion.
 
+See `docs/r2-product-contract.md` for the R2 mission, non-goals, support boundaries, acceptance gates, and static vs API-enabled deployment model.
+
 ## Quickstart
 
 ```bash
@@ -22,7 +24,7 @@ npm run dev
 
 Open the Vite URL, normally `http://localhost:5173/sysmlv2_viewer/`.
 
-For the standalone API server:
+For the standalone local API server:
 
 ```bash
 npm run dev:api
@@ -50,7 +52,7 @@ If no provider key is configured, AI generation falls back to the local heuristi
 - `npm run build` - TypeScript and production Vite build.
 - `npm run lint` - ESLint production gate.
 - `npm run test` - Vitest suite.
-- `npm run test:release` - release-baseline and optional upstream fixture smoke tests.
+- `npm run test:release` - in-repo release baseline tests plus optional upstream fixture smoke tests when `SYSML_V2_RELEASE_DIR` is set.
 - `npm run preview` - serve the production build.
 
 ## SysML v2 Release Baseline
@@ -63,7 +65,7 @@ Project examples, AI generation guardrails, and parser fixture work are anchored
 
 See `docs/sysml-v2-release-baseline.md`.
 
-Optional upstream fixture check:
+Optional upstream fixture check. CI may skip upstream corpus tests when the corpus checkout is absent; in-repo release baseline tests still run.
 
 ```bash
 SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
@@ -75,12 +77,15 @@ SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
 - AI provider keys are read from server environment variables only.
 - Draw.io embed messaging is restricted to `https://embed.diagrams.net`.
 - The app is intended for private/local use. Do not expose the API server publicly without adding authentication, request logging policy, and stricter deployment controls.
+- GitHub Pages deploys the static app only. API-enabled/provider-backed AI use requires a separate trusted server.
 
 ## Supported SysML Subset
 
 Primary roundtrip coverage includes `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
 
 The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable. `alias`, `calc`, `individual`, `occurrence`, and `variation` are treated as partial/recovery-only areas until fixture-driven parser support is added.
+
+Unsupported areas include full SysML v2/KerML coverage, official conformance validation, public API hosting without hardening, and arbitrary Draw.io import as semantically valid SysML. See `docs/r2-product-contract.md`.
 
 ## Troubleshooting
 
