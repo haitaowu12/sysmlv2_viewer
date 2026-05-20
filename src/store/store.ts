@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { SysMLModel, SysMLNode, ParseError } from '../parser/types';
 import { parseSysML } from '../parser/parser';
+import { VEHICLE_SYSTEM_EXAMPLE } from '../examples/vehicleSystem';
 import { MARS_ROVER_EXAMPLE } from '../examples/marsRover';
 import { RADIO_SYSTEM_EXAMPLE } from '../examples/radioSystem';
 import type { LayoutMap, SemanticNodeKind, SyncPatch, SyncState } from '../bridge/semantic-types';
@@ -141,91 +142,7 @@ export interface AppState {
   canRedo: () => boolean;
 }
 
-const DEMO_CODE = `package 'Vehicle System' {
-	
-	// Part Definitions
-	part def Vehicle {
-		part eng : Engine;
-		part trans : Transmission;
-		part body : Body;
-	}
-	
-	part def Engine {
-		part cyl : Cylinder[4..6];
-		attribute horsePower : Integer;
-	}
-	
-	part def Transmission;
-	part def Body;
-	part def Cylinder;
-	
-	// Port Definitions
-	port def FuelPort;
-	port def DrivePort;
-	
-	// Action Definitions
-	action def StartEngine {
-		in ignitionSignal : Boolean;
-		out engineRunning : Boolean;
-	}
-	
-	action def Accelerate {
-		in throttle : Real;
-		out speed : Real;
-	}
-	
-	// State Definition
-	state def VehicleStates {
-		entry; then parked;
-		
-		state parked;
-		
-		transition park_to_idle
-			first parked
-			accept StartSignal
-			then idle;
-		
-		state idle;
-		
-		transition idle_to_moving
-			first idle
-			accept AccelerateSignal
-			then moving;
-		
-		state moving;
-		
-		transition moving_to_idle
-			first moving
-			accept BrakeSignal
-			then idle;
-	}
-	
-	// Requirements
-	requirement def VehicleMassRequirement {
-		doc /* The total vehicle mass shall not exceed 2000 kg. */
-		attribute massLimit : Real;
-	}
-	
-	requirement def SafetyRequirement {
-		doc /* The vehicle shall meet all applicable safety standards. */
-	}
-	
-	// Usages
-	part myCar : Vehicle {
-		satisfy VehicleMassRequirement;
-		satisfy SafetyRequirement;
-		
-		part redefines eng {
-			part redefines cyl[4];
-		}
-	}
-	
-	test case CarMassVerification {
-		subject myCar;
-		verify VehicleMassRequirement;
-	}
-}
-`;
+const DEMO_CODE = VEHICLE_SYSTEM_EXAMPLE;
 
 const INITIAL_MODEL = parseSysML(DEMO_CODE);
 const INITIAL_SEMANTIC = buildSemanticModelFromSource(DEMO_CODE);

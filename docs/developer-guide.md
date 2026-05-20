@@ -56,6 +56,22 @@ npm audit --omit=dev
 
 Bridge changes need roundtrip coverage: SysML to semantic to Draw.io to semantic to SysML. Parser changes need syntax and recovery tests. Store changes need undo/redo and sync-state tests.
 
+## SysML v2 Release Baseline
+
+Use `docs/sysml-v2-release-baseline.md` as the source anchor for parser and example work. Current baseline:
+
+- `Systems-Modeling/SysML-v2-Release`
+- tag `2026-04`
+- commit `9baca5908ca28b53da085de69336fde48420ea8f`
+
+Parser changes should start from release `bnf/` and add focused tests. When a local release checkout is available, run:
+
+```bash
+SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
+```
+
+Do not expand visual roundtrip claims until the release fixture gate and screenshot QA pass.
+
 ## Key Files
 
 | Concern | File |
@@ -69,6 +85,7 @@ Bridge changes need roundtrip coverage: SysML to semantic to Draw.io to semantic
 | AI panel | `src/components/AiChatPanel.tsx` |
 | API server | `server/` |
 | Tests | `src/test/`, `server/*.test.js` |
+| Release baseline | `docs/sysml-v2-release-baseline.md`, `src/test/upstreamCorpus.test.ts` |
 
 ## Implementation Rules
 
