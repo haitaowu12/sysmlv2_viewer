@@ -2,6 +2,8 @@
 
 Private/local SysML v2 visual editor with synchronized text, diagram, Draw.io, SVG, and AI-assisted modeling workflows.
 
+Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) - systems engineering tools, assurance workflows, and learning simulations.
+
 ## Features
 
 - SysML v2 text editor with live parsing and diagnostics.

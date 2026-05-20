@@ -57,6 +57,8 @@ import type { LucideIcon } from 'lucide-react';
 
 type ExportFormat = 'sysml' | 'drawio' | 'svg' | 'png';
 
+const AUTHOR_URL = 'https://haitaowu12.github.io/tony-wu-home/';
+
 const viewTabs: { id: ViewType; label: string; icon: LucideIcon; description: string }[] = [
   { id: 'general', label: 'General', icon: Box, description: 'Block Definition Diagram' },
   { id: 'interconnection', label: 'Interconnection', icon: Link, description: 'Internal Block Diagram' },
@@ -380,6 +382,13 @@ export default function App() {
         </div>
 
         <div className="toolbar-right">
+          <a
+            className="author-link"
+            href={AUTHOR_URL}
+            aria-label="Know the author: Tony Wu, systems engineer and builder of this project"
+          >
+            TW · About
+          </a>
           <button className="toolbar-btn theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
             {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
@@ -493,6 +502,14 @@ export default function App() {
         </div>
         <div className="status-right">
           <span className="status-text">SysML v2</span>
+          <span className="status-separator" aria-hidden="true">·</span>
+          <a
+            className="status-author-link"
+            href={AUTHOR_URL}
+            aria-label="Know the author: Tony Wu"
+          >
+            Built by Tony Wu
+          </a>
         </div>
       </footer>
 

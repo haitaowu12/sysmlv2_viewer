@@ -10,7 +10,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
-          'vendor-flow': ['@xyflow/react', '@dagrejs/dagre', 'dagre'],
+          'vendor-flow': ['@xyflow/react', '@dagrejs/dagre'],
           'vendor-monaco': ['@monaco-editor/react'],
         },
       },
