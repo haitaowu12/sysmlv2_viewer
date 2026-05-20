@@ -34,6 +34,7 @@ import type {
     SysMLNode,
     SysMLModel,
     ParseError,
+    SourceLocation,
     Package,
     PartDef,
     PartUsage,
@@ -76,9 +77,11 @@ class Lexer {
     private line = 1;
     private col = 1;
     private input: string;
+    private diagnostics: ParseError[];
 
-    constructor(input: string) {
+    constructor(input: string, diagnostics: ParseError[] = []) {
         this.input = input;
+        this.diagnostics = diagnostics;
     }
 
     get position() {
@@ -299,6 +302,24 @@ class Lexer {
         );
     }
 
+    reportDiagnostic(
+        message: string,
+        severity: 'error' | 'warning' | 'info',
+        code: string,
+        start = this.position,
+        end = this.position,
+        suggestion?: string
+    ): void {
+        this.diagnostics.push({
+            message,
+            location: { start, end },
+            severity,
+            code,
+            suggestion,
+            context: this.extractContext(start.line),
+        });
+    }
+
     private extractContext(errorLine: number): string {
         const lines = this.input.split('\n');
         const start = Math.max(0, errorLine - 3);
@@ -354,8 +375,8 @@ class Lexer {
 }
 
 export function parseSysML(input: string): SysMLModel {
-    const lexer = new Lexer(input);
     const errors: ParseError[] = [];
+    const lexer = new Lexer(input, errors);
     const children: SysMLNode[] = [];
 
     while (!lexer.eof) {
@@ -628,7 +649,7 @@ function parseElement(lexer: Lexer): SysMLNode | null {
                 'error'
             );
         }
-        node = parseGenericAfterKeyword(lexer, word);
+        node = parseGenericAfterKeyword(lexer, word, start);
     }
 
     if (node) {
@@ -960,9 +981,13 @@ function parseStateUsage(lexer: Lexer): StateUsage {
     if (lexer.match('parallel')) isParallel = true;
 
     const name = lexer.readIdentifier();
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+    }
     const children = parseBody(lexer);
 
-    return { kind: 'StateUsage', name, isParallel, children };
+    return { kind: 'StateUsage', name, isParallel, typeName, children };
 }
 
 function parseTransition(lexer: Lexer): TransitionUsage {
@@ -1421,6 +1446,8 @@ function parseDoc(lexer: Lexer): DocNode {
         if (!lexer.eof) lexer.advance(2);
     }
 
+    lexer.match(';');
+
     return { kind: 'Doc', name: 'doc', text: text.trim(), children: [] };
 }
 
@@ -1441,26 +1468,38 @@ function parseGenericElement(lexer: Lexer, kind: NodeKind): SysMLNode {
     return { kind, name: '', children };
 }
 
-function parseGenericAfterKeyword(lexer: Lexer, keyword: string): SysMLNode {
+function parseGenericAfterKeyword(lexer: Lexer, keyword: string, start: SourceLocation['start']): SysMLNode {
     // Try to handle unknown keywords gracefully
+    let node: SysMLNode;
     if (lexer.lookAheadChar('{')) {
         const children = parseBody(lexer);
-        return { kind: 'Unknown', name: keyword, children };
-    }
-    if (lexer.lookAheadChar(';')) {
+        node = { kind: 'Unknown', name: keyword, children };
+    } else if (lexer.lookAheadChar(';')) {
         lexer.match(';');
-        return { kind: 'Unknown', name: keyword, children: [] };
+        node = { kind: 'Unknown', name: keyword, children: [] };
+    } else {
+        // Read until end of line or semicolon
+        while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+            lexer.advance();
+        }
+        if (lexer.lookAheadChar('{')) {
+            const children = parseBody(lexer);
+            node = { kind: 'Unknown', name: keyword, children };
+        } else {
+            lexer.match(';');
+            node = { kind: 'Unknown', name: keyword, children: [] };
+        }
     }
-    // Read until end of line or semicolon
-    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
-        lexer.advance();
-    }
-    if (lexer.lookAheadChar('{')) {
-        const children = parseBody(lexer);
-        return { kind: 'Unknown', name: keyword, children };
-    }
-    lexer.match(';');
-    return { kind: 'Unknown', name: keyword, children: [] };
+
+    const codeKeyword = keyword.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+    lexer.reportDiagnostic(
+        `Unsupported construct '${keyword}' recovered as Unknown node`,
+        'warning',
+        `unsupported:${codeKeyword}`,
+        start,
+        lexer.position
+    );
+    return node;
 }
 
 function parseNameWithShortName(lexer: Lexer): { name: string; shortName?: string } {
@@ -1517,6 +1556,7 @@ function parseBody(lexer: Lexer): SysMLNode[] {
         lexer.skipWhitespace();
         if (lexer.lookAheadChar('}')) break;
 
+        const childStart = lexer.position;
         try {
             // Handle special inline patterns
             if (lexer.lookAhead(':>>')) {
@@ -1555,7 +1595,19 @@ function parseBody(lexer: Lexer): SysMLNode[] {
             if (child) {
                 children.push(child);
             }
-        } catch {
+        } catch (e) {
+            const err = e as Error;
+            const parsedSeverity = parseSeverityFromMessage(err.message);
+            const suggestion = extractSuggestionFromMessage(err.message);
+            const message = stripSeverityPrefix(err.message).split('\n')[0];
+            lexer.reportDiagnostic(
+                `Recovered from nested parse failure: ${message}`,
+                parsedSeverity,
+                'recovery:nested-parse-failure',
+                childStart,
+                lexer.position,
+                suggestion
+            );
             skipToRecovery(lexer);
         }
     }

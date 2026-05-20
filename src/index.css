@@ -563,6 +563,19 @@ body {
   margin-bottom: 3px;
 }
 
+.compartment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
 .compartment-item {
   font-size: 11px;
   color: var(--text-secondary);
@@ -796,15 +809,24 @@ body {
 }
 
 .tree-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 14px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 10px;
   color: var(--text-muted);
   text-align: center;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .tree-expand.invisible {
   visibility: hidden;
+  pointer-events: none;
 }
 
 .tree-icon {
@@ -1932,6 +1954,7 @@ select:hover,
   display: flex;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .resizable-panel.left {
@@ -2142,6 +2165,20 @@ textarea:focus-visible {
 }
 
 @media (max-width: 768px) {
+  .resizable-panel.left,
+  .resizable-panel.right {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .resizable-panel.left > .resizable-divider,
+  .resizable-panel.right > .resizable-divider {
+    display: none !important;
+  }
+
   .panel-left,
   .panel-right {
     display: none !important;
@@ -2154,22 +2191,32 @@ textarea:focus-visible {
     min-height: 0;
   }
   .split-panel {
-    flex-direction: column;
+    flex-direction: column-reverse;
+    min-height: 0;
   }
   .split-code {
     width: 100% !important;
-    height: 42%;
-    min-height: 220px;
+    height: auto;
+    flex: 0 0 34%;
+    min-height: 140px;
+    max-height: 260px;
     border-right: none;
-    border-bottom: 1px solid var(--border-primary);
+    border-top: 1px solid var(--border-primary);
+    border-bottom: none;
   }
   .split-divider {
     width: 100%;
     height: 5px;
     cursor: row-resize;
   }
+  .split-divider::after {
+    width: 24px;
+    height: 3px;
+  }
   .split-diagram {
-    height: 58%;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
   }
   .status-center {
     display: none;
