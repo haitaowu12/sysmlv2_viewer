@@ -148,6 +148,7 @@ export interface StateDef extends SysMLNode {
 export interface StateUsage extends SysMLNode {
     kind: 'StateUsage';
     isParallel?: boolean;
+    typeName?: string;
 }
 
 export interface TransitionUsage extends SysMLNode {
@@ -337,6 +338,7 @@ export interface ParseError {
     message: string;
     location?: SourceLocation;
     severity?: ErrorSeverity;
+    code?: string;
     suggestion?: string;
     context?: string;
 }

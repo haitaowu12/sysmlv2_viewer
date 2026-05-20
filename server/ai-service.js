@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { sysmlToDrawioXml, validateDrawioXml } from './drawio-utils.js';
+import { validateDrawioXml } from './drawio-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXTRACTOR_SCRIPT = join(__dirname, 'extract_docs.py');
@@ -36,6 +36,17 @@ function pickApiKey(provider) {
   if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || '';
   if (provider === 'google') return process.env.GOOGLE_API_KEY || '';
   return '';
+}
+
+function providerStatus({ requestedProvider, effectiveProvider, model, source, usedFallback, reason }) {
+  return {
+    requestedProvider,
+    effectiveProvider,
+    model,
+    source,
+    usedFallback,
+    ...(reason ? { reason } : {}),
+  };
 }
 
 export function getAiRuntimeConfig() {
@@ -436,19 +447,28 @@ async function callGoogle({ apiKey, model, systemPrompt, userPrompt }) {
   }
 }
 
-function normalizeResponse(rawText, fallbackPrompt, contextText) {
-  const parsed = extractJsonObject(rawText) || {};
+function normalizeResponse(rawText) {
+  const parsed = extractJsonObject(rawText);
+  if (!parsed) {
+    return {
+      sysml: '',
+      notes: [],
+      invalidReason: 'Provider response was not valid JSON.',
+    };
+  }
+
   const sysml = (parsed.sysml || '').toString().trim();
   const notes = Array.isArray(parsed.notes) ? parsed.notes.map((item) => String(item)) : [];
 
   if (!sysml) {
     return {
-      sysml: synthesizeSysml(fallbackPrompt, contextText),
-      notes: notes.concat(['Provider response was not valid JSON; used local synthesis.']),
+      sysml: '',
+      notes,
+      invalidReason: 'Provider response did not include a sysml string.',
     };
   }
 
-  return { sysml, notes };
+  return { sysml, notes, invalidReason: '' };
 }
 
 async function modelWithProvider({ provider, apiKey, model, systemPrompt, userPrompt, visionInputs }) {
@@ -493,6 +513,14 @@ export async function generateModel(payload, headers) {
   const diagnostics = [];
   let sysml = '';
   let notes = [];
+  let status = providerStatus({
+    requestedProvider: provider,
+    effectiveProvider: 'local',
+    model,
+    source: 'local_heuristic',
+    usedFallback: false,
+  });
+  let fallbackReason = '';
 
   if (provider !== 'local' && apiKey) {
     try {
@@ -504,32 +532,51 @@ export async function generateModel(payload, headers) {
         userPrompt,
         visionInputs,
       });
-      const normalized = normalizeResponse(rawText, prompt, attachmentContext);
+      const normalized = normalizeResponse(rawText);
       const validation = validateSysmlResponse(normalized.sysml);
       if (validation.valid) {
         sysml = normalized.sysml;
         notes = normalized.notes;
         diagnostics.push(`Generated with provider ${provider}:${model}.`);
+        status = providerStatus({
+          requestedProvider: provider,
+          effectiveProvider: provider,
+          model,
+          source: 'provider',
+          usedFallback: false,
+        });
       } else {
-        diagnostics.push(`Provider response validation failed: ${validation.reason}. Falling back to local synthesis.`);
+        fallbackReason = normalized.invalidReason || `Provider response validation failed: ${validation.reason}.`;
+        diagnostics.push(`${fallbackReason} Falling back to local synthesis.`);
       }
     } catch (error) {
       const categorized = categorizeError(error);
-      diagnostics.push(`Provider call failed [${categorized.type}]: ${categorized.message}`);
+      fallbackReason = `Provider call failed [${categorized.type}]: ${categorized.message}`;
+      diagnostics.push(fallbackReason);
     }
+  } else if (provider !== 'local') {
+    fallbackReason = `Provider ${provider} is not configured on the server.`;
+    diagnostics.push(`${fallbackReason} Falling back to local synthesis.`);
   }
 
   if (!sysml) {
     sysml = synthesizeSysml(prompt, attachmentContext);
     diagnostics.push('Used local heuristic generation.');
+    status = providerStatus({
+      requestedProvider: provider,
+      effectiveProvider: 'local',
+      model,
+      source: 'local_heuristic',
+      usedFallback: provider !== 'local',
+      reason: fallbackReason,
+    });
   }
 
-  const drawioXml = sysmlToDrawioXml(sysml);
   return {
     sysml,
-    drawioXml,
     diagnostics,
     notes,
+    providerStatus: status,
   };
 }
 
@@ -545,6 +592,14 @@ export async function editModel(payload, headers) {
 
   const diagnostics = [];
   let sysml = '';
+  let status = providerStatus({
+    requestedProvider: provider,
+    effectiveProvider: 'local',
+    model,
+    source: 'local_heuristic',
+    usedFallback: false,
+  });
+  let fallbackReason = '';
 
   if (provider !== 'local' && apiKey) {
     try {
@@ -563,34 +618,52 @@ export async function editModel(payload, headers) {
         visionInputs,
       });
 
-      const normalized = normalizeResponse(rawText, prompt, attachmentContext);
+      const normalized = normalizeResponse(rawText);
       const validation = validateSysmlResponse(normalized.sysml);
       if (validation.valid) {
         sysml = normalized.sysml;
         diagnostics.push(`Edited with provider ${provider}:${model}.`);
+        status = providerStatus({
+          requestedProvider: provider,
+          effectiveProvider: provider,
+          model,
+          source: 'provider',
+          usedFallback: false,
+        });
       } else {
-        diagnostics.push(`Provider edit validation failed: ${validation.reason}. Falling back to local edit.`);
+        fallbackReason = normalized.invalidReason || `Provider edit validation failed: ${validation.reason}.`;
+        diagnostics.push(`${fallbackReason} Falling back to local edit.`);
       }
     } catch (error) {
       const categorized = categorizeError(error);
-      diagnostics.push(`Provider edit failed [${categorized.type}]: ${categorized.message}`);
+      fallbackReason = `Provider edit failed [${categorized.type}]: ${categorized.message}`;
+      diagnostics.push(fallbackReason);
     }
+  } else if (provider !== 'local') {
+    fallbackReason = `Provider ${provider} is not configured on the server.`;
+    diagnostics.push(`${fallbackReason} Falling back to local edit.`);
   }
 
   if (!sysml) {
     const localEdit = localEditSysml(prompt, sourceCode);
     sysml = localEdit.next;
     diagnostics.push(...localEdit.diagnostics);
+    status = providerStatus({
+      requestedProvider: provider,
+      effectiveProvider: 'local',
+      model,
+      source: 'local_heuristic',
+      usedFallback: provider !== 'local',
+      reason: fallbackReason,
+    });
   }
-
-  const drawioXml = sysmlToDrawioXml(sysml);
 
   return {
     sysml,
-    drawioXml,
     appliedPatches: [],
     reviewPatches: [],
     diagnostics,
+    providerStatus: status,
   };
 }
 

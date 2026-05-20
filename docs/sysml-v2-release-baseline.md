@@ -12,6 +12,8 @@ Use this repository as the project baseline for SysML v2 source examples and par
 
 `HEAD`, `master`, and tag `2026-04` were verified to resolve to the same commit during the 2026-05-20 refresh.
 
+This file anchors release fixtures and parser growth. Product support claims are governed by `docs/r2-product-contract.md`.
+
 ## Source Use Rules
 
 - Treat textual SysML source as canonical.
@@ -60,6 +62,8 @@ When the release repo is available locally, run:
 ```bash
 SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
 ```
+
+Without `SYSML_V2_RELEASE_DIR`, the upstream corpus suite is skipped by design; in-repo release baseline tests still run.
 
 Core fixture set:
 
