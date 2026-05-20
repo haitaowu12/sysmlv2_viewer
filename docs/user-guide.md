@@ -6,6 +6,8 @@ SysML Viewer combines a source editor, live diagram canvas, model explorer, comp
 
 The SysML source is the primary model. Diagram views update from the source and selected visual edits are converted back into source patches.
 
+R2 support boundaries are defined in `docs/r2-product-contract.md`. The app supports a practical SysML v2 subset; it is not a full SysML v2 conformance tool.
+
 ## Views
 
 - **General** - package, part, port, item, and definition structure.
@@ -34,7 +36,7 @@ Supported export formats:
 
 ## AI Assistant
 
-AI provider keys are configured on the local API server, not in the browser.
+AI provider keys are configured on the local API server, not in the browser. GitHub Pages deployments are static and do not include the Node API server.
 
 Available modes:
 
@@ -79,3 +81,5 @@ Best-supported roundtrip elements: `Package`, `PartDef`, `PartUsage`, `PortDef`,
 Project examples and AI generation are anchored to `Systems-Modeling/SysML-v2-Release` tag `2026-04`, commit `9baca5908ca28b53da085de69336fde48420ea8f`.
 
 Unsupported or partial syntax can still be edited as source, but may not render or roundtrip visually. Current partial areas include `alias`, `calc`, `individual`, `occurrence`, and `variation`.
+
+Unsupported R2 claims include full SysML v2/KerML language coverage, official conformance validation, collaborative model storage, and arbitrary Draw.io import as valid SysML.

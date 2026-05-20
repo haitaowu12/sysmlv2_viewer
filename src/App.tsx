@@ -2,7 +2,7 @@
  * SysML v2 Visual Editor — Main App Component
  */
 
-import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useAppStore, type ViewType } from './store/store';
 import { ErrorBoundary, PanelErrorBoundary } from './components/ErrorBoundary';
 import CodeEditor from './components/CodeEditor';
@@ -23,7 +23,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 const DrawioBridgeView = lazy(() => import('./components/DrawioBridgeView'));
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import ResizablePanel from './components/ResizablePanel';
-import ToastContainer from './components/Toast';
+import ToastContainer, { showToast } from './components/Toast';
 import {
   FolderOpen,
   Download,
@@ -70,6 +70,9 @@ const viewTabs: { id: ViewType; label: string; icon: LucideIcon; description: st
 ];
 
 const viewCycle: ViewType[] = ['general', 'interconnection', 'actionFlow', 'stateTransition', 'requirements', 'viewpoints', 'drawio'];
+const DEFAULT_CODE_PANEL_WIDTH = 32;
+const MIN_CODE_PANEL_WIDTH = 20;
+const MAX_CODE_PANEL_WIDTH = 55;
 
 function DiagramArea() {
   const activeView = useAppStore((s) => s.activeView);
@@ -124,27 +127,51 @@ export default function App() {
   const canRedo = useAppStore((s) => s.canRedo);
   const focusedNodeId = useAppStore((s) => s.focusedNodeId);
   const setFocusedNode = useAppStore((s) => s.setFocusedNode);
-
+  const selectedNodeId = useAppStore((s) => s.selectedNodeId);
   const [leftTab, setLeftTab] = useState<'explorer' | 'library'>('explorer');
   const [rightTab, setRightTab] = useState<'properties' | 'chat'>('properties');
+  const [rightPanelPinned, setRightPanelPinned] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('sysml');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [codePanelWidth, setCodePanelWidth] = useState(() => {
     try {
       const saved = localStorage.getItem('sysml-code-panel-width');
-      return saved ? Number(saved) : 40;
-    } catch { return 40; }
+      const width = saved ? Number(saved) : DEFAULT_CODE_PANEL_WIDTH;
+      return Number.isFinite(width)
+        ? Math.min(MAX_CODE_PANEL_WIDTH, Math.max(MIN_CODE_PANEL_WIDTH, width))
+        : DEFAULT_CODE_PANEL_WIDTH;
+    } catch { return DEFAULT_CODE_PANEL_WIDTH; }
   });
   const [isCenterResizing, setIsCenterResizing] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
   const diagramContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (appRef.current) {
-      setupDragDrop(appRef.current, (name, content) => {
-        loadFile(name, content);
-      });
+  const shouldShowRightPanel = showPropertyPanel && (rightPanelPinned || rightTab === 'chat' || Boolean(selectedNodeId));
+
+  const handleTogglePropertiesPanel = useCallback(() => {
+    setRightTab('properties');
+
+    if (shouldShowRightPanel && rightTab === 'properties') {
+      setRightPanelPinned(false);
+      togglePropertyPanel();
+      return;
     }
+
+    if (!showPropertyPanel) {
+      togglePropertyPanel();
+    }
+    setRightPanelPinned(true);
+  }, [rightTab, shouldShowRightPanel, showPropertyPanel, togglePropertyPanel]);
+
+  useEffect(() => {
+    if (!appRef.current) return undefined;
+    return setupDragDrop(
+      appRef.current,
+      (name, content) => {
+        loadFile(name, content);
+      },
+      (message) => showToast(message, 'error'),
+    );
   }, [loadFile]);
 
   useEffect(() => {
@@ -174,6 +201,7 @@ export default function App() {
           if (!showPropertyPanel) {
             togglePropertyPanel();
           }
+          setRightPanelPinned(false);
           setRightTab('chat');
           return;
         }
@@ -186,7 +214,7 @@ export default function App() {
 
         if (e.key.toLowerCase() === 'j') {
           e.preventDefault();
-          togglePropertyPanel();
+          handleTogglePropertiesPanel();
           return;
         }
 
@@ -221,7 +249,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [removeSelectedNode, undo, redo, showPropertyPanel, toggleExplorer, togglePropertyPanel, setActiveView, setRightTab, activeView]);
+  }, [removeSelectedNode, undo, redo, showPropertyPanel, toggleExplorer, handleTogglePropertiesPanel, togglePropertyPanel, setActiveView, setRightTab, activeView]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
@@ -236,9 +264,13 @@ export default function App() {
   }, [codePanelWidth]);
 
   const handleOpen = useCallback(async () => {
-    const result = await openFileDialog();
-    if (result) {
-      loadFile(result.name, result.content);
+    try {
+      const result = await openFileDialog();
+      if (result) {
+        loadFile(result.name, result.content);
+      }
+    } catch (error) {
+      showToast((error as Error).message, 'error');
     }
   }, [loadFile]);
 
@@ -276,7 +308,7 @@ export default function App() {
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
       const deltaPercent = (delta / containerWidth) * 100;
-      const newPercent = Math.min(70, Math.max(15, startPercent + deltaPercent));
+      const newPercent = Math.min(MAX_CODE_PANEL_WIDTH, Math.max(MIN_CODE_PANEL_WIDTH, startPercent + deltaPercent));
       setCodePanelWidth(newPercent);
     };
 
@@ -294,30 +326,51 @@ export default function App() {
     document.body.style.userSelect = 'none';
   }, [codePanelWidth]);
 
+  const handleCenterDividerKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 5 : 2;
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setCodePanelWidth((width) => Math.max(MIN_CODE_PANEL_WIDTH, width - step));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setCodePanelWidth((width) => Math.min(MAX_CODE_PANEL_WIDTH, width + step));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setCodePanelWidth(MIN_CODE_PANEL_WIDTH);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setCodePanelWidth(MAX_CODE_PANEL_WIDTH);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setCodePanelWidth(DEFAULT_CODE_PANEL_WIDTH);
+    }
+  }, []);
+
   const elementCount = model ? countElements(model.children) : 0;
 
   return (
     <ErrorBoundary>
     <div ref={appRef} className={`app ${isDarkMode ? 'dark' : 'light'}`}>
-      <header className="toolbar">
+      <header className="toolbar" role="banner" aria-label="Application toolbar">
         <div className="toolbar-left">
           <div className="app-logo">
             <span className="logo-icon">◆</span>
             <span className="logo-text">SysML v2</span>
           </div>
           <div className="toolbar-divider" />
-          <button className="toolbar-btn" onClick={undo} disabled={!canUndo()} title="Undo (Ctrl/Cmd+Z)">
+          <button className="toolbar-btn" onClick={undo} disabled={!canUndo()} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">
             <Undo2 size={14} />
           </button>
-          <button className="toolbar-btn" onClick={redo} disabled={!canRedo()} title="Redo (Ctrl/Cmd+Shift+Z)">
+          <button className="toolbar-btn" onClick={redo} disabled={!canRedo()} title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo">
             <Redo2 size={14} />
           </button>
           <div className="toolbar-divider" />
-          <button className="toolbar-btn" onClick={handleOpen} title="Open .sysml or .drawio file">
+          <button className="toolbar-btn" onClick={handleOpen} title="Open .sysml or .drawio file" aria-label="Open SysML or Draw.io file">
             <FolderOpen size={14} />
           </button>
           <div className="toolbar-btn-group">
-            <button className="toolbar-btn" onClick={() => void handleExport()} title="Export model">
+            <button className="toolbar-btn" onClick={() => void handleExport()} title="Export model" aria-label={`Export model as ${exportFormat}`}>
               <Download size={14} />
             </button>
             <select
@@ -325,6 +378,7 @@ export default function App() {
               value={exportFormat}
               onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
               title="Export format"
+              aria-label="Export format"
             >
               <option value="sysml">.sysml</option>
               <option value="drawio">.drawio</option>
@@ -338,6 +392,7 @@ export default function App() {
             value={currentModelId}
             onChange={(event) => resetToExample(event.target.value as 'vehicle' | 'mars' | 'radio')}
             title="Load Example"
+            aria-label="Load example model"
           >
             <option value="vehicle">Vehicle Demo</option>
             <option value="mars">Mars Rover</option>
@@ -345,10 +400,16 @@ export default function App() {
             {currentModelId === 'custom' && <option value="custom">{fileName || 'Imported Model'}</option>}
           </select>
           <div className="toolbar-divider" />
-          <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle Explorer (Ctrl/Cmd+B)">
+          <button className="toolbar-btn" onClick={toggleExplorer} title="Toggle Explorer (Ctrl/Cmd+B)" aria-label="Toggle model explorer" aria-pressed={showExplorer}>
             <PanelLeft size={14} />
           </button>
-          <button className="toolbar-btn" onClick={togglePropertyPanel} title="Toggle Properties (Ctrl/Cmd+J)">
+          <button
+            className="toolbar-btn"
+            onClick={handleTogglePropertiesPanel}
+            title="Toggle Properties (Ctrl/Cmd+J)"
+            aria-label="Toggle properties panel"
+            aria-pressed={shouldShowRightPanel && rightTab === 'properties'}
+          >
             <PanelRight size={14} />
           </button>
           <button
@@ -357,22 +418,28 @@ export default function App() {
               if (!showPropertyPanel) {
                 togglePropertyPanel();
               }
+              setRightPanelPinned(false);
               setRightTab('chat');
             }}
             title="Open AI Chat (Ctrl/Cmd+Shift+I)"
+            aria-label="Open AI chat"
+            aria-pressed={shouldShowRightPanel && rightTab === 'chat'}
           >
             <MessageSquare size={14} />
           </button>
         </div>
 
         <div className="toolbar-center">
-          <div className="view-tabs">
+          <div className="view-tabs" role="tablist" aria-label="Diagram view">
             {viewTabs.map((tab) => (
               <button
                 key={tab.id}
                 className={`view-tab ${activeView === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveView(tab.id)}
                 title={tab.description}
+                role="tab"
+                aria-selected={activeView === tab.id}
+                aria-label={`${tab.label}: ${tab.description}`}
               >
                 <tab.icon size={14} className="tab-icon" />
                 <span className="tab-label">{tab.label}</span>
@@ -389,27 +456,31 @@ export default function App() {
           >
             TW · About
           </a>
-          <button className="toolbar-btn theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
+          <button className="toolbar-btn theme-toggle" onClick={toggleDarkMode} title="Toggle theme" aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} theme`}>
             {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
       </header>
 
-      <div className="main-content">
+      <main className="main-content" aria-label="SysML workspace">
         {showExplorer && (
           <PanelErrorBoundary panelName="left">
           <ResizablePanel defaultWidth={250} minWidth={180} maxWidth={400} side="left" persistKey="sysml-left-panel">
           <div className="panel-left">
-            <div className="panel-tab-bar">
+            <div className="panel-tab-bar" role="tablist" aria-label="Left side panel">
               <button
                 className={`panel-tab ${leftTab === 'explorer' ? 'active' : ''}`}
                 onClick={() => setLeftTab('explorer')}
+                role="tab"
+                aria-selected={leftTab === 'explorer'}
               >
                 Explorer
               </button>
               <button
                 className={`panel-tab ${leftTab === 'library' ? 'active' : ''}`}
                 onClick={() => setLeftTab('library')}
+                role="tab"
+                aria-selected={leftTab === 'library'}
               >
                 Library
               </button>
@@ -435,8 +506,16 @@ export default function App() {
             </div>
             <div
               className={`split-divider ${isCenterResizing ? 'active' : ''}`}
+              role="separator"
+              aria-label="Resize source editor and diagram"
+              aria-orientation="vertical"
+              aria-valuemin={MIN_CODE_PANEL_WIDTH}
+              aria-valuemax={MAX_CODE_PANEL_WIDTH}
+              aria-valuenow={Math.round(codePanelWidth)}
+              tabIndex={0}
               onMouseDown={handleCenterDividerMouseDown}
-              onDoubleClick={() => setCodePanelWidth(40)}
+              onDoubleClick={() => setCodePanelWidth(DEFAULT_CODE_PANEL_WIDTH)}
+              onKeyDown={handleCenterDividerKeyDown}
             />
             <div
               ref={diagramContainerRef}
@@ -454,6 +533,7 @@ export default function App() {
                   <span className="focused-view-label">Focused View</span>
                   <button
                     className="focused-view-clear-btn"
+                    aria-label="Clear focused diagram view"
                     onClick={() => setFocusedNode(null)}
                   >
                     Clear Focus
@@ -465,20 +545,24 @@ export default function App() {
         </div>
         </PanelErrorBoundary>
 
-        {showPropertyPanel && (
+        {shouldShowRightPanel && (
           <PanelErrorBoundary panelName="right">
           <ResizablePanel defaultWidth={280} minWidth={200} maxWidth={450} side="right" persistKey="sysml-right-panel">
           <div className="panel-right">
-            <div className="panel-tab-bar">
+            <div className="panel-tab-bar" role="tablist" aria-label="Right side panel">
               <button
                 className={`panel-tab ${rightTab === 'properties' ? 'active' : ''}`}
                 onClick={() => setRightTab('properties')}
+                role="tab"
+                aria-selected={rightTab === 'properties'}
               >
                 Properties
               </button>
               <button
                 className={`panel-tab ${rightTab === 'chat' ? 'active' : ''}`}
                 onClick={() => setRightTab('chat')}
+                role="tab"
+                aria-selected={rightTab === 'chat'}
               >
                 AI Chat
               </button>
@@ -488,9 +572,9 @@ export default function App() {
           </ResizablePanel>
           </PanelErrorBoundary>
         )}
-      </div>
+      </main>
 
-      <footer className="status-bar">
+      <footer className="status-bar" role="status" aria-live="polite">
         <div className="status-left">
           <span className={`status-indicator ${parseErrors.length > 0 ? 'error' : 'ok'}`}>
             {parseErrors.length > 0 ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}

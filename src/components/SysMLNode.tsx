@@ -42,7 +42,11 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
     const bgColor = kindColors[d.kind] || '#6b7280';
 
     return (
-        <div className={`sysml-node ${d.isSelected ? 'selected' : ''}`}
+        <div
+            className={`sysml-node ${d.isSelected ? 'selected' : ''}`}
+            role="group"
+            aria-label={`${d.kind} node ${d.label}`}
+            aria-selected={d.isSelected}
             style={{ borderColor: bgColor }}>
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
@@ -59,10 +63,16 @@ export const SysMLDiagramNode = memo(function SysMLDiagramNode({ data }: NodePro
                     {d.compartments.map((comp, i) => (
                         <div key={i} className="node-compartment">
                             {comp.label && (
-                                <div className="compartment-label" onClick={() => setCollapsed((p) => ({ ...p, [i]: !p[i] }))} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    {collapsed[i] ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+                                <button
+                                    type="button"
+                                    className="compartment-label compartment-toggle"
+                                    aria-expanded={!collapsed[i]}
+                                    aria-label={`${collapsed[i] ? 'Expand' : 'Collapse'} ${comp.label} for ${d.label}`}
+                                    onClick={() => setCollapsed((p) => ({ ...p, [i]: !p[i] }))}
+                                >
+                                    {collapsed[i] ? <ChevronRight size={10} aria-hidden="true" /> : <ChevronDown size={10} aria-hidden="true" />}
                                     {comp.label}
-                                </div>
+                                </button>
                             )}
                             {!collapsed[i] && comp.items.map((item, j) => (
                                 <div key={j} className="compartment-item">{item}</div>
@@ -90,7 +100,12 @@ export const StateNode = memo(function StateNode({ data }: NodeProps) {
     const d = data as unknown as SysMLNodeData;
 
     return (
-        <div className={`sysml-node state-node ${d.isSelected ? 'selected' : ''}`}>
+        <div
+            className={`sysml-node state-node ${d.isSelected ? 'selected' : ''}`}
+            role="group"
+            aria-label={`${d.kind} node ${d.label}`}
+            aria-selected={d.isSelected}
+        >
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="state-header">
@@ -119,7 +134,11 @@ export const PseudoStateNode = memo(function PseudoStateNode({ data }: NodeProps
     const isFinal = d.kind === 'final';
 
     return (
-        <div className={`pseudo-state-node ${isFinal ? 'final' : 'initial'}`}>
+        <div
+            className={`pseudo-state-node ${isFinal ? 'final' : 'initial'}`}
+            role="group"
+            aria-label={`${isFinal ? 'Final' : 'Initial'} pseudo-state`}
+        >
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             {isFinal && <div className="inner-circle" />}
@@ -134,7 +153,12 @@ export const ActionNode = memo(function ActionNode({ data }: NodeProps) {
     const d = data as unknown as SysMLNodeData;
 
     return (
-        <div className={`sysml-node action-node ${d.isSelected ? 'selected' : ''}`}>
+        <div
+            className={`sysml-node action-node ${d.isSelected ? 'selected' : ''}`}
+            role="group"
+            aria-label={`${d.kind} node ${d.label}`}
+            aria-selected={d.isSelected}
+        >
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="action-header">
@@ -163,7 +187,12 @@ export const RequirementNode = memo(function RequirementNode({ data }: NodeProps
     const d = data as unknown as SysMLNodeData;
 
     return (
-        <div className={`sysml-node requirement-node ${d.isSelected ? 'selected' : ''}`}>
+        <div
+            className={`sysml-node requirement-node ${d.isSelected ? 'selected' : ''}`}
+            role="group"
+            aria-label={`${d.kind} node ${d.label}`}
+            aria-selected={d.isSelected}
+        >
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="requirement-header">
@@ -197,7 +226,12 @@ export const RequirementNode = memo(function RequirementNode({ data }: NodeProps
 export const PortNode = memo(function PortNode({ data }: NodeProps) {
     const d = data as unknown as SysMLNodeData;
     return (
-        <div className={`port-node ${d.isSelected ? 'selected' : ''}`}>
+        <div
+            className={`port-node ${d.isSelected ? 'selected' : ''}`}
+            role="group"
+            aria-label={`${d.kind} node ${d.label}`}
+            aria-selected={d.isSelected}
+        >
             <Handle type="target" position={Position.Top} className="node-handle" />
             <Handle type="target" position={Position.Left} id="left" className="node-handle" />
             <div className="port-label">{d.label}</div>

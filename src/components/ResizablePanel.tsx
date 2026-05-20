@@ -71,11 +71,46 @@ export default function ResizablePanel({ defaultWidth, minWidth, maxWidth, side,
     }
   }, [isCollapsed, width, minWidth]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 40 : 10;
+    let nextWidth = width;
+
+    if (e.key === 'ArrowLeft') {
+      nextWidth = side === 'left' ? width - step : width + step;
+    } else if (e.key === 'ArrowRight') {
+      nextWidth = side === 'left' ? width + step : width - step;
+    } else if (e.key === 'Home') {
+      nextWidth = minWidth;
+    } else if (e.key === 'End') {
+      nextWidth = maxWidth;
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleDoubleClick();
+      return;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    const clampedWidth = Math.min(maxWidth, Math.max(minWidth, nextWidth));
+    setWidth(clampedWidth);
+    setIsCollapsed(clampedWidth <= minWidth);
+    onResize?.(clampedWidth);
+  }, [handleDoubleClick, maxWidth, minWidth, onResize, side, width]);
+
   const divider = (
     <div
       className={`resizable-divider ${side} ${isResizing ? 'active' : ''}`}
+      role="separator"
+      aria-label={`Resize ${side} panel`}
+      aria-orientation="vertical"
+      aria-valuemin={minWidth}
+      aria-valuemax={maxWidth}
+      aria-valuenow={width}
+      tabIndex={0}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
     />
   );
 

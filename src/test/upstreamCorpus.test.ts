@@ -28,8 +28,12 @@ describeIfRelease('SysML v2 release corpus smoke fixtures', () => {
       const source = readFileSync(path, 'utf8');
       const parsed = parseSysML(source);
       const unknownCount = countKind(parsed.children, 'Unknown');
+      const unknownDiagnosticCount = parsed.errors.filter((error) =>
+        error.code?.startsWith('unsupported:')
+      ).length;
 
       expect(parsed.children.length).toBeGreaterThan(0);
+      expect(unknownDiagnosticCount).toBeGreaterThanOrEqual(unknownCount);
       expect(parsed.errors.length + unknownCount).toBeLessThan(source.split('\n').length);
     });
   }

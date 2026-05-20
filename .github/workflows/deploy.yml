@@ -23,10 +23,24 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Release baseline tests
+        run: |
+          echo "SYSML_V2_RELEASE_DIR is optional; upstream corpus tests are skipped when absent."
+          npm run test:release
+
+      - name: Build static app
         run: npm run build
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

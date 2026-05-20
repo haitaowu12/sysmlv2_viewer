@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../store/store';
-import type { AiAttachment, EditModelResponse, GenerateModelResponse } from '../types/ai';
+import type { AiAttachment, AiProviderStatus, EditModelResponse, GenerateModelResponse } from '../types/ai';
 import LoadingSpinner from './LoadingSpinner';
 import { Send } from 'lucide-react';
 
@@ -8,6 +8,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   diagnostics?: string[];
+  providerStatus?: AiProviderStatus;
   timestamp: Date;
 }
 
@@ -28,6 +29,16 @@ async function fileToAttachment(file: File): Promise<AiAttachment> {
     mimeType: file.type || 'application/octet-stream',
     base64Data: bytesToBase64(new Uint8Array(buffer)),
   };
+}
+
+function formatProviderStatus(status: AiProviderStatus): string {
+  if (status.source === 'provider') {
+    return `Provider output: ${status.effectiveProvider}:${status.model}`;
+  }
+  if (status.usedFallback && status.reason) {
+    return `Local heuristic fallback: ${status.reason}`;
+  }
+  return 'Local heuristic output.';
 }
 
 export default function AiChatPanel() {
@@ -96,8 +107,9 @@ export default function AiChatPanel() {
           ...prev,
           {
             role: 'assistant',
-            content: 'Generated SysML and Draw.io model from your input.',
+            content: `Generated SysML. ${formatProviderStatus(data.providerStatus)}`,
             diagnostics: data.diagnostics,
+            providerStatus: data.providerStatus,
             timestamp: new Date(),
           },
         ]);
@@ -113,8 +125,9 @@ export default function AiChatPanel() {
           ...prev,
           {
             role: 'assistant',
-            content: 'Applied AI model edits and synchronized SysML + Draw.io.',
+            content: `Applied SysML edits. ${formatProviderStatus(data.providerStatus)}`,
             diagnostics: data.diagnostics,
+            providerStatus: data.providerStatus,
             timestamp: new Date(),
           },
         ]);
