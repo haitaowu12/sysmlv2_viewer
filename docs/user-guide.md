@@ -76,4 +76,6 @@ If the iframe cannot load, use the advanced XML editor fallback.
 
 Best-supported roundtrip elements: `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
 
-Unsupported or partial syntax can still be edited as source, but may not render or roundtrip visually.
+Project examples and AI generation are anchored to `Systems-Modeling/SysML-v2-Release` tag `2026-04`, commit `9baca5908ca28b53da085de69336fde48420ea8f`.
+
+Unsupported or partial syntax can still be edited as source, but may not render or roundtrip visually. Current partial areas include `alias`, `calc`, `individual`, `occurrence`, and `variation`.

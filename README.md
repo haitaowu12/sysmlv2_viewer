@@ -50,7 +50,24 @@ If no provider key is configured, AI generation falls back to the local heuristi
 - `npm run build` - TypeScript and production Vite build.
 - `npm run lint` - ESLint production gate.
 - `npm run test` - Vitest suite.
+- `npm run test:release` - release-baseline and optional upstream fixture smoke tests.
 - `npm run preview` - serve the production build.
+
+## SysML v2 Release Baseline
+
+Project examples, AI generation guardrails, and parser fixture work are anchored to:
+
+- `Systems-Modeling/SysML-v2-Release`
+- tag `2026-04`
+- commit `9baca5908ca28b53da085de69336fde48420ea8f`
+
+See `docs/sysml-v2-release-baseline.md`.
+
+Optional upstream fixture check:
+
+```bash
+SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
+```
 
 ## Security Notes
 
@@ -63,7 +80,7 @@ If no provider key is configured, AI generation falls back to the local heuristi
 
 Primary roundtrip coverage includes `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
 
-The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable.
+The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable. `alias`, `calc`, `individual`, `occurrence`, and `variation` are treated as partial/recovery-only areas until fixture-driven parser support is added.
 
 ## Troubleshooting
 

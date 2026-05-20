@@ -467,9 +467,12 @@ async function modelWithProvider({ provider, apiKey, model, systemPrompt, userPr
 function buildSystemPrompt() {
   return [
     'You generate SysML v2 and Draw.io-aligned model data.',
+    'Use OMG SysML v2 textual notation aligned to Systems-Modeling/SysML-v2-Release tag 2026-04, commit 9baca5908ca28b53da085de69336fde48420ea8f.',
     'Return JSON only: {"sysml":"...","notes":["..."]}.',
     'Prioritize structural SysML subset: Package, PartDef, PartUsage, PortDef, PortUsage, ConnectionUsage, RequirementDef, RequirementUsage, satisfy, verify.',
-    'Ensure SysML is syntactically simple and parseable.',
+    'Use SysML v2 wording such as part definitions/usages and view/viewpoint; avoid SysML v1 block/BDD wording unless comparing migrations.',
+    'Avoid alias, calc, individual, occurrence, and variation syntax unless the user explicitly asks for textual-only output outside current viewer roundtrip support.',
+    'Ensure SysML is syntactically simple and parseable by this viewer.',
   ].join(' ');
 }
 
