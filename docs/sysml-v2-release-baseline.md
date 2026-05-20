@@ -34,10 +34,13 @@ Roundtrip support is strongest for:
 - `requirement def`, `requirement`
 - `constraint def`, `require constraint`, `assume constraint`
 - `attribute def`, `attribute`, `item def`, `item`
-- `verification def`, `verify`
-- `analysis def`, `analysis`
+- `enum def`, `enumeration def`, enum literals
+- typed `flow ... to ... : Type`
+- `verification def`, `verify`, verification `objective`
+- `analysis def`, `analysis`, analysis `return`
 - `viewpoint def`, `view def`
-- `metadata def`, `allocation`, `dependency`, `satisfy`
+- `metadata def`, metadata annotations, allocation, dependency, satisfy
+- `abstract` / `static` modifiers and `:>>` redefinition shorthand
 
 Partial or recovery-only areas:
 
@@ -46,7 +49,7 @@ Partial or recovery-only areas:
 - `individual`
 - `occurrence`
 - `variation` / `variant`
-- rich metadata usage with `about`
+- rich typed metadata usage with `about`
 - broader `satisfy requirement ... by ...` and `verify requirement ...` forms
 - full graphical BNF coverage
 

@@ -57,6 +57,7 @@ export interface SysMLNode {
     kind: NodeKind;
     name: string;
     shortName?: string;
+    modifiers?: string[];
     visibility?: 'public' | 'private' | 'protected';
     children: SysMLNode[];
     location?: SourceLocation;
@@ -191,6 +192,7 @@ export interface AttributeDef extends SysMLNode {
 export interface AttributeUsage extends SysMLNode {
     kind: 'AttributeUsage';
     typeName?: string;
+    multiplicity?: string;
     defaultValue?: string;
     direction?: 'in' | 'out' | 'inout';
     isRedefine?: boolean;
@@ -219,6 +221,7 @@ export interface FlowUsage extends SysMLNode {
     kind: 'FlowUsage';
     source: string;
     target: string;
+    typeName?: string;
 }
 
 export interface BindingUsage extends SysMLNode {
