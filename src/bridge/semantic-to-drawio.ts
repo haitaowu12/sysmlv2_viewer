@@ -7,7 +7,7 @@ import type {
 } from './semantic-types';
 import { sysmlPathHash } from './semantic-types';
 
-const NODE_STYLE: Record<SemanticNodeKind, string> = {
+const NODE_STYLE: Partial<Record<SemanticNodeKind, string>> = {
   Package: 'swimlane;html=1;rounded=0;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;',
   PartDef: 'rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;',
   PartUsage: 'rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;',
@@ -50,7 +50,7 @@ const NODE_STYLE: Record<SemanticNodeKind, string> = {
   Unknown: 'rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e0e0;strokeColor=#9e9e9e;',
 };
 
-const EDGE_STYLE: Record<SemanticEdgeKind, string> = {
+const EDGE_STYLE: Partial<Record<SemanticEdgeKind, string>> = {
   // Keep containment links for deterministic roundtrip, but render them unobtrusively.
   contains: 'edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;strokeColor=#d1d5db;dashed=1;opacity=25;',
   connection: 'edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;',
@@ -81,7 +81,7 @@ function safeLabel(node: SemanticNode): string {
 }
 
 function serializeNodeCell(node: SemanticNode, geometry: { x: number; y: number; width: number; height: number }): string {
-  const style = `${NODE_STYLE[node.kind] ?? NODE_STYLE.Unknown}sysmlKind=${node.kind};`;
+  const style = `${NODE_STYLE[node.kind] ?? NODE_STYLE.Unknown ?? ''}sysmlKind=${node.kind};`;
   const value = escapeXml(safeLabel(node));
   const sysmlPath = escapeXml(node.sysmlPath);
 
@@ -93,7 +93,7 @@ function serializeNodeCell(node: SemanticNode, geometry: { x: number; y: number;
 }
 
 function serializeEdgeCell(edge: SemanticEdge): string {
-  const style = `${EDGE_STYLE[edge.kind] ?? EDGE_STYLE.connection}sysmlEdge=${edge.kind};`;
+  const style = `${EDGE_STYLE[edge.kind] ?? EDGE_STYLE.connection ?? ''}sysmlEdge=${edge.kind};`;
   const value = edge.kind === 'contains' ? '' : edge.label ? escapeXml(edge.label) : '';
 
   return [

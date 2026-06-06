@@ -23,11 +23,8 @@
  * ⚠️  Action params: parsed from body as inline params, not from signature
  * ⚠️  Doc comments: detected by heuristic (preceding 'doc' keyword), may miss edge cases
  * ⚠️  Block comments: nested block comments supported
- * ❌ OccurrenceDef/OccurrenceUsage
- * ❌ IndividualDef/IndividualUsage
- * ❌ CalcDef/CalcUsage
- * ❌ Variation keyword
- * ❌ Alias definitions
+ * ⚠️  Alias definitions and first-tranche MoC constructs recover as typed nodes
+ * ⚠️  Calc, individual, occurrence, snapshot/time slice, variation, metadata about, message/event
  */
 
 import type {
@@ -71,6 +68,8 @@ import type {
     NodeKind,
 } from './types';
 import { nodeProperties } from '../utils/nodeProperties';
+
+const ELEMENT_START_PATTERN = /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test|alias|calc|individual|occurrence|snapshot|timeslice|time|variation|variant|send|accept|event)$/;
 
 class Lexer {
     private pos = 0;
@@ -360,7 +359,7 @@ class Lexer {
         const trimmed = currentLine.trim();
         if (trimmed && !trimmed.endsWith(';') && !trimmed.endsWith('{') && !trimmed.endsWith('}')) {
             const nextTok = remaining.split(/\s/)[0];
-            if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+            if (nextTok && ELEMENT_START_PATTERN.test(nextTok)) {
                 return `add ';' at end of line`;
             }
         }
@@ -396,7 +395,7 @@ export function parseSysML(input: string): SysMLModel {
                 if (!lexer.eof) {
                     const remaining = lexer.remaining.trimStart();
                     const nextTok = remaining.split(/\s/)[0];
-                    if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+                    if (nextTok && ELEMENT_START_PATTERN.test(nextTok)) {
                         const currentLineText = input.split('\n')[lineAfter - 1] || '';
                         const trimmed = currentLineText.trim();
                         if (trimmed && !trimmed.endsWith(';') && !trimmed.endsWith('{') && !trimmed.endsWith('}')) {
@@ -575,6 +574,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseFlow(lexer);
     } else if (lexer.lookAhead('bind')) {
         node = parseBinding(lexer);
+    } else if (lexer.lookAhead('alias')) {
+        node = parseAlias(lexer);
     } else if (lexer.lookAhead('import')) {
         node = parseImport(lexer);
     } else if (lexer.lookAhead('doc')) {
@@ -603,6 +604,36 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseViewDef(lexer);
     } else if (lexer.lookAhead('view')) {
         node = parseViewUsage(lexer);
+    } else if (lexer.lookAhead('calc def')) {
+        node = parsePartialNamedConstruct(lexer, 'CalcDef', 'calc', ['calc', 'def']);
+    } else if (lexer.lookAhead('calc')) {
+        node = parsePartialNamedConstruct(lexer, 'CalcUsage', 'calc', ['calc']);
+    } else if (lexer.lookAhead('individual def')) {
+        node = parsePartialNamedConstruct(lexer, 'IndividualDef', 'individual', ['individual', 'def']);
+    } else if (lexer.lookAhead('individual')) {
+        node = parsePartialNamedConstruct(lexer, 'IndividualUsage', 'individual', ['individual']);
+    } else if (lexer.lookAhead('occurrence def')) {
+        node = parsePartialNamedConstruct(lexer, 'OccurrenceDef', 'occurrence', ['occurrence', 'def']);
+    } else if (lexer.lookAhead('occurrence')) {
+        node = parsePartialNamedConstruct(lexer, 'OccurrenceUsage', 'occurrence', ['occurrence']);
+    } else if (lexer.lookAhead('snapshot')) {
+        node = parsePartialNamedConstruct(lexer, 'SnapshotUsage', 'snapshot', ['snapshot']);
+    } else if (lexer.lookAhead('time slice')) {
+        node = parsePartialNamedConstruct(lexer, 'TimeSliceUsage', 'time-slice', ['time', 'slice']);
+    } else if (lexer.lookAhead('timeslice')) {
+        node = parsePartialNamedConstruct(lexer, 'TimeSliceUsage', 'time-slice', ['timeslice']);
+    } else if (lexer.lookAhead('variation def')) {
+        node = parsePartialNamedConstruct(lexer, 'VariationDef', 'variation', ['variation', 'def']);
+    } else if (lexer.lookAhead('variation')) {
+        node = parsePartialNamedConstruct(lexer, 'VariationUsage', 'variation', ['variation']);
+    } else if (lexer.lookAhead('variant')) {
+        node = parsePartialNamedConstruct(lexer, 'VariantUsage', 'variant', ['variant']);
+    } else if (lexer.lookAhead('send') || lexer.lookAhead('accept')) {
+        node = parseMessageUsage(lexer);
+    } else if (lexer.lookAhead('event occurrence')) {
+        node = parsePartialNamedConstruct(lexer, 'EventOccurrenceUsage', 'event-occurrence', ['event', 'occurrence']);
+    } else if (lexer.lookAhead('event')) {
+        node = parsePartialNamedConstruct(lexer, 'EventOccurrenceUsage', 'event', ['event']);
     } else if (lexer.lookAhead('verification def')) {
         node = parseVerificationDef(lexer);
     } else if (lexer.lookAhead('verification') || lexer.lookAhead('verify')) {
@@ -613,6 +644,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseAnalysisUsage(lexer);
     } else if (lexer.lookAhead('metadata def')) {
         node = parseMetadataDef(lexer);
+    } else if (lexer.lookAhead('metadata')) {
+        node = parseMetadataUsage(lexer);
     } else if (lexer.lookAhead('objective')) {
         node = parseObjectiveUsage(lexer);
     } else if (lexer.lookAhead('enumeration def')) {
@@ -1334,6 +1367,146 @@ function parseBinding(lexer: Lexer): BindingUsage {
     return { kind: 'BindingUsage', name: `bind_${source}_${target}`, source, target, children: [] };
 }
 
+function parseAlias(lexer: Lexer): SysMLNode {
+    lexer.expect('alias');
+    const name = lexer.readIdentifier();
+    let targetRef = '';
+    if (lexer.match('for')) {
+        targetRef = lexer.readQualifiedName();
+    }
+    lexer.match(';');
+    return { kind: 'Alias', name, targetRef, children: [] } as SysMLNode;
+}
+
+function parsePartialNamedConstruct(
+    lexer: Lexer,
+    kind: NodeKind,
+    code: string,
+    keywords: string[],
+): SysMLNode {
+    const start = lexer.position;
+    for (const keyword of keywords) {
+        lexer.expect(keyword);
+    }
+
+    let name = code;
+    if (!lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        name = lexer.readIdentifier();
+    }
+
+    let typeName: string | undefined;
+    let snapshotOf: string | undefined;
+    let timeSliceOf: string | undefined;
+    let variantOf: string | undefined;
+    let about: string | undefined;
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        if (lexer.match(':')) {
+            typeName = readTypeReference(lexer);
+        } else if (lexer.match('of')) {
+            const ref = readReference(lexer);
+            if (kind === 'SnapshotUsage') snapshotOf = ref;
+            else if (kind === 'TimeSliceUsage') timeSliceOf = ref;
+            else if (kind === 'VariantUsage') variantOf = ref;
+        } else if (lexer.match('about')) {
+            about = readReference(lexer);
+        } else {
+            lexer.advance();
+        }
+    }
+
+    const children = parseBody(lexer);
+    lexer.reportDiagnostic(
+        `Partial support for '${code}' recovered as ${kind}`,
+        'warning',
+        `unsupported:${code}`,
+        start,
+        lexer.position
+    );
+
+    return {
+        kind,
+        name,
+        typeName,
+        snapshotOf,
+        timeSliceOf,
+        variantOf,
+        about,
+        children,
+    } as SysMLNode;
+}
+
+function parseMetadataUsage(lexer: Lexer): SysMLNode {
+    const start = lexer.position;
+    lexer.expect('metadata');
+    const name = lexer.readIdentifier();
+
+    let typeName: string | undefined;
+    if (lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+    }
+
+    let about: string | undefined;
+    if (lexer.match('about')) {
+        about = readReference(lexer);
+    }
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        lexer.advance();
+    }
+
+    const children = parseBody(lexer);
+    lexer.reportDiagnostic(
+        about ? "Partial support for metadata 'about' recovered as MetadataUsage" : 'Partial metadata usage support',
+        'warning',
+        about ? 'unsupported:metadata-about' : 'unsupported:metadata',
+        start,
+        lexer.position
+    );
+
+    return { kind: 'MetadataUsage', name, typeName, about, children } as SysMLNode;
+}
+
+function parseMessageUsage(lexer: Lexer): SysMLNode {
+    const start = lexer.position;
+    const direction = lexer.match('send') ? 'send' : 'accept';
+    if (direction === 'accept') {
+        lexer.expect('accept');
+    }
+
+    let payloadType = '';
+    if (!lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        payloadType = readReference(lexer);
+    }
+
+    let target: string | undefined;
+    if (lexer.match('to')) {
+        target = readReference(lexer);
+    }
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        lexer.advance();
+    }
+
+    const children = parseBody(lexer);
+    lexer.reportDiagnostic(
+        `Partial support for ${direction} message recovered as MessageUsage`,
+        'warning',
+        'unsupported:message',
+        start,
+        lexer.position
+    );
+
+    return {
+        kind: 'MessageUsage',
+        name: `${direction}_${payloadType || 'message'}`,
+        source: direction,
+        target,
+        payloadType,
+        children,
+    } as SysMLNode;
+}
+
 function parseSuccession(lexer: Lexer): SysMLNode {
     lexer.expect('succession');
 
@@ -1538,7 +1711,7 @@ function parseBody(lexer: Lexer): SysMLNode[] {
         if (!lexer.eof && lexer.currentLine === lineBefore) {
             const remaining = lexer.remaining.trimStart();
             const nextTok = remaining.split(/\s/)[0];
-            if (nextTok && /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test)$/.test(nextTok)) {
+            if (nextTok && ELEMENT_START_PATTERN.test(nextTok)) {
                 throw lexer.errorWithSeverity(
                     `Missing semicolon before '${nextTok}'. Did you mean: add ';' at end of line?`,
                     'error'
@@ -1905,13 +2078,19 @@ function parseVerificationDef(lexer: Lexer): SysMLNode {
 
 function parseVerificationUsage(lexer: Lexer): SysMLNode {
     if (lexer.match('verify')) {
+        if (lexer.lookAhead('requirement')) {
+            lexer.match('requirement');
+        }
         const name = lexer.readIdentifier();
         let typeName: string | undefined;
         if (lexer.match(':')) {
             typeName = readTypeReference(lexer);
         }
+        while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+            lexer.advance();
+        }
         const children = parseBody(lexer);
-        return { kind: 'VerificationUsage', name: name || 'verify', typeName, children } as SysMLNode;
+        return { kind: 'VerificationUsage', name: name || 'verify', typeName, targetRef: name, children } as SysMLNode;
     }
 
     lexer.expect('verification');
@@ -1980,19 +2159,34 @@ function parseMetadataDef(lexer: Lexer): SysMLNode {
 function parseSatisfyUsage(lexer: Lexer): SysMLNode {
     lexer.expect('satisfy');
 
+    if (lexer.lookAhead('requirement')) {
+        lexer.match('requirement');
+    }
+
     const name = lexer.readIdentifier();
     let typeName: string | undefined;
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
 
-    lexer.match(';');
+    let sourceRef: string | undefined;
+    if (lexer.match('by')) {
+        sourceRef = readReference(lexer);
+    }
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        lexer.advance();
+    }
+
+    const children = parseBody(lexer);
 
     return {
         kind: 'RequirementUsage',
         name: name || 'satisfy',
         typeName,
-        children: [],
+        sourceRef,
+        targetRef: name,
+        children,
     } as SysMLNode;
 }
 
