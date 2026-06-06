@@ -432,7 +432,7 @@ interface RenderContext {
 }
 
 function nodeRank(kind: SemanticNode['kind']): number {
-  const order: Record<SemanticNode['kind'], number> = {
+  const order: Partial<Record<SemanticNode['kind'], number>> = {
     Package: 0,
     PartDef: 1,
     PartUsage: 2,

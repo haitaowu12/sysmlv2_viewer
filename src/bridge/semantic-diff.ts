@@ -43,6 +43,24 @@ const AUTO_NODE_KINDS = new Set([
   'DependencyUsage',
 ]);
 
+const REVIEW_EDGE_KINDS = new Set([
+  'metadataAbout',
+  'snapshotOf',
+  'timeSliceOf',
+  'variantOf',
+  'selectedVariant',
+  'message',
+  'send',
+  'accept',
+  'payload',
+  'calculationInput',
+  'calculationResult',
+  'constraintParameter',
+  'guard',
+  'trigger',
+  'succession',
+]);
+
 function patchId(scope: string, targetId: string, payload: unknown): string {
   return sysmlPathHash(`${scope}:${targetId}:${JSON.stringify(payload)}`);
 }
@@ -66,6 +84,7 @@ function safetyForNode(node: SemanticNode): SyncPatchSafety {
 }
 
 function safetyForEdgeReconnect(edge: SemanticEdge): SyncPatchSafety {
+  if (REVIEW_EDGE_KINDS.has(edge.kind)) return 'review_required';
   return edge.kind === 'contains' ? 'review_required' : 'safe';
 }
 
@@ -166,7 +185,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
         patches.push({
           id: patchId('reconnect', edge.id, { action: 'add', edge }),
           op: 'reconnect',
-          safety: 'safe',
+          safety: safetyForEdgeReconnect(edge),
           targetId: edge.id,
           payload: {
             action: 'add',
@@ -195,7 +214,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
       patches.push({
         id: patchId('relabel', edge.id, { from: before.label, to: edge.label }),
         op: 'relabel',
-        safety: edge.kind === 'connection' ? 'safe' : 'review_required',
+        safety: edge.kind === 'connection' && !REVIEW_EDGE_KINDS.has(edge.kind) ? 'safe' : 'review_required',
         targetId: edge.id,
         payload: {
           from: before.label ?? '',
@@ -211,7 +230,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
 
     const outgoingKey = `${edge.kind}:${edge.sourceId}`;
     const siblingCount = previousOutgoingCount.get(outgoingKey) ?? 1;
-    const ambiguousDeletion = edge.kind === 'contains' && siblingCount > 1;
+    const ambiguousDeletion = (edge.kind === 'contains' && siblingCount > 1) || REVIEW_EDGE_KINDS.has(edge.kind);
 
     patches.push({
       id: patchId('reconnect', edge.id, { action: 'remove', edge }),
@@ -222,7 +241,7 @@ export function diffSemanticModels(previous: SemanticModel, next: SemanticModel)
         action: 'remove',
         edge,
         reason: ambiguousDeletion
-          ? 'Multiple outgoing relations exist for this source/kind.'
+          ? 'Multiple outgoing relations exist for this source/kind or the relation is recovery-only.'
           : 'Single relation removal.',
       },
     });

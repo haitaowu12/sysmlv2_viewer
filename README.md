@@ -63,7 +63,7 @@ Project examples, AI generation guardrails, and parser fixture work are anchored
 - tag `2026-04`
 - commit `9baca5908ca28b53da085de69336fde48420ea8f`
 
-See `docs/sysml-v2-release-baseline.md`.
+See `docs/sysml-v2-release-baseline.md` and `docs/webel-cameo-pilot-coverage.md`. Webel is used only as a non-authoritative visual coverage map; no Webel images or page bodies are vendored.
 
 Optional upstream fixture check. CI may skip upstream corpus tests when the corpus checkout is absent; in-repo release baseline tests still run.
 
@@ -83,7 +83,7 @@ SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
 
 Primary roundtrip coverage includes `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
 
-The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable. `alias`, `calc`, `individual`, `occurrence`, and `variation` are treated as partial/recovery-only areas until fixture-driven parser support is added.
+The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable. `calc`, `individual`, `occurrence`, snapshots/time slices, `variation`/`variant`, metadata `about`, and message/event constructs are partial/recovery-only areas with explicit diagnostics until fixture-driven support is completed. `alias` has first-tranche parsing, but broader alias-aware reference resolution is still partial.
 
 Unsupported areas include full SysML v2/KerML coverage, official conformance validation, public API hosting without hardening, and arbitrary Draw.io import as semantically valid SysML. See `docs/r2-product-contract.md`.
 

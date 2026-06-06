@@ -1,6 +1,6 @@
 import type { SemanticEdge, SemanticModel, SemanticNode, SemanticNodeKind } from './semantic-types';
 
-const KIND_FILL: Record<SemanticNodeKind, string> = {
+const KIND_FILL: Partial<Record<SemanticNodeKind, string>> = {
   Package: '#f5f5f5',
   PartDef: '#dae8fc',
   PartUsage: '#d5e8d4',
@@ -43,7 +43,7 @@ const KIND_FILL: Record<SemanticNodeKind, string> = {
   Unknown: '#e0e0e0',
 };
 
-const KIND_STROKE: Record<SemanticNodeKind, string> = {
+const KIND_STROKE: Partial<Record<SemanticNodeKind, string>> = {
   Package: '#666666',
   PartDef: '#6c8ebf',
   PartUsage: '#82b366',
@@ -86,7 +86,7 @@ const KIND_STROKE: Record<SemanticNodeKind, string> = {
   Unknown: '#9e9e9e',
 };
 
-const EDGE_STROKE: Record<SemanticEdge['kind'], string> = {
+const EDGE_STROKE: Partial<Record<SemanticEdge['kind'], string>> = {
   contains: '#6b7280',
   connection: '#1f2937',
   satisfy: '#10b981',
@@ -170,8 +170,8 @@ export function semanticModelToSvg(model: SemanticModel): string {
   const nodeShapes = model.nodes
     .map((node) => {
       const rect = model.layout[node.id] ?? { x: 40, y: 40, width: 220, height: 90 };
-      const fill = KIND_FILL[node.kind] ?? KIND_FILL.Unknown;
-      const stroke = KIND_STROKE[node.kind] ?? KIND_STROKE.Unknown;
+      const fill = KIND_FILL[node.kind] ?? KIND_FILL.Unknown ?? '#e0e0e0';
+      const stroke = KIND_STROKE[node.kind] ?? KIND_STROKE.Unknown ?? '#9e9e9e';
       const rx = node.kind === 'PortDef' || node.kind === 'PortUsage' ? 30 : 8;
       const label = nodeLabel(node);
 

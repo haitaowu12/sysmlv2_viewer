@@ -8,13 +8,20 @@ export interface NodeProperties {
   isParallel?: boolean;
   isRedefine?: boolean;
   multiplicity?: string;
+  about?: string;
+  payloadType?: string;
   source?: string;
+  sourceRef?: string;
+  snapshotOf?: string;
   subsets?: string;
   superTypes?: string[];
   target?: string;
+  targetRef?: string;
   text?: string;
+  timeSliceOf?: string;
   trigger?: string;
   typeName?: string;
+  variantOf?: string;
   viewpoint?: string;
 }
 

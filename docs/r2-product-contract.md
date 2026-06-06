@@ -35,6 +35,7 @@ These areas are expected to work for normal R2 workflows and should have focused
 These areas are allowed, but claims must stay limited until fixture coverage and visual QA expand:
 
 - Broader SysML v2 release fixture parsing.
+- Webel Cameo/Pilot coverage mapping as a non-authoritative visual/reference overlay.
 - Recovery for unsupported syntax while keeping the source editable.
 - Roundtrip preservation for layout, comments, formatting, and unsupported statements.
 - Rich metadata, analysis, verification, viewpoint, and requirement variants beyond current tests.
@@ -72,6 +73,7 @@ Release test policy:
 - Upstream corpus tests run only when `SYSML_V2_RELEASE_DIR` points to a local `Systems-Modeling/SysML-v2-Release` checkout.
 - Skipping the upstream corpus is acceptable for GitHub Pages CI because the corpus is not vendored in this repository.
 - Any parser, bridge, or example claim expanded beyond the current subset should include matching release fixture coverage before being documented as supported.
+- Webel-inspired work must map to official release fixture paths. Webel images/assets are not permitted in the repo.
 
 Required documentation standard:
 

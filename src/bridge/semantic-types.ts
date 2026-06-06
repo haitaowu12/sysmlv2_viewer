@@ -38,6 +38,22 @@ export type SemanticNodeKind =
   | 'AllocationDef'
   | 'AllocationUsage'
   | 'DependencyUsage'
+  | 'Alias'
+  | 'CalcDef'
+  | 'CalcUsage'
+  | 'OccurrenceDef'
+  | 'OccurrenceUsage'
+  | 'IndividualDef'
+  | 'IndividualUsage'
+  | 'SnapshotUsage'
+  | 'TimeSliceUsage'
+  | 'VariationDef'
+  | 'VariationUsage'
+  | 'VariantUsage'
+  | 'MetadataUsage'
+  | 'SuccessionUsage'
+  | 'MessageUsage'
+  | 'EventOccurrenceUsage'
   | 'Unknown';
 
 export type SemanticEdgeKind =
@@ -50,7 +66,26 @@ export type SemanticEdgeKind =
   | 'binding'
   | 'transition'
   | 'dependency'
-  | 'allocation';
+  | 'allocation'
+  | 'specialization'
+  | 'redefinition'
+  | 'subsetting'
+  | 'succession'
+  | 'guard'
+  | 'trigger'
+  | 'message'
+  | 'accept'
+  | 'send'
+  | 'payload'
+  | 'calculationInput'
+  | 'calculationResult'
+  | 'constraintParameter'
+  | 'derivation'
+  | 'snapshotOf'
+  | 'timeSliceOf'
+  | 'variantOf'
+  | 'selectedVariant'
+  | 'metadataAbout';
 
 export interface LayoutRect {
   x: number;
