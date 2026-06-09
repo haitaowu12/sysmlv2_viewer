@@ -32,6 +32,21 @@ export type NodeKind =
     | 'Doc'
     | 'Import'
     | 'Alias'
+    | 'CalcDef'
+    | 'CalcUsage'
+    | 'OccurrenceDef'
+    | 'OccurrenceUsage'
+    | 'IndividualDef'
+    | 'IndividualUsage'
+    | 'SnapshotUsage'
+    | 'TimeSliceUsage'
+    | 'VariationDef'
+    | 'VariationUsage'
+    | 'VariantUsage'
+    | 'MetadataUsage'
+    | 'SuccessionUsage'
+    | 'MessageUsage'
+    | 'EventOccurrenceUsage'
     | 'UseCaseDef'
     | 'UseCaseUsage'
     | 'AllocationDef'
@@ -172,6 +187,8 @@ export interface RequirementUsage extends SysMLNode {
     typeName?: string;
     doc?: string;
     subject?: { name: string; typeName: string };
+    sourceRef?: string;
+    targetRef?: string;
 }
 
 export interface ConstraintDef extends SysMLNode {
@@ -274,6 +291,99 @@ export interface ImportNode extends SysMLNode {
     isAll?: boolean;
 }
 
+export interface AliasNode extends SysMLNode {
+    kind: 'Alias';
+    targetRef?: string;
+}
+
+export interface CalcDef extends SysMLNode {
+    kind: 'CalcDef';
+    params?: ActionParam[];
+    returnType?: string;
+}
+
+export interface CalcUsage extends SysMLNode {
+    kind: 'CalcUsage';
+    typeName?: string;
+    args?: string[];
+}
+
+export interface OccurrenceDef extends SysMLNode {
+    kind: 'OccurrenceDef';
+    typeName?: string;
+}
+
+export interface OccurrenceUsage extends SysMLNode {
+    kind: 'OccurrenceUsage';
+    typeName?: string;
+    snapshotOf?: string;
+    timeSliceOf?: string;
+}
+
+export interface IndividualDef extends SysMLNode {
+    kind: 'IndividualDef';
+    typeName?: string;
+}
+
+export interface IndividualUsage extends SysMLNode {
+    kind: 'IndividualUsage';
+    typeName?: string;
+}
+
+export interface SnapshotUsage extends SysMLNode {
+    kind: 'SnapshotUsage';
+    typeName?: string;
+    snapshotOf?: string;
+}
+
+export interface TimeSliceUsage extends SysMLNode {
+    kind: 'TimeSliceUsage';
+    typeName?: string;
+    timeSliceOf?: string;
+}
+
+export interface VariationDef extends SysMLNode {
+    kind: 'VariationDef';
+    variants?: string[];
+}
+
+export interface VariationUsage extends SysMLNode {
+    kind: 'VariationUsage';
+    typeName?: string;
+    variants?: string[];
+}
+
+export interface VariantUsage extends SysMLNode {
+    kind: 'VariantUsage';
+    typeName?: string;
+    variantOf?: string;
+}
+
+export interface MetadataUsage extends SysMLNode {
+    kind: 'MetadataUsage';
+    typeName?: string;
+    about?: string;
+}
+
+export interface SuccessionUsage extends SysMLNode {
+    kind: 'SuccessionUsage';
+    source?: string;
+    target?: string;
+    guard?: string;
+}
+
+export interface MessageUsage extends SysMLNode {
+    kind: 'MessageUsage';
+    source?: string;
+    target?: string;
+    payloadType?: string;
+}
+
+export interface EventOccurrenceUsage extends SysMLNode {
+    kind: 'EventOccurrenceUsage';
+    typeName?: string;
+}
+
 export interface ViewpointDef extends SysMLNode {
     kind: 'ViewpointDef';
     concerns?: string[];
@@ -305,6 +415,7 @@ export interface VerificationUsage extends SysMLNode {
     kind: 'VerificationUsage';
     typeName?: string;
     subject?: { name: string; typeName?: string };
+    targetRef?: string;
 }
 
 export interface AnalysisDef extends SysMLNode {
@@ -343,5 +454,5 @@ export interface ParseError {
     context?: string;
 }
 
-export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef | UseCaseDef | AllocationDef;
-export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage | ViewpointUsage | ViewUsage | VerificationUsage | AnalysisUsage | UseCaseUsage | AllocationUsage | DependencyUsage;
+export type AnyDefinition = PartDef | PortDef | ConnectionDef | InterfaceDef | ActionDef | StateDef | RequirementDef | ConstraintDef | AttributeDef | ItemDef | EnumDef | ViewpointDef | ViewDef | VerificationDef | AnalysisDef | MetadataDef | UseCaseDef | AllocationDef | CalcDef | OccurrenceDef | IndividualDef | VariationDef;
+export type AnyUsage = PartUsage | PortUsage | ConnectionUsage | InterfaceUsage | ActionUsage | StateUsage | RequirementUsage | ConstraintUsage | AttributeUsage | ItemUsage | EnumUsage | ViewpointUsage | ViewUsage | VerificationUsage | AnalysisUsage | UseCaseUsage | AllocationUsage | DependencyUsage | CalcUsage | OccurrenceUsage | IndividualUsage | SnapshotUsage | TimeSliceUsage | VariationUsage | VariantUsage | MetadataUsage | SuccessionUsage | MessageUsage | EventOccurrenceUsage;

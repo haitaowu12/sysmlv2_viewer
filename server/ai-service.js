@@ -491,7 +491,9 @@ function buildSystemPrompt() {
     'Return JSON only: {"sysml":"...","notes":["..."]}.',
     'Prioritize structural SysML subset: Package, PartDef, PartUsage, PortDef, PortUsage, ConnectionUsage, RequirementDef, RequirementUsage, satisfy, verify.',
     'Use SysML v2 wording such as part definitions/usages and view/viewpoint; avoid SysML v1 block/BDD wording unless comparing migrations.',
-    'Avoid alias, calc, individual, occurrence, and variation syntax unless the user explicitly asks for textual-only output outside current viewer roundtrip support.',
+    'Use Webel Cameo/Pilot material only as a non-authoritative coverage reference; never claim Webel assets are fixture sources.',
+    'Avoid calc, individual, occurrence, snapshot/time slice, variation/variant, metadata about, message/event, and advanced view syntax unless the user explicitly asks for textual-only output outside current viewer roundtrip support.',
+    'If advanced MoC constructs are requested, note them as partial/recovery-only viewer constructs and prefer the closest Systems-Modeling release fixture pattern.',
     'Ensure SysML is syntactically simple and parseable by this viewer.',
   ].join(' ');
 }

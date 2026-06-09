@@ -108,11 +108,11 @@ describe('parser error recovery', () => {
     expect(hasUnmatchedBrace).toBe(true);
   });
 
-  it('reports unsupported constructs when recovering as Unknown nodes', () => {
+  it('reports unsupported constructs when recovering as typed partial nodes', () => {
     const result = parseSysML('calc def FuelEconomy;');
 
     expect(result.children).toHaveLength(1);
-    expect(result.children[0].kind).toBe('Unknown');
+    expect(result.children[0].kind).toBe('CalcDef');
     expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
