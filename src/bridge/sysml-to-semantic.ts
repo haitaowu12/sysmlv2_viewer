@@ -12,6 +12,7 @@ import type {
   VerificationUsage,
 } from '../parser/types';
 import { buildDefaultLayout } from './layout-map';
+import { nodeProperties } from '../utils/nodeProperties';
 import type {
   LayoutMap,
   SemanticEdge,
@@ -62,6 +63,22 @@ const KIND_MAP: Partial<Record<SysMLNode['kind'], SemanticNodeKind>> = {
   AllocationDef: 'AllocationDef',
   AllocationUsage: 'AllocationUsage',
   DependencyUsage: 'DependencyUsage',
+  Alias: 'Alias',
+  CalcDef: 'CalcDef',
+  CalcUsage: 'CalcUsage',
+  OccurrenceDef: 'OccurrenceDef',
+  OccurrenceUsage: 'OccurrenceUsage',
+  IndividualDef: 'IndividualDef',
+  IndividualUsage: 'IndividualUsage',
+  SnapshotUsage: 'SnapshotUsage',
+  TimeSliceUsage: 'TimeSliceUsage',
+  VariationDef: 'VariationDef',
+  VariationUsage: 'VariationUsage',
+  VariantUsage: 'VariantUsage',
+  MetadataUsage: 'MetadataUsage',
+  SuccessionUsage: 'SuccessionUsage',
+  MessageUsage: 'MessageUsage',
+  EventOccurrenceUsage: 'EventOccurrenceUsage',
 };
 
 interface SemanticIndexEntry {
@@ -130,6 +147,22 @@ function kindOrder(kind: SemanticNodeKind): number {
     AllocationDef: 36,
     AllocationUsage: 37,
     DependencyUsage: 38,
+    Alias: 39,
+    CalcDef: 40,
+    CalcUsage: 41,
+    OccurrenceDef: 42,
+    OccurrenceUsage: 43,
+    IndividualDef: 44,
+    IndividualUsage: 45,
+    SnapshotUsage: 46,
+    TimeSliceUsage: 47,
+    VariationDef: 48,
+    VariationUsage: 49,
+    VariantUsage: 50,
+    MetadataUsage: 51,
+    SuccessionUsage: 52,
+    MessageUsage: 53,
+    EventOccurrenceUsage: 54,
     Unknown: 99,
   };
   return order[kind] ?? 99;
@@ -257,6 +290,12 @@ export function buildSemanticModelFromSysMLModel(
 
     if ('typeName' in astNode && typeof astNode.typeName === 'string') {
       semanticNode.typeName = astNode.typeName;
+    }
+    if ('targetRef' in astNode && typeof astNode.targetRef === 'string') {
+      semanticNode.targetRef = astNode.targetRef;
+    }
+    if ('sourceRef' in astNode && typeof astNode.sourceRef === 'string') {
+      semanticNode.sourceRef = astNode.sourceRef;
     }
 
     if (entry.kind === 'ConnectionUsage') {
@@ -445,6 +484,66 @@ export function buildSemanticModelFromSysMLModel(
         });
       }
     }
+
+    if (entry.kind === 'MetadataUsage') {
+      const about = nodeProperties(astNode).about;
+      if (typeof about === 'string' && about) {
+        pendingRelations.push({
+          kind: 'metadataAbout',
+          sourceId: entry.id,
+          targetRef: about,
+          label: 'about',
+        });
+      }
+    }
+
+    if (entry.kind === 'SnapshotUsage') {
+      const snapshotOf = nodeProperties(astNode).snapshotOf;
+      if (typeof snapshotOf === 'string' && snapshotOf) {
+        pendingRelations.push({
+          kind: 'snapshotOf',
+          sourceId: entry.id,
+          targetRef: snapshotOf,
+          label: 'snapshot of',
+        });
+      }
+    }
+
+    if (entry.kind === 'TimeSliceUsage') {
+      const timeSliceOf = nodeProperties(astNode).timeSliceOf;
+      if (typeof timeSliceOf === 'string' && timeSliceOf) {
+        pendingRelations.push({
+          kind: 'timeSliceOf',
+          sourceId: entry.id,
+          targetRef: timeSliceOf,
+          label: 'time slice of',
+        });
+      }
+    }
+
+    if (entry.kind === 'VariantUsage') {
+      const variantOf = nodeProperties(astNode).variantOf;
+      if (typeof variantOf === 'string' && variantOf) {
+        pendingRelations.push({
+          kind: 'variantOf',
+          sourceId: entry.id,
+          targetRef: variantOf,
+          label: 'variant of',
+        });
+      }
+    }
+
+    if (entry.kind === 'MessageUsage') {
+      const target = nodeProperties(astNode).target;
+      if (typeof target === 'string' && target) {
+        pendingRelations.push({
+          kind: 'message',
+          sourceId: entry.id,
+          targetRef: target,
+          label: nodeProperties(astNode).payloadType || 'message',
+        });
+      }
+    }
   }
 
   const refIndex = buildNodeRefIndex(semanticNodes);
@@ -476,6 +575,21 @@ export function buildSemanticModelFromSysMLModel(
     'ConstraintUsage',
     'ConstraintDef',
     'ConnectionUsage',
+    'Alias',
+    'CalcDef',
+    'CalcUsage',
+    'OccurrenceDef',
+    'OccurrenceUsage',
+    'IndividualDef',
+    'IndividualUsage',
+    'SnapshotUsage',
+    'TimeSliceUsage',
+    'VariationDef',
+    'VariationUsage',
+    'VariantUsage',
+    'MetadataUsage',
+    'MessageUsage',
+    'EventOccurrenceUsage',
   ];
 
   for (const relation of pendingRelations) {
@@ -556,6 +670,27 @@ export function buildSemanticModelFromSysMLModel(
         id: edgeHash(sourceNode.id, targetNode.id, relation.kind, relation.label),
         kind: relation.kind,
         sourceId: sourceNode.id,
+        targetId: targetNode.id,
+        label: relation.label,
+      });
+      continue;
+    }
+
+    if (
+      relation.kind === 'metadataAbout' ||
+      relation.kind === 'snapshotOf' ||
+      relation.kind === 'timeSliceOf' ||
+      relation.kind === 'variantOf' ||
+      relation.kind === 'message'
+    ) {
+      if (!relation.sourceId || !relation.targetRef) continue;
+      const targetNode = resolveRef(refIndex, relation.targetRef, structuralEndpointKinds);
+      if (!targetNode) continue;
+
+      semanticEdges.push({
+        id: edgeHash(relation.sourceId, targetNode.id, relation.kind, relation.label),
+        kind: relation.kind,
+        sourceId: relation.sourceId,
         targetId: targetNode.id,
         label: relation.label,
       });
