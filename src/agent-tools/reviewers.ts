@@ -15,6 +15,7 @@ export interface ReviewerFinding {
   file: string;
   elementIds: string[];
   evidenceIds: string[];
+  sourceLocations: Array<{ file: string; line?: number; column?: number }>;
   rationale: string;
   proposedDisposition: 'repair' | 'supply_evidence' | 'review' | 'hold_release';
   requiresHumanReview: true;
@@ -45,6 +46,8 @@ function finding(
   file: string,
   elementIds: string[],
   disposition: ReviewerFinding['proposedDisposition'],
+  line?: number,
+  column?: number,
 ): ReviewerFinding {
   return {
     findingId: `${reviewer}:${ruleId}:${file}:${elementIds.join(',') || 'file'}`,
@@ -55,10 +58,16 @@ function finding(
     file,
     elementIds,
     evidenceIds: elementIds.map((id) => `${file}#${id}`),
+    sourceLocations: [{ file, ...(line ? { line } : {}), ...(column ? { column } : {}) }],
     rationale: `Deterministic rule ${ruleId} matched the parsed semantic graph.`,
     proposedDisposition: disposition,
     requiresHumanReview: true,
   };
+}
+
+function sourceLine(file: AgentToolFile, node: SemanticNode): number | undefined {
+  const offset = file.content.indexOf(node.name);
+  return offset < 0 ? undefined : file.content.slice(0, offset).split('\n').length;
 }
 
 function hasEdge(edges: SemanticEdge[], nodeId: string, kinds: string[]): boolean {
@@ -72,12 +81,12 @@ export function runTraceabilityReviewer(files: AgentToolFile[]): ReviewerResult 
       if (!hasEdge(entry.edges, requirement.id, ['satisfy'])) {
         findings.push(finding('traceability', 'SYSML-TRACE-001', 'warning',
           `Requirement '${requirement.name}' has no visible satisfy relationship.`, entry.file.path,
-          [requirement.id], 'supply_evidence'));
+          [requirement.id], 'supply_evidence', sourceLine(entry.file, requirement)));
       }
       if (!hasEdge(entry.edges, requirement.id, ['verify'])) {
         findings.push(finding('traceability', 'SYSML-TRACE-002', 'warning',
           `Requirement '${requirement.name}' has no visible verification relationship.`, entry.file.path,
-          [requirement.id], 'supply_evidence'));
+          [requirement.id], 'supply_evidence', sourceLine(entry.file, requirement)));
       }
     }
   }
@@ -90,7 +99,7 @@ export function runRequirementParentReviewer(files: AgentToolFile[]): ReviewerRe
     for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementUsage' && !node.parentId)) {
       findings.push(finding('requirement-parent', 'SYSML-REQ-PARENT-001', 'warning',
         `Requirement usage '${requirement.name}' has no containing model element.`, entry.file.path,
-        [requirement.id], 'review'));
+        [requirement.id], 'review', sourceLine(entry.file, requirement)));
     }
   }
   return result(files, findings, ['Containment is a structural signal, not proof of an approved requirement hierarchy.']);
@@ -103,14 +112,14 @@ export function runInterfaceReviewer(files: AgentToolFile[]): ReviewerResult {
       if (!hasEdge(entry.edges, iface.id, ['connection', 'flow', 'typing'])) {
         findings.push(finding('interface', 'SYSML-IFACE-001', 'warning',
           `Interface usage '${iface.name}' has no visible typing, connection, or flow relationship.`,
-          entry.file.path, [iface.id], 'review'));
+          entry.file.path, [iface.id], 'review', sourceLine(entry.file, iface)));
       }
     }
     for (const flow of entry.nodes.filter((node) => node.kind === 'FlowUsage')) {
       if (!flow.sourceRef || !flow.targetRef) {
         findings.push(finding('interface', 'SYSML-FLOW-001', 'error',
           `Flow '${flow.name}' is missing a source or target endpoint.`, entry.file.path,
-          [flow.id], 'repair'));
+          [flow.id], 'repair', sourceLine(entry.file, flow)));
       }
     }
   }
@@ -129,7 +138,7 @@ export function runSemanticCompatibilityReviewer(files: AgentToolFile[]): Review
       if (source?.typeName && target?.typeName && source.typeName !== target.typeName) {
         findings.push(finding('semantic-compatibility', 'SYSML-COMPAT-001', 'warning',
           `Connection '${connection.name}' joins endpoints typed '${source.typeName}' and '${target.typeName}'.`,
-          entry.file.path, [connection.id, source.id, target.id], 'review'));
+          entry.file.path, [connection.id, source.id, target.id], 'review', sourceLine(entry.file, connection)));
       }
     }
   }
@@ -143,6 +152,8 @@ export function runReleaseReviewer(files: AgentToolFile[], context: AgentToolCon
   const findings = check.diagnostics.map((diagnostic) => finding(
     'release', diagnostic.code, diagnostic.severity, diagnostic.message, diagnostic.file, [],
     diagnostic.severity === 'error' ? 'hold_release' : 'review',
+    diagnostic.sourceLocation?.start.line,
+    diagnostic.sourceLocation?.start.column,
   ));
   if (!check.supportedSubsetComplete && findings.length === 0) {
     findings.push(finding('release', 'SYSML-RELEASE-001', 'error',
