@@ -17,6 +17,7 @@ describe('deterministic SysML reviewer capabilities', () => {
     expect(trace.findings.map((item) => item.ruleId)).toContain('SYSML-TRACE-001');
     expect(trace.findings.every((item) => item.requiresHumanReview)).toBe(true);
     expect(trace.findings[0].evidenceIds[0]).toContain('requirements.sysml#');
+    expect(trace.findings[0].sourceLocations[0]).toMatchObject({ file: 'requirements.sysml', line: 1 });
     expect(parent.findings).toHaveLength(1);
     expect(parent.findings[0].ruleId).toBe('SYSML-REQ-PARENT-001');
   });
