@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: SysML Official Eclipse Validator
+Bundle-SymbolicName: local.sysml.validator;singleton:=true
+Bundle-Version: 1.0.0
+Require-Bundle: org.eclipse.core.runtime,org.eclipse.core.resources,org.eclipse.equinox.app
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Automatic-Module-Name: local.sysml.validator
+

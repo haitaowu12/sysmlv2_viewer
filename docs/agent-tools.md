@@ -42,6 +42,8 @@ Every successful tool response includes:
 
 Parser success alone does not prove engineering validity, target-tool compatibility, or OMG conformance.
 
+For release-stage Eclipse/Xtext validation, `tools/eclipse-validator` provides a small headless OSGi application that imports pinned official library and model projects, performs a clean Xtext build, and emits problem markers as JSON. Keep its result separate from the iterative local engine and bind it to exact runtime, plugin, corpus, and model hashes.
+
 ## Commit-Pinned Repository Queries
 
 Programmatic adapters exported from `src/agent-tools` provide commit history, model summary, element, relationship, requirement, interface, and quality queries. Every request requires a repository path and exact reachable 40/64-character commit ID. Content comes from `git show <commit>:<path>`; dirty working-tree content is ignored. Symbolic, missing, and unreachable commits fail closed with redacted errors. No mutation verb exists.
