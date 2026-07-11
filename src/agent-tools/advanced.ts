@@ -20,11 +20,20 @@ export interface RenderViewResult extends AdvancedEnvelope {
 
 export interface TraceCoverageResult extends AdvancedEnvelope {
   tool: 'sysml_trace_coverage';
-  requirements: number;
-  satisfied: number;
-  verified: number;
-  fullyCovered: number;
-  uncoveredRequirementIds: string[];
+  requirementDefinitions: number;
+  requirementUsages: number;
+  satisfactionLinked: number;
+  verificationLinked: number;
+  fullyLinked: number;
+  unlinkedRequirementUsageIds: string[];
+  requirementLinks: Array<{
+    id: string;
+    name: string;
+    qualifiedPath: string;
+    satisfactionLinked: boolean;
+    verificationLinked: boolean;
+  }>;
+  limitations: string[];
 }
 
 export interface ModelDelta {
@@ -89,23 +98,46 @@ export function sysmlRenderView(files: AgentToolFile[], context: AgentToolContex
 
 export function sysmlTraceCoverage(files: AgentToolFile[], context: AgentToolContext): TraceCoverageResult {
   const models = indexed(files);
-  let requirements = 0;
-  let satisfied = 0;
-  let verified = 0;
-  let fullyCovered = 0;
-  const uncoveredRequirementIds: string[] = [];
+  let requirementDefinitions = 0;
+  let requirementUsages = 0;
+  let satisfactionLinked = 0;
+  let verificationLinked = 0;
+  let fullyLinked = 0;
+  const unlinkedRequirementUsageIds: string[] = [];
+  const requirementLinks: TraceCoverageResult['requirementLinks'] = [];
   for (const entry of models) {
-    for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementDef' || node.kind === 'RequirementUsage')) {
-      requirements += 1;
+    requirementDefinitions += entry.nodes.filter((node) => node.kind === 'RequirementDef').length;
+    for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementUsage')) {
+      requirementUsages += 1;
       const hasSatisfy = entry.edges.some((edge) => edge.kind === 'satisfy' && (edge.targetId === requirement.id || edge.sourceId === requirement.id));
       const hasVerify = entry.edges.some((edge) => edge.kind === 'verify' && (edge.targetId === requirement.id || edge.sourceId === requirement.id));
-      if (hasSatisfy) satisfied += 1;
-      if (hasVerify) verified += 1;
-      if (hasSatisfy && hasVerify) fullyCovered += 1;
-      else uncoveredRequirementIds.push(`${entry.file}#${requirement.id}`);
+      if (hasSatisfy) satisfactionLinked += 1;
+      if (hasVerify) verificationLinked += 1;
+      if (hasSatisfy && hasVerify) fullyLinked += 1;
+      else unlinkedRequirementUsageIds.push(`${entry.file}#${requirement.id}`);
+      requirementLinks.push({
+        id: `${entry.file}#${requirement.id}`,
+        name: requirement.name,
+        qualifiedPath: requirement.sysmlPath,
+        satisfactionLinked: hasSatisfy,
+        verificationLinked: hasVerify,
+      });
     }
   }
-  return { ...envelope(context, files), tool: 'sysml_trace_coverage', requirements, satisfied, verified, fullyCovered, uncoveredRequirementIds };
+  return {
+    ...envelope(context, files),
+    tool: 'sysml_trace_coverage',
+    requirementDefinitions,
+    requirementUsages,
+    satisfactionLinked,
+    verificationLinked,
+    fullyLinked,
+    unlinkedRequirementUsageIds,
+    requirementLinks: requirementLinks.sort((a, b) => a.qualifiedPath.localeCompare(b.qualifiedPath)),
+    limitations: [
+      'Relationship presence indicates planned trace linkage only; it is not evidence that a requirement is satisfied or that verification passed.',
+    ],
+  };
 }
 
 function elementMap(files: AgentToolFile[]): Map<string, SemanticNode> {

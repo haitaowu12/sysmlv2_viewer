@@ -1221,6 +1221,12 @@ function parseRequirementDef(lexer: Lexer): RequirementDef {
     for (const child of children) {
         if (child.kind === 'Doc') {
             doc = (child as DocNode).text;
+        } else if (child.kind === 'AttributeUsage' && child.name.startsWith('subject:')) {
+            const attribute = child as AttributeUsage;
+            subject = {
+                name: child.name.replace('subject:', ''),
+                typeName: attribute.typeName ?? attribute.specializes ?? attribute.defaultValue ?? '',
+            };
         }
     }
 
@@ -1241,13 +1247,20 @@ function parseRequirementUsage(lexer: Lexer): RequirementUsage {
     const children = parseBody(lexer);
 
     let doc: string | undefined;
+    let subject: { name: string; typeName: string } | undefined;
     for (const child of children) {
         if (child.kind === 'Doc') {
             doc = (child as DocNode).text;
+        } else if (child.kind === 'AttributeUsage' && child.name.startsWith('subject:')) {
+            const attribute = child as AttributeUsage;
+            subject = {
+                name: child.name.replace('subject:', ''),
+                typeName: attribute.typeName ?? attribute.specializes ?? attribute.defaultValue ?? '',
+            };
         }
     }
 
-    return { kind: 'RequirementUsage', name, shortName, typeName, multiplicity, doc, children };
+    return { kind: 'RequirementUsage', name, shortName, typeName, multiplicity, doc, subject, children };
 }
 
 function parseConstraintDef(lexer: Lexer): ConstraintDef {

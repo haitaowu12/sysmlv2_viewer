@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  runCompletenessReviewer,
   runInterfaceReviewer,
   runReleaseReviewer,
   runRequirementParentReviewer,
@@ -10,6 +11,40 @@ import {
 const context = { engineVersion: 'test-engine', packageVersion: 'test-package' };
 
 describe('deterministic SysML reviewer capabilities', () => {
+  it('fails operational semantic omissions and accepts an explicit complete slice', () => {
+    const incomplete = runCompletenessReviewer([{
+      path: 'incomplete.sysml',
+      content: 'part def System; use case def Operate; requirement def Safe;',
+    }]);
+    expect(incomplete).toMatchObject({ tool: 'sysml_review', reviewer: 'completeness' });
+    expect(incomplete.counts.error).toBeGreaterThan(0);
+    expect(incomplete.findings.map((item) => item.ruleId)).toEqual(expect.arrayContaining([
+      'SYSML-COMP-UC-SUBJECT-001',
+      'SYSML-COMP-UC-ACTOR-002',
+      'SYSML-COMP-UC-OBJECTIVE-003',
+      'SYSML-COMP-REQ-SUBJECT-007',
+    ]));
+
+    const complete = runCompletenessReviewer([{
+      path: 'complete.sysml',
+      content: `
+        part def System;
+        part def Operator;
+        use case def Operate {
+          subject system : System;
+          actor operator : Operator;
+          objective { doc /* Operate the system. */ }
+        }
+        requirement safe { subject system : System; }
+        verification def SafeReview {
+          subject system : System;
+          objective reviewObjective { verify safe; }
+        }
+      `,
+    }]);
+    expect(complete.counts).toEqual({ error: 0, warning: 0, info: 0 });
+  });
+
   it('returns traceability and parent findings with stable rule and evidence identifiers', () => {
     const files = [{ path: 'requirements.sysml', content: 'requirement def SafeStop; requirement safeStop : SafeStop;' }];
     const trace = runTraceabilityReviewer(files);

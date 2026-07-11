@@ -1,9 +1,11 @@
 import { buildSemanticModelFromSource } from '../bridge/sysml-to-semantic';
 import type { SemanticEdge, SemanticNode } from '../bridge/semantic-types';
+import { parseSysML } from '../parser/parser';
+import type { RequirementDef, SysMLNode, UseCaseDef, UseCaseUsage, VerificationDef } from '../parser/types';
 import { sysmlCheck } from './kernel';
 import type { AgentToolContext, AgentToolFile } from './types';
 
-export type ReviewerKind = 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
+export type ReviewerKind = 'completeness' | 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
 export type FindingSeverity = 'error' | 'warning' | 'info';
 
 export interface ReviewerFinding {
@@ -23,6 +25,8 @@ export interface ReviewerFinding {
 
 export interface ReviewerResult {
   schemaVersion: '1.0';
+  tool: 'sysml_review';
+  reviewer: ReviewerKind;
   filesExamined: string[];
   findings: ReviewerFinding[];
   counts: Record<FindingSeverity, number>;
@@ -90,7 +94,7 @@ export function runTraceabilityReviewer(files: AgentToolFile[]): ReviewerResult 
       }
     }
   }
-  return result(files, findings, ['Cross-file and imported relationship resolution is not yet performed.']);
+  return result('traceability', files, findings, ['Cross-file and imported relationship resolution is not yet performed.']);
 }
 
 export function runRequirementParentReviewer(files: AgentToolFile[]): ReviewerResult {
@@ -102,7 +106,7 @@ export function runRequirementParentReviewer(files: AgentToolFile[]): ReviewerRe
         [requirement.id], 'review', sourceLine(entry.file, requirement)));
     }
   }
-  return result(files, findings, ['Containment is a structural signal, not proof of an approved requirement hierarchy.']);
+  return result('requirement-parent', files, findings, ['Containment is a structural signal, not proof of an approved requirement hierarchy.']);
 }
 
 export function runInterfaceReviewer(files: AgentToolFile[]): ReviewerResult {
@@ -123,7 +127,7 @@ export function runInterfaceReviewer(files: AgentToolFile[]): ReviewerResult {
       }
     }
   }
-  return result(files, findings, [
+  return result('interface', files, findings, [
     'Direction, unit, timing, state applicability, ownership, and domain compatibility require a project rule pack.',
   ]);
 }
@@ -142,7 +146,7 @@ export function runSemanticCompatibilityReviewer(files: AgentToolFile[]): Review
       }
     }
   }
-  return result(files, findings, [
+  return result('semantic-compatibility', files, findings, [
     'Type-name equality is only a structural screen; physical, information, unit, timing, and safety compatibility require domain rules and human review.',
   ]);
 }
@@ -159,14 +163,80 @@ export function runReleaseReviewer(files: AgentToolFile[], context: AgentToolCon
     findings.push(finding('release', 'SYSML-RELEASE-001', 'error',
       'The supported semantic subset is incomplete.', files[0]?.path ?? '<none>', [], 'hold_release'));
   }
-  return result(files, findings, [
+  return result('release', files, findings, [
     'This is an iterative engine gate. Target-tool import and round-trip evidence remain separate release gates.',
   ]);
 }
 
-function result(files: AgentToolFile[], findings: ReviewerFinding[], limitations: string[]): ReviewerResult {
+function astNodes(nodes: SysMLNode[], parentPath = 'root'): Array<{ node: SysMLNode; id: string }> {
+  const collected: Array<{ node: SysMLNode; id: string }> = [];
+  nodes.forEach((node, index) => {
+    const id = `ast:${parentPath}/${node.kind}:${node.name}#${index + 1}`;
+    collected.push({ node, id });
+    collected.push(...astNodes(node.children, id));
+  });
+  return collected;
+}
+
+function hasSubject(node: UseCaseDef | UseCaseUsage | RequirementDef | VerificationDef): boolean {
+  return Boolean(node.subject?.name);
+}
+
+export function runCompletenessReviewer(files: AgentToolFile[]): ReviewerResult {
+  const findings: ReviewerFinding[] = [];
+  for (const file of files) {
+    const parsed = parseSysML(file.content);
+    for (const { node, id } of astNodes(parsed.children)) {
+      const line = node.location?.start.line;
+      const column = node.location?.start.column;
+      if (node.kind === 'UseCaseDef') {
+        const useCase = node as UseCaseDef;
+        if (!hasSubject(useCase)) findings.push(finding('completeness', 'SYSML-COMP-UC-SUBJECT-001', 'error',
+          `Use-case definition '${node.name}' has no explicit subject.`, file.path, [id], 'repair', line, column));
+        if (!useCase.actors?.length) findings.push(finding('completeness', 'SYSML-COMP-UC-ACTOR-002', 'error',
+          `Use-case definition '${node.name}' has no actors.`, file.path, [id], 'repair', line, column));
+        if (!useCase.objective?.trim()) findings.push(finding('completeness', 'SYSML-COMP-UC-OBJECTIVE-003', 'error',
+          `Use-case definition '${node.name}' has no objective.`, file.path, [id], 'repair', line, column));
+      }
+      if (node.kind === 'UseCaseUsage') {
+        const useCase = node as UseCaseUsage;
+        if (!hasSubject(useCase)) findings.push(finding('completeness', 'SYSML-COMP-UC-USAGE-SUBJECT-004', 'error',
+          `Use-case usage '${node.name}' has no explicit subject binding.`, file.path, [id], 'repair', line, column));
+        if (!useCase.actors?.length) findings.push(finding('completeness', 'SYSML-COMP-UC-USAGE-ACTOR-005', 'error',
+          `Use-case usage '${node.name}' has no actor bindings.`, file.path, [id], 'repair', line, column));
+        const included = node.children.filter((child) => child.kind === 'UseCaseUsage');
+        if (included.length > 1) {
+          const hasInitial = node.children.some((child) => child.kind === 'TransitionUsage' && child.name === 'succession');
+          const hasDone = node.children.some((child) => child.kind === 'ActionUsage' && child.name === 'done');
+          if (!hasInitial || !hasDone) findings.push(finding('completeness', 'SYSML-COMP-UC-SEQUENCE-006', 'error',
+            `Composite use-case usage '${node.name}' lacks explicit initial or final sequencing.`, file.path, [id], 'repair', line, column));
+        }
+      }
+      if (node.kind === 'RequirementDef' && !hasSubject(node as RequirementDef)) {
+        findings.push(finding('completeness', 'SYSML-COMP-REQ-SUBJECT-007', 'error',
+          `Requirement definition '${node.name}' has no explicit subject.`, file.path, [id], 'repair', line, column));
+      }
+      if (node.kind === 'VerificationDef') {
+        const verification = node as VerificationDef;
+        if (!hasSubject(verification)) findings.push(finding('completeness', 'SYSML-COMP-VER-SUBJECT-008', 'error',
+          `Verification definition '${node.name}' has no explicit subject.`, file.path, [id], 'repair', line, column));
+        if (!node.children.some((child) => child.kind === 'VerificationUsage' && child.children.length > 0)) {
+          findings.push(finding('completeness', 'SYSML-COMP-VER-OBJECTIVE-009', 'error',
+            `Verification definition '${node.name}' has no explicit objective body.`, file.path, [id], 'repair', line, column));
+        }
+      }
+    }
+  }
+  return result('completeness', files, findings, [
+    'Completeness rules verify explicit language structure, not source currentness, engineering correctness, approval, or target-tool compatibility.',
+  ]);
+}
+
+function result(reviewer: ReviewerKind, files: AgentToolFile[], findings: ReviewerFinding[], limitations: string[]): ReviewerResult {
   return {
     schemaVersion: '1.0',
+    tool: 'sysml_review',
+    reviewer,
     filesExamined: files.map((file) => file.path),
     findings,
     counts: {

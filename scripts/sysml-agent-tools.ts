@@ -2,14 +2,23 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { extname, resolve, sep } from 'node:path';
 import {
+  runCompletenessReviewer,
+  runInterfaceReviewer,
+  runReleaseReviewer,
+  runRequirementParentReviewer,
+  runSemanticCompatibilityReviewer,
+  runTraceabilityReviewer,
   sysmlCheck,
   sysmlDoctor,
   sysmlExplainDiagnostic,
   sysmlModelSummary,
+  sysmlRenderView,
+  sysmlTraceCoverage,
   type AgentToolFile,
 } from '../src/agent-tools';
 
-type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary';
+type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary' | 'review' | 'render-view' | 'trace-coverage';
+type ReviewerName = 'completeness' | 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
 const context = {
@@ -104,7 +113,8 @@ function main(): never {
     }
 
     const approvedRoot = takeOption(rawArgs, '--root');
-    const diagnosticsLimit = parseLimit(approvedRoot.args, '--max-diagnostics');
+    const reviewerOption = takeOption(approvedRoot.args, '--reviewer');
+    const diagnosticsLimit = parseLimit(reviewerOption.args, '--max-diagnostics');
     const elementLimit = parseLimit(diagnosticsLimit.args, '--max-elements');
     const files = readFiles(elementLimit.args, approvedRoot.value ?? process.cwd());
 
@@ -120,8 +130,33 @@ function main(): never {
       if (files.length === 0) fail('model-summary requires at least one SysML file');
       emit(sysmlModelSummary({ context, files, maxElements: elementLimit.limit }));
     }
+    if (tool === 'trace-coverage') {
+      if (files.length === 0) fail('trace-coverage requires at least one SysML file');
+      emit(sysmlTraceCoverage(files, context));
+    }
+    if (tool === 'render-view') {
+      if (files.length === 0) fail('render-view requires at least one SysML file');
+      emit(sysmlRenderView(files, context));
+    }
+    if (tool === 'review') {
+      if (files.length === 0) fail('review requires at least one SysML file');
+      const reviewer = reviewerOption.value as ReviewerName | undefined;
+      if (!reviewer) fail('review requires --reviewer');
+      const runners: Record<ReviewerName, () => ReturnType<typeof runCompletenessReviewer>> = {
+        completeness: () => runCompletenessReviewer(files),
+        traceability: () => runTraceabilityReviewer(files),
+        'requirement-parent': () => runRequirementParentReviewer(files),
+        interface: () => runInterfaceReviewer(files),
+        'semantic-compatibility': () => runSemanticCompatibilityReviewer(files),
+        release: () => runReleaseReviewer(files, context),
+      };
+      const runner = runners[reviewer];
+      if (!runner) fail(`Unknown reviewer '${reviewer}'.`);
+      const result = runner();
+      emit(result, result.counts.error > 0 ? 1 : 0);
+    }
 
-    fail(`Unknown tool '${rawTool ?? ''}'. Expected doctor, check, explain-diagnostic, or model-summary.`);
+    fail(`Unknown tool '${rawTool ?? ''}'. Expected doctor, check, explain-diagnostic, model-summary, review, render-view, or trace-coverage.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     fail(message);

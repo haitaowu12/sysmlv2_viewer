@@ -27,6 +27,7 @@ export type {
   RepositoryRelationship,
 } from './repository';
 export {
+  runCompletenessReviewer,
   runInterfaceReviewer,
   runReleaseReviewer,
   runRequirementParentReviewer,
