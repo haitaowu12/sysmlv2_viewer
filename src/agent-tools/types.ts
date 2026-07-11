@@ -75,6 +75,7 @@ export interface CheckRequest {
 export interface CheckResult extends AgentToolEnvelope {
   tool: 'sysml_check';
   valid: boolean;
+  supportedSubsetComplete: boolean;
   counts: {
     errors: number;
     warnings: number;

@@ -1,4 +1,5 @@
 import { buildSemanticModelFromSysMLModel } from '../bridge/sysml-to-semantic';
+import { normalizeRef } from '../bridge/semantic-types';
 import { parseSysML } from '../parser/parser';
 import type { ParseError } from '../parser/types';
 import {
@@ -52,6 +53,13 @@ const DIAGNOSTIC_EXPLANATIONS: Record<string, DiagnosticExplanation> = {
       'Run sysml_check again and confirm no recovered content was unintentionally omitted.',
     ],
   },
+  'semantic:unresolved-reference': {
+    explanation: 'A typed or relationship reference does not resolve within the examined file.',
+    remediation: [
+      'Load the defining model or imported library into a workspace-aware check.',
+      'Correct the qualified reference and run sysml_check again.',
+    ],
+  },
 };
 
 function normalizeLimit(value: number | undefined): number {
@@ -93,7 +101,7 @@ function diagnosticCode(error: ParseError): string {
 function collectDiagnostics(files: AgentToolFile[]): AgentDiagnostic[] {
   return files.flatMap((file) => {
     const parsed = parseSysML(file.content);
-    return parsed.errors.map((error) => ({
+    const parserDiagnostics = parsed.errors.map((error) => ({
       code: diagnosticCode(error),
       severity: error.severity ?? 'error',
       message: error.message,
@@ -102,6 +110,26 @@ function collectDiagnostics(files: AgentToolFile[]): AgentDiagnostic[] {
       ...(error.suggestion ? { suggestion: error.suggestion } : {}),
       ...(error.context ? { context: error.context } : {}),
     }));
+    const semantic = buildSemanticModelFromSysMLModel(parsed);
+    const names = new Set(semantic.nodes.map((node) => normalizeRef(node.name).toLowerCase()));
+    const unresolved = new Map<string, string>();
+    for (const node of semantic.nodes) {
+      const references = [node.typeName, node.sourceRef, node.targetRef].filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0 && value !== '__initial__',
+      );
+      for (const reference of references) {
+        const normalized = normalizeRef(reference).toLowerCase();
+        if (normalized && !names.has(normalized)) unresolved.set(reference, node.name);
+      }
+    }
+    const semanticDiagnostics: AgentDiagnostic[] = [...unresolved.entries()].map(([reference, source]) => ({
+      code: 'semantic:unresolved-reference',
+      severity: 'warning',
+      message: `Reference '${reference}' from '${source}' does not resolve inside the examined file.`,
+      file: file.path,
+      suggestion: 'Load the defining model/import or correct the qualified reference.',
+    }));
+    return [...parserDiagnostics, ...semanticDiagnostics];
   });
 }
 
@@ -136,6 +164,11 @@ export function sysmlCheck(request: CheckRequest): CheckResult {
     ...envelope('sysml_check', request.context, request.files, allDiagnostics, limit),
     tool: 'sysml_check',
     valid: counts.errors === 0,
+    supportedSubsetComplete: !allDiagnostics.some((diagnostic) => (
+      diagnostic.code.startsWith('unsupported:')
+      || diagnostic.code.startsWith('recovery:')
+      || diagnostic.code.startsWith('semantic:')
+    )),
     counts,
   };
 }
@@ -144,7 +177,7 @@ export function sysmlDoctor(request: DoctorRequest): DoctorResult {
   const files = request.files ?? [];
   const limit = normalizeLimit(request.maxDiagnostics);
   const allDiagnostics = collectDiagnostics(files);
-  const degraded = allDiagnostics.some((diagnostic) => diagnostic.severity === 'error');
+  const degraded = allDiagnostics.length > 0;
 
   return {
     ...envelope('sysml_doctor', request.context, files, allDiagnostics, limit),
@@ -197,12 +230,12 @@ export function sysmlModelSummary(request: ModelSummaryRequest): ModelSummaryRes
     for (const node of semantic.nodes) {
       byKind[node.kind] = (byKind[node.kind] ?? 0) + 1;
       elements.push({
-        id: node.id,
+        id: `${file.path}#${node.id}`,
         kind: node.kind,
         name: node.name,
         qualifiedPath: node.sysmlPath,
         file: file.path,
-        ...(node.parentId ? { parentId: node.parentId } : {}),
+        ...(node.parentId ? { parentId: `${file.path}#${node.parentId}` } : {}),
         ...(node.typeName ? { typeName: node.typeName } : {}),
       });
     }

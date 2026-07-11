@@ -70,8 +70,8 @@ Required gate before release/deploy:
 Release test policy:
 
 - `npm run test:release` always runs the in-repo release baseline tests.
-- Upstream corpus tests run only when `SYSML_V2_RELEASE_DIR` points to a local `Systems-Modeling/SysML-v2-Release` checkout.
-- Skipping the upstream corpus is acceptable for GitHub Pages CI because the corpus is not vendored in this repository.
+- Upstream corpus tests run when `SYSML_V2_RELEASE_DIR` points to the exact pinned `Systems-Modeling/SysML-v2-Release` commit.
+- Release/deploy CI checks out that pinned corpus and must not skip it. Unset-path skips remain acceptable only for ordinary local non-release test runs.
 - Any parser, bridge, or example claim expanded beyond the current subset should include matching release fixture coverage before being documented as supported.
 - Webel-inspired work must map to official release fixture paths. Webel images/assets are not permitted in the repo.
 

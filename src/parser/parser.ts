@@ -69,7 +69,7 @@ import type {
 } from './types';
 import { nodeProperties } from '../utils/nodeProperties';
 
-const ELEMENT_START_PATTERN = /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test|alias|calc|individual|occurrence|snapshot|timeslice|time|variation|variant|send|accept|event)$/;
+const ELEMENT_START_PATTERN = /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test|alias|calc|individual|occurrence|snapshot|timeslice|time|variation|variant|message|send|accept|event)$/;
 
 class Lexer {
     private pos = 0;
@@ -630,6 +630,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parsePartialNamedConstruct(lexer, 'VariationUsage', 'variation', ['variation']);
     } else if (lexer.lookAhead('variant')) {
         node = parsePartialNamedConstruct(lexer, 'VariantUsage', 'variant', ['variant']);
+    } else if (lexer.lookAhead('message')) {
+        node = parseDeclaredMessageUsage(lexer);
     } else if (lexer.lookAhead('send') || lexer.lookAhead('accept')) {
         node = parseMessageUsage(lexer);
     } else if (lexer.lookAhead('event occurrence')) {
@@ -1605,6 +1607,40 @@ function parseMessageUsage(lexer: Lexer): SysMLNode {
         payloadType,
         children,
     } as SysMLNode;
+}
+
+function parseDeclaredMessageUsage(lexer: Lexer): SysMLNode {
+    const start = lexer.position;
+    lexer.expect('message');
+    const name = lexer.readIdentifier();
+
+    let payloadType: string | undefined;
+    let source: string | undefined;
+    let target: string | undefined;
+    if (lexer.match('of')) {
+        payloadType = readTypeReference(lexer);
+        lexer.readMultiplicity();
+    }
+    if (lexer.match('from')) {
+        source = readReference(lexer);
+    }
+    if (lexer.match('to')) {
+        target = readReference(lexer);
+    }
+
+    while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
+        lexer.advance();
+    }
+    const children = parseBody(lexer);
+    lexer.reportDiagnostic(
+        'Partial support for declared message recovered as MessageUsage',
+        'warning',
+        'unsupported:message',
+        start,
+        lexer.position
+    );
+
+    return { kind: 'MessageUsage', name, source, target, payloadType, children } as SysMLNode;
 }
 
 function parseSuccession(lexer: Lexer): SysMLNode {

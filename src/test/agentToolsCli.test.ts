@@ -1,8 +1,8 @@
 /// <reference types="node" />
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -43,7 +43,7 @@ afterEach(() => {
 describe('SysML agent tools CLI', () => {
   it('checks a valid model through the executable JSON contract', () => {
     const path = fixture('valid.sysml', 'part def Vehicle;');
-    const result = run('check', path);
+    const result = run('check', '--root', dirname(path), path);
     const payload = JSON.parse(result.stdout);
 
     expect(result.status).toBe(0);
@@ -53,26 +53,26 @@ describe('SysML agent tools CLI', () => {
       valid: true,
       engine: { name: 'sysml-viewer', version: 'bridge-v1' },
     });
-    expect(payload.filesExamined[0].path).toBe(path);
+    expect(payload.filesExamined[0].path).toBe(realpathSync(path));
   });
 
   it('returns structured diagnostics and nonzero status for an invalid model', () => {
     const path = fixture('invalid.sysml', 'part def {');
-    const result = run('check', path);
+    const result = run('check', '--root', dirname(path), path);
     const payload = JSON.parse(result.stdout);
 
     expect(result.status).toBe(1);
     expect(payload.valid).toBe(false);
     expect(payload.diagnostics[0]).toMatchObject({
       code: 'parser:syntax-error',
-      file: path,
+      file: realpathSync(path),
       sourceLocation: expect.any(Object),
     });
   });
 
   it('summarizes a model with independent element truncation metadata', () => {
     const path = fixture('summary.sysml', 'package P { part def Vehicle; part def Engine; }');
-    const result = run('model-summary', '--max-elements', '1', path);
+    const result = run('model-summary', '--root', dirname(path), '--max-elements', '1', path);
     const payload = JSON.parse(result.stdout);
 
     expect(result.status).toBe(0);
@@ -81,5 +81,17 @@ describe('SysML agent tools CLI', () => {
     expect(payload.elements).toHaveLength(1);
     expect(payload.elementTruncation).toMatchObject({ truncated: true, total: 3, returned: 1 });
     expect(payload.truncation).toMatchObject({ truncated: false, total: 0 });
+  });
+
+  it('rejects files outside the approved root and non-SysML extensions', () => {
+    const path = fixture('model.sysml', 'part def Vehicle;');
+    const outside = run('check', '--root', root, path);
+    expect(outside.status).toBe(2);
+    expect(JSON.parse(outside.stdout).error).toBe('file is outside approved root');
+
+    const textPath = fixture('model.txt', 'part def Vehicle;');
+    const wrongType = run('check', '--root', dirname(textPath), textPath);
+    expect(wrongType.status).toBe(2);
+    expect(JSON.parse(wrongType.stdout).error).toBe('only .sysml files are accepted');
   });
 });

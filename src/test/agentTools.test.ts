@@ -55,6 +55,7 @@ describe('SysML agent tool kernel', () => {
     });
 
     expect(result.valid).toBe(false);
+    expect(result.supportedSubsetComplete).toBe(false);
     expect(result.filesExamined.map((file) => file.path)).toEqual([
       'invalid.sysml',
       'partial.sysml',
@@ -90,6 +91,38 @@ describe('SysML agent tool kernel', () => {
 
     expect(result.status).toBe('degraded');
     expect(result.diagnostics.some((diagnostic) => diagnostic.severity === 'error')).toBe(true);
+  });
+
+  it('distinguishes parser validity from supported-subset completeness', () => {
+    const check = sysmlCheck({
+      context,
+      files: [{ path: 'partial.sysml', content: 'calc def FuelEconomy;' }],
+    });
+    const doctor = sysmlDoctor({
+      context,
+      files: [{ path: 'partial.sysml', content: 'calc def FuelEconomy;' }],
+    });
+
+    expect(check.valid).toBe(true);
+    expect(check.supportedSubsetComplete).toBe(false);
+    expect(doctor.status).toBe('degraded');
+  });
+
+  it('reports unresolved semantic references separately from parser validity', () => {
+    const check = sysmlCheck({
+      context,
+      files: [{ path: 'unresolved.sysml', content: 'package P { part x : MissingType; }' }],
+    });
+
+    expect(check.valid).toBe(true);
+    expect(check.supportedSubsetComplete).toBe(false);
+    expect(check.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'semantic:unresolved-reference',
+        severity: 'warning',
+        file: 'unresolved.sysml',
+      }),
+    ]));
   });
 
   it('explains known diagnostics and returns a bounded unknown explanation', () => {

@@ -5,6 +5,37 @@ export {
   sysmlExplainDiagnostic,
   sysmlModelSummary,
 } from './kernel';
+export {
+  RepositoryAdapterError,
+  getElement,
+  getInterfaces,
+  getRelationships,
+  getRequirements,
+  listCommits,
+  modelSummaryAtCommit,
+  runQualityChecks,
+} from './repository';
+export type {
+  RepositoryAdapterErrorCode,
+  RepositoryCommit,
+  RepositoryElement,
+  RepositoryIdentity,
+  RepositoryPin,
+  RepositoryQueryResult,
+  RepositoryRelationship,
+} from './repository';
+export {
+  runInterfaceReviewer,
+  runReleaseReviewer,
+  runRequirementParentReviewer,
+  runTraceabilityReviewer,
+} from './reviewers';
+export type {
+  FindingSeverity,
+  ReviewerFinding,
+  ReviewerKind,
+  ReviewerResult,
+} from './reviewers';
 export type {
   AgentDiagnostic,
   AgentToolContext,
