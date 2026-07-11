@@ -141,6 +141,7 @@ export interface InterfaceDef extends SysMLNode {
 export interface InterfaceUsage extends SysMLNode {
     kind: 'InterfaceUsage';
     typeName?: string;
+    multiplicity?: string;
     source?: string;
     target?: string;
 }
@@ -162,6 +163,7 @@ export interface ActionUsage extends SysMLNode {
     specializes?: string;
     redefines?: string;
     isRedefine?: boolean;
+    multiplicity?: string;
     params: ActionParam[];
 }
 
@@ -173,6 +175,7 @@ export interface StateUsage extends SysMLNode {
     kind: 'StateUsage';
     isParallel?: boolean;
     typeName?: string;
+    multiplicity?: string;
 }
 
 export interface TransitionUsage extends SysMLNode {
@@ -198,6 +201,7 @@ export interface RequirementUsage extends SysMLNode {
     subject?: { name: string; typeName: string };
     sourceRef?: string;
     targetRef?: string;
+    multiplicity?: string;
 }
 
 export interface ConstraintDef extends SysMLNode {
@@ -427,6 +431,7 @@ export interface VerificationUsage extends SysMLNode {
     typeName?: string;
     subject?: { name: string; typeName?: string };
     targetRef?: string;
+    multiplicity?: string;
 }
 
 export interface AnalysisDef extends SysMLNode {
