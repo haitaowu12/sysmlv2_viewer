@@ -16,6 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout pinned SysML v2 release corpus
+        uses: actions/checkout@v4
+        with:
+          repository: Systems-Modeling/SysML-v2-Release
+          ref: 9baca5908ca28b53da085de69336fde48420ea8f
+          path: .external/sysml-v2-release
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -32,9 +39,9 @@ jobs:
         run: npm run test
 
       - name: Release baseline tests
-        run: |
-          echo "SYSML_V2_RELEASE_DIR is optional; upstream corpus tests are skipped when absent."
-          npm run test:release
+        env:
+          SYSML_V2_RELEASE_DIR: ${{ github.workspace }}/.external/sysml-v2-release
+        run: npm run test:release
 
       - name: Build static app
         run: npm run build

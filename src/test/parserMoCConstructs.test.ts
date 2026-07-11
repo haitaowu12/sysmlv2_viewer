@@ -87,4 +87,17 @@ describe('SysML v2 MoC construct recovery', () => {
     });
     expectUnsupported('event occurrence ignition;', 'EventOccurrenceUsage', 'unsupported:event-occurrence');
   });
+
+  it('keeps declared sequence messages and their endpoints visible', () => {
+    expect(expectUnsupported(
+      'message publish of Publish[1] from producer.sent to server.received;',
+      'MessageUsage',
+      'unsupported:message',
+    )).toMatchObject({
+      name: 'publish',
+      payloadType: 'Publish',
+      source: 'producer.sent',
+      target: 'server.received',
+    });
+  });
 });
