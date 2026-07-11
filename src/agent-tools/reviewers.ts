@@ -3,7 +3,7 @@ import type { SemanticEdge, SemanticNode } from '../bridge/semantic-types';
 import { sysmlCheck } from './kernel';
 import type { AgentToolContext, AgentToolFile } from './types';
 
-export type ReviewerKind = 'traceability' | 'requirement-parent' | 'interface' | 'release';
+export type ReviewerKind = 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
 export type FindingSeverity = 'error' | 'warning' | 'info';
 
 export interface ReviewerFinding {
@@ -116,6 +116,25 @@ export function runInterfaceReviewer(files: AgentToolFile[]): ReviewerResult {
   }
   return result(files, findings, [
     'Direction, unit, timing, state applicability, ownership, and domain compatibility require a project rule pack.',
+  ]);
+}
+
+export function runSemanticCompatibilityReviewer(files: AgentToolFile[]): ReviewerResult {
+  const findings: ReviewerFinding[] = [];
+  for (const entry of index(files)) {
+    const byName = new Map(entry.nodes.map((node) => [node.name, node]));
+    for (const connection of entry.nodes.filter((node) => node.kind === 'ConnectionUsage')) {
+      const source = connection.sourceRef ? byName.get(connection.sourceRef.split('.').at(-1) ?? '') : undefined;
+      const target = connection.targetRef ? byName.get(connection.targetRef.split('.').at(-1) ?? '') : undefined;
+      if (source?.typeName && target?.typeName && source.typeName !== target.typeName) {
+        findings.push(finding('semantic-compatibility', 'SYSML-COMPAT-001', 'warning',
+          `Connection '${connection.name}' joins endpoints typed '${source.typeName}' and '${target.typeName}'.`,
+          entry.file.path, [connection.id, source.id, target.id], 'review'));
+      }
+    }
+  }
+  return result(files, findings, [
+    'Type-name equality is only a structural screen; physical, information, unit, timing, and safety compatibility require domain rules and human review.',
   ]);
 }
 
