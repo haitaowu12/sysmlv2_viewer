@@ -15,6 +15,8 @@
 
 Source text is canonical. Diagrams and Draw.io XML are derived from parsed SysML, then synced back through semantic diffs and safety-classified patches.
 
+Read-only agent integrations use the typed JSON surface documented in [agent-tools.md](agent-tools.md). Keep agent adapters on the same parser and semantic engine as the editor and release tests; do not create a second parsing path.
+
 Use `docs/r2-product-contract.md` as the product boundary for R2 claims. New parser, bridge, AI, or deployment work should update that contract when support status changes.
 
 ## Data Flow

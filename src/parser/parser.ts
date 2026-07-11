@@ -538,6 +538,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseActionDef(lexer);
     } else if (lexer.lookAhead('perform action')) {
         node = parsePerformActionUsage(lexer);
+    } else if (lexer.lookAhead('perform')) {
+        node = parsePerformActionUsage(lexer);
     } else if (lexer.lookAhead('action')) {
         node = parseActionUsage(lexer);
     } else if (lexer.lookAhead('state def')) {
@@ -726,15 +728,33 @@ function parsePartUsage(lexer: Lexer): PartUsage {
     lexer.expect('part');
 
     let isRedefine = false;
+    let redefines: string | undefined;
+    let specializes: string | undefined;
     if (lexer.match('redefines') || lexer.match('override')) {
         isRedefine = true;
     }
 
-    const name = lexer.readIdentifier();
+    let name: string;
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        name = redefines;
+        isRedefine = true;
+    } else {
+        name = lexer.readIdentifier();
+    }
     const multiplicity = lexer.readMultiplicity();
 
     let typeName: string | undefined;
-    if (lexer.match(':')) {
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        isRedefine = true;
+    } else if (lexer.match(':>')) {
+        specializes = lexer.readQualifiedName();
+    } else if (lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+    }
+
+    if (redefines && lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
 
@@ -746,6 +766,8 @@ function parsePartUsage(lexer: Lexer): PartUsage {
         kind: 'PartUsage',
         name,
         typeName,
+        specializes,
+        redefines,
         multiplicity: mult2 || multiplicity,
         isRedefine,
         children,
@@ -781,15 +803,36 @@ function parsePortUsage(lexer: Lexer): PortUsage {
     let isConjugated = false;
     if (lexer.match('~')) isConjugated = true;
 
-    const name = lexer.readIdentifier();
+    let isRedefine = false;
+    let redefines: string | undefined;
+    let specializes: string | undefined;
+    let name: string;
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        name = redefines;
+        isRedefine = true;
+    } else {
+        name = lexer.readIdentifier();
+    }
 
     let typeName: string | undefined;
-    if (lexer.match(':')) {
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        isRedefine = true;
+    } else if (lexer.match(':>')) {
+        specializes = lexer.readQualifiedName();
+    } else if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
 
+    if (redefines && lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+    }
+
+    const multiplicity = lexer.readMultiplicity();
+
     const children = parseBody(lexer);
-    return { kind: 'PortUsage', name, typeName, direction, isConjugated, children };
+    return { kind: 'PortUsage', name, typeName, specializes, redefines, multiplicity, isRedefine, direction, isConjugated, children };
 }
 
 function parseConnectionDef(lexer: Lexer): ConnectionDef {
@@ -946,22 +989,45 @@ function parseActionDef(lexer: Lexer): ActionDef {
 function parseActionUsage(lexer: Lexer): ActionUsage {
     lexer.expect('action');
 
-    const name = lexer.readIdentifier();
+    let isRedefine = false;
+    let redefines: string | undefined;
+    let specializes: string | undefined;
+    let name: string;
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        name = redefines;
+        isRedefine = true;
+    } else {
+        name = lexer.readIdentifier();
+    }
 
     let typeName: string | undefined;
-    if (lexer.match(':')) {
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        isRedefine = true;
+    } else if (lexer.match(':>')) {
+        specializes = lexer.readQualifiedName();
+    } else if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
+    }
+
+    if (redefines && lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+    }
+
+    if (lexer.match('=')) {
+        readStatementValue(lexer);
     }
 
     const params = parseActionParams(lexer);
     const children = parseBody(lexer);
 
-    return { kind: 'ActionUsage', name, typeName, params, children };
+    return { kind: 'ActionUsage', name, typeName, specializes, redefines, isRedefine, params, children };
 }
 
 function parsePerformActionUsage(lexer: Lexer): ActionUsage {
     lexer.expect('perform');
-    lexer.expect('action');
+    lexer.match('action');
 
     let name = 'performAction';
     let typeName: string | undefined;
@@ -969,11 +1035,11 @@ function parsePerformActionUsage(lexer: Lexer): ActionUsage {
     if (lexer.match(':>>')) {
         name = lexer.readQualifiedName();
     } else if (!lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
-        name = lexer.readIdentifier();
+        name = lexer.readQualifiedName();
         lexer.readMultiplicity(); // optional [*] / [1..*]
     }
 
-    if (lexer.match(':') || lexer.match(':>') || lexer.match(':>>')) {
+    if (lexer.match(':>>') || lexer.match(':>') || lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
 
@@ -1195,11 +1261,30 @@ function parseAttributeUsage(lexer: Lexer): AttributeUsage {
         isRedefine = true;
     }
 
-    const name = lexer.readIdentifier();
+    let redefines: string | undefined;
+    let specializes: string | undefined;
+    let name: string;
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        name = redefines;
+        isRedefine = true;
+    } else {
+        name = lexer.readIdentifier();
+    }
 
     let typeName: string | undefined;
     let multiplicity: string | undefined;
-    if (lexer.match(':')) {
+    if (lexer.match(':>>')) {
+        redefines = lexer.readQualifiedName();
+        isRedefine = true;
+    } else if (lexer.match(':>')) {
+        specializes = lexer.readQualifiedName();
+    } else if (lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+        multiplicity = lexer.readMultiplicity();
+    }
+
+    if (redefines && lexer.match(':')) {
         typeName = readTypeReference(lexer);
         multiplicity = lexer.readMultiplicity();
     }
@@ -1218,6 +1303,8 @@ function parseAttributeUsage(lexer: Lexer): AttributeUsage {
         multiplicity,
         defaultValue,
         isRedefine,
+        specializes,
+        redefines,
         children: [],
     };
 }
@@ -1399,9 +1486,15 @@ function parsePartialNamedConstruct(
     let timeSliceOf: string | undefined;
     let variantOf: string | undefined;
     let about: string | undefined;
+    let specializes: string | undefined;
+    let redefines: string | undefined;
 
     while (!lexer.eof && !lexer.lookAheadChar(';') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar('}')) {
-        if (lexer.match(':')) {
+        if (lexer.match(':>>')) {
+            redefines = readTypeReference(lexer);
+        } else if (lexer.match(':>')) {
+            specializes = readTypeReference(lexer);
+        } else if (lexer.match(':')) {
             typeName = readTypeReference(lexer);
         } else if (lexer.match('of')) {
             const ref = readReference(lexer);
@@ -1432,6 +1525,8 @@ function parsePartialNamedConstruct(
         timeSliceOf,
         variantOf,
         about,
+        specializes,
+        redefines,
         children,
     } as SysMLNode;
 }
@@ -1664,11 +1759,10 @@ function parseGenericAfterKeyword(lexer: Lexer, keyword: string, start: SourceLo
         }
     }
 
-    const codeKeyword = keyword.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
     lexer.reportDiagnostic(
         `Unsupported construct '${keyword}' recovered as Unknown node`,
         'warning',
-        `unsupported:${codeKeyword}`,
+        'unsupported:unrecognized-construct',
         start,
         lexer.position
     );
@@ -1788,8 +1882,16 @@ function parseBody(lexer: Lexer): SysMLNode[] {
     if (lexer.match('}')) {
         lexer.exitBrace();
     } else {
-        // Missing closing brace - keep braceDepth > 0 so EOF check catches it
-        throw lexer.errorWithSeverity("Expected '}'", 'error');
+        // Preserve the recovered subtree. The model-level EOF check still reports
+        // unmatched braces, but callers retain useful partial semantics.
+        lexer.reportDiagnostic(
+            "Expected '}' before end of input",
+            'error',
+            'parser:unmatched-closing-brace',
+            lexer.position,
+            lexer.position,
+            "close unmatched opening brace(s) with '}'"
+        );
     }
     return children;
 }

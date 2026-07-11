@@ -291,6 +291,24 @@ export function buildSemanticModelFromSysMLModel(
     if ('typeName' in astNode && typeof astNode.typeName === 'string') {
       semanticNode.typeName = astNode.typeName;
     }
+    const specializes = nodeProperties(astNode).specializes;
+    if (typeof specializes === 'string' && specializes) {
+      semanticNode.specializes = specializes;
+      pendingRelations.push({
+        kind: 'specialization',
+        sourceId: entry.id,
+        targetRef: specializes,
+      });
+    }
+    const redefines = nodeProperties(astNode).redefines;
+    if (typeof redefines === 'string' && redefines) {
+      semanticNode.redefines = redefines;
+      pendingRelations.push({
+        kind: 'redefinition',
+        sourceId: entry.id,
+        targetRef: redefines,
+      });
+    }
     if ('targetRef' in astNode && typeof astNode.targetRef === 'string') {
       semanticNode.targetRef = astNode.targetRef;
     }
@@ -683,6 +701,21 @@ export function buildSemanticModelFromSysMLModel(
       relation.kind === 'variantOf' ||
       relation.kind === 'message'
     ) {
+      if (!relation.sourceId || !relation.targetRef) continue;
+      const targetNode = resolveRef(refIndex, relation.targetRef, structuralEndpointKinds);
+      if (!targetNode) continue;
+
+      semanticEdges.push({
+        id: edgeHash(relation.sourceId, targetNode.id, relation.kind, relation.label),
+        kind: relation.kind,
+        sourceId: relation.sourceId,
+        targetId: targetNode.id,
+        label: relation.label,
+      });
+      continue;
+    }
+
+    if (relation.kind === 'specialization' || relation.kind === 'redefinition' || relation.kind === 'subsetting') {
       if (!relation.sourceId || !relation.targetRef) continue;
       const targetNode = resolveRef(refIndex, relation.targetRef, structuralEndpointKinds);
       if (!targetNode) continue;

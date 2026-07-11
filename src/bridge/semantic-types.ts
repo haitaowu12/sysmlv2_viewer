@@ -103,6 +103,8 @@ export interface SemanticNode {
   sysmlPath: string;
   parentId?: string;
   typeName?: string;
+  specializes?: string;
+  redefines?: string;
   sourceRef?: string;
   targetRef?: string;
 }
