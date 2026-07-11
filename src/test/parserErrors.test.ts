@@ -106,6 +106,11 @@ describe('parser error recovery', () => {
         (err.suggestion && err.suggestion.includes('unmatched opening brace'))
     );
     expect(hasUnmatchedBrace).toBe(true);
+    expect(result.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'Package', name: 'Test' }),
+      ])
+    );
   });
 
   it('reports unsupported constructs when recovering as typed partial nodes', () => {
@@ -122,6 +127,20 @@ describe('parser error recovery', () => {
             start: expect.objectContaining({ line: 1, column: 1 }),
             end: expect.objectContaining({ line: 1 }),
           }),
+        }),
+      ])
+    );
+  });
+
+  it('uses a stable code for generic recovery while retaining the token in the message', () => {
+    const result = parseSysML('stakeholder operator;');
+
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported:unrecognized-construct',
+          message: expect.stringContaining("'stakeholder'"),
+          severity: 'warning',
         }),
       ])
     );

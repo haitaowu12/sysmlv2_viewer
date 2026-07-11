@@ -10,7 +10,7 @@ Use this repository as the project baseline for SysML v2 source examples and par
 - Commit: `9baca5908ca28b53da085de69336fde48420ea8f`
 - Commit date: `2026-05-14`
 
-`HEAD`, `master`, and tag `2026-04` were verified to resolve to the same commit during the 2026-05-20 refresh.
+Tag `2026-04` remains the stable regression anchor. Moving `master` had advanced to `288d129c0d532065d45434bbb48a920898b719af` when checked on 2026-07-11, so moving-head compatibility must run as a separate non-release lane.
 
 This file anchors release fixtures and parser growth. Product support claims are governed by `docs/r2-product-contract.md`.
 
@@ -67,6 +67,8 @@ SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
 ```
 
 Without `SYSML_V2_RELEASE_DIR`, the upstream corpus suite is skipped by design; in-repo release baseline tests still run.
+
+When `SYSML_V2_RELEASE_DIR` is set, the suite fails closed unless the checkout is exactly the pinned commit. Every fixture declares its allowed stable unsupported-diagnostic codes; identifier-derived recovery codes are prohibited. Core semantic kinds and relationship constructs are asserted separately from visible partial recovery.
 
 Core fixture set:
 

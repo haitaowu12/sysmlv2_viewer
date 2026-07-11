@@ -90,6 +90,8 @@ export interface PartDef extends SysMLNode {
 export interface PartUsage extends SysMLNode {
     kind: 'PartUsage';
     typeName?: string;
+    specializes?: string;
+    redefines?: string;
     multiplicity?: string;
     isRedefine?: boolean;
 }
@@ -103,6 +105,10 @@ export interface PortDef extends SysMLNode {
 export interface PortUsage extends SysMLNode {
     kind: 'PortUsage';
     typeName?: string;
+    specializes?: string;
+    redefines?: string;
+    multiplicity?: string;
+    isRedefine?: boolean;
     isConjugated?: boolean;
     direction?: 'in' | 'out' | 'inout';
 }
@@ -153,6 +159,9 @@ export interface ActionParam {
 export interface ActionUsage extends SysMLNode {
     kind: 'ActionUsage';
     typeName?: string;
+    specializes?: string;
+    redefines?: string;
+    isRedefine?: boolean;
     params: ActionParam[];
 }
 
@@ -214,6 +223,8 @@ export interface AttributeUsage extends SysMLNode {
     defaultValue?: string;
     direction?: 'in' | 'out' | 'inout';
     isRedefine?: boolean;
+    specializes?: string;
+    redefines?: string;
 }
 
 export interface ItemDef extends SysMLNode {

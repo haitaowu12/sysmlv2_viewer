@@ -10,9 +10,11 @@ export interface NodeProperties {
   multiplicity?: string;
   about?: string;
   payloadType?: string;
+  redefines?: string;
   source?: string;
   sourceRef?: string;
   snapshotOf?: string;
+  specializes?: string;
   subsets?: string;
   superTypes?: string[];
   target?: string;

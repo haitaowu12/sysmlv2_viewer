@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts",
+    "build:agent-tools": "esbuild scripts/sysml-agent-tools.ts --bundle --platform=node --format=esm --outfile=.agent-tools/sysml-agent-tools.mjs",
+    "sysml:tools": "npm run build:agent-tools --silent && node .agent-tools/sysml-agent-tools.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -42,6 +44,6 @@
     "vitest": "^4.1.4"
   },
   "overrides": {
-    "dompurify": "^3.4.0"
+    "dompurify": "^3.4.12"
   }
 }
