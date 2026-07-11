@@ -9,6 +9,10 @@ npm run sysml:tools -- doctor [model.sysml ...]
 npm run sysml:tools -- check model.sysml [more.sysml ...]
 npm run sysml:tools -- explain-diagnostic unsupported:calc
 npm run sysml:tools -- model-summary --max-elements 100 model.sysml
+npm run sysml:tools -- review --reviewer completeness model.sysml
+npm run sysml:tools -- review --reviewer interface model.sysml
+npm run sysml:tools -- trace-coverage model.sysml
+npm run sysml:tools -- render-view model.sysml
 ```
 
 File commands accept only `.sysml` files inside the current working directory by default. Use `--root /approved/workspace` to authorize a different bounded root. Real paths are checked after symlink resolution; file count and byte limits apply.
@@ -44,6 +48,8 @@ Programmatic adapters exported from `src/agent-tools` provide commit history, mo
 
 ## Deterministic Reviewers
 
-Programmatic traceability, requirement-parent, interface, and release reviewers consume the same semantic engine. Findings include stable rule IDs, model evidence IDs, rationale, proposed disposition, explicit limitations, and `requiresHumanReview: true`. Reviewers never rewrite source. Project rule packs remain separate because parser structure alone cannot prove ownership, direction, units, timing, state applicability, or domain compatibility.
+CLI and programmatic completeness, traceability, requirement-parent, interface, semantic-compatibility, and release reviewers consume the same parser and semantic engine. Select one with `review --reviewer <name>`. Findings include stable rule IDs, model evidence IDs, source locations, rationale, proposed disposition, explicit limitations, and `requiresHumanReview: true`. Reviewers never rewrite source. The completeness reviewer fails explicit omissions such as missing use-case subjects, actors, objectives, contextual bindings, composite sequencing, requirement subjects, and verification subjects/objectives.
 
-Programmatic `sysmlRenderView`, `sysmlTraceCoverage`, and `sysmlCompareModels` tools add deterministic Mermaid projection, explicit requirement coverage, and semantic model deltas. They remain read-only and carry engine/corpus/file identity.
+Project rule packs remain separate because parser structure alone cannot prove ownership, direction, units, timing, state applicability, source currentness, or domain compatibility.
+
+`trace-coverage` reports requirement definitions separately from requirement usages and names only relationship presence (`satisfactionLinked`, `verificationLinked`). It explicitly does not claim satisfaction evidence or a passed verification verdict. `render-view` exposes the deterministic Mermaid projection. Programmatic `sysmlCompareModels` adds semantic model deltas. All remain read-only and carry engine/corpus/file identity.

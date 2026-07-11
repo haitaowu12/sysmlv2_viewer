@@ -69,6 +69,9 @@ describe('official-pattern SysML v2 semantic constructs', () => {
     `);
 
     expect(parsed.errors).toEqual([]);
+    expect(parsed.children.find((node) => node.kind === 'RequirementUsage')).toMatchObject({
+      subject: { name: 'system', typeName: 'System' },
+    });
     const verification = parsed.children.find((node) => node.kind === 'VerificationDef');
     expect(verification?.children).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'VerificationUsage', name: 'evidenceObjective' }),

@@ -83,6 +83,38 @@ describe('SysML agent tools CLI', () => {
     expect(payload.truncation).toMatchObject({ truncated: false, total: 0 });
   });
 
+  it('runs deterministic reviewers and advanced read-only tools through JSON contracts', () => {
+    const path = fixture('model.sysml', `
+      part def System;
+      part def Operator;
+      use case def Operate {
+        subject system : System;
+        actor operator : Operator;
+        objective { doc /* Operate the system. */ }
+      }
+      requirement safe { subject system : System; }
+      verification def SafeReview {
+        subject system : System;
+        objective reviewObjective { verify safe; }
+      }
+    `);
+    const review = run('review', '--reviewer', 'completeness', '--root', dirname(path), path);
+    expect(review.status).toBe(0);
+    expect(JSON.parse(review.stdout)).toMatchObject({
+      tool: 'sysml_review',
+      reviewer: 'completeness',
+      counts: { error: 0 },
+    });
+
+    const trace = run('trace-coverage', '--root', dirname(path), path);
+    expect(trace.status).toBe(0);
+    expect(JSON.parse(trace.stdout).tool).toBe('sysml_trace_coverage');
+
+    const view = run('render-view', '--root', dirname(path), path);
+    expect(view.status).toBe(0);
+    expect(JSON.parse(view.stdout)).toMatchObject({ tool: 'sysml_render_view', format: 'mermaid' });
+  });
+
   it('rejects files outside the approved root and non-SysML extensions', () => {
     const path = fixture('model.sysml', 'part def Vehicle;');
     const outside = run('check', '--root', root, path);

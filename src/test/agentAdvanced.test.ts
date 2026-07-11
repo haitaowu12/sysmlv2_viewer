@@ -13,10 +13,35 @@ describe('advanced deterministic SysML agent tools', () => {
     expect(first.content).toContain('typing');
   });
 
-  it('reports uncovered requirements explicitly', () => {
-    const result = sysmlTraceCoverage([{ path: 'req.sysml', content: 'requirement def R;' }], context);
-    expect(result).toMatchObject({ requirements: 1, fullyCovered: 0 });
-    expect(result.uncoveredRequirementIds).toHaveLength(1);
+  it('separates definitions from usage trace links without claiming verification results', () => {
+    const result = sysmlTraceCoverage([{
+      path: 'req.sysml',
+      content: 'requirement def R; requirement r : R;',
+    }], context);
+    expect(result).toMatchObject({
+      requirementDefinitions: 1,
+      requirementUsages: 1,
+      satisfactionLinked: 0,
+      verificationLinked: 0,
+      fullyLinked: 0,
+    });
+    expect(result.unlinkedRequirementUsageIds).toHaveLength(1);
+    expect(result.limitations.join(' ')).toContain('not evidence');
+  });
+
+  it('links verification to a requirement usage when its definition normalizes to the same name', () => {
+    const result = sysmlTraceCoverage([{
+      path: 'req.sysml',
+      content: `
+        requirement def Safe;
+        requirement safe : Safe;
+        verification def Review {
+          objective { verify safe; }
+        }
+      `,
+    }], context);
+    expect(result).toMatchObject({ requirementUsages: 1, verificationLinked: 1 });
+    expect(result.requirementLinks[0]).toMatchObject({ name: 'safe', verificationLinked: true });
   });
 
   it('compares model semantics without reading a working tree', () => {

@@ -659,7 +659,9 @@ export function buildSemanticModelFromSysMLModel(
 
     if (relation.kind === 'satisfy' || relation.kind === 'verify') {
       if (!relation.sourceId || !relation.targetRef) continue;
-      const requirementKinds: SemanticNodeKind[] = ['RequirementDef', 'RequirementUsage'];
+      // Satisfaction and verification statements relate to requirement usages.
+      // Prefer the usage when a definition and usage normalize to the same name.
+      const requirementKinds: SemanticNodeKind[] = ['RequirementUsage', 'RequirementDef'];
       const requirementNode = resolveRef(refIndex, relation.targetRef, requirementKinds);
       if (!requirementNode) continue;
 
