@@ -45,4 +45,29 @@ describe('usage relationship parsing', () => {
       expect.objectContaining({ name: 'providePowerFamily' }),
     ]));
   });
+
+  it('preserves multiplicity on supported typed usages and allocation endpoints', () => {
+    const parsed = parseSysML(`package Test {
+      part def Source;
+      part def Target;
+      interface def Link;
+      action def Monitor;
+      requirement def Need;
+      verification def Check;
+      interface link : Link[0..1];
+      action monitor : Monitor[0..1];
+      requirement need : Need[0..1];
+      verification check : Check[0..1];
+      allocate monitor to need;
+    }`);
+    const children = parsed.children[0].children;
+
+    expect(children).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'InterfaceUsage', multiplicity: '0..1' }),
+      expect.objectContaining({ kind: 'ActionUsage', multiplicity: '0..1' }),
+      expect.objectContaining({ kind: 'RequirementUsage', multiplicity: '0..1' }),
+      expect.objectContaining({ kind: 'VerificationUsage', multiplicity: '0..1' }),
+      expect.objectContaining({ kind: 'AllocationUsage', source: 'monitor', target: 'need' }),
+    ]));
+  });
 });

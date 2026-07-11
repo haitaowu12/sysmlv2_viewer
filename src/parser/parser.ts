@@ -969,9 +969,10 @@ function parseInterfaceUsage(lexer: Lexer): SysMLNode {
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
+    const multiplicity = lexer.readMultiplicity();
 
     const children = parseBody(lexer);
-    return { kind: 'InterfaceUsage', name, typeName, children } as SysMLNode;
+    return { kind: 'InterfaceUsage', name, typeName, multiplicity, children } as SysMLNode;
 }
 
 function parseActionDef(lexer: Lexer): ActionDef {
@@ -1015,6 +1016,8 @@ function parseActionUsage(lexer: Lexer): ActionUsage {
         typeName = readTypeReference(lexer);
     }
 
+    const multiplicity = lexer.readMultiplicity();
+
     if (lexer.match('=')) {
         readStatementValue(lexer);
     }
@@ -1022,7 +1025,7 @@ function parseActionUsage(lexer: Lexer): ActionUsage {
     const params = parseActionParams(lexer);
     const children = parseBody(lexer);
 
-    return { kind: 'ActionUsage', name, typeName, specializes, redefines, isRedefine, params, children };
+    return { kind: 'ActionUsage', name, typeName, specializes, redefines, isRedefine, multiplicity, params, children };
 }
 
 function parsePerformActionUsage(lexer: Lexer): ActionUsage {
@@ -1084,9 +1087,10 @@ function parseStateUsage(lexer: Lexer): StateUsage {
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
+    const multiplicity = lexer.readMultiplicity();
     const children = parseBody(lexer);
 
-    return { kind: 'StateUsage', name, isParallel, typeName, children };
+    return { kind: 'StateUsage', name, isParallel, typeName, multiplicity, children };
 }
 
 function parseTransition(lexer: Lexer): TransitionUsage {
@@ -1190,6 +1194,7 @@ function parseRequirementUsage(lexer: Lexer): RequirementUsage {
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
+    const multiplicity = lexer.readMultiplicity();
 
     const children = parseBody(lexer);
 
@@ -1200,7 +1205,7 @@ function parseRequirementUsage(lexer: Lexer): RequirementUsage {
         }
     }
 
-    return { kind: 'RequirementUsage', name, shortName, typeName, doc, children };
+    return { kind: 'RequirementUsage', name, shortName, typeName, multiplicity, doc, children };
 }
 
 function parseConstraintDef(lexer: Lexer): ConstraintDef {
@@ -2201,9 +2206,10 @@ function parseVerificationUsage(lexer: Lexer): SysMLNode {
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
     }
+    const multiplicity = lexer.readMultiplicity();
 
     const children = parseBody(lexer);
-    return { kind: 'VerificationUsage', name, typeName, children } as SysMLNode;
+    return { kind: 'VerificationUsage', name, typeName, multiplicity, children } as SysMLNode;
 }
 
 function parseAnalysisDef(lexer: Lexer): SysMLNode {
@@ -2346,6 +2352,7 @@ function parseAllocationDef(lexer: Lexer): AllocationDef {
 function parseAllocationUsage(lexer: Lexer): AllocationUsage {
     let name = 'allocation';
     let typeName: string | undefined;
+    let allocateKeywordConsumed = false;
 
     if (lexer.match('allocation')) {
         if (!lexer.lookAhead('allocate') && !lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
@@ -2356,12 +2363,13 @@ function parseAllocationUsage(lexer: Lexer): AllocationUsage {
         }
     } else {
         lexer.expect('allocate');
+        allocateKeywordConsumed = true;
     }
 
     let source = '';
     let target = '';
 
-    if (lexer.match('allocate')) {
+    if (allocateKeywordConsumed || lexer.match('allocate')) {
         source = readEndpointReference(lexer, ['to', '{', ';']);
         lexer.match('to');
         target = readEndpointReference(lexer, ['{', ';']);
