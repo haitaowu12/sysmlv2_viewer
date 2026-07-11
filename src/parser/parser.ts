@@ -69,7 +69,7 @@ import type {
 } from './types';
 import { nodeProperties } from '../utils/nodeProperties';
 
-const ELEMENT_START_PATTERN = /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test|alias|calc|individual|occurrence|snapshot|timeslice|time|variation|variant|message|send|accept|event)$/;
+const ELEMENT_START_PATTERN = /^(part|port|action|state|requirement|constraint|attribute|item|enum|package|connection|interface|transition|flow|bind|import|doc|entry|exit|private|public|protected|perform|first|then|succession|view|viewpoint|verification|analysis|metadata|allocate|dependency|use|case|satisfy|verify|include|extend|test|alias|calc|individual|occurrence|snapshot|timeslice|time|variation|variant|message|send|accept|event|actor|subject|objective|start|done)$/;
 
 class Lexer {
     private pos = 0;
@@ -594,6 +594,8 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseUseCaseDef(lexer);
     } else if (lexer.lookAhead('include use case')) {
         node = parseUseCaseUsage(lexer, 'include');
+    } else if (lexer.lookAhead('include')) {
+        node = parseShortIncludeUseCaseUsage(lexer);
     } else if (lexer.lookAhead('extend use case')) {
         node = parseUseCaseUsage(lexer, 'extend');
     } else if (lexer.lookAhead('use case')) {
@@ -632,7 +634,9 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parsePartialNamedConstruct(lexer, 'VariantUsage', 'variant', ['variant']);
     } else if (lexer.lookAhead('message')) {
         node = parseDeclaredMessageUsage(lexer);
-    } else if (lexer.lookAhead('send') || lexer.lookAhead('accept')) {
+    } else if (lexer.lookAhead('accept')) {
+        node = parseAcceptTransition(lexer);
+    } else if (lexer.lookAhead('send')) {
         node = parseMessageUsage(lexer);
     } else if (lexer.lookAhead('event occurrence')) {
         node = parsePartialNamedConstruct(lexer, 'EventOccurrenceUsage', 'event-occurrence', ['event', 'occurrence']);
@@ -652,6 +656,10 @@ function parseElement(lexer: Lexer): SysMLNode | null {
         node = parseMetadataUsage(lexer);
     } else if (lexer.lookAhead('objective')) {
         node = parseObjectiveUsage(lexer);
+    } else if (lexer.lookAhead('actor')) {
+        node = parseActorUsage(lexer);
+    } else if (lexer.lookAhead('start') || lexer.lookAhead('done')) {
+        node = parseControlNode(lexer);
     } else if (lexer.lookAhead('enumeration def')) {
         node = parseEnumDef(lexer);
     } else if (lexer.lookAhead('enumeration')) {
@@ -661,8 +669,7 @@ function parseElement(lexer: Lexer): SysMLNode | null {
     } else if (lexer.lookAhead('satisfy')) {
         node = parseSatisfyUsage(lexer);
     } else if (lexer.lookAhead('then')) {
-        lexer.match('then');
-        node = parseElement(lexer);
+        node = parseThenSuccession(lexer);
     } else {
         // Unknown element - check for common misspellings first
         const word = lexer.readIdentifier();
@@ -965,7 +972,10 @@ function parseInterfaceDef(lexer: Lexer): InterfaceDef {
 function parseInterfaceUsage(lexer: Lexer): SysMLNode {
     lexer.expect('interface');
 
-    const name = lexer.readIdentifier();
+    let name = 'interface';
+    if (!lexer.lookAheadChar(':')) {
+        name = lexer.readIdentifier();
+    }
 
     let typeName: string | undefined;
     if (lexer.match(':')) {
@@ -973,8 +983,20 @@ function parseInterfaceUsage(lexer: Lexer): SysMLNode {
     }
     const multiplicity = lexer.readMultiplicity();
 
+    let source: string | undefined;
+    let target: string | undefined;
+    if (lexer.match('connect')) {
+        const sourceExpression = readEndpointReference(lexer, ['to']);
+        lexer.expect('to');
+        const targetExpression = readEndpointReference(lexer, []);
+        source = sourceExpression.split('::>').pop()?.trim() || sourceExpression;
+        target = targetExpression.split('::>').pop()?.trim() || targetExpression;
+        lexer.match(';');
+        return { kind: 'InterfaceUsage', name, typeName, multiplicity, source, target, children: [] } as SysMLNode;
+    }
+
     const children = parseBody(lexer);
-    return { kind: 'InterfaceUsage', name, typeName, multiplicity, children } as SysMLNode;
+    return { kind: 'InterfaceUsage', name, typeName, multiplicity, source, target, children } as SysMLNode;
 }
 
 function parseActionDef(lexer: Lexer): ActionDef {
@@ -1153,6 +1175,24 @@ function parseEntryTransition(lexer: Lexer): TransitionUsage {
         kind: 'TransitionUsage',
         name: 'entry',
         source: '__initial__',
+        target,
+        children: [],
+    };
+}
+
+function parseAcceptTransition(lexer: Lexer): TransitionUsage {
+    lexer.expect('accept');
+    const trigger = readReference(lexer);
+    let target = '';
+    if (lexer.match('then')) {
+        target = readReference(lexer);
+    }
+    lexer.match(';');
+    return {
+        kind: 'TransitionUsage',
+        name: `accept_${trigger}`,
+        source: '',
+        trigger,
         target,
         children: [],
     };
@@ -1698,9 +1738,13 @@ function parseSuccession(lexer: Lexer): SysMLNode {
 
 function parseFirstThenSuccession(lexer: Lexer): TransitionUsage {
     lexer.expect('first');
-    const source = readReference(lexer);
-    lexer.expect('then');
-    const target = readReference(lexer);
+    const first = readReference(lexer);
+    let source = '__initial__';
+    let target = first;
+    if (lexer.match('then')) {
+        source = first;
+        target = readReference(lexer);
+    }
     lexer.match(';');
     return {
         kind: 'TransitionUsage',
@@ -1709,6 +1753,30 @@ function parseFirstThenSuccession(lexer: Lexer): TransitionUsage {
         target,
         children: [],
     };
+}
+
+function parseThenSuccession(lexer: Lexer): SysMLNode {
+    lexer.expect('then');
+    if (lexer.lookAhead('include') || lexer.lookAhead('use case') || lexer.lookAhead('action') || lexer.lookAhead('perform') || lexer.lookAhead('start') || lexer.lookAhead('done')) {
+        const nested = parseElement(lexer);
+        if (nested) return nested;
+    }
+    const target = readReference(lexer);
+    lexer.match(';');
+    return {
+        kind: 'TransitionUsage',
+        name: `then_${target}`,
+        source: '',
+        target,
+        children: [],
+    } as TransitionUsage;
+}
+
+function parseControlNode(lexer: Lexer): SysMLNode {
+    const name = lexer.match('start') ? 'start' : 'done';
+    if (name === 'done') lexer.expect('done');
+    lexer.match(';');
+    return { kind: 'ActionUsage', name, children: [] } as SysMLNode;
 }
 
 function parseImport(lexer: Lexer): ImportNode {
@@ -1973,6 +2041,9 @@ function parseInlineParam(lexer: Lexer): AttributeUsage | null {
     else if (lexer.match('out')) direction = 'out';
     else if (lexer.match('in')) direction = 'in';
 
+    // Official port examples use forms such as `out item fuelSupply : Fuel;`.
+    lexer.matchAny('item', 'part', 'port', 'attribute');
+
     const name = lexer.readIdentifier();
 
     let typeName: string | undefined;
@@ -2021,12 +2092,22 @@ function parseReturnParam(lexer: Lexer): AttributeUsage | null {
 function parseSubject(lexer: Lexer): AttributeUsage | null {
     lexer.expect('subject');
 
-    const name = lexer.readIdentifier();
+    let name = 'subject';
+    if (!lexer.lookAheadChar('=') && !lexer.lookAhead(':>')) {
+        name = lexer.readIdentifier();
+    }
     let typeName: string | undefined;
     let multiplicity: string | undefined;
-    if (lexer.match(':')) {
+    let specializes: string | undefined;
+    let defaultValue: string | undefined;
+    if (lexer.match(':>')) {
+        specializes = readReference(lexer);
+    } else if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
         multiplicity = lexer.readMultiplicity();
+    }
+    if (lexer.match('=')) {
+        defaultValue = readReference(lexer);
     }
 
     lexer.match(';');
@@ -2036,8 +2117,38 @@ function parseSubject(lexer: Lexer): AttributeUsage | null {
         name: `subject:${name}`,
         typeName,
         multiplicity,
+        specializes,
+        defaultValue,
         children: [],
     };
+}
+
+function parseActorUsage(lexer: Lexer): SysMLNode {
+    lexer.expect('actor');
+    let name = 'actor';
+    if (!lexer.lookAheadChar(':') && !lexer.lookAheadChar('=') && !lexer.lookAheadChar(';')) {
+        name = lexer.readIdentifier();
+    }
+    let typeName: string | undefined;
+    let bindingRef: string | undefined;
+    let multiplicity: string | undefined;
+    if (lexer.match(':')) {
+        typeName = readTypeReference(lexer);
+        multiplicity = lexer.readMultiplicity();
+    } else {
+        multiplicity = lexer.readMultiplicity();
+    }
+    if (lexer.match('=')) bindingRef = readReference(lexer);
+    lexer.match(';');
+    return {
+        kind: 'PartUsage',
+        name: `actor:${name}`,
+        typeName,
+        multiplicity,
+        isActor: true,
+        bindingRef,
+        children: [],
+    } as SysMLNode;
 }
 
 function readTypeReference(lexer: Lexer): string {
@@ -2224,7 +2335,7 @@ function parseVerificationUsage(lexer: Lexer): SysMLNode {
         if (lexer.lookAhead('requirement')) {
             lexer.match('requirement');
         }
-        const name = lexer.readIdentifier();
+        const name = lexer.readQualifiedName();
         let typeName: string | undefined;
         if (lexer.match(':')) {
             typeName = readTypeReference(lexer);
@@ -2273,8 +2384,12 @@ function parseAnalysisUsage(lexer: Lexer): SysMLNode {
 
 function parseObjectiveUsage(lexer: Lexer): SysMLNode {
     lexer.expect('objective');
+    let objectiveName = 'objective';
+    if (!lexer.lookAheadChar('{') && !lexer.lookAheadChar(';')) {
+        objectiveName = lexer.readIdentifier();
+    }
     const children = parseBody(lexer);
-    return { kind: 'VerificationUsage', name: 'objective', children } as SysMLNode;
+    return { kind: 'VerificationUsage', name: objectiveName, children } as SysMLNode;
 }
 
 function parseMetadataAnnotation(lexer: Lexer): SysMLNode {
@@ -2341,10 +2456,12 @@ function parseUseCaseDef(lexer: Lexer): UseCaseDef {
 
     const { name, shortName } = parseNameWithShortName(lexer);
     const children = parseBody(lexer);
+    const semantics = extractUseCaseSemantics(children);
     return {
         kind: 'UseCaseDef',
         name,
         shortName,
+        ...semantics,
         children,
     };
 }
@@ -2362,13 +2479,58 @@ function parseUseCaseUsage(lexer: Lexer, includeKind: 'include' | 'extend' | 'no
     }
 
     const children = parseBody(lexer);
+    const semantics = extractUseCaseSemantics(children);
     return {
         kind: 'UseCaseUsage',
         name,
         shortName,
         typeName,
         includeKind,
+        ...semantics,
         children,
+    };
+}
+
+function parseShortIncludeUseCaseUsage(lexer: Lexer): UseCaseUsage {
+    lexer.expect('include');
+    const { name, shortName } = parseNameWithShortName(lexer);
+    const multiplicity = lexer.readMultiplicity();
+    const children = parseBody(lexer);
+    const semantics = extractUseCaseSemantics(children);
+    return {
+        kind: 'UseCaseUsage',
+        name,
+        shortName,
+        includeKind: 'include',
+        ...(multiplicity ? { multiplicity } : {}),
+        ...semantics,
+        children,
+    } as UseCaseUsage;
+}
+
+function extractUseCaseSemantics(children: SysMLNode[]): Pick<UseCaseDef, 'subject' | 'actors' | 'objective'> {
+    const subjectNode = children.find((child) => child.name.startsWith('subject:'));
+    const actorNodes = children.filter((child) => (
+        child.kind === 'PartUsage' && (child as PartUsage).isActor
+    )) as PartUsage[];
+    const objectiveNode = children.find((child) => child.kind === 'VerificationUsage' && child.name === 'objective');
+    const objectiveDoc = objectiveNode?.children.find((child) => child.kind === 'Doc') as DocNode | undefined;
+    return {
+        ...(subjectNode ? {
+            subject: {
+                name: subjectNode.name.replace('subject:', ''),
+                ...((subjectNode as AttributeUsage).typeName ? { typeName: (subjectNode as AttributeUsage).typeName } : {}),
+            },
+        } : {}),
+        ...(actorNodes.length ? {
+            actors: actorNodes.map((actor) => ({
+                name: actor.name.replace('actor:', ''),
+                ...(actor.typeName ? { typeName: actor.typeName } : {}),
+                ...(actor.multiplicity ? { multiplicity: actor.multiplicity } : {}),
+                ...(actor.bindingRef ? { bindingRef: actor.bindingRef } : {}),
+            })),
+        } : {}),
+        ...(objectiveDoc?.text ? { objective: objectiveDoc.text } : {}),
     };
 }
 

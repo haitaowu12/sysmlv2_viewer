@@ -94,6 +94,8 @@ export interface PartUsage extends SysMLNode {
     redefines?: string;
     multiplicity?: string;
     isRedefine?: boolean;
+    isActor?: boolean;
+    bindingRef?: string;
 }
 
 export interface PortDef extends SysMLNode {
@@ -265,12 +267,18 @@ export interface BindingUsage extends SysMLNode {
 
 export interface UseCaseDef extends SysMLNode {
     kind: 'UseCaseDef';
+    subject?: { name: string; typeName?: string };
+    actors?: Array<{ name: string; typeName?: string; multiplicity?: string; bindingRef?: string }>;
+    objective?: string;
 }
 
 export interface UseCaseUsage extends SysMLNode {
     kind: 'UseCaseUsage';
     typeName?: string;
     includeKind?: 'include' | 'extend' | 'normal';
+    multiplicity?: string;
+    subject?: { name: string; typeName?: string };
+    actors?: Array<{ name: string; typeName?: string; multiplicity?: string; bindingRef?: string }>;
 }
 
 export interface AllocationDef extends SysMLNode {
