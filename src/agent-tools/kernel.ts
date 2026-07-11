@@ -99,8 +99,14 @@ function diagnosticCode(error: ParseError): string {
 }
 
 function collectDiagnostics(files: AgentToolFile[]): AgentDiagnostic[] {
-  return files.flatMap((file) => {
+  const parsedFiles = files.map((file) => {
     const parsed = parseSysML(file.content);
+    return { file, parsed, semantic: buildSemanticModelFromSysMLModel(parsed) };
+  });
+  const workspaceNames = new Set(parsedFiles.flatMap(({ semantic }) => (
+    semantic.nodes.map((node) => normalizeRef(node.name).toLowerCase())
+  )));
+  return parsedFiles.flatMap(({ file, parsed, semantic }) => {
     const parserDiagnostics = parsed.errors.map((error) => ({
       code: diagnosticCode(error),
       severity: error.severity ?? 'error',
@@ -110,8 +116,6 @@ function collectDiagnostics(files: AgentToolFile[]): AgentDiagnostic[] {
       ...(error.suggestion ? { suggestion: error.suggestion } : {}),
       ...(error.context ? { context: error.context } : {}),
     }));
-    const semantic = buildSemanticModelFromSysMLModel(parsed);
-    const names = new Set(semantic.nodes.map((node) => normalizeRef(node.name).toLowerCase()));
     const unresolved = new Map<string, string>();
     for (const node of semantic.nodes) {
       const references = [node.typeName, node.sourceRef, node.targetRef].filter(
@@ -119,7 +123,9 @@ function collectDiagnostics(files: AgentToolFile[]): AgentDiagnostic[] {
       );
       for (const reference of references) {
         const normalized = normalizeRef(reference).toLowerCase();
-        if (normalized && !names.has(normalized)) unresolved.set(reference, node.name);
+        if (normalized && !['start', 'done'].includes(normalized) && !workspaceNames.has(normalized)) {
+          unresolved.set(reference, node.name);
+        }
       }
     }
     const semanticDiagnostics: AgentDiagnostic[] = [...unresolved.entries()].map(([reference, source]) => ({

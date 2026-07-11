@@ -25,6 +25,7 @@ interface UpstreamFixture {
     | 'analysisTrades'
     | 'views'
     | 'sequence'
+    | 'useCases'
     | 'integratedVehicle'
     | 'metadata'
     | 'aliasImport';
@@ -46,6 +47,12 @@ const fixtures: UpstreamFixture[] = [
   { path: 'sysml/src/validation/10-Analysis and Trades/10c-Fuel Economy Analysis.sysml', lane: 'analysisTrades', expectedKinds: ['AnalysisDef', 'AnalysisUsage'], allowedUnsupported: ['unsupported:calc', genericRecovery] },
   { path: 'sysml/src/validation/11-View and Viewpoint/11a-View-Viewpoint.sysml', lane: 'views', expectedKinds: ['ViewUsage', 'ViewpointUsage'], allowedUnsupported: [genericRecovery] },
   { path: 'sysml/src/validation/17-Sequence Modeling/17a-Sequence-Modeling.sysml', lane: 'sequence', expectedKinds: ['OccurrenceDef', 'MessageUsage', 'EventOccurrenceUsage'], allowedUnsupported: ['unsupported:message', 'unsupported:event-occurrence', 'unsupported:occurrence', genericRecovery] },
+  { path: 'sysml/src/training/10. Ports/Port Example.sysml', lane: 'interconnection', expectedKinds: ['PortDef', 'AttributeUsage'] },
+  { path: 'sysml/src/training/13. Flows/Flow Interface Example.sysml', lane: 'interconnection', expectedKinds: ['InterfaceDef', 'InterfaceUsage', 'FlowUsage'] },
+  { path: 'sysml/src/training/23. State Definitions/State Definition Example-2.sysml', lane: 'stateBehavior', expectedKinds: ['StateDef', 'StateUsage'], expectedRelations: ['TransitionUsage'] },
+  { path: 'sysml/src/training/34. Verification/Verification Case Definition Example.sysml', lane: 'verification', expectedKinds: ['VerificationDef', 'VerificationUsage'] },
+  { path: 'sysml/src/training/35. Use Cases/Use Case Definition Example.sysml', lane: 'useCases', expectedKinds: ['UseCaseDef', 'PartUsage'] },
+  { path: 'sysml/src/training/35. Use Cases/Use Case Usage Example.sysml', lane: 'useCases', expectedKinds: ['UseCaseUsage', 'TransitionUsage'] },
   { path: 'sysml/src/examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml', lane: 'integratedVehicle', expectedKinds: ['Package', 'PartDef', 'RequirementDef', 'VerificationDef'], allowedUnsupported: [genericRecovery, 'unsupported:occurrence', 'unsupported:event', 'unsupported:event-occurrence', 'unsupported:message', 'unsupported:calc', 'unsupported:snapshot', 'unsupported:time-slice', 'unsupported:individual', 'unsupported:variant', 'unsupported:variation'] },
   { path: 'sysml/src/examples/Simple Tests/IndividualTest.sysml', lane: 'individualSnapshots', expectedKinds: ['IndividualUsage'], allowedUnsupported: ['unsupported:individual'] },
   { path: 'sysml/src/examples/Requirements Examples/RequirementDerivationExample.sysml', lane: 'requirements', expectedKinds: ['RequirementDef', 'RequirementUsage'], allowedUnsupported: [genericRecovery] },

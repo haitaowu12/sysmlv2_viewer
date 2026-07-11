@@ -125,6 +125,20 @@ describe('SysML agent tool kernel', () => {
     ]));
   });
 
+  it('resolves references across the examined workspace instead of per file', () => {
+    const check = sysmlCheck({
+      context,
+      files: [
+        { path: 'definitions.sysml', content: 'package D { part def Vehicle; part def Person; }' },
+        { path: 'use-cases.sysml', content: 'use case transport { subject vehicle : Vehicle; actor driver : Person; }' },
+      ],
+    });
+
+    expect(check.valid).toBe(true);
+    expect(check.supportedSubsetComplete).toBe(true);
+    expect(check.diagnostics).toEqual([]);
+  });
+
   it('explains known diagnostics and returns a bounded unknown explanation', () => {
     const known = sysmlExplainDiagnostic({
       context,
