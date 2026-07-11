@@ -45,3 +45,5 @@ Programmatic adapters exported from `src/agent-tools` provide commit history, mo
 ## Deterministic Reviewers
 
 Programmatic traceability, requirement-parent, interface, and release reviewers consume the same semantic engine. Findings include stable rule IDs, model evidence IDs, rationale, proposed disposition, explicit limitations, and `requiresHumanReview: true`. Reviewers never rewrite source. Project rule packs remain separate because parser structure alone cannot prove ownership, direction, units, timing, state applicability, or domain compatibility.
+
+Programmatic `sysmlRenderView`, `sysmlTraceCoverage`, and `sysmlCompareModels` tools add deterministic Mermaid projection, explicit requirement coverage, and semantic model deltas. They remain read-only and carry engine/corpus/file identity.

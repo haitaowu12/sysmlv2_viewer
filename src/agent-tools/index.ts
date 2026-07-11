@@ -1,4 +1,6 @@
 export { AGENT_TOOL_SCHEMA_VERSION, SYSML_V2_CORPUS } from './constants';
+export { sysmlCompareModels, sysmlRenderView, sysmlTraceCoverage } from './advanced';
+export type { CompareModelsResult, ModelDelta, RenderViewResult, TraceCoverageResult } from './advanced';
 export {
   sysmlCheck,
   sysmlDoctor,
@@ -28,6 +30,7 @@ export {
   runInterfaceReviewer,
   runReleaseReviewer,
   runRequirementParentReviewer,
+  runSemanticCompatibilityReviewer,
   runTraceabilityReviewer,
 } from './reviewers';
 export type {

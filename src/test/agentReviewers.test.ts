@@ -3,6 +3,7 @@ import {
   runInterfaceReviewer,
   runReleaseReviewer,
   runRequirementParentReviewer,
+  runSemanticCompatibilityReviewer,
   runTraceabilityReviewer,
 } from '../agent-tools/reviewers';
 
@@ -32,5 +33,15 @@ describe('deterministic SysML reviewer capabilities', () => {
     expect(review.counts.error).toBeGreaterThan(0);
     expect(review.findings.some((item) => item.proposedDisposition === 'hold_release')).toBe(true);
     expect(review.limitations.join(' ')).toContain('Target-tool');
+  });
+
+  it('flags structurally incompatible connection endpoint types', () => {
+    const review = runSemanticCompatibilityReviewer([{
+      path: 'connection.sysml',
+      content: 'port def A; port def B; port a : A; port b : B; connection c connect a to b;',
+    }]);
+    expect(review.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ ruleId: 'SYSML-COMPAT-001', requiresHumanReview: true }),
+    ]));
   });
 });
