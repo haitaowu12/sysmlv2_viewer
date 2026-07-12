@@ -33,6 +33,22 @@ describe('usage relationship parsing', () => {
     expect(semantic.edges.some((edge) => edge.kind === 'redefinition')).toBe(true);
   });
 
+  it('emits one typing edge for each typed requirement and verification usage', () => {
+    const semantic = buildSemanticModelFromSource(`package Test {
+      requirement def Need;
+      verification def Check;
+      requirement need : Need;
+      verification check : Check;
+    }`);
+    const typedUsages = semantic.nodes.filter((node) =>
+      node.kind === 'RequirementUsage' || node.kind === 'VerificationUsage');
+
+    for (const usage of typedUsages) {
+      expect(semantic.edges.filter((edge) =>
+        edge.kind === 'typing' && edge.sourceId === usage.id)).toHaveLength(1);
+    }
+  });
+
   it('parses perform usages with quoted and qualified action names', () => {
     const parsed = parseSysML(`package Test {
       perform 'provide power'.'generate torque';

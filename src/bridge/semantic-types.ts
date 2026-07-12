@@ -107,6 +107,10 @@ export interface SemanticNode {
   redefines?: string;
   sourceRef?: string;
   targetRef?: string;
+  sourceLocation?: {
+    start: { line: number; column: number; offset: number };
+    end: { line: number; column: number; offset: number };
+  };
 }
 
 export interface SemanticEdge {

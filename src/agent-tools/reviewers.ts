@@ -70,6 +70,7 @@ function finding(
 }
 
 function sourceLine(file: AgentToolFile, node: SemanticNode): number | undefined {
+  if (node.sourceLocation) return node.sourceLocation.start.line;
   const offset = file.content.indexOf(node.name);
   return offset < 0 ? undefined : file.content.slice(0, offset).split('\n').length;
 }
@@ -78,23 +79,32 @@ function hasEdge(edges: SemanticEdge[], nodeId: string, kinds: string[]): boolea
   return edges.some((edge) => kinds.includes(edge.kind) && (edge.sourceId === nodeId || edge.targetId === nodeId));
 }
 
+function hasIncomingEdge(edges: SemanticEdge[], nodeId: string, kinds: string[]): boolean {
+  return edges.some((edge) => kinds.includes(edge.kind) && edge.targetId === nodeId);
+}
+
 export function runTraceabilityReviewer(files: AgentToolFile[]): ReviewerResult {
   const findings: ReviewerFinding[] = [];
   for (const entry of index(files)) {
-    for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementDef' || node.kind === 'RequirementUsage')) {
-      if (!hasEdge(entry.edges, requirement.id, ['satisfy'])) {
-        findings.push(finding('traceability', 'SYSML-TRACE-001', 'warning',
-          `Requirement '${requirement.name}' has no visible satisfy relationship.`, entry.file.path,
-          [requirement.id], 'supply_evidence', sourceLine(entry.file, requirement)));
+    for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementUsage')) {
+      if (!hasIncomingEdge(entry.edges, requirement.id, ['satisfy'])) {
+        findings.push(finding('traceability', 'SYSML-TRACE-SAT-STATUS-001', 'info',
+          `Requirement usage '${requirement.name}' has no incoming satisfy relationship; applicability and evidence status are not assessed.`, entry.file.path,
+          [requirement.id], 'review', sourceLine(entry.file, requirement)));
       }
-      if (!hasEdge(entry.edges, requirement.id, ['verify'])) {
-        findings.push(finding('traceability', 'SYSML-TRACE-002', 'warning',
-          `Requirement '${requirement.name}' has no visible verification relationship.`, entry.file.path,
-          [requirement.id], 'supply_evidence', sourceLine(entry.file, requirement)));
+      if (!hasIncomingEdge(entry.edges, requirement.id, ['verify'])) {
+        findings.push(finding('traceability', 'SYSML-TRACE-VER-PLAN-002', 'info',
+          `Requirement usage '${requirement.name}' has no incoming verification-plan relationship; applicability is not assessed.`, entry.file.path,
+          [requirement.id], 'review', sourceLine(entry.file, requirement)));
       }
     }
   }
-  return result('traceability', files, findings, ['Cross-file and imported relationship resolution is not yet performed.']);
+  return result('traceability', files, findings, [
+    'Definition nodes are excluded because satisfy and verify statements target requirement usages.',
+    'Missing relationships are inventory information until an external trace-expectation policy establishes applicability.',
+    'A verify relationship records planned coverage only; execution evidence, verdicts, and authority disposition require a separate evidence contract.',
+    'Cross-file and imported relationship resolution is not yet performed.',
+  ]);
 }
 
 export function runRequirementParentReviewer(files: AgentToolFile[]): ReviewerResult {

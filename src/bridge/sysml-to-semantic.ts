@@ -286,6 +286,7 @@ export function buildSemanticModelFromSysMLModel(
       name: astNode.name,
       sysmlPath: entry.path,
       parentId: entry.parentId,
+      ...(astNode.location ? { sourceLocation: astNode.location } : {}),
     };
 
     if ('typeName' in astNode && typeof astNode.typeName === 'string') {
@@ -383,14 +384,6 @@ export function buildSemanticModelFromSysMLModel(
 
     if (entry.kind === 'RequirementUsage') {
       const requirement = astNode as RequirementUsage;
-      if (requirement.typeName) {
-        pendingRelations.push({
-          kind: 'typing',
-          sourceId: entry.id,
-          targetRef: requirement.typeName,
-        });
-      }
-
       const satisfyParentId = entry.parentId;
       const isSatisfyCall = !requirement.typeName && !requirement.children.length && Boolean(satisfyParentId);
       if (isSatisfyCall && satisfyParentId) {
@@ -405,14 +398,6 @@ export function buildSemanticModelFromSysMLModel(
 
     if (entry.kind === 'VerificationUsage') {
       const verification = astNode as VerificationUsage;
-      if (verification.typeName) {
-        pendingRelations.push({
-          kind: 'typing',
-          sourceId: entry.id,
-          targetRef: verification.typeName,
-        });
-      }
-
       const verifyParentId = entry.parentId;
       const isVerifyCall = !verification.typeName && !verification.children.length && Boolean(verifyParentId);
       if (isVerifyCall && verifyParentId) {
