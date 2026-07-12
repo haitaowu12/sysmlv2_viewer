@@ -2,6 +2,8 @@
 
 This small Eclipse application imports one or more existing Xtext projects, runs a clean workspace build, and emits SysML problem markers as JSON. It exists to make the official Eclipse/Xtext gate repeatable without replacing the local iterative parser.
 
+When `--roundtrip-output DIR` is supplied and the build has no errors, the same official Xtext resource implementation loads and serializes every SysML resource into a project-named subtree under `DIR`. Compare those outputs semantically and validate them again before making any preservation claim.
+
 ## Boundary
 
 - Use only with an official SysML release plugin and the matching pinned `sysml.library` project.
@@ -34,6 +36,17 @@ The first project should be the pinned official `sysml.library`; the final proje
 "$ECLIPSE/Contents/MacOS/eclipse" -nosplash \
   -data /absolute/path/to/isolated-workspace \
   -application local.sysml.validator.application \
+  /absolute/path/to/SysML-v2-Release/sysml.library \
+  /absolute/path/to/model-project
+```
+
+For an official parse/serialize round trip:
+
+```bash
+"$ECLIPSE/Contents/MacOS/eclipse" -nosplash \
+  -data /absolute/path/to/isolated-workspace \
+  -application local.sysml.validator.application \
+  --roundtrip-output /absolute/path/to/serialized-output \
   /absolute/path/to/SysML-v2-Release/sysml.library \
   /absolute/path/to/model-project
 ```

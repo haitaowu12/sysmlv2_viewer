@@ -13,6 +13,8 @@ npm run sysml:tools -- review --reviewer completeness model.sysml
 npm run sysml:tools -- review --reviewer interface model.sysml
 npm run sysml:tools -- trace-coverage model.sysml
 npm run sysml:tools -- render-view model.sysml
+npm run sysml:tools -- semantic-snapshot model.sysml
+npm run sysml:tools -- semantic-compare baseline.sysml candidate.sysml
 ```
 
 File commands accept only `.sysml` files inside the current working directory by default. Use `--root /approved/workspace` to authorize a different bounded root. Real paths are checked after symlink resolution; file count and byte limits apply.
@@ -54,4 +56,6 @@ CLI and programmatic completeness, traceability, requirement-parent, interface, 
 
 Project rule packs remain separate because parser structure alone cannot prove ownership, direction, units, timing, state applicability, source currentness, or domain compatibility.
 
-`trace-coverage` reports requirement definitions separately from requirement usages and names only relationship presence (`satisfactionLinked`, `verificationLinked`). It explicitly does not claim satisfaction evidence or a passed verification verdict. `render-view` exposes the deterministic Mermaid projection. Programmatic `sysmlCompareModels` adds semantic model deltas. All remain read-only and carry engine/corpus/file identity.
+`trace-coverage` reports requirement definitions separately from requirement usages and names only relationship presence (`satisfactionLinked`, `verificationLinked`). It explicitly does not claim satisfaction evidence or a passed verification verdict. `render-view` exposes the deterministic Mermaid projection.
+
+`semantic-snapshot` emits a canonical node/edge projection and stable semantic hash while excluding layout and generated identifiers. `semantic-compare` compares two files as multisets and reports every added or removed node and edge; it exits `1` when they differ. This is deterministic local evidence, not an independent target-tool verdict. Programmatic `sysmlCompareModels` remains available for repository-level semantic deltas. All operations are read-only and carry engine/corpus/file identity.

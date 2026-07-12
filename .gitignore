@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 .agent-tools
+tools/eclipse-validator/target/
 dist-ssr
 *.local
 

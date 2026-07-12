@@ -115,6 +115,31 @@ describe('SysML agent tools CLI', () => {
     expect(JSON.parse(view.stdout)).toMatchObject({ tool: 'sysml_render_view', format: 'mermaid' });
   });
 
+  it('snapshots and compares semantic graphs deterministically', () => {
+    const baseline = fixture('baseline.sysml', 'package P { part def Vehicle; }');
+    const equivalent = fixture('equivalent.sysml', 'package P { part def Vehicle; }');
+    const changed = fixture('changed.sysml', 'package P { part def Vehicle; part def Engine; }');
+
+    const snapshot = run('semantic-snapshot', '--root', tmpdir(), baseline);
+    expect(snapshot.status).toBe(0);
+    expect(JSON.parse(snapshot.stdout)).toMatchObject({
+      tool: 'sysml_semantic_snapshot',
+      counts: { nodes: 2 },
+      semanticSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+
+    const same = run('semantic-compare', '--root', tmpdir(), baseline, equivalent);
+    expect(same.status).toBe(0);
+    expect(JSON.parse(same.stdout)).toMatchObject({ equivalent: true });
+
+    const different = run('semantic-compare', '--root', tmpdir(), baseline, changed);
+    expect(different.status).toBe(1);
+    expect(JSON.parse(different.stdout)).toMatchObject({
+      equivalent: false,
+      differences: { addedNodes: expect.arrayContaining([expect.objectContaining({ name: 'Engine' })]) },
+    });
+  });
+
   it('rejects files outside the approved root and non-SysML extensions', () => {
     const path = fixture('model.sysml', 'part def Vehicle;');
     const outside = run('check', '--root', root, path);
