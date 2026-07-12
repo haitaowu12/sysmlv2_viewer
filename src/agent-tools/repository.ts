@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { buildSemanticModelFromSource } from '../bridge/sysml-to-semantic';
 import type { SemanticEdge, SemanticNode } from '../bridge/semantic-types';
 import { sysmlCheck, sysmlModelSummary } from './kernel';
+import { sysmlCompareModels, type CompareModelsResult } from './advanced';
 import type {
   AgentToolContext,
   CheckResult,
@@ -320,5 +321,32 @@ export function runQualityChecks(
       files: loaded.files,
       maxDiagnostics: request.maxDiagnostics,
     }),
+  };
+}
+
+export function compareCommits(
+  request: {
+    repositoryPath: string;
+    beforeCommit: string;
+    afterCommit: string;
+    context: AgentToolContext;
+  },
+): {
+  before: RepositoryIdentity;
+  after: RepositoryIdentity;
+  comparison: CompareModelsResult;
+} {
+  const before = loadRepository({
+    repositoryPath: request.repositoryPath,
+    commit: request.beforeCommit,
+  });
+  const after = loadRepository({
+    repositoryPath: request.repositoryPath,
+    commit: request.afterCommit,
+  });
+  return {
+    before: before.repository,
+    after: after.repository,
+    comparison: sysmlCompareModels(before.files, after.files, request.context),
   };
 }

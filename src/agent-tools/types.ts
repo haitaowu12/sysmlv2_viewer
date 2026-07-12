@@ -63,7 +63,7 @@ export interface DoctorRequest {
 export interface DoctorResult extends AgentToolEnvelope {
   tool: 'sysml_doctor';
   status: 'ready' | 'degraded';
-  capabilities: ['doctor', 'check', 'explain-diagnostic', 'model-summary'];
+  capabilities: string[];
 }
 
 export interface CheckRequest {

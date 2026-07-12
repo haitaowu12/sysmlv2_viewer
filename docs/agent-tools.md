@@ -15,6 +15,15 @@ npm run sysml:tools -- trace-coverage model.sysml
 npm run sysml:tools -- render-view model.sysml
 npm run sysml:tools -- semantic-snapshot model.sysml
 npm run sysml:tools -- semantic-compare baseline.sysml candidate.sysml
+npm run sysml:tools -- repo-list-commits --repo /model/repository --commit <exact-commit>
+npm run sysml:tools -- repo-model-summary --repo /model/repository --commit <exact-commit>
+npm run sysml:tools -- repo-get-element --repo /model/repository --commit <exact-commit> --name controller
+npm run sysml:tools -- repo-get-relationships --repo /model/repository --commit <exact-commit> --element-id 'model.sysml#node-id'
+npm run sysml:tools -- repo-get-requirements --repo /model/repository --commit <exact-commit>
+npm run sysml:tools -- repo-get-interfaces --repo /model/repository --commit <exact-commit>
+npm run sysml:tools -- repo-quality-checks --repo /model/repository --commit <exact-commit>
+npm run sysml:tools -- compare-commits --repo /model/repository --before <exact-commit> --after <exact-commit>
+npm run sysml:tools -- propose-patch --root /model/repository --repo /model/repository --source-commit <exact-commit> --model-package-id MODEL-001 --diagnostic-code SYSML-RULE-001 --affected-element-id EL-001 --evidence-id EVID-001 --rationale 'Repair the diagnosed omission.' --postcondition 'candidate parses without errors' source.sysml candidate.sysml
 npm run sysml:qualify-fixtures -- --corpus /pinned/SysML-v2-Release --output qualification.json
 ```
 
@@ -49,7 +58,7 @@ For release-stage Eclipse/Xtext validation, `tools/eclipse-validator` provides a
 
 ## Commit-Pinned Repository Queries
 
-Programmatic adapters exported from `src/agent-tools` provide commit history, model summary, element, relationship, requirement, interface, and quality queries. Every request requires a repository path and exact reachable 40/64-character commit ID. Content comes from `git show <commit>:<path>`; dirty working-tree content is ignored. Symbolic, missing, and unreachable commits fail closed with redacted errors. No mutation verb exists.
+CLI and programmatic adapters provide commit history, model summary, element, relationship, requirement, interface, quality, and semantic commit-comparison queries. Every request requires a repository path and exact reachable 40/64-character commit ID. Content comes from committed blobs; dirty working-tree content is ignored. Symbolic, missing, and unreachable commits fail closed with redacted errors. No mutation verb exists.
 
 ## Deterministic Reviewers
 
@@ -62,3 +71,5 @@ Project rule packs remain separate because parser structure alone cannot prove o
 `semantic-snapshot` emits a canonical node/edge projection and stable semantic hash while excluding layout and generated identifiers. `semantic-compare` compares two files as multisets and reports every added or removed node and edge; it exits `1` when they differ. This is deterministic local evidence, not an independent target-tool verdict. Programmatic `sysmlCompareModels` remains available for repository-level semantic deltas. All operations are read-only and carry engine/corpus/file identity.
 
 `sysml:qualify-fixtures` fails closed unless the checkout matches the pinned official commit. Its machine-readable report binds the corpus license, every fixture path and SHA-256, expected and observed node/relation kinds, allowed and unexpected unsupported diagnostics, per-lane status, and zero unintended skips. The report is local supported-subset qualification evidence—not an OMG conformance or target-tool claim.
+
+`propose-patch` compares an exact committed source file with a candidate, creates a localized unified diff, checks the source hash and commit, enforces the 200-line/25-percent locality limits, verifies patch applicability in an isolated copy, reruns parser diagnostics, and reports semantic deltas. It always returns `requires_human_acceptance: true`, `auto_apply: false`, `full_file_rewrite: false`, and `mutationPerformed: false`. It never applies the patch.
