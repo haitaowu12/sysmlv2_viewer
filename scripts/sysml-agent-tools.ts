@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync, writeSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { extname, resolve, sep } from 'node:path';
 import {
@@ -90,7 +90,16 @@ function parseLimit(args: string[], flag: string): { args: string[]; limit?: num
 }
 
 function emit(value: unknown, exitCode = 0): never {
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+  const output = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+  let offset = 0;
+  while (offset < output.length) {
+    try {
+      offset += writeSync(process.stdout.fd, output, offset, output.length - offset);
+    } catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'EAGAIN') throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1);
+    }
+  }
   process.exit(exitCode);
 }
 

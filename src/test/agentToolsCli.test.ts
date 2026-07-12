@@ -140,6 +140,17 @@ describe('SysML agent tools CLI', () => {
     });
   });
 
+  it('flushes large JSON snapshots before exiting', () => {
+    const definitions = Array.from({ length: 500 }, (_, index) => `part def Part${index};`).join('\n');
+    const path = fixture('large.sysml', `package Large { ${definitions} }`);
+    const result = run('semantic-snapshot', '--root', dirname(path), path);
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    const payload = JSON.parse(result.stdout);
+    expect(payload.counts.nodes).toBe(501);
+    expect(payload.nodes).toHaveLength(501);
+  });
+
   it('rejects files outside the approved root and non-SysML extensions', () => {
     const path = fixture('model.sysml', 'part def Vehicle;');
     const outside = run('check', '--root', root, path);
