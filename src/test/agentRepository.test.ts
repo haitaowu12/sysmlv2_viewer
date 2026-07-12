@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   RepositoryAdapterError,
+  compareCommits,
   getElement,
   getInterfaces,
   getRelationships,
@@ -97,6 +98,22 @@ describe('read-only SysML Git repository adapter', () => {
     });
     expect(first.summary.counts.nodes).toBeLessThan(second.summary.counts.nodes);
     expect(first.files).toEqual(['model.sysml']);
+  });
+
+  it('compares two exact commits without reading dirty working-tree content', () => {
+    const repo = repository();
+    writeFileSync(join(repo.path, 'model.sysml'), 'not committed');
+    const result = compareCommits({
+      repositoryPath: repo.path,
+      beforeCommit: repo.first,
+      afterCommit: repo.second,
+      context,
+    });
+
+    expect(result.before.commit).toBe(repo.first);
+    expect(result.after.commit).toBe(repo.second);
+    expect(result.before.dirtyWorkingTreeIgnored).toBe(true);
+    expect(result.comparison.added.some((item) => item.qualifiedPath.includes('safeStop'))).toBe(true);
   });
 
   it('reads committed blobs even when the working tree is dirty', () => {

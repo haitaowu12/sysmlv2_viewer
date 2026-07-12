@@ -9,17 +9,29 @@ import {
   runRequirementParentReviewer,
   runSemanticCompatibilityReviewer,
   runTraceabilityReviewer,
+  compareCommits,
+  getElement,
+  getInterfaces,
+  getRelationships,
+  getRequirements,
+  listCommits,
+  modelSummaryAtCommit,
+  runQualityChecks,
   sysmlCheck,
   sysmlDoctor,
   sysmlExplainDiagnostic,
   sysmlModelSummary,
   sysmlRenderView,
   sysmlTraceCoverage,
+  sysmlProposePatch,
   type AgentToolFile,
 } from '../src/agent-tools';
 import { buildSemanticModelFromSource } from '../src/bridge/sysml-to-semantic';
 
-type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary' | 'review' | 'render-view' | 'semantic-compare' | 'semantic-snapshot' | 'trace-coverage';
+type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary' | 'review' | 'render-view' | 'semantic-compare' | 'semantic-snapshot' | 'trace-coverage'
+  | 'repo-list-commits' | 'repo-model-summary' | 'repo-get-element' | 'repo-get-relationships'
+  | 'repo-get-requirements' | 'repo-get-interfaces' | 'repo-quality-checks' | 'compare-commits'
+  | 'propose-patch';
 type ReviewerName = 'completeness' | 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
@@ -87,6 +99,10 @@ function parseLimit(args: string[], flag: string): { args: string[]; limit?: num
     args: args.filter((_, itemIndex) => itemIndex !== index && itemIndex !== index + 1),
     limit: Number(raw),
   };
+}
+
+function commaValues(value?: string): string[] {
+  return value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
 }
 
 function emit(value: unknown, exitCode = 0): never {
@@ -172,6 +188,85 @@ function main(): never {
       emit(sysmlExplainDiagnostic({ context, code }));
     }
 
+    if (tool === 'propose-patch') {
+      const approvedRoot = takeOption(rawArgs, '--root');
+      const repository = takeOption(approvedRoot.args, '--repo');
+      const sourceCommit = takeOption(repository.args, '--source-commit');
+      const modelPackage = takeOption(sourceCommit.args, '--model-package-id');
+      const diagnostic = takeOption(modelPackage.args, '--diagnostic-code');
+      const affected = takeOption(diagnostic.args, '--affected-element-id');
+      const evidence = takeOption(affected.args, '--evidence-id');
+      const rationale = takeOption(evidence.args, '--rationale');
+      const postcondition = takeOption(rationale.args, '--postcondition');
+      const assumption = takeOption(postcondition.args, '--assumption');
+      if (!repository.value || !sourceCommit.value || !modelPackage.value) {
+        fail('propose-patch requires --repo, --source-commit, and --model-package-id');
+      }
+      if (!rationale.value) fail('propose-patch requires --rationale');
+      const files = readFiles(assumption.args, approvedRoot.value ?? process.cwd());
+      if (files.length !== 2) fail('propose-patch requires source and candidate SysML files');
+      emit(sysmlProposePatch({
+        context,
+        repositoryPath: repository.value,
+        sourceCommit: sourceCommit.value,
+        source: files[0],
+        candidate: files[1],
+        modelPackageId: modelPackage.value,
+        diagnosticCodes: commaValues(diagnostic.value),
+        affectedElementIds: commaValues(affected.value),
+        sourceEvidenceIds: commaValues(evidence.value),
+        assumptionsAdded: commaValues(assumption.value),
+        rationale: rationale.value,
+        expectedPostconditions: commaValues(postcondition.value),
+      }));
+    }
+
+    if (tool?.startsWith('repo-') || tool === 'compare-commits') {
+      const repository = takeOption(rawArgs, '--repo');
+      const commit = takeOption(repository.args, '--commit');
+      const before = takeOption(commit.args, '--before');
+      const after = takeOption(before.args, '--after');
+      const elementId = takeOption(after.args, '--element-id');
+      const qualifiedPath = takeOption(elementId.args, '--qualified-path');
+      const name = takeOption(qualifiedPath.args, '--name');
+      const maxCount = parseLimit(name.args, '--max-count');
+      const maxElements = parseLimit(maxCount.args, '--max-elements');
+      const maxDiagnostics = parseLimit(maxElements.args, '--max-diagnostics');
+      if (maxDiagnostics.args.length > 0) fail(`Unexpected repository arguments: ${maxDiagnostics.args.join(' ')}`);
+      if (!repository.value) fail(`${tool} requires --repo`);
+
+      if (tool === 'compare-commits') {
+        if (!before.value || !after.value) fail('compare-commits requires --before and --after exact commits');
+        emit(compareCommits({
+          repositoryPath: repository.value,
+          beforeCommit: before.value,
+          afterCommit: after.value,
+          context,
+        }));
+      }
+      if (!commit.value) fail(`${tool} requires --commit`);
+      const pin = { repositoryPath: repository.value, commit: commit.value };
+      if (tool === 'repo-list-commits') emit(listCommits({ ...pin, maxCount: maxCount.limit }));
+      if (tool === 'repo-model-summary') emit(modelSummaryAtCommit({ ...pin, context, maxElements: maxElements.limit }));
+      if (tool === 'repo-get-element') emit(getElement({
+        ...pin,
+        elementId: elementId.value,
+        qualifiedPath: qualifiedPath.value,
+        name: name.value,
+      }));
+      if (tool === 'repo-get-relationships') {
+        if (!elementId.value) fail('repo-get-relationships requires --element-id');
+        emit(getRelationships({ ...pin, elementId: elementId.value }));
+      }
+      if (tool === 'repo-get-requirements') emit(getRequirements(pin));
+      if (tool === 'repo-get-interfaces') emit(getInterfaces(pin));
+      if (tool === 'repo-quality-checks') emit(runQualityChecks({
+        ...pin,
+        context,
+        maxDiagnostics: maxDiagnostics.limit,
+      }));
+    }
+
     const approvedRoot = takeOption(rawArgs, '--root');
     const reviewerOption = takeOption(approvedRoot.args, '--reviewer');
     const diagnosticsLimit = parseLimit(reviewerOption.args, '--max-diagnostics');
@@ -241,7 +336,7 @@ function main(): never {
       emit(result, result.counts.error > 0 ? 1 : 0);
     }
 
-    fail(`Unknown tool '${rawTool ?? ''}'. Expected doctor, check, explain-diagnostic, model-summary, review, render-view, semantic-compare, semantic-snapshot, or trace-coverage.`);
+    fail(`Unknown tool '${rawTool ?? ''}'. Expected a documented local or commit-pinned repository query command.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     fail(message);

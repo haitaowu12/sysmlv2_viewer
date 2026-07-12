@@ -189,7 +189,26 @@ export function sysmlDoctor(request: DoctorRequest): DoctorResult {
     ...envelope('sysml_doctor', request.context, files, allDiagnostics, limit),
     tool: 'sysml_doctor',
     status: degraded ? 'degraded' : 'ready',
-    capabilities: ['doctor', 'check', 'explain-diagnostic', 'model-summary'],
+    capabilities: [
+      'doctor',
+      'check',
+      'explain-diagnostic',
+      'model-summary',
+      'review',
+      'render-view',
+      'trace-coverage',
+      'semantic-snapshot',
+      'semantic-compare',
+      'repo-list-commits',
+      'repo-model-summary',
+      'repo-get-element',
+      'repo-get-relationships',
+      'repo-get-requirements',
+      'repo-get-interfaces',
+      'repo-quality-checks',
+      'compare-commits',
+      'propose-patch',
+    ],
   };
 }
 

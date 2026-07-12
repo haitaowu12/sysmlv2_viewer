@@ -26,6 +26,43 @@ function run(...args: string[]) {
   });
 }
 
+function git(repositoryPath: string, ...args: string[]): string {
+  const result = spawnSync('git', ['-C', repositoryPath, ...args], { encoding: 'utf8' });
+  expect(result.status, result.stdout + result.stderr).toBe(0);
+  return result.stdout.trim();
+}
+
+function repositoryFixture(): { path: string; before: string; after: string } {
+  const path = mkdtempSync(join(tmpdir(), 'sysml-agent-tools-repo-'));
+  temporaryDirectories.push(path);
+  git(path, 'init', '-q');
+  git(path, 'config', 'user.email', 'test@example.invalid');
+  git(path, 'config', 'user.name', 'CLI Test');
+  writeFileSync(join(path, 'model.sysml'), `package P {
+  // Qualification fixture line 1
+  // Qualification fixture line 2
+  // Qualification fixture line 3
+  // Qualification fixture line 4
+  requirement def Safe;
+}
+`, 'utf8');
+  git(path, 'add', 'model.sysml');
+  git(path, 'commit', '-qm', 'before');
+  const before = git(path, 'rev-parse', 'HEAD');
+  writeFileSync(join(path, 'model.sysml'), `package P {
+  // Qualification fixture line 1
+  // Qualification fixture line 2
+  // Qualification fixture line 3
+  // Qualification fixture line 4
+  requirement def Safe;
+  requirement safe : Safe;
+}
+`, 'utf8');
+  git(path, 'add', 'model.sysml');
+  git(path, 'commit', '-qm', 'after');
+  return { path, before, after: git(path, 'rev-parse', 'HEAD') };
+}
+
 beforeAll(() => {
   const result = spawnSync('npm', ['run', 'build:agent-tools', '--silent'], {
     cwd: root,
@@ -149,6 +186,70 @@ describe('SysML agent tools CLI', () => {
     const payload = JSON.parse(result.stdout);
     expect(payload.counts.nodes).toBe(501);
     expect(payload.nodes).toHaveLength(501);
+  });
+
+  it('exposes exact commit-pinned repository queries and comparisons', () => {
+    const repo = repositoryFixture();
+    writeFileSync(join(repo.path, 'model.sysml'), 'not committed', 'utf8');
+
+    const requirements = run(
+      'repo-get-requirements', '--repo', repo.path, '--commit', repo.after,
+    );
+    expect(requirements.status).toBe(0);
+    expect(JSON.parse(requirements.stdout)).toMatchObject({
+      repository: { commit: repo.after, dirtyWorkingTreeIgnored: true },
+      elements: expect.arrayContaining([expect.objectContaining({ name: 'safe' })]),
+    });
+
+    const comparison = run(
+      'compare-commits', '--repo', repo.path, '--before', repo.before, '--after', repo.after,
+    );
+    expect(comparison.status).toBe(0);
+    expect(JSON.parse(comparison.stdout)).toMatchObject({
+      before: { commit: repo.before },
+      after: { commit: repo.after },
+      comparison: { added: expect.arrayContaining([expect.objectContaining({ qualifiedPath: expect.stringContaining('safe') })]) },
+    });
+
+    const unpinned = run('repo-get-requirements', '--repo', repo.path, '--commit', 'HEAD');
+    expect(unpinned.status).toBe(2);
+    expect(JSON.parse(unpinned.stdout).error).toBe('Commit must be an exact full hexadecimal object ID.');
+  });
+
+  it('emits a human-gated diagnostic patch proposal without applying it', () => {
+    const repo = repositoryFixture();
+    const sourcePath = join(repo.path, 'model.sysml');
+    const source = git(repo.path, 'show', `${repo.after}:model.sysml`);
+    const candidatePath = join(repo.path, 'candidate.sysml');
+    writeFileSync(
+      candidatePath,
+      `${source.replace('  requirement safe : Safe;', '  requirement safe : Safe;\n  requirement reviewed : Safe;')}\n`,
+      'utf8',
+    );
+    const result = run(
+      'propose-patch',
+      '--root', repo.path,
+      '--repo', repo.path,
+      '--source-commit', repo.after,
+      '--model-package-id', 'TEST-MODEL',
+      '--diagnostic-code', 'SYSML-TRACE-001',
+      '--affected-element-id', 'EL-REQ-REVIEWED',
+      '--evidence-id', 'EVID-001',
+      '--rationale', 'Add the source-backed reviewed requirement usage.',
+      '--postcondition', 'candidate parses without errors',
+      sourcePath,
+      candidatePath,
+    );
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      schema_id: 'TW-SYSMLV2-PATCH-PROPOSAL',
+      requires_human_acceptance: true,
+      auto_apply: false,
+      full_file_rewrite: false,
+      validation: { sourceMatchesCommit: true, patchApplicable: true },
+      mutationPerformed: false,
+    });
+    expect(git(repo.path, 'status', '--porcelain')).toContain('?? candidate.sysml');
   });
 
   it('rejects files outside the approved root and non-SysML extensions', () => {
