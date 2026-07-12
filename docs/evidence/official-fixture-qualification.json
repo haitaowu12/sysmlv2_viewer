@@ -1,0 +1,1314 @@
+{
+  "schemaVersion": "1.0",
+  "tool": "sysml_official_fixture_qualification",
+  "corpus": {
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Release",
+    "tag": "2026-04",
+    "expectedCommit": "9baca5908ca28b53da085de69336fde48420ea8f",
+    "observedCommit": "9baca5908ca28b53da085de69336fde48420ea8f",
+    "license": {
+      "path": "LICENSE",
+      "spdx": "EPL-2.0",
+      "sha256": "0becf16567beb77fa252b7664631dd177c8f9a1889e48995b45379c7130e5303"
+    }
+  },
+  "summary": {
+    "status": "pass",
+    "fixtures": 25,
+    "passed": 25,
+    "failed": 0,
+    "lanes": 16,
+    "unintendedSkips": 0,
+    "unsupportedDiagnosticsObserved": 41,
+    "unexpectedUnsupportedDiagnostics": 0
+  },
+  "lanes": [
+    {
+      "lane": "aliasImport",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "allocation",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "analysisTrades",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "functionBehavior",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "individualSnapshots",
+      "fixtures": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "integratedVehicle",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "interconnection",
+      "fixtures": 3,
+      "passed": 3,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "metadata",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "requirements",
+      "fixtures": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "sequence",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "stateBehavior",
+      "fixtures": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "structure",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "useCases",
+      "fixtures": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "variantConfiguration",
+      "fixtures": 2,
+      "passed": 2,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "verification",
+      "fixtures": 3,
+      "passed": 3,
+      "failed": 0,
+      "status": "pass"
+    },
+    {
+      "lane": "views",
+      "fixtures": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "pass"
+    }
+  ],
+  "fixtures": [
+    {
+      "lane": "structure",
+      "path": "sysml/src/validation/01-Parts Tree/1a-Parts Tree.sysml",
+      "sourceSha256": "68adac5f5b2a0f7d8d2ca2bb6ce4aca3d636317b74a3d2036f1df95379e3e514",
+      "sourceBytes": 3110,
+      "sourceLines": 125,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "Package",
+          "PartDef"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 43,
+        "unknownElements": 10,
+        "kindCounts": {
+          "AttributeUsage": 5,
+          "Import": 2,
+          "Package": 3,
+          "PartDef": 5,
+          "PartUsage": 18,
+          "Unknown": 10
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 2,
+          "unsupported:unrecognized-construct": 10
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "interconnection",
+      "path": "sysml/src/validation/02-Parts Interconnection/2a-Parts Interconnection.sysml",
+      "sourceSha256": "9fc597156787d6bfa04c6c06b30026b0a6b99240e43320aeb0b4b1c5d5f7ed8f",
+      "sourceBytes": 5072,
+      "sourceLines": 206,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "Package",
+          "PartUsage"
+        ],
+        "relations": [
+          "ConnectionUsage"
+        ],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 76,
+        "unknownElements": 3,
+        "kindCounts": {
+          "BindingUsage": 4,
+          "ConnectionUsage": 4,
+          "Import": 2,
+          "InterfaceDef": 2,
+          "InterfaceUsage": 4,
+          "Package": 3,
+          "PartDef": 11,
+          "PartUsage": 12,
+          "PortDef": 13,
+          "PortUsage": 18,
+          "Unknown": 3
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 8,
+          "unsupported:unrecognized-construct": 3
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "functionBehavior",
+      "path": "sysml/src/validation/03-Function-based Behavior/3a-Function-based Behavior-1.sysml",
+      "sourceSha256": "e4093071e6c613cb5e66e79be116cc90e2732c141ef85ffd10ada7fc71dd4ce1",
+      "sourceBytes": 4170,
+      "sourceLines": 137,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "ActionDef",
+          "ActionUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 53,
+        "unknownElements": 1,
+        "kindCounts": {
+          "ActionDef": 5,
+          "ActionUsage": 5,
+          "Alias": 1,
+          "AttributeDef": 3,
+          "AttributeUsage": 15,
+          "BindingUsage": 3,
+          "FlowUsage": 3,
+          "Import": 2,
+          "Package": 3,
+          "TransitionUsage": 12,
+          "Unknown": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 6,
+          "unsupported:unrecognized-construct": 1
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "allocation",
+      "path": "sysml/src/validation/04-Functional Allocation/4a-Functional Allocation.sysml",
+      "sourceSha256": "5606db54345e6a79c90c948f7d71a86222110422f90ad7b5f5e30bdee93d7638",
+      "sourceBytes": 2843,
+      "sourceLines": 110,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "PartUsage",
+          "ActionUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 42,
+        "unknownElements": 1,
+        "kindCounts": {
+          "ActionUsage": 5,
+          "AttributeUsage": 16,
+          "Doc": 1,
+          "Import": 3,
+          "Package": 1,
+          "PartUsage": 7,
+          "PortUsage": 8,
+          "Unknown": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 10,
+          "unsupported:unrecognized-construct": 1
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "stateBehavior",
+      "path": "sysml/src/validation/05-State-based Behavior/5-State-based Behavior-1a.sysml",
+      "sourceSha256": "22bfc1ae2dbcb94db9844eddc16dda325645d2b0eb622bbfcfefe93bd6433ef8",
+      "sourceBytes": 6105,
+      "sourceLines": 238,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "StateDef",
+          "StateUsage"
+        ],
+        "relations": [
+          "TransitionUsage"
+        ],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 85,
+        "unknownElements": 13,
+        "kindCounts": {
+          "ActionDef": 4,
+          "ActionUsage": 9,
+          "AttributeDef": 8,
+          "AttributeUsage": 7,
+          "Doc": 3,
+          "Import": 3,
+          "Package": 3,
+          "PartDef": 2,
+          "PartUsage": 1,
+          "PortUsage": 1,
+          "StateDef": 2,
+          "StateUsage": 13,
+          "TransitionUsage": 16,
+          "Unknown": 13
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 3,
+          "unsupported:unrecognized-construct": 13
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "individualSnapshots",
+      "path": "sysml/src/validation/06-Individual and Snapshots/6-Individual and Snapshots.sysml",
+      "sourceSha256": "31efc993fd2ead88e2edb0130fde4051c64a86dce7c31c1057b4131de507a848",
+      "sourceBytes": 3689,
+      "sourceLines": 167,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "IndividualDef",
+          "IndividualUsage",
+          "SnapshotUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:individual",
+          "unsupported:snapshot",
+          "unsupported:time-slice",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 77,
+        "unknownElements": 3,
+        "kindCounts": {
+          "AttributeUsage": 43,
+          "Import": 6,
+          "IndividualDef": 4,
+          "IndividualUsage": 1,
+          "Package": 5,
+          "PartDef": 4,
+          "SnapshotUsage": 7,
+          "StateUsage": 2,
+          "TransitionUsage": 2,
+          "Unknown": 3
+        },
+        "diagnosticCounts": {
+          "unsupported:individual": 5,
+          "unsupported:snapshot": 7,
+          "unsupported:unrecognized-construct": 3
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:individual",
+          "unsupported:snapshot",
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "variantConfiguration",
+      "path": "sysml/src/validation/07-Variant Configuration/7b-Variant Configurations.sysml",
+      "sourceSha256": "c0f5d9fc230789e6b4326d554a05e38cd4db48c2081d8d8a627eef52a5574fd7",
+      "sourceBytes": 3937,
+      "sourceLines": 140,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "VariationUsage",
+          "VariantUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:variation",
+          "unsupported:variant",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 78,
+        "unknownElements": 4,
+        "kindCounts": {
+          "BindingUsage": 1,
+          "Import": 4,
+          "Package": 5,
+          "PartDef": 15,
+          "PartUsage": 11,
+          "PortDef": 9,
+          "PortUsage": 10,
+          "RequirementDef": 1,
+          "RequirementUsage": 3,
+          "Unknown": 4,
+          "VariantUsage": 10,
+          "VariationUsage": 5
+        },
+        "diagnosticCounts": {
+          "parser:unmatched-closing-brace": 2,
+          "recovery:nested-parse-failure": 4,
+          "unclassified": 1,
+          "unsupported:unrecognized-construct": 4,
+          "unsupported:variant": 10,
+          "unsupported:variation": 5
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct",
+          "unsupported:variant",
+          "unsupported:variation"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "requirements",
+      "path": "sysml/src/validation/08-Requirements/8-Requirements.sysml",
+      "sourceSha256": "be660d2f7935c481d4ab39fb68231a00d830489ef9365b68e8213e50015323c1",
+      "sourceBytes": 5449,
+      "sourceLines": 205,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "RequirementDef",
+          "RequirementUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 82,
+        "unknownElements": 5,
+        "kindCounts": {
+          "ActionDef": 1,
+          "ActionUsage": 5,
+          "AttributeUsage": 18,
+          "ConstraintUsage": 2,
+          "Doc": 6,
+          "Import": 10,
+          "InterfaceDef": 1,
+          "InterfaceUsage": 1,
+          "Package": 4,
+          "PartDef": 3,
+          "PartUsage": 6,
+          "PortDef": 2,
+          "PortUsage": 4,
+          "RequirementDef": 2,
+          "RequirementUsage": 12,
+          "Unknown": 5
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 3,
+          "unsupported:unrecognized-construct": 5
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "verification",
+      "path": "sysml/src/validation/09-Verification/9-Verification-simplified.sysml",
+      "sourceSha256": "877d2ae9cfc2e51a37b0217ae94be7df0f810ecf36eddf31c9a27d14dc2a0356",
+      "sourceBytes": 2911,
+      "sourceLines": 115,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "VerificationDef"
+        ],
+        "relations": [
+          "VerificationUsage"
+        ],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct",
+          "unsupported:individual",
+          "unsupported:time-slice"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 51,
+        "unknownElements": 5,
+        "kindCounts": {
+          "ActionUsage": 5,
+          "AttributeUsage": 12,
+          "ConstraintUsage": 1,
+          "Doc": 2,
+          "Import": 2,
+          "IndividualDef": 3,
+          "IndividualUsage": 1,
+          "Package": 3,
+          "PartDef": 4,
+          "PartUsage": 4,
+          "RequirementDef": 1,
+          "RequirementUsage": 1,
+          "TimeSliceUsage": 1,
+          "TransitionUsage": 1,
+          "Unknown": 5,
+          "VerificationDef": 1,
+          "VerificationUsage": 4
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 11,
+          "unsupported:individual": 4,
+          "unsupported:time-slice": 1,
+          "unsupported:unrecognized-construct": 5
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:individual",
+          "unsupported:time-slice",
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "analysisTrades",
+      "path": "sysml/src/validation/10-Analysis and Trades/10c-Fuel Economy Analysis.sysml",
+      "sourceSha256": "3bea4bbe7b04ba3572b3f7ccebd211897ad0521ef73009f31c32eed7296d3749",
+      "sourceBytes": 4755,
+      "sourceLines": 168,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "AnalysisDef",
+          "AnalysisUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:calc",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 81,
+        "unknownElements": 12,
+        "kindCounts": {
+          "ActionUsage": 2,
+          "AnalysisDef": 1,
+          "AnalysisUsage": 2,
+          "AttributeDef": 1,
+          "AttributeUsage": 24,
+          "CalcDef": 1,
+          "CalcUsage": 2,
+          "ConstraintUsage": 2,
+          "Doc": 1,
+          "Import": 7,
+          "Package": 4,
+          "PartDef": 3,
+          "PartUsage": 5,
+          "RequirementDef": 1,
+          "RequirementUsage": 4,
+          "StateUsage": 4,
+          "TransitionUsage": 4,
+          "Unknown": 12,
+          "VerificationUsage": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 3,
+          "unsupported:calc": 3,
+          "unsupported:unrecognized-construct": 12
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:calc",
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "views",
+      "path": "sysml/src/validation/11-View and Viewpoint/11a-View-Viewpoint.sysml",
+      "sourceSha256": "f89e97e5a9a49c6c3f2fc59162f99a60d1cf6faa5599ecdf1db398c72f8e3514",
+      "sourceBytes": 1144,
+      "sourceLines": 57,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "ViewUsage",
+          "ViewpointUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 31,
+        "unknownElements": 5,
+        "kindCounts": {
+          "AttributeUsage": 6,
+          "Import": 2,
+          "Package": 3,
+          "PartDef": 4,
+          "PartUsage": 8,
+          "RequirementUsage": 1,
+          "Unknown": 5,
+          "ViewUsage": 1,
+          "ViewpointUsage": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 2,
+          "unsupported:unrecognized-construct": 5
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "sequence",
+      "path": "sysml/src/validation/17-Sequence Modeling/17a-Sequence-Modeling.sysml",
+      "sourceSha256": "52c79bd6c698ee26840a9246b0fd4294d05e59b11f38f9f5a980535bb0d0761c",
+      "sourceBytes": 1083,
+      "sourceLines": 42,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "OccurrenceDef",
+          "MessageUsage",
+          "EventOccurrenceUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:message",
+          "unsupported:event-occurrence",
+          "unsupported:occurrence",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 28,
+        "unknownElements": 3,
+        "kindCounts": {
+          "AttributeUsage": 2,
+          "EventOccurrenceUsage": 3,
+          "Import": 2,
+          "ItemDef": 3,
+          "MessageUsage": 3,
+          "OccurrenceDef": 1,
+          "OccurrenceUsage": 3,
+          "Package": 2,
+          "PartUsage": 3,
+          "TransitionUsage": 3,
+          "Unknown": 3
+        },
+        "diagnosticCounts": {
+          "unsupported:event-occurrence": 3,
+          "unsupported:message": 3,
+          "unsupported:occurrence": 4,
+          "unsupported:unrecognized-construct": 3
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:event-occurrence",
+          "unsupported:message",
+          "unsupported:occurrence",
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "interconnection",
+      "path": "sysml/src/training/10. Ports/Port Example.sysml",
+      "sourceSha256": "3676915bf0f659529710c70cec5b404d95da03979d3dac951583932182d314f7",
+      "sourceBytes": 435,
+      "sourceLines": 26,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "PortDef",
+          "AttributeUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 15,
+        "unknownElements": 0,
+        "kindCounts": {
+          "AttributeDef": 1,
+          "AttributeUsage": 6,
+          "Package": 1,
+          "PartDef": 3,
+          "PortDef": 2,
+          "PortUsage": 2
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "interconnection",
+      "path": "sysml/src/training/13. Flows/Flow Interface Example.sysml",
+      "sourceSha256": "1b2f2d51dd2bca13e5a20548080f6cab21a3862ba0d7850ac9e86489d10d6633",
+      "sourceBytes": 537,
+      "sourceLines": 22,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "InterfaceDef",
+          "InterfaceUsage",
+          "FlowUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 10,
+        "unknownElements": 0,
+        "kindCounts": {
+          "FlowUsage": 2,
+          "Import": 1,
+          "InterfaceDef": 1,
+          "InterfaceUsage": 1,
+          "Package": 1,
+          "PartDef": 1,
+          "PartUsage": 3
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "stateBehavior",
+      "path": "sysml/src/training/23. State Definitions/State Definition Example-2.sysml",
+      "sourceSha256": "52c1ac545553470358affce66a40de21a51876ae10718a1a086419c2b0e6ef40",
+      "sourceBytes": 378,
+      "sourceLines": 23,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "StateDef",
+          "StateUsage"
+        ],
+        "relations": [
+          "TransitionUsage"
+        ],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 12,
+        "unknownElements": 0,
+        "kindCounts": {
+          "AttributeDef": 3,
+          "Package": 1,
+          "StateDef": 1,
+          "StateUsage": 3,
+          "TransitionUsage": 4
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "verification",
+      "path": "sysml/src/training/34. Verification/Verification Case Definition Example.sysml",
+      "sourceSha256": "6c947e54087a4e5ab1719e4043e0480211112a2ee6fc62d9b18814f3ee8f0b5c",
+      "sourceBytes": 1287,
+      "sourceLines": 47,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "VerificationDef",
+          "VerificationUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 18,
+        "unknownElements": 0,
+        "kindCounts": {
+          "ActionUsage": 3,
+          "AttributeUsage": 6,
+          "ConstraintUsage": 1,
+          "Doc": 1,
+          "Import": 1,
+          "Package": 1,
+          "PartDef": 1,
+          "RequirementUsage": 1,
+          "VerificationDef": 1,
+          "VerificationUsage": 2
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 8
+        },
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "useCases",
+      "path": "sysml/src/training/35. Use Cases/Use Case Definition Example.sysml",
+      "sourceSha256": "46d70e36666f54f5025de1d60c976ef24b56126a4a4a8f913cda8dacb1d7ad13",
+      "sourceBytes": 679,
+      "sourceLines": 34,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "UseCaseDef",
+          "PartUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 20,
+        "unknownElements": 0,
+        "kindCounts": {
+          "AttributeUsage": 3,
+          "Doc": 1,
+          "Package": 1,
+          "PartDef": 4,
+          "PartUsage": 7,
+          "UseCaseDef": 3,
+          "VerificationUsage": 1
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "useCases",
+      "path": "sysml/src/training/35. Use Cases/Use Case Usage Example.sysml",
+      "sourceSha256": "abaaebced5d4f1d137ad5d8e7307a5d159a04d08a926e1ce11d59ee4f7ee1252",
+      "sourceBytes": 1062,
+      "sourceLines": 43,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "UseCaseUsage",
+          "TransitionUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 26,
+        "unknownElements": 0,
+        "kindCounts": {
+          "ActionUsage": 1,
+          "AttributeUsage": 6,
+          "Import": 1,
+          "Package": 1,
+          "PartDef": 1,
+          "PartUsage": 9,
+          "TransitionUsage": 1,
+          "UseCaseUsage": 6
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "integratedVehicle",
+      "path": "sysml/src/examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml",
+      "sourceSha256": "77d7ee54951e01c885d69d19d7359242baf22c69dcfe2d4088b0b59d56ea578d",
+      "sourceBytes": 73568,
+      "sourceLines": 1582,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "Package",
+          "PartDef",
+          "RequirementDef",
+          "VerificationDef"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct",
+          "unsupported:occurrence",
+          "unsupported:event",
+          "unsupported:event-occurrence",
+          "unsupported:message",
+          "unsupported:calc",
+          "unsupported:snapshot",
+          "unsupported:time-slice",
+          "unsupported:individual",
+          "unsupported:variant",
+          "unsupported:variation"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 18,
+        "totalElements": 985,
+        "unknownElements": 134,
+        "kindCounts": {
+          "ActionDef": 8,
+          "ActionUsage": 63,
+          "Alias": 1,
+          "AllocationDef": 1,
+          "AllocationUsage": 6,
+          "AnalysisUsage": 2,
+          "AttributeDef": 9,
+          "AttributeUsage": 154,
+          "BindingUsage": 7,
+          "CalcDef": 9,
+          "ConnectionUsage": 9,
+          "ConstraintUsage": 6,
+          "Doc": 9,
+          "EnumDef": 4,
+          "EnumValueDef": 7,
+          "EventOccurrenceUsage": 14,
+          "FlowUsage": 8,
+          "Import": 56,
+          "IndividualDef": 8,
+          "IndividualUsage": 1,
+          "InterfaceDef": 2,
+          "InterfaceUsage": 8,
+          "ItemDef": 9,
+          "ItemUsage": 1,
+          "MessageUsage": 6,
+          "MetadataDef": 14,
+          "OccurrenceUsage": 4,
+          "Package": 57,
+          "PartDef": 41,
+          "PartUsage": 103,
+          "PortDef": 27,
+          "PortUsage": 76,
+          "RequirementDef": 5,
+          "RequirementUsage": 6,
+          "SnapshotUsage": 18,
+          "StateDef": 3,
+          "StateUsage": 17,
+          "TimeSliceUsage": 1,
+          "TransitionUsage": 40,
+          "Unknown": 134,
+          "UseCaseDef": 3,
+          "UseCaseUsage": 4,
+          "VariantUsage": 6,
+          "VariationUsage": 3,
+          "VerificationDef": 3,
+          "VerificationUsage": 5,
+          "ViewDef": 4,
+          "ViewUsage": 1,
+          "ViewpointDef": 2
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 105,
+          "unclassified": 1,
+          "unsupported:calc": 9,
+          "unsupported:event": 3,
+          "unsupported:event-occurrence": 11,
+          "unsupported:individual": 9,
+          "unsupported:message": 6,
+          "unsupported:occurrence": 4,
+          "unsupported:snapshot": 18,
+          "unsupported:time-slice": 1,
+          "unsupported:unrecognized-construct": 134,
+          "unsupported:variant": 6,
+          "unsupported:variation": 3
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:calc",
+          "unsupported:event",
+          "unsupported:event-occurrence",
+          "unsupported:individual",
+          "unsupported:message",
+          "unsupported:occurrence",
+          "unsupported:snapshot",
+          "unsupported:time-slice",
+          "unsupported:unrecognized-construct",
+          "unsupported:variant",
+          "unsupported:variation"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "individualSnapshots",
+      "path": "sysml/src/examples/Simple Tests/IndividualTest.sysml",
+      "sourceSha256": "00aff4e95c78e1148bd366a446e4cb0380741373cfd822ef833e3ccc8ec4a1af",
+      "sourceBytes": 593,
+      "sourceLines": 39,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "IndividualUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:individual"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 22,
+        "unknownElements": 0,
+        "kindCounts": {
+          "ActionDef": 1,
+          "ActionUsage": 1,
+          "IndividualDef": 1,
+          "IndividualUsage": 14,
+          "ItemDef": 1,
+          "Package": 1,
+          "PartDef": 1,
+          "PartUsage": 2
+        },
+        "diagnosticCounts": {
+          "unsupported:individual": 15
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:individual"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "requirements",
+      "path": "sysml/src/examples/Requirements Examples/RequirementDerivationExample.sysml",
+      "sourceSha256": "1575a8e09c008145ff619ef7d0ce7622d9e88c77811a6984578ef393d99e26c7",
+      "sourceBytes": 772,
+      "sourceLines": 39,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "RequirementDef",
+          "RequirementUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 16,
+        "unknownElements": 1,
+        "kindCounts": {
+          "Import": 1,
+          "Package": 1,
+          "PartDef": 3,
+          "PartUsage": 4,
+          "RequirementDef": 3,
+          "RequirementUsage": 3,
+          "Unknown": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 2,
+          "unsupported:unrecognized-construct": 1
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "verification",
+      "path": "sysml/src/examples/Simple Tests/VerificationTest.sysml",
+      "sourceSha256": "502f31d3dd2dde0f0a2c1fac3351b699ece175decc3508ed2e270a2aa3d02000",
+      "sourceBytes": 559,
+      "sourceLines": 39,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "VerificationDef",
+          "VerificationUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 19,
+        "unknownElements": 2,
+        "kindCounts": {
+          "AttributeUsage": 3,
+          "Doc": 1,
+          "Package": 1,
+          "PartDef": 1,
+          "PartUsage": 2,
+          "RequirementDef": 1,
+          "RequirementUsage": 1,
+          "Unknown": 2,
+          "VerificationDef": 2,
+          "VerificationUsage": 5
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 1,
+          "unsupported:unrecognized-construct": 2
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "variantConfiguration",
+      "path": "sysml/src/examples/Variability Examples/VehicleVariabilityModel.sysml",
+      "sourceSha256": "14664c9e34155062f97bbbfef32bdb60ae7a8d35ce8fd19051882fd5fc222dcc",
+      "sourceBytes": 4718,
+      "sourceLines": 165,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "VariationUsage",
+          "VariantUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:variation",
+          "unsupported:variant",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 80,
+        "unknownElements": 3,
+        "kindCounts": {
+          "ActionDef": 3,
+          "ActionUsage": 9,
+          "AttributeDef": 1,
+          "AttributeUsage": 2,
+          "Import": 6,
+          "Package": 10,
+          "PartDef": 5,
+          "PartUsage": 20,
+          "PortDef": 1,
+          "PortUsage": 1,
+          "Unknown": 3,
+          "VariantUsage": 12,
+          "VariationUsage": 7
+        },
+        "diagnosticCounts": {
+          "parser:unmatched-closing-brace": 3,
+          "recovery:nested-parse-failure": 8,
+          "unclassified": 1,
+          "unsupported:unrecognized-construct": 3,
+          "unsupported:variant": 12,
+          "unsupported:variation": 7
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:unrecognized-construct",
+          "unsupported:variant",
+          "unsupported:variation"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "metadata",
+      "path": "sysml/src/examples/Metadata Examples/IssueMetadataExample.sysml",
+      "sourceSha256": "873d5de264c3f7c7f5df84a3b589d07fc6c5d59e99db0a3e8e73e7c2f0f3e696",
+      "sourceBytes": 1116,
+      "sourceLines": 30,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "MetadataUsage"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": [
+          "unsupported:metadata-about",
+          "unsupported:unrecognized-construct"
+        ]
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 11,
+        "unknownElements": 1,
+        "kindCounts": {
+          "Import": 1,
+          "InterfaceDef": 1,
+          "InterfaceUsage": 1,
+          "MetadataUsage": 1,
+          "Package": 1,
+          "PartUsage": 2,
+          "PortDef": 2,
+          "PortUsage": 1,
+          "Unknown": 1
+        },
+        "diagnosticCounts": {
+          "recovery:nested-parse-failure": 1,
+          "unsupported:metadata-about": 1,
+          "unsupported:unrecognized-construct": 1
+        },
+        "unsupportedDiagnostics": [
+          "unsupported:metadata-about",
+          "unsupported:unrecognized-construct"
+        ],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    },
+    {
+      "lane": "aliasImport",
+      "path": "sysml/src/examples/Import Tests/AliasImport.sysml",
+      "sourceSha256": "b243243ba39ca49c9ad53521418513ea3111b4e6be864023dfa1bb921baf96e2",
+      "sourceBytes": 194,
+      "sourceLines": 13,
+      "status": "pass",
+      "expected": {
+        "kinds": [
+          "Alias"
+        ],
+        "relations": [],
+        "allowedUnsupportedDiagnostics": []
+      },
+      "observed": {
+        "topLevelElements": 1,
+        "totalElements": 7,
+        "unknownElements": 0,
+        "kindCounts": {
+          "Alias": 1,
+          "Import": 1,
+          "Package": 3,
+          "PartDef": 1,
+          "PartUsage": 1
+        },
+        "diagnosticCounts": {},
+        "unsupportedDiagnostics": [],
+        "unexpectedUnsupportedDiagnostics": []
+      },
+      "failedChecks": []
+    }
+  ],
+  "claimBoundary": "This report proves deterministic local parser qualification against the exact pinned fixture bytes and explicit unsupported-diagnostic allowances. It does not prove OMG conformance, engineering validity, target-tool compatibility, or project approval."
+}
