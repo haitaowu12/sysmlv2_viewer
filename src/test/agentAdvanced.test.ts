@@ -26,6 +26,13 @@ describe('advanced deterministic SysML agent tools', () => {
       fullyLinked: 0,
     });
     expect(result.unlinkedRequirementUsageIds).toHaveLength(1);
+    expect(result.sourceBindings[0]).toMatchObject({ path: 'req.sysml', sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
+    expect(result.requirementLinks[0]).toMatchObject({
+      qualifiedName: 'r',
+      satisfactionRelationshipIds: [],
+      verificationRelationshipIds: [],
+      outOfContextVerificationRelationshipIds: [],
+    });
     expect(result.limitations.join(' ')).toContain('not evidence');
   });
 
@@ -42,6 +49,26 @@ describe('advanced deterministic SysML agent tools', () => {
     }], context);
     expect(result).toMatchObject({ requirementUsages: 1, verificationLinked: 1 });
     expect(result.requirementLinks[0]).toMatchObject({ name: 'safe', verificationLinked: true });
+    expect(result.requirementLinks[0].verificationRelationshipIds).toHaveLength(1);
+  });
+
+  it('does not count a verify statement outside a verification definition as a plan link', () => {
+    const result = sysmlTraceCoverage([{
+      path: 'req.sysml',
+      content: `
+        part def System;
+        requirement def Safe { subject system : System; }
+        requirement safe : Safe;
+        use case def Operate {
+          subject system : System;
+          objective { verify safe; }
+        }
+      `,
+    }], context);
+
+    expect(result.verificationLinked).toBe(0);
+    expect(result.requirementLinks[0].verificationRelationshipIds).toEqual([]);
+    expect(result.requirementLinks[0].outOfContextVerificationRelationshipIds).toHaveLength(1);
   });
 
   it('compares model semantics without reading a working tree', () => {
