@@ -42,6 +42,9 @@ import org.omg.sysml.xtext.SysMLStandaloneSetup;
 import org.omg.sysml.xtext.SysMLRuntimeModule;
 
 public final class Application implements IApplication {
+    private static final String SYSML_METAMODEL_NS_URI =
+        "https://www.omg.org/spec/SysML/20250201";
+
     @Override
     public Object start(IApplicationContext context) throws Exception {
         String[] args = (String[]) context.getArguments().get(IApplicationContext.APPLICATION_ARGS);
@@ -191,6 +194,15 @@ public final class Application implements IApplication {
         serialized.add(relative.toString());
     }
 
+    static boolean isImpliedPortConjugationEndpoint(EObject owner, EStructuralFeature feature) {
+        var ownerClass = owner.eClass();
+        return "PortConjugation".equals(ownerClass.getName())
+            && ownerClass.getEPackage() != null
+            && SYSML_METAMODEL_NS_URI.equals(ownerClass.getEPackage().getNsURI())
+            && feature.getEContainingClass() == ownerClass
+            && feature == ownerClass.getEStructuralFeature("originalPortDefinition");
+    }
+
     private static final class ElementIdTransientValueService extends TransientValueService {
         private boolean isRelationshipEndpoint(EObject owner, EStructuralFeature feature) {
             boolean relationshipOwner = "Relationship".equals(owner.eClass().getName())
@@ -235,7 +247,8 @@ public final class Application implements IApplication {
                 ? "" : feature.getEContainingClass().getName();
             boolean toolingElementId = "Element".equals(ownerType)
                 && "elementId".equals(feature.getName());
-            if (toolingElementId || isRelationshipEndpoint(owner, feature)) {
+            if (toolingElementId || isRelationshipEndpoint(owner, feature)
+                || isImpliedPortConjugationEndpoint(owner, feature)) {
                 return ITransientValueService.ValueTransient.YES;
             }
             return super.isValueTransient(owner, feature);
