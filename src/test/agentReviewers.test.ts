@@ -49,12 +49,40 @@ describe('deterministic SysML reviewer capabilities', () => {
     const files = [{ path: 'requirements.sysml', content: 'requirement def SafeStop; requirement safeStop : SafeStop;' }];
     const trace = runTraceabilityReviewer(files);
     const parent = runRequirementParentReviewer(files);
-    expect(trace.findings.map((item) => item.ruleId)).toContain('SYSML-TRACE-001');
+    expect(trace.findings.map((item) => item.ruleId)).toEqual([
+      'SYSML-TRACE-SAT-STATUS-001',
+      'SYSML-TRACE-VER-PLAN-002',
+    ]);
+    expect(trace.counts).toEqual({ error: 0, warning: 0, info: 2 });
     expect(trace.findings.every((item) => item.requiresHumanReview)).toBe(true);
     expect(trace.findings[0].evidenceIds[0]).toContain('requirements.sysml#');
     expect(trace.findings[0].sourceLocations[0]).toMatchObject({ file: 'requirements.sysml', line: 1 });
     expect(parent.findings).toHaveLength(1);
     expect(parent.findings[0].ruleId).toBe('SYSML-REQ-PARENT-001');
+  });
+
+  it('reviews requirement usages only and counts incoming trace relationships', () => {
+    const trace = runTraceabilityReviewer([{
+      path: 'planned.sysml',
+      content: `package Planned {
+        part def System;
+        requirement def Safe { subject system : System; }
+        requirement safe : Safe;
+        verification def Review {
+          subject system : System;
+          objective reviewObjective { verify safe; }
+        }
+        verification review : Review;
+      }`,
+    }]);
+
+    expect(trace.findings).toHaveLength(1);
+    expect(trace.findings[0]).toMatchObject({
+      ruleId: 'SYSML-TRACE-SAT-STATUS-001',
+      severity: 'info',
+      sourceLocations: [{ file: 'planned.sysml', line: 4 }],
+    });
+    expect(trace.findings[0].message).toContain("Requirement usage 'safe'");
   });
 
   it('finds incomplete interface flows without rewriting the model', () => {
