@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "characterization": "bridge_filtered_use_case_succession_stack_overflow",
+  "recordedAt": "2026-07-12",
+  "pins": {
+    "officialCorpusCommit": "9baca5908ca28b53da085de69336fde48420ea8f",
+    "eclipseBuild": "4.39.0.20260305-0817",
+    "sysmlPlugin": "0.59.0.202605132310",
+    "bridgeVersion": "1.3.5",
+    "bridgeJarSha256": "c0843c07e7dcfd20c3f75e4e5c1600ccf4d4d23e5758c5837c180dbdb1e483e8"
+  },
+  "origin": {
+    "model": "OMC4 BB-EIGHT",
+    "sourceSha256": "0bb1932667313113efcec61491fbb78ddbfad49c1173b0a0275f2f9bcf12bbda",
+    "sourceBytes": 25559,
+    "sourceLines": 509,
+    "result": "java.lang.StackOverflowError before a textual candidate was written"
+  },
+  "minimalReproducer": {
+    "fixture": "../fixtures/use-case-succession-stack-overflow/model.sysml",
+    "sha256": "5776df99885ad8ff4a52c74322a28b2f02c18a30c0dc6bd1919a5e76c957ff16",
+    "bytes": 108,
+    "lines": 6,
+    "constructs": [
+      "use case usage",
+      "first start succession",
+      "then done succession"
+    ],
+    "localCheck": {
+      "valid": true,
+      "errors": 0
+    },
+    "officialPreSerializationBuild": "error-free because serialization is entered only when the bridge marker error count is zero",
+    "serializedResources": [],
+    "textualCandidateWritten": false,
+    "result": "java.lang.StackOverflowError",
+    "stackSignature": [
+      "org.eclipse.xtext.serializer.analysis.GrammarConstraintProvider$Constraint.computeUpperBound:193",
+      "org.eclipse.xtext.serializer.analysis.GrammarConstraintProvider$Constraint.computeUpperBound:204",
+      "org.eclipse.xtext.serializer.analysis.GrammarConstraintProvider$Constraint.computeUpperBound:218"
+    ]
+  },
+  "negativeControl": {
+    "description": "A use case containing include use case but no first/then succession",
+    "fixture": "../fixtures/use-case-include-control/model.sysml",
+    "sha256": "a8b5a11105e2fa255a3d84716973648c937444d8e15477a425311e27237973f0",
+    "bytes": 126,
+    "markerCount": 0,
+    "errorCount": 0,
+    "roundTripErrors": [],
+    "serializedResourceCount": 1,
+    "result": "serialization_pass"
+  },
+  "finding": {
+    "triggerLane": "use-case succession grammar",
+    "includeUseCaseAloneTriggersFailure": false,
+    "portConjugationFilterInvolved": false,
+    "transientFilterChangeRecommended": false,
+    "classification": "Xtext GrammarConstraintProvider recursion in official grammar analysis",
+    "releaseDisposition": "official textual round-trip remains held"
+  },
+  "rawTemporaryEvidence": {
+    "fullModelLog": "/private/tmp/bb-eight-roundtrip-workspace-refresh/.metadata/.log",
+    "minimalLog": "/private/tmp/sysml-serializer-lane-workspace-use_case_succession_tiny/.metadata/.log",
+    "negativeControlResult": "/private/tmp/sysml-serializer-lane-use_case_include_tiny.json"
+  }
+}
