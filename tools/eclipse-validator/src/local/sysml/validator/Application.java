@@ -8,8 +8,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.util.Modules;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
@@ -23,14 +28,25 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.xtext.resource.XtextResourceSet;
+import org.eclipse.xtext.conversion.IValueConverter;
+import org.eclipse.xtext.conversion.IValueConverterService;
+import org.eclipse.xtext.conversion.ValueConverter;
+import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.serializer.sequencer.ITransientValueService;
+import org.eclipse.xtext.serializer.sequencer.TransientValueService;
+import org.omg.kerml.xtext.conversion.KerMLValueConverterService;
 import org.omg.sysml.xtext.SysMLStandaloneSetup;
+import org.omg.sysml.xtext.SysMLRuntimeModule;
 
 public final class Application implements IApplication {
     @Override
     public Object start(IApplicationContext context) throws Exception {
         String[] args = (String[]) context.getArguments().get(IApplicationContext.APPLICATION_ARGS);
         Path roundTripOutput = null;
+        String roundTripMode = "stock";
         List<String> projectArgs = new ArrayList<>();
         for (int index = 0; index < args.length; index++) {
             if ("--roundtrip-output".equals(args[index])) {
@@ -38,13 +54,24 @@ public final class Application implements IApplication {
                     throw new IllegalArgumentException("--roundtrip-output requires a directory");
                 }
                 roundTripOutput = Path.of(args[index]).toAbsolutePath().normalize();
+            } else if ("--roundtrip-mode".equals(args[index])) {
+                if (++index >= args.length) {
+                    throw new IllegalArgumentException("--roundtrip-mode requires stock or bridge-filtered");
+                }
+                roundTripMode = args[index];
+                if (!"stock".equals(roundTripMode) && !"bridge-filtered".equals(roundTripMode)) {
+                    throw new IllegalArgumentException("--roundtrip-mode must be stock or bridge-filtered");
+                }
             } else {
                 projectArgs.add(args[index]);
             }
         }
         if (projectArgs.isEmpty()) {
-            System.err.println("usage: -application local.sysml.validator.application [--roundtrip-output DIR] PROJECT_DIR [...]");
+            System.err.println("usage: -application local.sysml.validator.application [--roundtrip-output DIR] [--roundtrip-mode stock|bridge-filtered] PROJECT_DIR [...]");
             return Integer.valueOf(2);
+        }
+        if (roundTripOutput == null && !"stock".equals(roundTripMode)) {
+            throw new IllegalArgumentException("--roundtrip-mode requires --roundtrip-output");
         }
 
         IProgressMonitor monitor = new NullProgressMonitor();
@@ -89,7 +116,9 @@ public final class Application implements IApplication {
         List<String> roundTripErrors = new ArrayList<>();
         if (errors == 0 && roundTripOutput != null) {
             Files.createDirectories(roundTripOutput);
-            Injector injector = new SysMLStandaloneSetup().createInjectorAndDoEMFRegistration();
+            Injector injector = "bridge-filtered".equals(roundTripMode)
+                ? new FilteredSysMLStandaloneSetup().createInjectorAndDoEMFRegistration()
+                : new SysMLStandaloneSetup().createInjectorAndDoEMFRegistration();
             XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
             IProject modelProject = projects.get(projects.size() - 1);
             for (IResource member : modelProject.members()) {
@@ -102,6 +131,7 @@ public final class Application implements IApplication {
         System.out.println("{\"schemaVersion\":\"1.0\",\"tool\":\"official_eclipse_validation\",\"markerCount\":"
             + markers.size() + ",\"errorCount\":" + errors + ",\"roundTripOutput\":"
             + (roundTripOutput == null ? "null" : "\"" + escape(roundTripOutput.toString()) + "\"")
+            + ",\"roundTripMode\":\"" + escape(roundTripMode) + "\""
             + ",\"serializedResources\":[");
         for (int index = 0; index < serialized.size(); index++) {
             if (index > 0) System.out.print(",");
@@ -148,11 +178,106 @@ public final class Application implements IApplication {
             roundTripErrors.add(file.getProjectRelativePath() + ": " + exception.getMessage());
             return;
         }
+        byte[] bytes = stream.toByteArray();
+        String textError = TextOutputGuard.validate(bytes);
+        if (textError != null) {
+            roundTripErrors.add(file.getProjectRelativePath() + ": " + textError);
+            return;
+        }
         Path relative = Path.of(project.getName()).resolve(file.getProjectRelativePath().toString());
         Path output = outputRoot.resolve(relative);
         Files.createDirectories(output.getParent());
-        Files.write(output, stream.toByteArray());
+        Files.write(output, bytes);
         serialized.add(relative.toString());
+    }
+
+    private static final class ElementIdTransientValueService extends TransientValueService {
+        private boolean isRelationshipEndpoint(EObject owner, EStructuralFeature feature) {
+            boolean relationshipOwner = "Relationship".equals(owner.eClass().getName())
+                || owner.eClass().getEAllSuperTypes().stream()
+                    .anyMatch(type -> "Relationship".equals(type.getName()));
+            if (!relationshipOwner) return false;
+            if ("source".equals(feature.getName()) || "target".equals(feature.getName())) return true;
+            return refinesRelationshipSource(feature, new HashSet<>());
+        }
+
+        private boolean refinesRelationshipSource(EStructuralFeature feature, Set<EStructuralFeature> seen) {
+            if (!seen.add(feature)) return false;
+            for (var annotation : feature.getEAnnotations()) {
+                if (!"subsets".equals(annotation.getSource())
+                    && !"redefines".equals(annotation.getSource())) continue;
+                for (EObject reference : annotation.getReferences()) {
+                    if (!(reference instanceof EStructuralFeature referencedFeature)) continue;
+                    if ("source".equals(referencedFeature.getName())
+                        && referencedFeature.getEContainingClass() != null
+                        && "Relationship".equals(referencedFeature.getEContainingClass().getName())) {
+                        return true;
+                    }
+                    if (refinesRelationshipSource(referencedFeature, seen)) return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public ITransientValueService.ListTransient isListTransient(
+            EObject owner, EStructuralFeature feature) {
+            if (isRelationshipEndpoint(owner, feature)) {
+                return ITransientValueService.ListTransient.YES;
+            }
+            return super.isListTransient(owner, feature);
+        }
+
+        @Override
+        public ITransientValueService.ValueTransient isValueTransient(
+            EObject owner, EStructuralFeature feature) {
+            String ownerType = feature.getEContainingClass() == null
+                ? "" : feature.getEContainingClass().getName();
+            boolean toolingElementId = "Element".equals(ownerType)
+                && "elementId".equals(feature.getName());
+            if (toolingElementId || isRelationshipEndpoint(owner, feature)) {
+                return ITransientValueService.ValueTransient.YES;
+            }
+            return super.isValueTransient(owner, feature);
+        }
+    }
+
+    private static final class FilteredSysMLStandaloneSetup extends SysMLStandaloneSetup {
+        @Override
+        public Injector createInjector() {
+            return Guice.createInjector(Modules.override(new SysMLRuntimeModule()).with(
+                new AbstractModule() {
+                    @Override
+                    protected void configure() {
+                        bind(ITransientValueService.class).to(ElementIdTransientValueService.class);
+                        bind(IValueConverterService.class).to(FilteredValueConverterService.class);
+                    }
+                }
+            ));
+        }
+    }
+
+    public static final class FilteredValueConverterService extends KerMLValueConverterService {
+        private static final IValueConverter<String> REGULAR_COMMENT_CONVERTER = new IValueConverter<>() {
+            @Override
+            public String toValue(String token, INode node) {
+                if (token != null && token.startsWith("/*") && token.endsWith("*/")) {
+                    return token.substring(2, token.length() - 2);
+                }
+                return token;
+            }
+
+            @Override
+            public String toString(String value) {
+                String safe = value == null ? "" : value.replace("*/", "* /");
+                return "/*" + safe + "*/";
+            }
+        };
+
+        @ValueConverter(rule = "REGULAR_COMMENT")
+        public IValueConverter<String> regularComment() {
+            return REGULAR_COMMENT_CONVERTER;
+        }
     }
 
     private static String escape(String value) {
