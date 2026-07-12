@@ -1,5 +1,6 @@
 import { buildSemanticModelFromSource } from '../bridge/sysml-to-semantic';
 import type { SemanticEdge, SemanticNode } from '../bridge/semantic-types';
+import { createHash } from 'node:crypto';
 import { SYSML_V2_CORPUS } from './constants';
 import type { AgentToolContext, AgentToolFile, CorpusPin, EngineIdentity } from './types';
 
@@ -26,14 +27,38 @@ export interface TraceCoverageResult extends AdvancedEnvelope {
   verificationLinked: number;
   fullyLinked: number;
   unlinkedRequirementUsageIds: string[];
+  sourceBindings: Array<{ path: string; sha256: string }>;
   requirementLinks: Array<{
     id: string;
     name: string;
     qualifiedPath: string;
+    qualifiedName: string;
     satisfactionLinked: boolean;
     verificationLinked: boolean;
+    satisfactionRelationshipIds: string[];
+    verificationRelationshipIds: string[];
+    outOfContextVerificationRelationshipIds: string[];
   }>;
   limitations: string[];
+}
+
+function qualifiedName(node: SemanticNode, byId: Map<string, SemanticNode>): string {
+  const names = [node.name];
+  let parent = node.parentId ? byId.get(node.parentId) : undefined;
+  while (parent) {
+    names.unshift(parent.name);
+    parent = parent.parentId ? byId.get(parent.parentId) : undefined;
+  }
+  return names.join('::');
+}
+
+function hasAncestorKind(nodeId: string, kind: SemanticNode['kind'], byId: Map<string, SemanticNode>): boolean {
+  let current = byId.get(nodeId);
+  while (current?.parentId) {
+    current = byId.get(current.parentId);
+    if (current?.kind === kind) return true;
+  }
+  return false;
 }
 
 export interface ModelDelta {
@@ -106,11 +131,20 @@ export function sysmlTraceCoverage(files: AgentToolFile[], context: AgentToolCon
   const unlinkedRequirementUsageIds: string[] = [];
   const requirementLinks: TraceCoverageResult['requirementLinks'] = [];
   for (const entry of models) {
+    const byId = new Map(entry.nodes.map((node) => [node.id, node]));
     requirementDefinitions += entry.nodes.filter((node) => node.kind === 'RequirementDef').length;
     for (const requirement of entry.nodes.filter((node) => node.kind === 'RequirementUsage')) {
       requirementUsages += 1;
-      const hasSatisfy = entry.edges.some((edge) => edge.kind === 'satisfy' && (edge.targetId === requirement.id || edge.sourceId === requirement.id));
-      const hasVerify = entry.edges.some((edge) => edge.kind === 'verify' && (edge.targetId === requirement.id || edge.sourceId === requirement.id));
+      const satisfactionRelationships = entry.edges.filter((edge) =>
+        edge.kind === 'satisfy' && edge.targetId === requirement.id);
+      const incomingVerification = entry.edges.filter((edge) =>
+        edge.kind === 'verify' && edge.targetId === requirement.id);
+      const verificationRelationships = incomingVerification.filter((edge) =>
+        hasAncestorKind(edge.sourceId, 'VerificationDef', byId));
+      const outOfContextVerificationRelationships = incomingVerification.filter((edge) =>
+        !hasAncestorKind(edge.sourceId, 'VerificationDef', byId));
+      const hasSatisfy = satisfactionRelationships.length > 0;
+      const hasVerify = verificationRelationships.length > 0;
       if (hasSatisfy) satisfactionLinked += 1;
       if (hasVerify) verificationLinked += 1;
       if (hasSatisfy && hasVerify) fullyLinked += 1;
@@ -119,8 +153,12 @@ export function sysmlTraceCoverage(files: AgentToolFile[], context: AgentToolCon
         id: `${entry.file}#${requirement.id}`,
         name: requirement.name,
         qualifiedPath: requirement.sysmlPath,
+        qualifiedName: qualifiedName(requirement, byId),
         satisfactionLinked: hasSatisfy,
         verificationLinked: hasVerify,
+        satisfactionRelationshipIds: satisfactionRelationships.map((edge) => edge.id).sort(),
+        verificationRelationshipIds: verificationRelationships.map((edge) => edge.id).sort(),
+        outOfContextVerificationRelationshipIds: outOfContextVerificationRelationships.map((edge) => edge.id).sort(),
       });
     }
   }
@@ -133,9 +171,14 @@ export function sysmlTraceCoverage(files: AgentToolFile[], context: AgentToolCon
     verificationLinked,
     fullyLinked,
     unlinkedRequirementUsageIds,
+    sourceBindings: files.map((file) => ({
+      path: file.path,
+      sha256: createHash('sha256').update(file.content).digest('hex'),
+    })),
     requirementLinks: requirementLinks.sort((a, b) => a.qualifiedPath.localeCompare(b.qualifiedPath)),
     limitations: [
       'Relationship presence indicates planned trace linkage only; it is not evidence that a requirement is satisfied or that verification passed.',
+      'Verification-plan links count only incoming verify relationships owned beneath a verification definition.',
     ],
   };
 }
