@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { extname, resolve, sep } from 'node:path';
 import {
   runCompletenessReviewer,
@@ -16,8 +17,9 @@ import {
   sysmlTraceCoverage,
   type AgentToolFile,
 } from '../src/agent-tools';
+import { buildSemanticModelFromSource } from '../src/bridge/sysml-to-semantic';
 
-type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary' | 'review' | 'render-view' | 'trace-coverage';
+type ToolName = 'doctor' | 'check' | 'explain-diagnostic' | 'model-summary' | 'review' | 'render-view' | 'semantic-compare' | 'semantic-snapshot' | 'trace-coverage';
 type ReviewerName = 'completeness' | 'traceability' | 'requirement-parent' | 'interface' | 'semantic-compatibility' | 'release';
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
@@ -101,6 +103,55 @@ function fail(message: string): never {
   }, 2);
 }
 
+function semanticSnapshot(file: AgentToolFile) {
+  const model = buildSemanticModelFromSource(file.content);
+  const pathById = new Map(model.nodes.map((node) => [node.id, node.sysmlPath]));
+  const nodes = model.nodes.map((node) => ({
+    kind: node.kind,
+    sysmlPath: node.sysmlPath,
+    name: node.name,
+    ...(node.typeName ? { typeName: node.typeName } : {}),
+    ...(node.specializes ? { specializes: node.specializes } : {}),
+    ...(node.redefines ? { redefines: node.redefines } : {}),
+    ...(node.sourceRef ? { sourceRef: node.sourceRef } : {}),
+    ...(node.targetRef ? { targetRef: node.targetRef } : {}),
+  })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const edges = model.edges.map((edge) => ({
+    kind: edge.kind,
+    source: pathById.get(edge.sourceId) ?? edge.sourceId,
+    target: pathById.get(edge.targetId) ?? edge.targetId,
+    ...(edge.label ? { label: edge.label } : {}),
+  })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const payload = { nodes, edges };
+  const canonical = JSON.stringify(payload);
+  return {
+    schemaVersion: '1.0',
+    tool: 'sysml_semantic_snapshot',
+    engineVersion: model.version,
+    file: file.path,
+    sourceSha256: createHash('sha256').update(file.content).digest('hex'),
+    semanticSha256: createHash('sha256').update(canonical).digest('hex'),
+    counts: { nodes: nodes.length, edges: edges.length },
+    ...payload,
+  };
+}
+
+function multisetDifference(left: unknown[], right: unknown[]): unknown[] {
+  const remaining = new Map<string, number>();
+  for (const item of right) {
+    const key = JSON.stringify(item);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  }
+  const difference: unknown[] = [];
+  for (const item of left) {
+    const key = JSON.stringify(item);
+    const count = remaining.get(key) ?? 0;
+    if (count > 0) remaining.set(key, count - 1);
+    else difference.push(item);
+  }
+  return difference;
+}
+
 function main(): never {
   const [rawTool, ...rawArgs] = process.argv.slice(2);
   const tool = rawTool as ToolName | undefined;
@@ -138,6 +189,31 @@ function main(): never {
       if (files.length === 0) fail('render-view requires at least one SysML file');
       emit(sysmlRenderView(files, context));
     }
+    if (tool === 'semantic-snapshot') {
+      if (files.length !== 1) fail('semantic-snapshot requires exactly one SysML file');
+      emit(semanticSnapshot(files[0]));
+    }
+    if (tool === 'semantic-compare') {
+      if (files.length !== 2) fail('semantic-compare requires exactly two SysML files');
+      const baseline = semanticSnapshot(files[0]);
+      const candidate = semanticSnapshot(files[1]);
+      const removedNodes = multisetDifference(baseline.nodes, candidate.nodes);
+      const addedNodes = multisetDifference(candidate.nodes, baseline.nodes);
+      const removedEdges = multisetDifference(baseline.edges, candidate.edges);
+      const addedEdges = multisetDifference(candidate.edges, baseline.edges);
+      const equivalent = removedNodes.length === 0 && addedNodes.length === 0
+        && removedEdges.length === 0 && addedEdges.length === 0;
+      emit({
+        schemaVersion: '1.0',
+        tool: 'sysml_semantic_compare',
+        engineVersion: baseline.engineVersion,
+        baseline: { file: baseline.file, sourceSha256: baseline.sourceSha256, semanticSha256: baseline.semanticSha256, counts: baseline.counts },
+        candidate: { file: candidate.file, sourceSha256: candidate.sourceSha256, semanticSha256: candidate.semanticSha256, counts: candidate.counts },
+        equivalent,
+        differences: { removedNodes, addedNodes, removedEdges, addedEdges },
+        mutationPerformed: false,
+      }, equivalent ? 0 : 1);
+    }
     if (tool === 'review') {
       if (files.length === 0) fail('review requires at least one SysML file');
       const reviewer = reviewerOption.value as ReviewerName | undefined;
@@ -156,7 +232,7 @@ function main(): never {
       emit(result, result.counts.error > 0 ? 1 : 0);
     }
 
-    fail(`Unknown tool '${rawTool ?? ''}'. Expected doctor, check, explain-diagnostic, model-summary, review, render-view, or trace-coverage.`);
+    fail(`Unknown tool '${rawTool ?? ''}'. Expected doctor, check, explain-diagnostic, model-summary, review, render-view, semantic-compare, semantic-snapshot, or trace-coverage.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     fail(message);
