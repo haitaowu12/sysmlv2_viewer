@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+  <name>Serializer-Use-Case-Succession-Reproducer</name>
+  <comment>Minimal bridge-filtered serializer stack-overflow reproducer.</comment>
+  <projects><project>sysml.library</project></projects>
+  <buildSpec>
+    <buildCommand>
+      <name>org.eclipse.xtext.ui.shared.xtextBuilder</name>
+      <arguments></arguments>
+    </buildCommand>
+  </buildSpec>
+  <natures><nature>org.eclipse.xtext.ui.shared.xtextNature</nature></natures>
+</projectDescription>

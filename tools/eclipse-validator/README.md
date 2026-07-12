@@ -89,3 +89,16 @@ The pinned official port-conjugation characterization is recorded in
 `PortConjugation.originalPortDefinition` filter passes serialization, but the
 official serializer's separate quoted-name output currently fails re-import;
 therefore the textual round-trip claim remains held.
+
+The minimized use-case succession reproducer is under
+`fixtures/use-case-succession-stack-overflow`. With `ECLIPSE` and
+`SYSML_CORPUS` set to the pinned runtime and checkout, run:
+
+```bash
+bash tools/eclipse-validator/characterize-use-case-succession-stack-overflow.sh
+```
+
+This is an expected-negative characterization: `first start; then done;`
+currently causes an Xtext `GrammarConstraintProvider` stack overflow. The
+nearby `include use case` lane without succession serializes successfully, so
+the characterization does not justify another transient-value filter.
