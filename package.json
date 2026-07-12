@@ -10,9 +10,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts",
+    "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts src/test/officialFixtureQualification.test.ts",
     "build:agent-tools": "esbuild scripts/sysml-agent-tools.ts --bundle --platform=node --format=esm --outfile=.agent-tools/sysml-agent-tools.mjs",
     "sysml:tools": "npm run build:agent-tools --silent && node .agent-tools/sysml-agent-tools.mjs",
+    "build:fixture-qualification": "esbuild scripts/sysml-fixture-qualification.ts --bundle --platform=node --format=esm --outfile=.agent-tools/sysml-fixture-qualification.mjs",
+    "sysml:qualify-fixtures": "npm run build:fixture-qualification --silent && node .agent-tools/sysml-fixture-qualification.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

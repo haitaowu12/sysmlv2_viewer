@@ -15,6 +15,7 @@ npm run sysml:tools -- trace-coverage model.sysml
 npm run sysml:tools -- render-view model.sysml
 npm run sysml:tools -- semantic-snapshot model.sysml
 npm run sysml:tools -- semantic-compare baseline.sysml candidate.sysml
+npm run sysml:qualify-fixtures -- --corpus /pinned/SysML-v2-Release --output qualification.json
 ```
 
 File commands accept only `.sysml` files inside the current working directory by default. Use `--root /approved/workspace` to authorize a different bounded root. Real paths are checked after symlink resolution; file count and byte limits apply.
@@ -59,3 +60,5 @@ Project rule packs remain separate because parser structure alone cannot prove o
 `trace-coverage` reports requirement definitions separately from requirement usages and names only relationship presence (`satisfactionLinked`, `verificationLinked`). It explicitly does not claim satisfaction evidence or a passed verification verdict. `render-view` exposes the deterministic Mermaid projection.
 
 `semantic-snapshot` emits a canonical node/edge projection and stable semantic hash while excluding layout and generated identifiers. `semantic-compare` compares two files as multisets and reports every added or removed node and edge; it exits `1` when they differ. This is deterministic local evidence, not an independent target-tool verdict. Programmatic `sysmlCompareModels` remains available for repository-level semantic deltas. All operations are read-only and carry engine/corpus/file identity.
+
+`sysml:qualify-fixtures` fails closed unless the checkout matches the pinned official commit. Its machine-readable report binds the corpus license, every fixture path and SHA-256, expected and observed node/relation kinds, allowed and unexpected unsupported diagnostics, per-lane status, and zero unintended skips. The report is local supported-subset qualification evidence—not an OMG conformance or target-tool claim.
