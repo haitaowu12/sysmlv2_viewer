@@ -38,6 +38,13 @@ Run the dependency-free output-guard test before packaging:
 bash tools/eclipse-validator/test-text-output-guard.sh
 ```
 
+With `ECLIPSE` set as above, characterize the exact implied
+`PortConjugation.originalPortDefinition` filter:
+
+```bash
+bash tools/eclipse-validator/test-port-conjugation-transient-rule.sh
+```
+
 ## Run
 
 The first project should be the pinned official `sysml.library`; the final project should contain the model under review and reference `sysml.library` in `.project`.
@@ -76,3 +83,9 @@ For the explicitly experimental bridge-filtered lane:
 ```
 
 Accept this lane only when the emitted file is UTF-8 text, official clean re-import returns zero markers, and an independent semantic comparison reports zero deltas. A bridge-filtered pass does not convert the stock serializer result into a pass.
+
+The pinned official port-conjugation characterization is recorded in
+`evidence/port-conjugation-characterization-2026-07-12.json`. The exact
+`PortConjugation.originalPortDefinition` filter passes serialization, but the
+official serializer's separate quoted-name output currently fails re-import;
+therefore the textual round-trip claim remains held.

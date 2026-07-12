@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "characterization": "official_port_conjugation_textual_round_trip",
+  "recordedAt": "2026-07-12",
+  "inputs": {
+    "officialCorpusCommit": "9baca5908ca28b53da085de69336fde48420ea8f",
+    "fixture": "sysml/src/training/10. Ports/Port Conjugation Example.sysml",
+    "fixtureGitBlob": "7310f520f6f0d9c45f454b7113d504f66d74198e",
+    "fixtureSha256": "0c7b995b29cc65d45817073688c73b4ac7004ab8000887311222d2b164082974",
+    "fixtureBytes": 313,
+    "fixtureChanged": false,
+    "eclipseBuild": "4.39.0.20260305-0817",
+    "sysmlPlugin": "0.59.0.202605132310",
+    "viewerBaselineCommit": "627ef49b8ef2cd3f81ce172304627bdd3a0f89fb"
+  },
+  "bridge134": {
+    "jarSha256": "954b26a35aa3ad9b73fffb0b540c8dbb213fc8ea373e59b01c4f1dcd9a814536",
+    "import": {
+      "markerCount": 0,
+      "errorCount": 0,
+      "result": "pass"
+    },
+    "stockSerialization": {
+      "result": "expected_negative",
+      "diagnostic": "Element.elementId is not allowed to have a value, but it does."
+    },
+    "bridgeFilteredSerialization": {
+      "result": "expected_negative",
+      "diagnostic": "PortConjugation.originalPortDefinition is not allowed to have a value, but it does."
+    }
+  },
+  "bridge135": {
+    "jarSha256": "c0843c07e7dcfd20c3f75e4e5c1600ccf4d4d23e5758c5837c180dbdb1e483e8",
+    "filterScope": "exact SysML PortConjugation.originalPortDefinition metamodel feature",
+    "bridgeFilteredSerialization": {
+      "markerCount": 0,
+      "errorCount": 0,
+      "roundTripErrors": [],
+      "serializedResources": [
+        "Port-Conjugation-Characterization/Port Conjugation Example.sysml"
+      ],
+      "outputSha256": "2bdfa6b826231a9b47f5a94ee044e52e73cf62ec5b48988e91a7004ccf964bc6",
+      "outputBytes": 311,
+      "textGuard": "pass",
+      "result": "serialization_pass"
+    },
+    "officialReimport": {
+      "markerCount": 2,
+      "errorCount": 2,
+      "result": "fail",
+      "diagnostics": [
+        "line 1: no viable alternative at input 'Conjugation'",
+        "line 1: no viable alternative at input 'Example'"
+      ],
+      "cause": "The official serializer emitted the quoted package name Port Conjugation Example without quotes."
+    }
+  },
+  "disposition": {
+    "exactPortConjugationFilterCharacterized": true,
+    "officialTextRoundTripPassed": false,
+    "releaseClaim": "held",
+    "nextDiagnostic": "Characterize official name-token serialization for quoted identifiers independently; do not broaden the PortConjugation transient rule."
+  },
+  "temporaryEvidence": {
+    "project": "/private/tmp/port-conjugation-eclipse-project",
+    "import134": "/private/tmp/port-conjugation-import-134.json",
+    "stock134": "/private/tmp/port-conjugation-stock-134.json",
+    "filtered134": "/private/tmp/port-conjugation-filtered-134.json",
+    "filtered135": "/private/tmp/port-conjugation-filtered-135b.json",
+    "reimport135": "/private/tmp/port-conjugation-reimport-135.json"
+  }
+}
