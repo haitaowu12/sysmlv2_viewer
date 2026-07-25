@@ -102,7 +102,7 @@ describe('service-backed workbench shell', () => {
 
   it('runs assurance activities through the local workbench service', async () => {
     const gateway = createGateway()
-    gateway.generateReport.mockResolvedValue({
+    vi.mocked(gateway.generateReport).mockResolvedValue({
       schemaVersion: 1,
       reportEngineVersion: '1.0.0',
       reportKind: 'workspace-health',

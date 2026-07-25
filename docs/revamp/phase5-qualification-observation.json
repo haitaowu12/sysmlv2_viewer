@@ -1,0 +1,923 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T21:55:29.530Z",
+  "gate": "P5",
+  "result": "pass",
+  "runtimeLock": {
+    "schemaVersion": 1,
+    "outcome": "HYBRID GO",
+    "adapterVersion": "0.2.0",
+    "referenceRelease": {
+      "name": "2026-05",
+      "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+    },
+    "semantic": {
+      "candidateId": "vinqut",
+      "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "artifactEnvironment": "SYSML_WORKBENCH_SEMANTIC_ARTIFACT",
+      "artifactSha256": "8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160",
+      "launchMode": "java-jar",
+      "semanticEvidenceExtension": {
+        "method": "sysml/semanticEvidence",
+        "patchSha256": "364da283242e02ec8f68dabf45af646c532db3453b7dcfccf85c3e2d00178e45",
+        "modelSourceSha256": "16a6ade27f3518651f5d5e16d07355d44bc76314090a2a9110d9514713ec097a",
+        "serviceSourceSha256": "c63dd0e09dc1595764d9069807d002b8af9391dfcf2fe802082c747358722d94"
+      }
+    },
+    "authoring": {
+      "candidateId": "spec42",
+      "commit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "artifactEnvironment": "SYSML_WORKBENCH_AUTHORING_ARTIFACT",
+      "artifactSha256": "22911d70f7f41251e257aef3ae4a3a402e77063d2271ed394a114834d7ee362e",
+      "launchMode": "executable"
+    },
+    "officialLibraryIndexSha256": "d010a8644265b8aadab103f1cc9024bb143b34d825ea2139e11590ee337cd8fe"
+  },
+  "fixture": {
+    "id": "phase5-infrastructure-pilot",
+    "documents": 4,
+    "initialElements": 38,
+    "finalElements": 41
+  },
+  "integratedUsabilityPilot": {
+    "result": "pass",
+    "tasks": {
+      "workspaceLoad": true,
+      "unresolvedReferenceLocated": {
+        "passed": true,
+        "diagnostics": [
+          {
+            "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/open-issues.sysml",
+            "severity": "error",
+            "code": "org.eclipse.xtext.diagnostics.Diagnostic.Linking",
+            "message": "Couldn't resolve reference to Type 'MissingLegacyGateway'.",
+            "range": {
+              "start": {
+                "line": 2,
+                "character": 35
+              },
+              "end": {
+                "line": 2,
+                "character": 55
+              }
+            }
+          }
+        ],
+        "canonicalSourceUnchanged": true
+      },
+      "requirementNavigation": {
+        "passed": true,
+        "elements": 41
+      },
+      "unverifiedRequirementIdentified": {
+        "passed": true,
+        "count": 4
+      },
+      "interfaceAddedThroughTypedCommand": {
+        "passed": true,
+        "proposalId": "proposal:2edb9febffaa5933d98e5de16e64e201",
+        "approvalId": "APPROVE-P5-CREATE-INTERFACE-001",
+        "canonicalUnchangedBeforeApproval": true,
+        "semanticChanges": [
+          "element-created",
+          "element-content-changed",
+          "element-created",
+          "element-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created"
+        ],
+        "createdElementId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+        "crossNavigationMatched": true
+      },
+      "baselinesCompared": {
+        "passed": true,
+        "baselineA": {
+          "id": "pilot-baseline-a",
+          "commit": "a6fefab20b1b241e3d06c5712b6198663e62c40a"
+        },
+        "baselineB": {
+          "id": "pilot-baseline-b",
+          "commit": "71e89a28b84211677b75e7cd348a3fdbcac56516"
+        },
+        "semanticChanges": [
+          "element-created",
+          "element-content-changed",
+          "element-created",
+          "element-created",
+          "element-content-changed",
+          "element-content-changed",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created",
+          "relationship-created"
+        ]
+      },
+      "reviewFindingClosed": {
+        "passed": true,
+        "reviewId": "RVW-PILOT-001",
+        "findingId": "F-001",
+        "staleAnchors": 0
+      },
+      "interfaceReportExported": {
+        "passed": true,
+        "artifacts": [
+          {
+            "format": "html",
+            "path": "generated/reports/pilot-interface-register/pilot-interface-register.html",
+            "sha256": "3f30fe35a0e37e9a27d0391c4c6810df5e7e300e80f791588721549ad3445bc1"
+          },
+          {
+            "format": "pdf",
+            "path": "generated/reports/pilot-interface-register/pilot-interface-register.pdf",
+            "sha256": "0493718e0412b4671ab49c7ebc2ba641b43292e71be2fa1210ded9cb2ea2af50"
+          },
+          {
+            "format": "csv",
+            "path": "generated/reports/pilot-interface-register/pilot-interface-register.csv",
+            "sha256": "beeeb1c0812eace8c6ec8549d4cb3e3b228597086178aa337e0eeef79770dc98"
+          }
+        ]
+      }
+    }
+  },
+  "assurance": {
+    "rulePack": {
+      "id": "sysml-workbench/engineering-assurance",
+      "version": "1.0.0"
+    },
+    "resultSha256": "b56d9f2232733aac8f64238d7b4d3051406bd0f11c2b3144e91125df0893d9f6",
+    "summary": {
+      "critical": 2,
+      "major": 7,
+      "minor": 10,
+      "advisory": 0,
+      "requirements": 5,
+      "interfaces": 5
+    },
+    "findings": [
+      {
+        "id": "finding:0ce955fadb71da41f99bf722",
+        "ruleId": "REQ-UNVERIFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:e843a6a7c25b2f525a40274b816a8a99"
+        ]
+      },
+      {
+        "id": "finding:4367a2eb738d3028ca9abdb1",
+        "ruleId": "IF-INCOMPLETE-ENDPOINTS",
+        "severity": "critical",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:cba44a7a5c12e8fd216f4611c42e5b04"
+        ]
+      },
+      {
+        "id": "finding:5d90b7b8473bc0124370dfc1",
+        "ruleId": "IF-NO-VERIFICATION",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:cba44a7a5c12e8fd216f4611c42e5b04"
+        ]
+      },
+      {
+        "id": "finding:69f18222c46d8c258ea1200c",
+        "ruleId": "REQ-UNVERIFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:0e3759c3e9dd9e0ab5a43623ac345828"
+        ]
+      },
+      {
+        "id": "finding:70f4a93ef254f05e702cc87c",
+        "ruleId": "IF-NO-REQUIREMENT-BASIS",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:7e2375416fa97bec5dc6f2c39bace3fa"
+        ]
+      },
+      {
+        "id": "finding:773d3ecefa2c39f231b0d7ab",
+        "ruleId": "REQ-UNSATISFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:0e3759c3e9dd9e0ab5a43623ac345828"
+        ]
+      },
+      {
+        "id": "finding:7a9ee4b1d1eb8c7baa3fe034",
+        "ruleId": "REQ-UNVERIFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:cdb2f6f0c7787580ce30f04aa3237e99"
+        ]
+      },
+      {
+        "id": "finding:7b35014c77875f54b550be20",
+        "ruleId": "REQ-UNVERIFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:7832ec28f2f927ac887a74b239cffa3d"
+        ]
+      },
+      {
+        "id": "finding:7cd2a73bce32859a41d823fd",
+        "ruleId": "IF-NO-REQUIREMENT-BASIS",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1"
+        ]
+      },
+      {
+        "id": "finding:8d3733c7dd4a89e1c6adb465",
+        "ruleId": "IF-NO-REQUIREMENT-BASIS",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:c8feff7ffb5656e748be58fedce38ed4"
+        ]
+      },
+      {
+        "id": "finding:94585f68db1cc0cb57e55ffd",
+        "ruleId": "IF-NO-REQUIREMENT-BASIS",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:58d5aa45f5bc054fe5bfe5f27920a66a"
+        ]
+      },
+      {
+        "id": "finding:adb47632e5de990c5bdfdb5b",
+        "ruleId": "IF-NO-REQUIREMENT-BASIS",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:cba44a7a5c12e8fd216f4611c42e5b04"
+        ]
+      },
+      {
+        "id": "finding:af6b5cbc99d77e519bdd5816",
+        "ruleId": "IF-NO-VERIFICATION",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:7e2375416fa97bec5dc6f2c39bace3fa"
+        ]
+      },
+      {
+        "id": "finding:d6cf9aab6406ce73528b3fc0",
+        "ruleId": "IF-INCOMPLETE-ENDPOINTS",
+        "severity": "critical",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:c8feff7ffb5656e748be58fedce38ed4"
+        ]
+      },
+      {
+        "id": "finding:e302c9cd1ee3740ddb31f664",
+        "ruleId": "REQ-UNSATISFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:e843a6a7c25b2f525a40274b816a8a99"
+        ]
+      },
+      {
+        "id": "finding:ea52a2b5593d89a0ec8daa25",
+        "ruleId": "IF-NO-VERIFICATION",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1"
+        ]
+      },
+      {
+        "id": "finding:eb19126849fd8d5b403ac47b",
+        "ruleId": "IF-NO-VERIFICATION",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:58d5aa45f5bc054fe5bfe5f27920a66a"
+        ]
+      },
+      {
+        "id": "finding:eb9020199d214bd542c5deb0",
+        "ruleId": "REQ-UNSATISFIED",
+        "severity": "major",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:cdb2f6f0c7787580ce30f04aa3237e99"
+        ]
+      },
+      {
+        "id": "finding:eebc619e68ce7fc5f2ebbc59",
+        "ruleId": "IF-NO-VERIFICATION",
+        "severity": "minor",
+        "elementIds": [
+          "wb:phase5-infrastructure-pilot:c8feff7ffb5656e748be58fedce38ed4"
+        ]
+      }
+    ]
+  },
+  "change": {
+    "interfaceCommandId": "P5-CREATE-INTERFACE-001",
+    "requirementCommandId": "P5-CHANGE-REQUIREMENT-001",
+    "semanticDiff": {
+      "beforeSnapshotSha256": "6abeb7ae9667cd58a4910c57d9040891149efd7c168d6936517d5afee961ec72",
+      "afterSnapshotSha256": "faa2844b6d50adaa74b24559ce8a0b336d1b381eb4ed6feddc1eded2ba8c8ecc",
+      "changes": [
+        {
+          "kind": "element-created",
+          "elementId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "kind": "InterfaceUsage",
+            "rawKind": "InterfaceUsage",
+            "name": "backupTelemetryInterface",
+            "qualifiedName": "InfrastructurePilot::backupTelemetryInterface",
+            "ownerId": "wb:phase5-infrastructure-pilot:667c3cc710b84be9d3bf34c6186d5609",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/system.sysml",
+              "workspacePath": "model/system.sysml",
+              "range": {
+                "start": {
+                  "line": 43,
+                  "character": 4
+                },
+                "end": {
+                  "line": 43,
+                  "character": 147
+                }
+              },
+              "documentSha256": "2df1797d8101177c5f1d183ef20d727cb9c54750f536b628208524fa763ceb56"
+            },
+            "fingerprint": "f5be7b6b2a359e3aca48936d366676092b13e4a4a441cfc269b8087397a9dd3e",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "2ad9f81a-2ccd-433a-b384-eb09ee3fb6dc"
+            }
+          }
+        },
+        {
+          "kind": "element-content-changed",
+          "elementId": "wb:phase5-infrastructure-pilot:667c3cc710b84be9d3bf34c6186d5609",
+          "before": {
+            "id": "wb:phase5-infrastructure-pilot:667c3cc710b84be9d3bf34c6186d5609",
+            "kind": "Package",
+            "rawKind": "Package",
+            "name": "InfrastructurePilot",
+            "qualifiedName": "InfrastructurePilot",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/system.sysml",
+              "workspacePath": "model/system.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 43,
+                  "character": 1
+                }
+              },
+              "documentSha256": "f828119df988b24d41b3a90cf69a24ada15e55a7011b0ad25d66515a217ddf36"
+            },
+            "fingerprint": "422e2488688e21df56fbc0028070436bcf7af34145374e0c652ff917500ec9c9",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "10ff16c3-27a3-4993-8c67-0a6e0700cad8"
+            }
+          },
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:667c3cc710b84be9d3bf34c6186d5609",
+            "kind": "Package",
+            "rawKind": "Package",
+            "name": "InfrastructurePilot",
+            "qualifiedName": "InfrastructurePilot",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/system.sysml",
+              "workspacePath": "model/system.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 44,
+                  "character": 1
+                }
+              },
+              "documentSha256": "2df1797d8101177c5f1d183ef20d727cb9c54750f536b628208524fa763ceb56"
+            },
+            "fingerprint": "da4f35a4dc6844852c41e324a14419dfcb0c6f22a23d861275181c828a7af0f7",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "4ae3c9f6-79d8-4667-98d1-002ad982bb0c"
+            }
+          }
+        },
+        {
+          "kind": "element-created",
+          "elementId": "wb:phase5-infrastructure-pilot:73f9f93ba84191ee0a35ccfbc5671071",
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:73f9f93ba84191ee0a35ccfbc5671071",
+            "kind": "PortUsage",
+            "rawKind": "PortUsage",
+            "name": "source",
+            "qualifiedName": "InfrastructurePilot::backupTelemetryInterface::source",
+            "ownerId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/system.sysml",
+              "workspacePath": "model/system.sysml",
+              "range": {
+                "start": {
+                  "line": 43,
+                  "character": 47
+                },
+                "end": {
+                  "line": 43,
+                  "character": 95
+                }
+              },
+              "documentSha256": "2df1797d8101177c5f1d183ef20d727cb9c54750f536b628208524fa763ceb56"
+            },
+            "fingerprint": "5ce80e3c6375a25fbec7f26e9edea1b9faa6d5bab100b353dd793d3b8776e3ad",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "ab09dcb4-d618-4e33-83e8-76dc7318ba2d"
+            }
+          }
+        },
+        {
+          "kind": "element-created",
+          "elementId": "wb:phase5-infrastructure-pilot:b4a4e91f098c377157f70bc84f5e5d34",
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:b4a4e91f098c377157f70bc84f5e5d34",
+            "kind": "PortUsage",
+            "rawKind": "PortUsage",
+            "name": "target",
+            "qualifiedName": "InfrastructurePilot::backupTelemetryInterface::target",
+            "ownerId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/system.sysml",
+              "workspacePath": "model/system.sysml",
+              "range": {
+                "start": {
+                  "line": 43,
+                  "character": 99
+                },
+                "end": {
+                  "line": 43,
+                  "character": 146
+                }
+              },
+              "documentSha256": "2df1797d8101177c5f1d183ef20d727cb9c54750f536b628208524fa763ceb56"
+            },
+            "fingerprint": "83717b9d0cf80844d7479ca93740de33c6a917d2ae51557ed0fbd9890fec8b4d",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "baa3ee3a-8006-4019-b5f3-93213c8b306a"
+            }
+          }
+        },
+        {
+          "kind": "element-content-changed",
+          "elementId": "wb:phase5-infrastructure-pilot:caaccea0f5cc098ae2ad7de7a370a962",
+          "before": {
+            "id": "wb:phase5-infrastructure-pilot:caaccea0f5cc098ae2ad7de7a370a962",
+            "kind": "Package",
+            "rawKind": "Package",
+            "name": "InfrastructureRequirements",
+            "qualifiedName": "InfrastructureRequirements",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/requirements.sysml",
+              "workspacePath": "model/requirements.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 17,
+                  "character": 1
+                }
+              },
+              "documentSha256": "c130fb7e67fa8a2fba9e5a2f8f734ed86889527b6961bcb700822258893fc5e3"
+            },
+            "fingerprint": "8350d901f4d8ac58981e7269af2f848a9c4d7fcdaf377c148a7e1fc49438e1b7",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "fde4118f-36f7-40ef-9ced-5eab98253350"
+            }
+          },
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:caaccea0f5cc098ae2ad7de7a370a962",
+            "kind": "Package",
+            "rawKind": "Package",
+            "name": "InfrastructureRequirements",
+            "qualifiedName": "InfrastructureRequirements",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/requirements.sysml",
+              "workspacePath": "model/requirements.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 17,
+                  "character": 1
+                }
+              },
+              "documentSha256": "d0fdfdc2db511bd3b902e410f03111877d0e94c4c5c4d51927248a459d6ada56"
+            },
+            "fingerprint": "25196f3bb0d79d8d56f32c4bbf9b522f1628c74ffbfe4c4b89d42f3e42b0d9f2",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "73c4aa84-04f0-4253-8743-3e53079db0d4"
+            }
+          }
+        },
+        {
+          "kind": "element-content-changed",
+          "elementId": "wb:phase5-infrastructure-pilot:cdb2f6f0c7787580ce30f04aa3237e99",
+          "before": {
+            "id": "wb:phase5-infrastructure-pilot:cdb2f6f0c7787580ce30f04aa3237e99",
+            "kind": "RequirementUsage",
+            "rawKind": "RequirementUsage",
+            "name": "failoverNotification",
+            "qualifiedName": "InfrastructureRequirements::failoverNotification",
+            "ownerId": "wb:phase5-infrastructure-pilot:caaccea0f5cc098ae2ad7de7a370a962",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/requirements.sysml",
+              "workspacePath": "model/requirements.sysml",
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 4
+                },
+                "end": {
+                  "line": 16,
+                  "character": 5
+                }
+              },
+              "documentSha256": "c130fb7e67fa8a2fba9e5a2f8f734ed86889527b6961bcb700822258893fc5e3"
+            },
+            "fingerprint": "e96f37df2d79cd453d282153b6456d3d7c2ccfecc1684eeecab131ee1a141115",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "bf843ef2-86fa-4b30-ad6d-175a77db89d9"
+            }
+          },
+          "after": {
+            "id": "wb:phase5-infrastructure-pilot:cdb2f6f0c7787580ce30f04aa3237e99",
+            "kind": "RequirementUsage",
+            "rawKind": "RequirementUsage",
+            "name": "failoverNotification",
+            "qualifiedName": "InfrastructureRequirements::failoverNotification",
+            "ownerId": "wb:phase5-infrastructure-pilot:caaccea0f5cc098ae2ad7de7a370a962",
+            "source": {
+              "uri": "file:///private/var/folders/bf/m2vsd2f50mv0bpmhrt607xmh0000gn/T/sysml-workbench-phase5-m9NJ1y/infrastructure-pilot/model/requirements.sysml",
+              "workspacePath": "model/requirements.sysml",
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 4
+                },
+                "end": {
+                  "line": 16,
+                  "character": 5
+                }
+              },
+              "documentSha256": "d0fdfdc2db511bd3b902e410f03111877d0e94c4c5c4d51927248a459d6ada56"
+            },
+            "fingerprint": "64d4e2e147da1a911b8b3be976bf1b9a279c379e0f659eaeae609c3885462e4a",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-semantic-evidence",
+              "classification": "engine-metaclass",
+              "engineId": "4f9d556e-526b-4cb8-9305-534da07c71e7"
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:01f988fd2db3bed385438e043325f2f7",
+          "after": {
+            "id": "rel:01f988fd2db3bed385438e043325f2f7",
+            "kind": "containment",
+            "sourceId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "targetId": "wb:phase5-infrastructure-pilot:73f9f93ba84191ee0a35ccfbc5671071",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "EndFeatureMembership",
+              "features": [
+                "memberElement",
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:178ffc17c5fdf9b29534315fa4a2e55c",
+          "after": {
+            "id": "rel:178ffc17c5fdf9b29534315fa4a2e55c",
+            "kind": "interface",
+            "sourceId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "targetId": "wb:phase5-infrastructure-pilot:17066f69180e9446c3e8af5b8516ec91",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "InterfaceUsage",
+              "features": [
+                "target"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:1d2c1c7ea4488b0a31270185641c6fb1",
+          "after": {
+            "id": "rel:1d2c1c7ea4488b0a31270185641c6fb1",
+            "kind": "connection",
+            "sourceId": "wb:phase5-infrastructure-pilot:f4b4306dc15fff34132036b781ff4f0f",
+            "targetId": "wb:phase5-infrastructure-pilot:17066f69180e9446c3e8af5b8516ec91",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "InterfaceUsage",
+              "features": [
+                "source",
+                "target"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:42670416be34cd8c2a66ff55c507b43c",
+          "after": {
+            "id": "rel:42670416be34cd8c2a66ff55c507b43c",
+            "kind": "interface",
+            "sourceId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "targetId": "wb:phase5-infrastructure-pilot:f4b4306dc15fff34132036b781ff4f0f",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "InterfaceUsage",
+              "features": [
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:b4611618212e1b92891169729bbe7c02",
+          "after": {
+            "id": "rel:b4611618212e1b92891169729bbe7c02",
+            "kind": "containment",
+            "sourceId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "targetId": "wb:phase5-infrastructure-pilot:b4a4e91f098c377157f70bc84f5e5d34",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "EndFeatureMembership",
+              "features": [
+                "memberElement",
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "kind": "relationship-created",
+          "relationshipId": "rel:e7e09ba4654a83fb245c73e0ffa9d035",
+          "after": {
+            "id": "rel:e7e09ba4654a83fb245c73e0ffa9d035",
+            "kind": "containment",
+            "sourceId": "wb:phase5-infrastructure-pilot:667c3cc710b84be9d3bf34c6186d5609",
+            "targetId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+            "provenance": {
+              "authority": "qualified-language-engine",
+              "extraction": "pilot-emf-explicit-reference",
+              "engineMetaclass": "OwningMembership",
+              "features": [
+                "memberElement",
+                "source"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "reviews": [
+    {
+      "schemaVersion": 1,
+      "id": "RVW-PILOT-001",
+      "title": "Regional telemetry interface review",
+      "baseline": "git:71e89a28b84211677b75e7cd348a3fdbcac56516",
+      "baselineSnapshotSha256": "faa2844b6d50adaa74b24559ce8a0b336d1b381eb4ed6feddc1eded2ba8c8ecc",
+      "scope": {
+        "query": {
+          "schemaVersion": 1,
+          "roots": [
+            "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1"
+          ],
+          "mode": "neighbourhood",
+          "depth": 3,
+          "maxResults": 500
+        }
+      },
+      "status": "closed",
+      "participants": [
+        {
+          "role": "chair",
+          "name": "phase5-qualification-engineer"
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-001",
+          "elementId": "wb:phase5-infrastructure-pilot:05ec4b38bba5e61965196ee1d69531b1",
+          "anchorFingerprint": "f5be7b6b2a359e3aca48936d366676092b13e4a4a441cfc269b8087397a9dd3e",
+          "severity": "major",
+          "category": "interface",
+          "statement": "Confirm organizational ownership and verification for the backup telemetry path.",
+          "owner": "interface-owner",
+          "disposition": "closed",
+          "evidence": [],
+          "createdAt": "2026-07-25T18:12:00.000Z",
+          "createdBy": "phase5-qualification-engineer",
+          "updatedAt": "2026-07-25T18:13:00.000Z",
+          "history": [
+            {
+              "at": "2026-07-25T18:12:00.000Z",
+              "actor": "phase5-qualification-engineer",
+              "action": "finding-created"
+            },
+            {
+              "at": "2026-07-25T18:13:00.000Z",
+              "actor": "interface-owner",
+              "action": "finding-disposition",
+              "from": "open",
+              "to": "closed",
+              "note": "Ownership assigned and verification action accepted for implementation."
+            }
+          ],
+          "response": "Ownership assigned and verification action accepted for implementation."
+        }
+      ],
+      "createdAt": "2026-07-25T18:11:00.000Z",
+      "createdBy": "phase5-qualification-engineer",
+      "updatedAt": "2026-07-25T18:14:00.000Z",
+      "history": [
+        {
+          "at": "2026-07-25T18:11:00.000Z",
+          "actor": "phase5-qualification-engineer",
+          "action": "review-created"
+        },
+        {
+          "at": "2026-07-25T18:12:00.000Z",
+          "actor": "phase5-qualification-engineer",
+          "action": "finding-added",
+          "note": "F-001"
+        },
+        {
+          "at": "2026-07-25T18:13:00.000Z",
+          "actor": "interface-owner",
+          "action": "finding-disposition",
+          "note": "F-001:open->closed"
+        },
+        {
+          "at": "2026-07-25T18:14:00.000Z",
+          "actor": "phase5-qualification-engineer",
+          "action": "review-status:in-review->closed",
+          "note": "All findings have an approved disposition."
+        }
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "schemaVersion": 1,
+      "reportEngineVersion": "1.0.0",
+      "reportKind": "interface-register",
+      "title": "Interface Register",
+      "provenance": {
+        "workspace": {
+          "id": "phase5-infrastructure-pilot",
+          "name": "Regional telemetry and control interface assurance pilot"
+        },
+        "commitSha": "71e89a28b84211677b75e7cd348a3fdbcac56516",
+        "baseline": "pilot-baseline-b",
+        "languageRelease": "2026-05",
+        "workbenchVersion": "0.6.0",
+        "rulePackVersion": "1.0.0",
+        "viewConfiguration": "views/pilot-interface-assurance.json",
+        "generatedAt": "2026-07-25T18:15:00.000Z",
+        "unresolvedDiagnostics": 0,
+        "exclusions": []
+      },
+      "artifacts": [
+        {
+          "format": "html",
+          "path": "generated/reports/pilot-interface-register/pilot-interface-register.html",
+          "sha256": "3f30fe35a0e37e9a27d0391c4c6810df5e7e300e80f791588721549ad3445bc1"
+        },
+        {
+          "format": "pdf",
+          "path": "generated/reports/pilot-interface-register/pilot-interface-register.pdf",
+          "sha256": "0493718e0412b4671ab49c7ebc2ba641b43292e71be2fa1210ded9cb2ea2af50"
+        },
+        {
+          "format": "csv",
+          "path": "generated/reports/pilot-interface-register/pilot-interface-register.csv",
+          "sha256": "beeeb1c0812eace8c6ec8549d4cb3e3b228597086178aa337e0eeef79770dc98"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "reportEngineVersion": "1.0.0",
+      "reportKind": "semantic-change-impact",
+      "title": "Semantic Change Impact",
+      "provenance": {
+        "workspace": {
+          "id": "phase5-infrastructure-pilot",
+          "name": "Regional telemetry and control interface assurance pilot"
+        },
+        "commitSha": "71e89a28b84211677b75e7cd348a3fdbcac56516",
+        "baseline": "pilot-baseline-a",
+        "languageRelease": "2026-05",
+        "workbenchVersion": "0.6.0",
+        "rulePackVersion": "1.0.0",
+        "viewConfiguration": null,
+        "generatedAt": "2026-07-25T18:16:00.000Z",
+        "unresolvedDiagnostics": 0,
+        "exclusions": []
+      },
+      "artifacts": [
+        {
+          "format": "html",
+          "path": "generated/reports/pilot-semantic-change/pilot-semantic-change.html",
+          "sha256": "08e7bb0a59a540654611214bbff2e49beb8cf28e27d3b2b5991757ed78b8555c"
+        },
+        {
+          "format": "pdf",
+          "path": "generated/reports/pilot-semantic-change/pilot-semantic-change.pdf",
+          "sha256": "9935c8c2dbcd7c1aae618e4df0f6a3c5a75c8b03f0b255a16b0a40578f392d08"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "reportEngineVersion": "1.0.0",
+      "reportKind": "review-closure",
+      "title": "Review Closure",
+      "provenance": {
+        "workspace": {
+          "id": "phase5-infrastructure-pilot",
+          "name": "Regional telemetry and control interface assurance pilot"
+        },
+        "commitSha": "71e89a28b84211677b75e7cd348a3fdbcac56516",
+        "baseline": "pilot-baseline-b",
+        "languageRelease": "2026-05",
+        "workbenchVersion": "0.6.0",
+        "rulePackVersion": "1.0.0",
+        "viewConfiguration": null,
+        "generatedAt": "2026-07-25T18:17:00.000Z",
+        "unresolvedDiagnostics": 0,
+        "exclusions": []
+      },
+      "artifacts": [
+        {
+          "format": "html",
+          "path": "generated/reports/pilot-review-closure/pilot-review-closure.html",
+          "sha256": "8a9d818edd4c8ffd668f906c0534520d3805d461215aab82edd6b9e1bb8d806f"
+        },
+        {
+          "format": "pdf",
+          "path": "generated/reports/pilot-review-closure/pilot-review-closure.pdf",
+          "sha256": "2335c4536835cafea3f9d6dec572833719762c2f4cced04f768a32216b08d201"
+        }
+      ]
+    }
+  ]
+}
