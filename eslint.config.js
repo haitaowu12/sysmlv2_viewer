@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'dist-workbench']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -26,6 +26,20 @@ export default defineConfig([
   },
   {
     files: ['src/test/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    files: [
+      'packages/**/*.{ts,tsx}',
+      'apps/**/*.{ts,tsx}',
+      'scripts/**/*.{ts,tsx}',
+    ],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },

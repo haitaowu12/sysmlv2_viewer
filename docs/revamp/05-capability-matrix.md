@@ -1,8 +1,9 @@
 # Language and Workbench Capability Matrix
 
-Profile version: `sysml-2.0-kerml-1.0/workbench-0`
+Profile version: `sysml-2.0-kerml-1.0/workbench-1`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Phase 0 rule: all target states remain **planned** until mandatory tests exist
+Gate P1 rule: only the bounded capabilities below are claimed; Phase 2+ targets
+remain planned until their mandatory tests exist.
 
 ## Status vocabulary
 
@@ -53,6 +54,29 @@ Phase 0 rule: all target states remain **planned** until mandatory tests exist
 | document/workspace symbols | containment tree only | qualify P1 | LSP-SYMBOL-001 |
 | formatting | unsupported | qualify P1 | LSP-FMT-001 |
 | quick fixes/code actions | unsupported | qualify P1 | LSP-ACTION-001 |
+
+## Gate P1 qualified language-service profile
+
+| Capability | P1 status | Authority / limitation | Evidence |
+|---|---|---|---|
+| multi-file workspace inventory | supported | Workbench Service; source-tree roots only | WS-LOAD-001 |
+| exact source-tree standard library | supported | VinQut/Pilot; official 95-document workspace | LANG-LIB-001 |
+| direct `.kpar` archives | unsupported | fail closed; safe loader not implemented | LANG-KPAR-001 |
+| diagnostics | partial | VinQut authoritative for tested fixtures/library; no conformance claim | LSP-DIAG-001/002 |
+| document/workspace symbols | partial | VinQut | LSP-SYMBOL-001 |
+| definition | supported in qualified sample | VinQut cross-file result | LSP-DEF-001 |
+| references | partial | VinQut returns duplicate/coarse results; P2 normalization required | LSP-REF-001 |
+| hover | supported in qualified sample | VinQut | LSP-HOVER-001 |
+| completion | partial, proposal-only | Spec42; non-authoritative | LSP-COMP-001 |
+| semantic tokens | partial, presentation-only | Spec42; non-authoritative | LSP-TOKEN-001 |
+| rename | proposal-only | Spec42; cannot apply before P3 validation | LSP-RENAME-001 |
+| formatting | proposal-only | Spec42; cannot apply before P3 validation | LSP-FMT-001 |
+| full-document incremental sync | supported | both selected engines; increasing versions | LSP-CHANGE-001 |
+| timeout/cancel/restart | supported | visible failure; no fallback | LSP-RECOVER-001 |
+| normalized semantic snapshot | unsupported at P1 | mandatory first P2 slice | SEM-SNAP-001 |
+| source preservation | partial | inventory byte stability only; edit safety is P3 | LANG-OPAQUE-001 |
+| medium scale | conditional | warm p95 1.659 s; cold p95 6.109 s | BENCH-MEDIUM-001 |
+| large scale | experimental | no crash; excessive memory and latency | BENCH-LARGE-001 |
 
 ## Workbench capabilities
 

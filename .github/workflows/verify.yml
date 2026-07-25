@@ -1,0 +1,67 @@
+name: Verify workbench foundation
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Verify Phase 1 foundation
+        run: npm run verify:phase1
+
+      - name: Confirm candidate qualification fails closed without engines
+        shell: bash
+        run: |
+          set +e
+          npm run qualify:engines -- --output "$RUNNER_TEMP/qualification"
+          status=$?
+          set -e
+          test "$status" -eq 2
+          node -e '
+            const report = require(process.argv[1]);
+            if (report.outcome !== "blocked" || report.selection !== null) process.exit(1);
+          ' "$RUNNER_TEMP/qualification/qualification-report.json"
+
+      - name: Confirm fixture qualification fails closed without engines
+        shell: bash
+        run: |
+          set +e
+          npm run qualify:fixtures -- --output "$RUNNER_TEMP/fixture-qualification"
+          result=$?
+          set -e
+          test "$result" -eq 2
+          node -e '
+            const report = require(process.argv[1]);
+            if (report.outcome !== "blocked" || report.selection !== null) process.exit(1);
+          ' "$RUNNER_TEMP/fixture-qualification/fixture-qualification-report.json"
+
+      - name: Upload control qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-control-qualification
+          path: |
+            ${{ runner.temp }}/qualification/qualification-report.json
+            ${{ runner.temp }}/fixture-qualification/fixture-qualification-report.json
+          if-no-files-found: error

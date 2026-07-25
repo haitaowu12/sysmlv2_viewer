@@ -1,0 +1,1021 @@
+{
+  "schemaVersion": 1,
+  "selection": {
+    "outcome": "HYBRID GO",
+    "semanticAuthority": "vinqut",
+    "authoringAssistant": "spec42"
+  },
+  "qualificationRelease": {
+    "name": "2026-05",
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Release",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "behavioralOracle": {
+    "name": "SysML v2 Pilot Implementation",
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation",
+    "commit": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa"
+  },
+  "sourceEvidence": [
+    {
+      "kind": "exact-library-fixtures",
+      "sha256": "8b64339820145709a078aa6bbbd3c294c9afc1ba60f4ef628d5065f06ccd6143"
+    },
+    {
+      "kind": "language-operations",
+      "sha256": "c45277ad3981cbf23f94829b69b9db7853763be1574b15db5588df38e3faa20a"
+    },
+    {
+      "kind": "medium-benchmark",
+      "sha256": "35e6e26a9f7e81d282ffbde155536506e4cd9da64a83834e0ac086abe6b079af"
+    },
+    {
+      "kind": "large-benchmark",
+      "sha256": "e9bf66a29ff0cdbe0ca2d059b34d0cd16d890718528e91d1f5f6620ccffacb39"
+    }
+  ],
+  "fixtureComparisons": [
+    {
+      "id": "spec42",
+      "status": "failed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "pass",
+          "documentCount": 3,
+          "diagnostics": {
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 1005
+        },
+        {
+          "id": "standard-library",
+          "status": "fail",
+          "documentCount": 95,
+          "diagnostics": {
+            "errors": 859,
+            "warnings": 774,
+            "information": 3,
+            "hints": 0
+          },
+          "durationMs": 4375
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "documentCount": 1,
+          "diagnostics": {
+            "errors": 1,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 913
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "pilot-service",
+      "status": "blocked",
+      "fixtures": []
+    },
+    {
+      "id": "daltskin",
+      "status": "failed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "fail",
+          "documentCount": 3,
+          "diagnostics": {
+            "errors": 0,
+            "warnings": 0,
+            "information": 2,
+            "hints": 0
+          },
+          "durationMs": 1201
+        },
+        {
+          "id": "standard-library",
+          "status": "pass",
+          "documentCount": 95,
+          "diagnostics": {
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 10130
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "documentCount": 1,
+          "diagnostics": {
+            "errors": 1,
+            "warnings": 1,
+            "information": 1,
+            "hints": 0
+          },
+          "durationMs": 1194
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "vinqut",
+      "status": "observed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "pass",
+          "documentCount": 3,
+          "diagnostics": {
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 4745
+        },
+        {
+          "id": "standard-library",
+          "status": "pass",
+          "documentCount": 95,
+          "diagnostics": {
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 26885
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "documentCount": 1,
+          "diagnostics": {
+            "errors": 1,
+            "warnings": 0,
+            "information": 0,
+            "hints": 0
+          },
+          "durationMs": 4609
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "official-hybrid-spike",
+      "status": "blocked",
+      "fixtures": []
+    },
+    {
+      "id": "legacy-control",
+      "status": "blocked",
+      "fixtures": []
+    }
+  ],
+  "operationComparisons": [
+    {
+      "id": "spec42",
+      "status": "observed",
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "hints": 0
+      },
+      "capabilities": {
+        "workspaceLifecycle": true,
+        "diagnostics": true,
+        "documentSymbols": true,
+        "workspaceSymbols": true,
+        "definitions": true,
+        "references": true,
+        "completion": true,
+        "hover": true,
+        "semanticTokens": true,
+        "rename": true,
+        "formatting": true,
+        "semanticSnapshot": false
+      },
+      "operations": {
+        "documentSymbols": {
+          "status": "observed",
+          "result": {
+            "count": 1,
+            "names": [
+              "Phase1Sample"
+            ]
+          }
+        },
+        "definition": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "libraries/command-library.sysml",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 4
+                },
+                "end": {
+                  "line": 1,
+                  "character": 25
+                }
+              }
+            }
+          ]
+        },
+        "references": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 13
+                },
+                "end": {
+                  "line": 3,
+                  "character": 20
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 19
+                },
+                "end": {
+                  "line": 7,
+                  "character": 26
+                }
+              }
+            }
+          ]
+        },
+        "hover": {
+          "status": "observed",
+          "result": {
+            "format": "markdown",
+            "value": "```sysml\nport def CommandPort;\n```\n\n*Kind:* `port def`\n\n*Qualified name:* `Phase1Library::CommandPort`\n\n*Container:* `Phase1Library`\n\n*Defined in:* /private/tmp/sysml-workbench-production/fixtures/workspaces/phase1-sample/libraries/command-library.sysml\n\n",
+            "range": {
+              "start": {
+                "line": 4,
+                "character": 27
+              },
+              "end": {
+                "line": 4,
+                "character": 38
+              }
+            }
+          }
+        },
+        "completion": {
+          "status": "observed",
+          "result": {
+            "count": 41,
+            "labels": [
+              "abstract",
+              "action",
+              "action def",
+              "allocate",
+              "attribute",
+              "attribute",
+              "bind",
+              "connect",
+              "connection",
+              "constraint",
+              "def",
+              "do",
+              "entry",
+              "exhibit",
+              "exit",
+              "import",
+              "in",
+              "interface",
+              "interface def",
+              "item",
+              "library",
+              "out",
+              "package",
+              "part",
+              "part"
+            ],
+            "truncated": true
+          }
+        },
+        "semanticTokens": {
+          "status": "observed",
+          "result": {
+            "tokenCount": 24,
+            "legend": {
+              "tokenTypes": [
+                "keyword",
+                "string",
+                "number",
+                "comment",
+                "operator",
+                "variable",
+                "type",
+                "namespace",
+                "class",
+                "interface",
+                "property",
+                "function"
+              ],
+              "tokenModifiers": []
+            }
+          }
+        },
+        "rename": {
+          "status": "observed",
+          "result": {
+            "changedFiles": 1,
+            "editCount": 2
+          }
+        },
+        "formatting": {
+          "status": "observed",
+          "result": {
+            "editCount": 1
+          }
+        },
+        "incrementalNoop": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 0,
+              "hints": 0
+            },
+            "snapshotChanged": false
+          }
+        },
+        "restart": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 0,
+              "hints": 0
+            },
+            "deterministicSnapshot": true
+          }
+        }
+      }
+    },
+    {
+      "id": "pilot-service",
+      "status": "blocked"
+    },
+    {
+      "id": "daltskin",
+      "status": "observed",
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 2,
+        "hints": 0
+      },
+      "capabilities": {
+        "workspaceLifecycle": true,
+        "diagnostics": true,
+        "documentSymbols": true,
+        "workspaceSymbols": false,
+        "definitions": true,
+        "references": true,
+        "completion": true,
+        "hover": true,
+        "semanticTokens": true,
+        "rename": true,
+        "formatting": true,
+        "semanticSnapshot": false
+      },
+      "operations": {
+        "documentSymbols": {
+          "status": "observed",
+          "result": {
+            "count": 1,
+            "names": [
+              "Phase1Sample"
+            ]
+          }
+        },
+        "definition": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "libraries/command-library.sysml",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 13
+                },
+                "end": {
+                  "line": 1,
+                  "character": 24
+                }
+              }
+            }
+          ]
+        },
+        "references": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 13
+                },
+                "end": {
+                  "line": 3,
+                  "character": 20
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 9
+                },
+                "end": {
+                  "line": 7,
+                  "character": 16
+                }
+              }
+            }
+          ]
+        },
+        "hover": {
+          "status": "observed",
+          "result": null
+        },
+        "completion": {
+          "status": "observed",
+          "result": {
+            "count": 44,
+            "labels": [
+              "CommandPort",
+              "Vehicle",
+              "VehicleCommandRequirement",
+              "abstract",
+              "action",
+              "action def",
+              "alias",
+              "allocation def",
+              "attribute",
+              "attribute def",
+              "bind",
+              "calc def",
+              "comment",
+              "connect",
+              "connection",
+              "connection def",
+              "constraint def",
+              "derived",
+              "doc",
+              "enum def",
+              "flow",
+              "import",
+              "in",
+              "inout",
+              "interface def"
+            ],
+            "truncated": true
+          }
+        },
+        "semanticTokens": {
+          "status": "observed",
+          "result": {
+            "tokenCount": 16,
+            "legend": {
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "variable",
+                "property",
+                "function",
+                "keyword",
+                "comment",
+                "string",
+                "number",
+                "operator",
+                "enum",
+                "interface"
+              ],
+              "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "abstract"
+              ]
+            }
+          }
+        },
+        "rename": {
+          "status": "observed",
+          "result": {
+            "changedFiles": 1,
+            "editCount": 3
+          }
+        },
+        "formatting": {
+          "status": "observed",
+          "result": {
+            "editCount": 0
+          }
+        },
+        "incrementalNoop": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 2,
+              "hints": 0
+            },
+            "snapshotChanged": false
+          }
+        },
+        "restart": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 2,
+              "hints": 0
+            },
+            "deterministicSnapshot": true
+          }
+        }
+      }
+    },
+    {
+      "id": "vinqut",
+      "status": "observed",
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "hints": 0
+      },
+      "capabilities": {
+        "workspaceLifecycle": true,
+        "diagnostics": true,
+        "documentSymbols": true,
+        "workspaceSymbols": true,
+        "definitions": true,
+        "references": true,
+        "completion": true,
+        "hover": true,
+        "semanticTokens": true,
+        "rename": false,
+        "formatting": true,
+        "semanticSnapshot": false
+      },
+      "operations": {
+        "documentSymbols": {
+          "status": "observed",
+          "result": {
+            "count": 1,
+            "names": [
+              "Phase1Sample"
+            ]
+          }
+        },
+        "definition": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "libraries/command-library.sysml",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 4
+                },
+                "end": {
+                  "line": 1,
+                  "character": 25
+                }
+              }
+            }
+          ]
+        },
+        "references": {
+          "status": "observed",
+          "result": [
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 8,
+                  "character": 1
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 4,
+                  "character": 8
+                },
+                "end": {
+                  "line": 4,
+                  "character": 39
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 4
+                },
+                "end": {
+                  "line": 5,
+                  "character": 5
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 4
+                },
+                "end": {
+                  "line": 5,
+                  "character": 5
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 19
+                },
+                "end": {
+                  "line": 7,
+                  "character": 26
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 19
+                },
+                "end": {
+                  "line": 7,
+                  "character": 26
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 4
+                },
+                "end": {
+                  "line": 7,
+                  "character": 27
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 4
+                },
+                "end": {
+                  "line": 7,
+                  "character": 27
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 4
+                },
+                "end": {
+                  "line": 7,
+                  "character": 27
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 8,
+                  "character": 1
+                }
+              }
+            },
+            {
+              "file": "model/vehicle.sysml",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 8,
+                  "character": 1
+                }
+              }
+            }
+          ]
+        },
+        "hover": {
+          "status": "observed",
+          "result": {
+            "format": "markdown",
+            "value": "**PortDefinition** `CommandPort`\n\n*Qualified name:* `Phase1Library::CommandPort`",
+            "range": {
+              "start": {
+                "line": 4,
+                "character": 27
+              },
+              "end": {
+                "line": 4,
+                "character": 38
+              }
+            }
+          }
+        },
+        "completion": {
+          "status": "observed",
+          "result": {
+            "count": 0,
+            "labels": [],
+            "truncated": false
+          }
+        },
+        "semanticTokens": {
+          "status": "observed",
+          "result": {
+            "tokenCount": 0,
+            "legend": {
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "interface",
+                "struct",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "event",
+                "function",
+                "method",
+                "macro",
+                "keyword",
+                "modifier",
+                "comment",
+                "string",
+                "number",
+                "regexp",
+                "operator",
+                "decorator"
+              ],
+              "tokenModifiers": [
+                "abstract",
+                "async",
+                "declaration",
+                "defaultLibrary",
+                "definition",
+                "deprecated",
+                "documentation",
+                "modification",
+                "readonly",
+                "static"
+              ]
+            }
+          }
+        },
+        "rename": {
+          "status": "unsupported"
+        },
+        "formatting": {
+          "status": "observed",
+          "result": {
+            "editCount": 0
+          }
+        },
+        "incrementalNoop": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 0,
+              "hints": 0
+            },
+            "snapshotChanged": false
+          }
+        },
+        "restart": {
+          "status": "observed",
+          "result": {
+            "indexState": "ready",
+            "diagnostics": {
+              "errors": 0,
+              "warnings": 0,
+              "information": 0,
+              "hints": 0
+            },
+            "deterministicSnapshot": true
+          }
+        }
+      }
+    },
+    {
+      "id": "official-hybrid-spike",
+      "status": "blocked"
+    },
+    {
+      "id": "legacy-control",
+      "status": "blocked"
+    }
+  ],
+  "benchmarks": [
+    {
+      "profile": {
+        "name": "medium",
+        "files": 100,
+        "declaredElements": 10000,
+        "bytes": 281190
+      },
+      "repetitions": 5,
+      "distributions": {
+        "coldOpenMs": {
+          "min": 5411,
+          "median": 5788,
+          "p95": 6109,
+          "max": 6109
+        },
+        "warmOpenMs": {
+          "min": 1569,
+          "median": 1611,
+          "p95": 1659,
+          "max": 1659
+        }
+      },
+      "allRunsValid": true,
+      "peakLanguageProcessRssBytes": {
+        "semantic": 471515136,
+        "authoring": 615694336
+      }
+    },
+    {
+      "profile": {
+        "name": "large",
+        "files": 500,
+        "declaredElements": 50000,
+        "bytes": 1449890
+      },
+      "repetitions": 5,
+      "distributions": {
+        "coldOpenMs": {
+          "min": 12857,
+          "median": 13394,
+          "p95": 16493,
+          "max": 16493
+        },
+        "warmOpenMs": {
+          "min": 10869,
+          "median": 11744,
+          "p95": 12104,
+          "max": 12104
+        }
+      },
+      "allRunsValid": true,
+      "peakLanguageProcessRssBytes": {
+        "semantic": 1309753344,
+        "authoring": 3633659904
+      }
+    }
+  ]
+}

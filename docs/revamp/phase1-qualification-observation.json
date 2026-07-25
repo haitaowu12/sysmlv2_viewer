@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-24",
+  "outcome": "incomplete",
+  "selection": null,
+  "qualificationRelease": {
+    "name": "2026-05",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "behavioralOracle": {
+    "name": "SysML v2 Pilot Implementation",
+    "commit": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa"
+  },
+  "fixture": "fixtures/workspaces/phase1-sample/sysml-workspace.yaml",
+  "candidates": [
+    {
+      "id": "spec42",
+      "pin": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "status": "observed",
+      "durationMs": 228,
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "hints": 0
+      },
+      "operations": {
+        "documentSymbols": "observed",
+        "crossFileDefinition": "observed",
+        "references": {
+          "status": "observed",
+          "count": 2
+        },
+        "hover": "observed",
+        "completion": {
+          "status": "observed",
+          "count": 41
+        }
+      },
+      "rawEvidence": {
+        "stdoutSha256": "832ac453d427407a153fdf096c642d8ce69bae1b48b432bd3e5606ca71eeb9ea",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdoutBytes": 18338,
+        "stderrBytes": 0,
+        "captureTruncated": false
+      }
+    },
+    {
+      "id": "daltskin",
+      "pin": "6838e9c775f15fc3a3662ea294f13809a1c21577",
+      "status": "observed",
+      "durationMs": 224,
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "hints": 0
+      },
+      "operations": {
+        "documentSymbols": "observed",
+        "crossFileDefinition": "observed",
+        "references": {
+          "status": "observed",
+          "count": 2,
+          "note": "range disagreement"
+        },
+        "hover": "advertised-but-null",
+        "completion": {
+          "status": "observed",
+          "count": 44
+        }
+      },
+      "rawEvidence": {
+        "stdoutSha256": "2bb3f4564f62bccac0b97bb860c3ac0dda5d8a3b4273baec9f84483ab9930769",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdoutBytes": 15999,
+        "stderrBytes": 0,
+        "captureTruncated": false
+      }
+    },
+    {
+      "id": "vinqut",
+      "pin": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "pilotPin": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "status": "observed",
+      "durationMs": 4648,
+      "diagnostics": {
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "hints": 0
+      },
+      "operations": {
+        "documentSymbols": "observed",
+        "crossFileDefinition": "observed",
+        "references": {
+          "status": "observed",
+          "count": 16,
+          "note": "noisy and duplicate ranges"
+        },
+        "hover": "observed",
+        "completion": {
+          "status": "observed",
+          "count": 0
+        }
+      },
+      "rawEvidence": {
+        "stdoutSha256": "fb298dd54e4f68f1fffc91e312102e84922e53d46f1f840e4974b485c1e7c3ea",
+        "stderrSha256": "40288229b559cb012ce28e926f7b86829dfa7499de4746c6fc1aadc75fcaa245",
+        "stdoutBytes": 7656,
+        "stderrBytes": 556,
+        "captureTruncated": false
+      }
+    },
+    {
+      "id": "pilot-service",
+      "pin": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "status": "blocked",
+      "reason": "Product-owned headless executable not yet packaged"
+    },
+    {
+      "id": "official-hybrid-spike",
+      "pin": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "status": "blocked",
+      "reason": "Adapter lane not implemented"
+    },
+    {
+      "id": "legacy-control",
+      "pin": "638e5aa1cc63ddb3a1c770f36432d6acedfbc541",
+      "status": "control-only"
+    }
+  ]
+}

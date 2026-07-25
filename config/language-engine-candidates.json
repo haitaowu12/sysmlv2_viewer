@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "qualificationRelease": {
+    "name": "2026-05",
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Release",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "behavioralOracle": {
+    "name": "SysML v2 Pilot Implementation",
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation",
+    "commit": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa"
+  },
+  "candidates": [
+    {
+      "id": "spec42",
+      "name": "Spec42",
+      "version": "v0.46.0",
+      "commit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "license": "MIT",
+      "adapter": "lsp-stdio",
+      "commandEnvironment": "SYSML_WORKBENCH_SPEC42_COMMAND",
+      "argumentsEnvironment": "SYSML_WORKBENCH_SPEC42_ARGUMENTS_JSON"
+    },
+    {
+      "id": "pilot-service",
+      "name": "Official Pilot local service",
+      "version": "2026-05",
+      "commit": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "license": "EPL-2.0",
+      "adapter": "lsp-stdio",
+      "commandEnvironment": "SYSML_WORKBENCH_PILOT_COMMAND",
+      "argumentsEnvironment": "SYSML_WORKBENCH_PILOT_ARGUMENTS_JSON"
+    },
+    {
+      "id": "daltskin",
+      "name": "daltskin/sysml-v2-lsp",
+      "version": "v0.24.0",
+      "commit": "6838e9c775f15fc3a3662ea294f13809a1c21577",
+      "license": "MIT",
+      "adapter": "lsp-stdio",
+      "commandEnvironment": "SYSML_WORKBENCH_DALTSKIN_COMMAND",
+      "argumentsEnvironment": "SYSML_WORKBENCH_DALTSKIN_ARGUMENTS_JSON"
+    },
+    {
+      "id": "vinqut",
+      "name": "VinQut/sysmlv2-lsp rebuilt against the selected Pilot",
+      "version": "373dfb9",
+      "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "license": "MIT wrapper; Pilot obligations apply",
+      "adapter": "lsp-stdio",
+      "commandEnvironment": "SYSML_WORKBENCH_VINQUT_COMMAND",
+      "argumentsEnvironment": "SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON"
+    },
+    {
+      "id": "official-hybrid-spike",
+      "name": "Official-component hybrid spike",
+      "version": "unbuilt",
+      "commit": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "license": "EPL-2.0",
+      "adapter": "unimplemented"
+    },
+    {
+      "id": "legacy-control",
+      "name": "Current hand-written parser negative control",
+      "version": "phase0-baseline",
+      "commit": "638e5aa1cc63ddb3a1c770f36432d6acedfbc541",
+      "license": "repository license",
+      "adapter": "legacy-control"
+    }
+  ]
+}

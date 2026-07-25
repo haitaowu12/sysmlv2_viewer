@@ -129,4 +129,8 @@ Gate: AI cannot mutate without exact approved operation; invented identities are
 
 The owner approved ADR-001–008 and the recommended decision packet on 2026-07-24 against Phase 0 head `dc276c586dbac5d41150fe62ea9f539c1d29b3ea`.
 
-Phase 1 is authorized but not started. Authorization is limited to **Engine Qualification and Workbench Service Foundation** and does not preselect Spec42.
+Phase 1 was accepted with a bounded **HYBRID GO** decision on 2026-07-25.
+VinQut/Pilot is semantic authority and Spec42 is non-authoritative authoring
+assistance. Exact evidence and carried conditions are recorded in
+`docs/revamp/18-phase1-gate-decision.md`. Phase 2 is authorized; production and
+release claims remain blocked.

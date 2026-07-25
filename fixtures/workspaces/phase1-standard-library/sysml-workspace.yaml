@@ -1,0 +1,9 @@
+schemaVersion: 1
+id: phase1-standard-library
+name: Phase 1 standard library probe
+sourceRoots:
+  - model
+libraries: []
+activeConfiguration: default
+modelConfigurations:
+  default: {}

@@ -1,0 +1,14 @@
+schemaVersion: 1
+id: phase1-sample
+name: Phase 1 multi-file qualification sample
+sourceRoots:
+  - model
+libraries:
+  - libraries
+activeConfiguration: default
+modelConfigurations:
+  default:
+    sourceRoots:
+      - model
+    libraries:
+      - libraries

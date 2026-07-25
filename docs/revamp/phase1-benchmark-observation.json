@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-24",
+  "qualificationRelease": {
+    "name": "2026-05",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "profiles": {
+    "medium": {
+      "files": 100,
+      "declaredElements": 10000,
+      "bytes": 281190
+    },
+    "large": {
+      "files": 500,
+      "declaredElements": 50000,
+      "bytes": 1449890
+    }
+  },
+  "candidates": [
+    {
+      "id": "spec42",
+      "pin": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "medium": {
+        "coldOpenMs": 1250,
+        "warmOpenMs": 1466,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": true,
+        "diagnostics": {
+          "warning": {
+            "duplicate_namespace_member": 300
+          }
+        },
+        "result": "fail-unexpected-diagnostics"
+      },
+      "large": {
+        "coldOpenMs": 21883,
+        "warmOpenMs": 12732,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": true,
+        "diagnostics": {},
+        "result": "observed-non-monotonic"
+      }
+    },
+    {
+      "id": "daltskin",
+      "pin": "6838e9c775f15fc3a3662ea294f13809a1c21577",
+      "medium": {
+        "coldOpenMs": 1524,
+        "warmOpenMs": 1244,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": true,
+        "diagnostics": {
+          "warning": {
+            "missing-doc": 10000
+          },
+          "information": {
+            "unused-definition": 10000
+          }
+        },
+        "result": "observed"
+      },
+      "large": {
+        "coldOpenMs": 4584,
+        "warmOpenMs": 20904,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": false,
+        "coldDiagnosticCount": 2600,
+        "warmDiagnosticCount": 71600,
+        "rawCaptureTruncated": true,
+        "result": "fail-diagnostic-stability"
+      }
+    },
+    {
+      "id": "vinqut",
+      "pin": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "pilotPin": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "medium": {
+        "coldOpenMs": 5655,
+        "warmOpenMs": 1101,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": true,
+        "diagnostics": {},
+        "result": "fail-cold-first-content-target"
+      },
+      "large": {
+        "coldOpenMs": 6615,
+        "warmOpenMs": 2500,
+        "deterministicSnapshot": true,
+        "diagnosticsStable": true,
+        "diagnostics": {},
+        "result": "observed"
+      }
+    }
+  ],
+  "limitations": [
+    "single run per candidate and profile",
+    "synthetic declarations only",
+    "client RSS excludes language-engine child process",
+    "not a p50 or p95 distribution",
+    "no standard-library content in benchmark workspaces"
+  ]
+}

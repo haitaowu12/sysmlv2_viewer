@@ -956,7 +956,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const { start, end } = node.location;
     const nodeSource = sourceCode.slice(start.offset, end.offset);
-    let newNodeSource = nodeSource;
+    let newNodeSource: string;
 
     switch (property) {
       case 'name': {
@@ -1078,7 +1078,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
 
     const relType = inferRelationshipType();
-    let codeToInsert = '';
+    let codeToInsert: string;
 
     switch (relType) {
       case 'part': {

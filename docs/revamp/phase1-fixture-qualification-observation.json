@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-24",
+  "outcome": "incomplete",
+  "selection": null,
+  "qualificationRelease": {
+    "name": "2026-05",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "fixtureManifest": "fixtures/language/fixture-manifest.json",
+  "candidates": [
+    {
+      "id": "spec42",
+      "pin": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "status": "failed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "pass",
+          "durationMs": 230,
+          "diagnosticCount": 0
+        },
+        {
+          "id": "standard-library",
+          "status": "fail",
+          "durationMs": 192,
+          "diagnostics": [
+            {
+              "severity": "warning",
+              "code": "unresolved_import_target",
+              "message": "Imported package/member 'ScalarValues::Real' could not be resolved in the semantic graph."
+            },
+            {
+              "severity": "warning",
+              "code": "unresolved_type_reference",
+              "message": "Type reference 'Real' for 'reading' could not be resolved in the semantic graph."
+            }
+          ]
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "durationMs": 182,
+          "diagnostics": [
+            {
+              "severity": "error",
+              "code": "missing_closing_brace",
+              "message": "missing closing '}'"
+            }
+          ]
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "pass",
+          "authority": "inventory-only"
+        }
+      ]
+    },
+    {
+      "id": "daltskin",
+      "pin": "6838e9c775f15fc3a3662ea294f13809a1c21577",
+      "status": "observed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "pass",
+          "durationMs": 247,
+          "diagnosticCount": 0
+        },
+        {
+          "id": "standard-library",
+          "status": "pass",
+          "durationMs": 194,
+          "diagnosticCount": 0,
+          "condition": "exact 2026-05 library alignment not yet proven"
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "durationMs": 253,
+          "diagnostics": [
+            {
+              "severity": "error",
+              "code": "LSP",
+              "message": "mismatched input at end of file"
+            }
+          ]
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "pass",
+          "authority": "inventory-only"
+        }
+      ]
+    },
+    {
+      "id": "vinqut",
+      "pin": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "pilotPin": "fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa",
+      "status": "failed",
+      "fixtures": [
+        {
+          "id": "valid-multifile",
+          "status": "pass",
+          "durationMs": 4989,
+          "diagnosticCount": 0
+        },
+        {
+          "id": "standard-library",
+          "status": "fail",
+          "durationMs": 4446,
+          "diagnostics": [
+            {
+              "severity": "error",
+              "code": "org.eclipse.xtext.diagnostics.Diagnostic.Linking",
+              "message": "Could not resolve ScalarValues::Real membership."
+            },
+            {
+              "severity": "error",
+              "code": "org.eclipse.xtext.diagnostics.Diagnostic.Linking",
+              "message": "Could not resolve Real type."
+            }
+          ]
+        },
+        {
+          "id": "malformed-recovery",
+          "status": "pass",
+          "durationMs": 4034,
+          "diagnostics": [
+            {
+              "severity": "error",
+              "code": "org.eclipse.xtext.diagnostics.Diagnostic.Syntax",
+              "message": "no viable alternative at end of file"
+            }
+          ]
+        },
+        {
+          "id": "byte-preservation-control",
+          "status": "pass",
+          "authority": "inventory-only"
+        }
+      ]
+    }
+  ],
+  "blockedCandidates": [
+    "pilot-service",
+    "official-hybrid-spike",
+    "legacy-control"
+  ]
+}
