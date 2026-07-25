@@ -98,6 +98,48 @@ describe('HybridLanguageAdapter', () => {
     expect(semantic.closeWorkspace).toHaveBeenCalledWith('hybrid-test')
     expect(authoring.closeWorkspace).toHaveBeenCalledWith('hybrid-test')
   })
+
+  it('returns authoritative diagnostics without waiting for authoring synchronization', async () => {
+    const semanticDiagnostics = [{
+      uri: workspace.documents[0]!.uri,
+      severity: 'warning' as const,
+      code: 'SEMANTIC',
+      message: 'authoritative',
+    }]
+    const semantic = adapter('semantic', semanticDiagnostics)
+    const authoring = adapter('authoring', [])
+    let releaseAuthoring!: () => void
+    vi.mocked(authoring.changeDocument!).mockImplementationOnce(
+      () => new Promise<LanguageDiagnostic[]>((resolve) => {
+        releaseAuthoring = () => resolve([])
+      }),
+    )
+    const hybrid = new HybridLanguageAdapter(semantic, authoring, {
+      adapterId: 'test/hybrid',
+      adapterVersion: '1',
+      engineName: 'test',
+      engineVersion: '1',
+      referenceRelease: 'test',
+      qualificationStatus: 'qualified',
+    })
+
+    await expect(
+      hybrid.changeDocument(workspace.documents[0]!.uri, 2, 'package Changed {}'),
+    ).resolves.toEqual(semanticDiagnostics)
+    expect(authoring.changeDocument).toHaveBeenCalledOnce()
+    let completionSettled = false
+    const completion = hybrid.completion(
+      workspace.documents[0]!.uri,
+      { line: 0, character: 0 },
+    ).then((value) => {
+      completionSettled = true
+      return value
+    })
+    await Promise.resolve()
+    expect(completionSettled).toBe(false)
+    releaseAuthoring()
+    await expect(completion).resolves.toEqual([{ label: 'authoring-completion' }])
+  })
 })
 
 function adapter(

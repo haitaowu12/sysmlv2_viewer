@@ -708,7 +708,7 @@ export class LspProcessAdapter implements LanguageAdapter {
   ): Promise<void> {
     const deadline = performance.now() + timeoutMs
     const quietPeriodMs = Math.min(
-      500,
+      125,
       Math.max(20, Math.floor(timeoutMs / 4)),
     )
     while (performance.now() < deadline) {

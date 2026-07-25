@@ -19,6 +19,7 @@ interface CliOptions {
   candidateManifest: string
   qualifiedRuntime: boolean
   runtimeLock: string
+  staticRoot?: string
 }
 
 const options = parseArguments(process.argv.slice(2))
@@ -58,6 +59,7 @@ if (options.transport === 'stdio') {
     address: options.address,
     port: options.port,
     allowedOrigins: options.origins,
+    staticRoot: options.staticRoot,
   })
   process.stderr.write(
     `${JSON.stringify({
@@ -87,6 +89,7 @@ function parseArguments(argumentsList: string[]): CliOptions {
     import.meta.dirname,
     '../../../config/language-engine-runtime-lock.json',
   )
+  let staticRoot: string | undefined
   const workspaceRoots: string[] = []
   const origins: string[] = []
 
@@ -121,6 +124,8 @@ function parseArguments(argumentsList: string[]): CliOptions {
       runtimeLock = resolve(
         requireArgument(argumentsList, ++index, argument),
       )
+    } else if (argument === '--static-root') {
+      staticRoot = resolve(requireArgument(argumentsList, ++index, argument))
     } else {
       throw new Error(`Unknown argument: ${argument}`)
     }
@@ -145,6 +150,7 @@ function parseArguments(argumentsList: string[]): CliOptions {
     candidateManifest,
     qualifiedRuntime,
     runtimeLock,
+    staticRoot,
   }
 }
 

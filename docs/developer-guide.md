@@ -1,103 +1,75 @@
-# SysML Viewer Developer Guide
+# SysML Engineering Workbench — Developer Guide
 
-## Architecture
+## Authority boundaries
 
-| Layer | Technology | Role |
-|-------|------------|------|
-| UI | React 19 + TypeScript | App shell, panels, modals, diagram views |
-| State | Zustand | Source, parsed model, view state, undo/redo, sync state |
-| Diagrams | React Flow | Interactive canvas, nodes, edges, controls, minimap |
-| Editor | Monaco | SysML source editing, syntax highlighting, diagnostics |
-| Layout | Dagre + custom routing | Hierarchical layout and orthogonal edge routing |
-| Bridge | Local semantic model | SysML, Draw.io, SVG, and patch synchronization |
-| API | Node HTTP server | AI generation/edit endpoints and Draw.io validation |
-| Tests | Vitest | Parser, bridge, store, UI behavior, and server config |
+The React application is a client. It does not parse SysML for authoritative
+behavior. The Workbench Service owns workspace lifecycle, queries, commands,
+identity, reviews, diff, reports, rules, and controlled AI. The locked hybrid
+language adapter owns language diagnostics and semantic evidence:
 
-Source text is canonical. Diagrams and Draw.io XML are derived from parsed SysML, then synced back through semantic diffs and safety-classified patches.
+- VinQut/Pilot: semantic authority and navigation;
+- Spec42: non-authoritative completion, tokens, rename, and formatting;
+- normalized semantic snapshot: the only input to projections and assurance.
 
-Use `docs/r2-product-contract.md` as the product boundary for R2 claims. New parser, bridge, AI, or deployment work should update that contract when support status changes.
+The legacy Peggy/parser/store/Draw.io path remains isolated behind `?legacy=1`
+and must not be imported into `packages/`, `apps/workbench-service/`, or
+`src/workbench/`.
 
-## Data Flow
+## Repository map
 
-1. `parseSysML(sourceCode)` builds an AST with recoverable diagnostics.
-2. `buildSemanticModelFromSource()` flattens AST nodes and relationships into a graph.
-3. `autoLayout()` or semantic layout maps place nodes.
-4. React Flow renders live views; bridge serializers emit Draw.io XML and SVG.
-5. Draw.io changes are parsed, diffed, and applied as safe or review-required patches.
-
-## API And AI
-
-Existing endpoints:
-
-- `GET /api/health`
-- `POST /api/ai/generate-model`
-- `POST /api/ai/edit-model`
-- `POST /api/validate/drawio`
-
-Browser payloads do not include provider API keys. The server reads:
-
-- `SYSML_AI_PROVIDER`
-- `SYSML_AI_MODEL`
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `GOOGLE_API_KEY`
-- `CORS_ORIGIN`
-
-If no matching provider key exists, generation/editing falls back to local heuristics.
-
-## Production Gates
-
-Run these before shipping:
-
-```bash
-npm ci
-npm run lint
-npm run test
-npm run test:release
-npm run build
-npm audit --omit=dev
+```text
+apps/workbench-service/       authenticated stdio/loopback service
+packages/language-adapter/    locked engine processes and hybrid boundary
+packages/semantic-model/      normalized snapshot and identity
+packages/workspace-service/   workspace application service
+packages/command-engine/      typed proposals, validation, apply, undo/redo
+packages/query-engine/        bounded model queries
+packages/projection-engine/   reproducible derived projections
+packages/rule-engine/         deterministic assurance rules
+packages/semantic-diff/       stable-identity semantic comparison
+packages/review-service/      durable model-anchored reviews
+packages/report-engine/       deterministic evidence output
+packages/ai-orchestrator/     proposal-only narrow AI tools and audit
+src/workbench/                service-backed primary UI
+fixtures/                     mandatory language and workflow evidence
+scripts/workbench-*.ts        qualification, benchmark, and release tooling
 ```
 
-Bridge changes need roundtrip coverage: SysML to semantic to Draw.io to semantic to SysML. Parser changes need syntax and recovery tests. Store changes need undo/redo and sync-state tests.
+## Change rules
 
-`npm run test:release` must always pass for in-repo release baseline tests. Upstream corpus fixtures are optional in CI and run only when `SYSML_V2_RELEASE_DIR` points to a local `Systems-Modeling/SysML-v2-Release` checkout.
+1. Source is canonical; generated state cannot become a shadow model.
+2. UI mutations call a typed command and cannot write files.
+3. Every command binds base snapshot/document hashes, produces diagnostics and
+   semantic diff, and requires an explicit user approval.
+4. Unknown syntax is preserved or the edit fails closed.
+5. Stable identities—not line numbers or names—anchor views, reviews, evidence,
+   AI citations, and semantic diff.
+6. Language capability claims require mandatory fixtures and golden evidence.
+7. External network access is a separate disabled capability.
 
-## SysML v2 Release Baseline
+## Testing
 
-Use `docs/sysml-v2-release-baseline.md` as the source anchor for parser and example work. Current baseline:
+Tests are colocated with packages plus `src/test/`. Golden fixtures cover
+semantic evidence, identity, commands, source patches, diff, reports, and
+workflows. Update a golden only with an explicit semantic reason. Security
+tests cover path/symlink escape, loopback Origin/Host/pairing/CSRF/WebSocket,
+audit tampering, and runtime artifact hashes.
 
-- `Systems-Modeling/SysML-v2-Release`
-- tag `2026-04`
-- commit `9baca5908ca28b53da085de69336fde48420ea8f`
+The medium benchmark requires five warmups and thirty recorded samples:
 
-Parser changes should start from release `bnf/` and add focused tests. When a local release checkout is available, run:
-
-```bash
-SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
+```sh
+npm run benchmark:workbench -- \
+  --candidate qualified-hybrid --profile medium \
+  --warmups 5 --repetitions 30 --output generated/benchmarks/phase7-medium
 ```
 
-Do not expand visual roundtrip claims until the release fixture gate and screenshot QA pass.
+## Release artifacts
 
-## Key Files
+The release assembler refuses a dirty worktree, wrong engine hash, or wrong
+official-library commit. It creates a deterministic `.tar.gz`, exact file
+inventory, runtime/library provenance, notices, launchers, and an embedded
+integrity verifier. The copied-bundle smoke must open the Phase 5 pilot without
+repository-relative imports or network.
 
-| Concern | File |
-|---------|------|
-| Root app | `src/App.tsx` |
-| Store | `src/store/store.ts` |
-| Parser/types | `src/parser/parser.ts`, `src/parser/types.ts` |
-| Semantic bridge | `src/bridge/` |
-| Diagram views | `src/views/` |
-| Shared diagram shell | `src/components/DiagramView.tsx` |
-| AI panel | `src/components/AiChatPanel.tsx` |
-| API server | `server/` |
-| Tests | `src/test/`, `server/*.test.js` |
-| Release baseline | `docs/sysml-v2-release-baseline.md`, `src/test/upstreamCorpus.test.ts` |
-
-## Implementation Rules
-
-- Keep TypeScript strict and avoid broad untyped node access.
-- Treat SysML source as canonical; preserve layout separately where possible.
-- Keep Draw.io messaging origin-scoped to `https://embed.diagrams.net`.
-- Keep app UI dense, restrained, and workspace-first.
-- Do not expose the local API server publicly without adding authentication and deployment hardening.
-- Keep README and user docs aligned to `docs/r2-product-contract.md`; do not expand support claims without tests.
+See `docs/developer/release-checklist.md` and
+`docs/revamp/28-phase7-release-plan.md`.

@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import axe from 'axe-core'
 import type { SemanticSnapshot } from '../../packages/semantic-model/src/index.js'
 import type { WorkbenchGateway } from '../workbench/gateway.js'
 import type { AiOperationRecord } from '../../packages/ai-orchestrator/src/index.js'
@@ -179,6 +180,38 @@ describe('service-backed workbench shell', () => {
       }),
     ))
     expect(await screen.findByRole('heading', { name: 'Applied after approval' })).toBeInTheDocument()
+  })
+
+  it('has no serious or critical automated accessibility violations in primary surfaces', async () => {
+    const gateway = createGateway()
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+    await waitFor(() => expect(gateway.modelQuery).toHaveBeenCalled())
+    let results = await axe.run(document.body, {
+      rules: { 'color-contrast': { enabled: false } },
+    })
+    expect(
+      results.violations.filter((item) =>
+        item.impact === 'serious' || item.impact === 'critical',
+      ),
+    ).toEqual([])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }))
+    await screen.findByRole('heading', { name: 'Grounded model operations' })
+    results = await axe.run(document.body, {
+      rules: { 'color-contrast': { enabled: false } },
+    })
+    expect(
+      results.violations.filter((item) =>
+        item.impact === 'serious' || item.impact === 'critical',
+      ),
+    ).toEqual([])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open command palette' }))
+    const dialog = screen.getByRole('dialog', { name: 'Go to activity' })
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Explorer' })).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
 

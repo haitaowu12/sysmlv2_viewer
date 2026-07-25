@@ -24,6 +24,8 @@ import { LspProcessAdapter } from './lsp-process-adapter.js'
  */
 export class HybridLanguageAdapter implements LanguageAdapter {
   readonly metadata: LanguageAdapterMetadata
+  private authoringSync: Promise<void> = Promise.resolve()
+  private authoringSyncError: unknown
 
   constructor(
     private readonly semantic: LanguageAdapter,
@@ -85,13 +87,18 @@ export class HybridLanguageAdapter implements LanguageAdapter {
   }
 
   async closeWorkspace(workspaceId: string): Promise<void> {
+    await this.authoringSync
+    const syncError = this.authoringSyncError
     await Promise.all([
       this.semantic.closeWorkspace(workspaceId),
       this.authoring.closeWorkspace(workspaceId),
     ])
+    this.authoringSyncError = undefined
+    if (syncError) throw syncError
   }
 
   async dispose(): Promise<void> {
+    await this.authoringSync.catch(() => undefined)
     await Promise.allSettled([
       this.semantic.dispose(),
       this.authoring.dispose(),
@@ -136,35 +143,39 @@ export class HybridLanguageAdapter implements LanguageAdapter {
     )
   }
 
-  completion(
+  async completion(
     uri: string,
     position: WorkbenchPosition,
   ): Promise<WorkbenchCompletionItem[]> {
+    await this.awaitAuthoringSync()
     return this.requireOperation(
       this.authoring.completion,
       'authoring completion',
     ).call(this.authoring, uri, position)
   }
 
-  semanticTokens(uri: string): Promise<WorkbenchSemanticTokens> {
+  async semanticTokens(uri: string): Promise<WorkbenchSemanticTokens> {
+    await this.awaitAuthoringSync()
     return this.requireOperation(
       this.authoring.semanticTokens,
       'authoring semantic tokens',
     ).call(this.authoring, uri)
   }
 
-  rename(
+  async rename(
     uri: string,
     position: WorkbenchPosition,
     newName: string,
   ): Promise<WorkbenchWorkspaceEdit> {
+    await this.awaitAuthoringSync()
     return this.requireOperation(
       this.authoring.rename,
       'authoring rename',
     ).call(this.authoring, uri, position, newName)
   }
 
-  formatting(uri: string): Promise<WorkbenchTextEdit[]> {
+  async formatting(uri: string): Promise<WorkbenchTextEdit[]> {
+    await this.awaitAuthoringSync()
     return this.requireOperation(
       this.authoring.formatting,
       'authoring formatting',
@@ -183,22 +194,32 @@ export class HybridLanguageAdapter implements LanguageAdapter {
     version: number,
     text: string,
   ): Promise<LanguageDiagnostic[]> {
-    const [diagnostics] = await Promise.all([
-      this.requireOperation(
-        this.semantic.changeDocument,
-        'semantic incremental update',
-      ).call(this.semantic, uri, version, text),
-      this.requireOperation(
-        this.authoring.changeDocument,
-        'authoring incremental update',
-      ).call(this.authoring, uri, version, text),
-    ])
-    return diagnostics
+    if (this.authoringSyncError) throw this.authoringSyncError
+    const authoringChange = this.requireOperation(
+      this.authoring.changeDocument,
+      'authoring incremental update',
+    )
+    const priorSync = this.authoringSync
+    const nextSync = priorSync.then(() =>
+      authoringChange.call(this.authoring, uri, version, text),
+    )
+    this.authoringSync = nextSync.then(
+      () => undefined,
+      (error: unknown) => {
+        this.authoringSyncError = error
+      },
+    )
+    return this.requireOperation(
+      this.semantic.changeDocument,
+      'semantic incremental update',
+    ).call(this.semantic, uri, version, text)
   }
 
   async restartWorkspace(
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
+    await this.authoringSync.catch(() => undefined)
+    this.authoringSyncError = undefined
     const [diagnostics] = await Promise.all([
       this.requireOperation(
         this.semantic.restartWorkspace,
@@ -210,6 +231,13 @@ export class HybridLanguageAdapter implements LanguageAdapter {
       ).call(this.authoring, structuredClone(workspace)),
     ])
     return diagnostics
+  }
+
+  private async awaitAuthoringSync(): Promise<void> {
+    await this.authoringSync
+    if (this.authoringSyncError) {
+      throw this.authoringSyncError
+    }
   }
 
   health(): ReturnType<LanguageAdapter['health']> {

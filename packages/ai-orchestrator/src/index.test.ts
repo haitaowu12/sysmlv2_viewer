@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -244,6 +244,26 @@ describe('AiOrchestrator', () => {
 
     await expect(fixture.audit.read('AI-001')).rejects.toThrow(
       'audit record hash mismatch',
+    )
+  })
+
+  it('rejects an audit-directory symlink that escapes the workspace', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sysml-workbench-ai-root-'))
+    const outside = await mkdtemp(join(tmpdir(), 'sysml-workbench-ai-outside-'))
+    temporaryDirectories.push(root, outside)
+    await mkdir(join(root, '.sysml-workbench'), { recursive: true })
+    await symlink(outside, join(root, '.sysml-workbench/audit'))
+    const repository = new AiAuditRepository(root, 'fixture')
+
+    await expect(repository.list()).rejects.toThrow(
+      'AI audit directory escapes the workspace root',
+    )
+  })
+
+  it('rejects traversal-shaped operation identifiers', async () => {
+    const fixture = await createFixture()
+    await expect(fixture.audit.read('../outside')).rejects.toThrow(
+      'operation id must contain only',
     )
   })
 })
