@@ -5,6 +5,7 @@ import type {
   WorkbenchHover,
   WorkbenchLocation,
   WorkbenchPosition,
+  WorkbenchRange,
   WorkbenchSemanticTokens,
   WorkbenchTextEdit,
   WorkbenchWorkspaceEdit,
@@ -47,6 +48,33 @@ export interface LanguageAdapterMetadata {
   qualificationStatus: 'qualified' | 'unqualified' | 'control-only'
 }
 
+export interface EngineSemanticElementEvidence {
+  engineId: string
+  metaclass: string
+  name?: string
+  qualifiedName?: string
+  ownerEngineId?: string
+  range?: WorkbenchRange
+}
+
+export interface EngineSemanticRelationshipEvidence {
+  sourceEngineId: string
+  targetEngineId?: string
+  targetQualifiedName?: string
+  targetUri?: string
+  feature: string
+  derived: boolean
+  resolved: boolean
+  sourceRange?: WorkbenchRange
+}
+
+export interface EngineSemanticEvidence {
+  schemaVersion: 1
+  uri: string
+  elements: EngineSemanticElementEvidence[]
+  relationships: EngineSemanticRelationshipEvidence[]
+}
+
 export interface LanguageAdapter {
   readonly metadata: LanguageAdapterMetadata
   readonly capabilities: LanguageCapabilities
@@ -79,6 +107,7 @@ export interface LanguageAdapter {
     newName: string,
   ): Promise<WorkbenchWorkspaceEdit>
   formatting?(uri: string): Promise<WorkbenchTextEdit[]>
+  semanticEvidence?(uri: string): Promise<EngineSemanticEvidence>
   changeDocument?(
     uri: string,
     version: number,
@@ -113,6 +142,7 @@ export class PreservationControlAdapter implements LanguageAdapter {
     semanticTokens: false,
     rename: false,
     formatting: false,
+    semanticEvidence: false,
     semanticSnapshot: false,
   }
 

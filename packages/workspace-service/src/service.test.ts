@@ -1,5 +1,8 @@
 // @vitest-environment node
 import { dirname, resolve } from 'node:path'
+import { access, cp, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
@@ -26,9 +29,15 @@ const sampleDocument = pathToFileURL(
 ).href
 const workspacesRoot = resolve(sampleRoot, '..')
 const services: WorkbenchService[] = []
+const temporaryDirectories: string[] = []
 
 afterEach(async () => {
   await Promise.all(services.splice(0).map((service) => service.dispose()))
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) =>
+      rm(directory, { recursive: true, force: true }),
+    ),
+  )
 })
 
 describe('WorkbenchService', () => {
@@ -49,6 +58,11 @@ describe('WorkbenchService', () => {
       protocolVersion: WORKBENCH_PROTOCOL_VERSION,
       languageAuthority: {
         qualificationStatus: 'control-only',
+      },
+      serviceCapabilities: {
+        normalizedSemanticSnapshot: true,
+        durableIdentityPersistence: true,
+        boundedModelQuery: true,
       },
       capabilities: {
         workspaceLifecycle: true,
@@ -288,6 +302,302 @@ describe('WorkbenchService', () => {
       },
     })
   })
+
+  it('builds a persisted normalized snapshot and runs bounded identity queries', async () => {
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-semantic-'),
+    )
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    const opened = await service.handle({
+      jsonrpc: '2.0',
+      id: 20,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: {
+        workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml'),
+      },
+    })
+    expect(opened).toMatchObject({
+      result: { semanticAuthority: 'qualified-engine' },
+    })
+    if (!('result' in opened)) throw new Error('Workspace open failed')
+    const snapshot = await service.handle({
+      jsonrpc: '2.0',
+      id: 21,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    expect(snapshot).toMatchObject({
+      result: {
+        schemaVersion: 1,
+        freshness: 'current',
+        elements: expect.any(Array),
+        relationships: expect.any(Array),
+      },
+    })
+    if (!('result' in snapshot)) throw new Error('Snapshot request failed')
+    const semantic = snapshot.result as {
+      snapshotSha256: string
+      elements: Array<{ id: string }>
+    }
+    expect(semantic.elements).toHaveLength(3)
+    const identityFile = JSON.parse(
+      await readFile(
+        resolve(temporaryRoot, 'identities/model-identities.json'),
+        'utf8',
+      ),
+    ) as { records: unknown[] }
+    expect(identityFile.records).toHaveLength(3)
+
+    const queryRequest = {
+      jsonrpc: '2.0' as const,
+      id: 22,
+      method: WORKBENCH_METHODS.modelQuery,
+      params: {
+        workspaceId: 'phase1-sample',
+        query: {
+          schemaVersion: 1,
+          roots: [semantic.elements[0]!.id],
+          depth: 0,
+          maxResults: 10,
+        },
+      },
+    }
+    await expect(service.handle(queryRequest)).resolves.toMatchObject({
+      result: {
+        snapshotSha256: semantic.snapshotSha256,
+        elements: [{ id: semantic.elements[0]!.id }],
+        truncated: false,
+      },
+    })
+    const cached = await service.handle({ ...queryRequest, id: 23 })
+    expect(cached).toMatchObject({
+      result: { snapshotSha256: semantic.snapshotSha256 },
+    })
+    const openedStatus = opened.result as { documents: Array<{ uri: string }> }
+    const changedUri = openedStatus.documents[0]!.uri
+    const changedText = await readFile(fileURLToPath(changedUri), 'utf8')
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 24,
+      method: WORKBENCH_METHODS.languageDocumentChange,
+      params: {
+        workspaceId: 'phase1-sample',
+        documentUri: changedUri,
+        version: 2,
+        text: `${changedText}\n`,
+      },
+    })
+    const refreshed = await service.handle({ ...queryRequest, id: 25 })
+    expect(refreshed).toMatchObject({ result: { truncated: false } })
+    if (!('result' in refreshed)) throw new Error('Refreshed query failed')
+    expect((refreshed.result as { snapshotSha256: string }).snapshotSha256)
+      .not.toBe(semantic.snapshotSha256)
+  })
+
+  it('rejects an identity registry path that traverses a workspace symlink', async () => {
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-identity-link-'),
+    )
+    const outsideRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-identity-outside-'),
+    )
+    temporaryDirectories.push(temporaryRoot, outsideRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    await symlink(outsideRoot, resolve(temporaryRoot, 'identities'))
+    const service = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 30,
+        method: WORKBENCH_METHODS.workspaceOpen,
+        params: {
+          workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml'),
+        },
+      }),
+    ).resolves.toMatchObject({
+      error: {
+        code: -32010,
+        message: expect.stringContaining('Symbolic links are not accepted'),
+      },
+    })
+    await expect(
+      access(resolve(outsideRoot, 'model-identities.json')),
+    ).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('recovers a deleted identity registry from backup and rejects merge markers', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-identity-recovery-'))
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const firstService = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(firstService)
+    const opened = await firstService.handle({
+      jsonrpc: '2.0',
+      id: 35,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    if (!('result' in opened)) throw new Error('Workspace open failed')
+    const status = opened.result as { documents: Array<{ uri: string }> }
+    const firstSnapshot = await firstService.handle({
+      jsonrpc: '2.0',
+      id: 36,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in firstSnapshot)) throw new Error('Snapshot failed')
+    const firstIds = (firstSnapshot.result as { elements: Array<{ id: string }> })
+      .elements.map((element) => element.id).sort()
+    const documentUri = status.documents[0]!.uri
+    const text = await readFile(fileURLToPath(documentUri), 'utf8')
+    await firstService.handle({
+      jsonrpc: '2.0',
+      id: 37,
+      method: WORKBENCH_METHODS.languageDocumentChange,
+      params: {
+        workspaceId: 'phase1-sample',
+        documentUri,
+        version: 2,
+        text: `xxxx${text.slice(4)}`,
+      },
+    })
+    await firstService.handle({
+      jsonrpc: '2.0',
+      id: 38,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    const identityPath = resolve(temporaryRoot, 'identities/model-identities.json')
+    await access(`${identityPath}.bak`)
+    await rm(identityPath)
+    await firstService.dispose()
+
+    const recoveredService = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(recoveredService)
+    await recoveredService.handle({
+      jsonrpc: '2.0',
+      id: 39,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    const recoveredSnapshot = await recoveredService.handle({
+      jsonrpc: '2.0',
+      id: 40,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in recoveredSnapshot)) throw new Error('Recovery failed')
+    expect((recoveredSnapshot.result as { elements: Array<{ id: string }> })
+      .elements.map((element) => element.id).sort()).toEqual(firstIds)
+    await recoveredService.dispose()
+
+    await writeFile(identityPath, '<<<<<<< ours\n{}\n=======\n{}\n>>>>>>> theirs\n')
+    const conflictService = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(conflictService)
+    await expect(conflictService.handle({
+      jsonrpc: '2.0',
+      id: 41,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })).resolves.toMatchObject({
+      error: { code: -32010 },
+    })
+  })
+
+  it('rejects a semantic snapshot that races a document revision', async () => {
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-semantic-race-'),
+    )
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter(
+        { FAKE_LSP_SYMBOL_DELAY_MS: '75' },
+        'qualified',
+      ),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    const opened = await service.handle({
+      jsonrpc: '2.0',
+      id: 40,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: {
+        workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml'),
+      },
+    })
+    if (!('result' in opened)) throw new Error('Workspace open failed')
+    const openedStatus = opened.result as {
+      documents: Array<{ uri: string }>
+    }
+    const changedDocumentUri = openedStatus.documents.find((document) =>
+      document.uri.endsWith('/model/vehicle.sysml'),
+    )?.uri
+    if (!changedDocumentUri) throw new Error('Vehicle document was not indexed')
+    const pendingSnapshot = service.handle({
+      jsonrpc: '2.0',
+      id: 41,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10))
+    const changedText = await readFile(
+      fileURLToPath(changedDocumentUri),
+      'utf8',
+    )
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 42,
+        method: WORKBENCH_METHODS.languageDocumentChange,
+        params: {
+          workspaceId: 'phase1-sample',
+          documentUri: changedDocumentUri,
+          version: 2,
+          text: `${changedText}\n`,
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: { indexState: 'ready' },
+    })
+    await expect(pendingSnapshot).resolves.toMatchObject({
+      error: {
+        code: -32010,
+        message: expect.stringContaining(
+          'changed while the semantic snapshot was being built',
+        ),
+      },
+    })
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 43,
+        method: WORKBENCH_METHODS.semanticSnapshot,
+        params: { workspaceId: 'phase1-sample' },
+      }),
+    ).resolves.toMatchObject({
+      result: { freshness: 'current' },
+    })
+  })
 })
 
 function createService(
@@ -305,6 +615,7 @@ function createService(
 
 function createFakeLspAdapter(
   environment: Record<string, string> = {},
+  qualificationStatus: 'qualified' | 'unqualified' = 'unqualified',
 ): LspProcessAdapter {
   return new LspProcessAdapter({
     metadata: {
@@ -313,12 +624,13 @@ function createFakeLspAdapter(
       engineName: 'fake-lsp',
       engineVersion: '1',
       referenceRelease: 'test',
-      qualificationStatus: 'unqualified',
+      qualificationStatus,
     },
     command: process.execPath,
     arguments: [fakeServer],
     environment,
     diagnosticSettleMs: 50,
+    semanticEvidenceMethod: 'sysml/semanticEvidence',
   })
 }
 

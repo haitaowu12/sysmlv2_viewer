@@ -13,6 +13,7 @@ import type {
   LanguageAdapter,
   LanguageAdapterMetadata,
   LanguageDiagnostic,
+  EngineSemanticEvidence,
 } from './index.js'
 import { LspProcessAdapter } from './lsp-process-adapter.js'
 
@@ -47,6 +48,7 @@ export class HybridLanguageAdapter implements LanguageAdapter {
       semanticTokens: this.authoring.capabilities.semanticTokens,
       rename: this.authoring.capabilities.rename,
       formatting: this.authoring.capabilities.formatting,
+      semanticEvidence: this.semantic.capabilities.semanticEvidence,
       semanticSnapshot: this.semantic.capabilities.semanticSnapshot,
     }
   }
@@ -167,6 +169,13 @@ export class HybridLanguageAdapter implements LanguageAdapter {
       this.authoring.formatting,
       'authoring formatting',
     ).call(this.authoring, uri)
+  }
+
+  semanticEvidence(uri: string): Promise<EngineSemanticEvidence> {
+    return this.requireOperation(
+      this.semantic.semanticEvidence,
+      'semantic evidence',
+    ).call(this.semantic, uri)
   }
 
   async changeDocument(

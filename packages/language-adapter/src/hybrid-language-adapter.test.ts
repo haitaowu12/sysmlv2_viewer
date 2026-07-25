@@ -125,6 +125,7 @@ function adapter(
       semanticTokens: true,
       rename: true,
       formatting: true,
+      semanticEvidence: role === 'semantic',
       semanticSnapshot: false,
     },
     capabilitiesFinal: () => true,
