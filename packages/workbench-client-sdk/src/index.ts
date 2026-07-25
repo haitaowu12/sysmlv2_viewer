@@ -7,6 +7,9 @@ import {
   type WorkbenchHover,
   type WorkbenchLocation,
   type WorkbenchPosition,
+  type WorkbenchSemanticTokens,
+  type WorkbenchTextEdit,
+  type WorkbenchWorkspaceEdit,
   type WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
 
@@ -104,6 +107,62 @@ export class WorkbenchClient {
       workspaceId,
       documentUri,
       position,
+    })
+  }
+
+  semanticTokens(
+    workspaceId: string,
+    documentUri: string,
+  ): Promise<WorkbenchSemanticTokens> {
+    return this.transport.request(WORKBENCH_METHODS.languageSemanticTokens, {
+      workspaceId,
+      documentUri,
+    })
+  }
+
+  rename(
+    workspaceId: string,
+    documentUri: string,
+    position: WorkbenchPosition,
+    newName: string,
+  ): Promise<WorkbenchWorkspaceEdit> {
+    return this.transport.request(WORKBENCH_METHODS.languageRename, {
+      workspaceId,
+      documentUri,
+      position,
+      newName,
+    })
+  }
+
+  formatting(
+    workspaceId: string,
+    documentUri: string,
+  ): Promise<WorkbenchTextEdit[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageFormatting, {
+      workspaceId,
+      documentUri,
+    })
+  }
+
+  changeDocument(
+    workspaceId: string,
+    documentUri: string,
+    version: number,
+    text: string,
+  ): Promise<WorkspaceStatusResult> {
+    return this.transport.request(WORKBENCH_METHODS.languageDocumentChange, {
+      workspaceId,
+      documentUri,
+      version,
+      text,
+    })
+  }
+
+  restartLanguageEngine(
+    workspaceId: string,
+  ): Promise<WorkspaceStatusResult> {
+    return this.transport.request(WORKBENCH_METHODS.languageRestart, {
+      workspaceId,
     })
   }
 

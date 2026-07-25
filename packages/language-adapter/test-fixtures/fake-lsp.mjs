@@ -2,6 +2,7 @@ let input = Buffer.alloc(0)
 let documentUri = ''
 let crashScheduled = false
 let initialized = false
+let documentVersion = 0
 
 process.stdin.on('data', (chunk) => {
   input = Buffer.concat([input, chunk])
@@ -45,7 +46,13 @@ function handle(message) {
           referencesProvider: true,
           completionProvider: {},
           hoverProvider: true,
-          semanticTokensProvider: { legend: { tokenTypes: [], tokenModifiers: [] } },
+          semanticTokensProvider: {
+            legend: {
+              tokenTypes: ['namespace'],
+              tokenModifiers: ['declaration']
+            },
+            full: true
+          },
           renameProvider: true,
           documentFormattingProvider: true
         }
@@ -53,6 +60,7 @@ function handle(message) {
     })
   } else if (message.method === 'textDocument/didOpen') {
     documentUri = message.params.textDocument.uri
+    documentVersion = message.params.textDocument.version
     send({
       jsonrpc: '2.0',
       method: 'textDocument/publishDiagnostics',
@@ -71,8 +79,30 @@ function handle(message) {
     })
     if (process.env.FAKE_LSP_CRASH_AFTER_OPEN === '1' && !crashScheduled) {
       crashScheduled = true
-      setTimeout(() => process.exit(17), 25)
+      setTimeout(
+        () => process.exit(17),
+        Number(process.env.FAKE_LSP_CRASH_DELAY_MS ?? 25)
+      )
     }
+  } else if (message.method === 'textDocument/didChange') {
+    documentVersion = message.params.textDocument.version
+    const text = message.params.contentChanges[0]?.text ?? ''
+    send({
+      jsonrpc: '2.0',
+      method: 'textDocument/publishDiagnostics',
+      params: {
+        uri: message.params.textDocument.uri,
+        version: documentVersion,
+        diagnostics: text.includes('BROKEN')
+          ? [{
+              range: range(),
+              severity: 1,
+              code: 'FAKE-CHANGE-001',
+              message: 'changed document is broken'
+            }]
+          : []
+      }
+    })
   } else if (message.method === 'textDocument/documentSymbol') {
     send({
       jsonrpc: '2.0',
@@ -99,14 +129,17 @@ function handle(message) {
       result: [{ uri: documentUri, range: range() }]
     })
   } else if (message.method === 'textDocument/hover') {
-    send({
+    const response = {
       jsonrpc: '2.0',
       id: message.id,
       result: {
         contents: { kind: 'markdown', value: '**Fake** package' },
         range: range()
       }
-    })
+    }
+    const delay = Number(process.env.FAKE_LSP_HOVER_DELAY_MS ?? 0)
+    if (delay > 0) setTimeout(() => send(response), delay)
+    else send(response)
   } else if (message.method === 'textDocument/completion') {
     send({
       jsonrpc: '2.0',
@@ -116,6 +149,33 @@ function handle(message) {
         items: [{ label: 'package', kind: 14, insertText: 'package' }]
       }
     })
+  } else if (message.method === 'textDocument/semanticTokens/full') {
+    send({
+      jsonrpc: '2.0',
+      id: message.id,
+      result: { data: [0, 0, 4, 0, 1] }
+    })
+  } else if (message.method === 'textDocument/rename') {
+    send({
+      jsonrpc: '2.0',
+      id: message.id,
+      result: {
+        changes: {
+          [documentUri]: [{
+            range: range(),
+            newText: message.params.newName
+          }]
+        }
+      }
+    })
+  } else if (message.method === 'textDocument/formatting') {
+    send({
+      jsonrpc: '2.0',
+      id: message.id,
+      result: [{ range: range(), newText: 'package Fake {}\\n' }]
+    })
+  } else if (message.method === '$/cancelRequest') {
+    // Cancellation is deliberately accepted without a response.
   } else if (message.method === 'shutdown') {
     send({ jsonrpc: '2.0', id: message.id, result: null })
   } else if (message.method === 'exit') {

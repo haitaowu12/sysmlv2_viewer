@@ -144,6 +144,61 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.languageSemanticTokens: {
+          const params = languageDocumentParams(request.params)
+          return success(
+            request.id,
+            await this.workspaces.semanticTokens(
+              params.workspaceId,
+              params.documentUri,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.languageRename: {
+          const params = languagePositionParams(request.params)
+          const values = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.rename(
+              params.workspaceId,
+              params.documentUri,
+              params.position,
+              requireString(values.newName, 'newName'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.languageFormatting: {
+          const params = languageDocumentParams(request.params)
+          return success(
+            request.id,
+            await this.workspaces.formatting(
+              params.workspaceId,
+              params.documentUri,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.languageDocumentChange: {
+          const params = languageDocumentParams(request.params)
+          const values = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.changeDocument(
+              params.workspaceId,
+              params.documentUri,
+              requirePositiveInteger(values.version, 'version'),
+              requireStringValue(values.text, 'text'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.languageRestart: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.restart(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
         default:
           return failure(
             request.id,
@@ -230,4 +285,18 @@ function requireNonNegativeInteger(value: unknown, fieldName: string): number {
     throw new TypeError(`${fieldName} must be a non-negative integer`)
   }
   return value as number
+}
+
+function requirePositiveInteger(value: unknown, fieldName: string): number {
+  if (!Number.isInteger(value) || (value as number) <= 0) {
+    throw new TypeError(`${fieldName} must be a positive integer`)
+  }
+  return value as number
+}
+
+function requireStringValue(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} must be a string`)
+  }
+  return value
 }

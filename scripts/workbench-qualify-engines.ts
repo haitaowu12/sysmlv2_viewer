@@ -233,6 +233,61 @@ async function qualify(candidate: Candidate): Promise<CandidateResult> {
           truncated: items.length > 25,
         }),
       )
+      operations.semanticTokens = await observeOperation(
+        adapter.capabilities.semanticTokens,
+        () => workspace.semanticTokens(status.workspaceId, vehicle.uri),
+        (tokens) => ({
+          tokenCount: Math.floor(tokens.data.length / 5),
+          legend: tokens.legend,
+        }),
+      )
+      operations.rename = await observeOperation(
+        adapter.capabilities.rename,
+        () =>
+          workspace.rename(
+            status.workspaceId,
+            vehicle.uri,
+            vehiclePosition,
+            'VehicleRenamed',
+          ),
+        (edit) => ({
+          changedFiles: Object.keys(edit.changes).length,
+          editCount: Object.values(edit.changes).reduce(
+            (total, edits) => total + edits.length,
+            0,
+          ),
+        }),
+      )
+      operations.formatting = await observeOperation(
+        adapter.capabilities.formatting,
+        () => workspace.formatting(status.workspaceId, vehicle.uri),
+        (edits) => ({ editCount: edits.length }),
+      )
+      operations.incrementalNoop = await observeOperation(
+        true,
+        () =>
+          workspace.changeDocument(
+            status.workspaceId,
+            vehicle.uri,
+            2,
+            text,
+          ),
+        (changed) => ({
+          indexState: changed.indexState,
+          diagnostics: changed.diagnostics,
+          snapshotChanged: changed.snapshotSha256 !== status.snapshotSha256,
+        }),
+      )
+      operations.restart = await observeOperation(
+        true,
+        () => workspace.restart(status.workspaceId),
+        (restarted) => ({
+          indexState: restarted.indexState,
+          diagnostics: restarted.diagnostics,
+          deterministicSnapshot:
+            restarted.snapshotSha256 === status.snapshotSha256,
+        }),
+      )
     }
     await sealRawEvidence(candidate.id, adapter)
     return {

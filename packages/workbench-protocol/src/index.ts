@@ -12,6 +12,11 @@ export const WORKBENCH_METHODS = {
   languageReferences: 'language/references',
   languageHover: 'language/hover',
   languageCompletion: 'language/completion',
+  languageSemanticTokens: 'language/semanticTokens',
+  languageRename: 'language/rename',
+  languageFormatting: 'language/formatting',
+  languageDocumentChange: 'language/documentChange',
+  languageRestart: 'language/restart',
 } as const
 
 export type WorkbenchMethod =
@@ -135,6 +140,23 @@ export interface WorkbenchCompletionItem {
   documentation?: string
   kind?: string
   insertText?: string
+}
+
+export interface WorkbenchSemanticTokens {
+  legend: {
+    tokenTypes: string[]
+    tokenModifiers: string[]
+  }
+  data: number[]
+}
+
+export interface WorkbenchTextEdit {
+  range: WorkbenchRange
+  newText: string
+}
+
+export interface WorkbenchWorkspaceEdit {
+  changes: Record<string, WorkbenchTextEdit[]>
 }
 
 export interface WorkspaceDocumentSummary {

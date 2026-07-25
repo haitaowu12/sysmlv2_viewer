@@ -156,14 +156,89 @@ describe('WorkbenchService', () => {
         message: expect.stringContaining('outside the active workspace'),
       },
     })
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 6,
+        method: WORKBENCH_METHODS.languageSemanticTokens,
+        params: {
+          workspaceId: 'phase1-sample',
+          documentUri: sampleDocument,
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        legend: { tokenTypes: ['namespace'] },
+        data: [0, 0, 4, 0, 1],
+      },
+    })
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 7,
+        method: WORKBENCH_METHODS.languageRename,
+        params: {
+          workspaceId: 'phase1-sample',
+          documentUri: sampleDocument,
+          position: { line: 0, character: 1 },
+          newName: 'Vehicle2',
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        changes: {
+          [sampleDocument]: [{ newText: 'Vehicle2' }],
+        },
+      },
+    })
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 8,
+        method: WORKBENCH_METHODS.languageFormatting,
+        params: {
+          workspaceId: 'phase1-sample',
+          documentUri: sampleDocument,
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: [{ newText: 'package Fake {}\\n' }],
+    })
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 9,
+        method: WORKBENCH_METHODS.languageDocumentChange,
+        params: {
+          workspaceId: 'phase1-sample',
+          documentUri: sampleDocument,
+          version: 2,
+          text: 'package Changed {}',
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        indexState: 'ready',
+        diagnostics: { errors: 0 },
+      },
+    })
   })
 
   it('marks an indexed workspace stale when the language process crashes', async () => {
     const service = createService(
-      createFakeLspAdapter({ FAKE_LSP_CRASH_AFTER_OPEN: '1' }),
+      createFakeLspAdapter({
+        FAKE_LSP_CRASH_AFTER_OPEN: '1',
+        FAKE_LSP_CRASH_DELAY_MS: '150',
+      }),
     )
     await initialize(service)
-    await openSample(service)
+    await expect(openSample(service)).resolves.toMatchObject({
+      result: { workspaceId: 'phase1-sample' },
+    })
     await waitForLanguageFailure(service)
 
     await expect(
@@ -175,6 +250,17 @@ describe('WorkbenchService', () => {
       }),
     ).resolves.toMatchObject({
       result: { indexState: 'stale' },
+    })
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 7,
+        method: WORKBENCH_METHODS.languageRestart,
+        params: { workspaceId: 'phase1-sample' },
+      }),
+    ).resolves.toMatchObject({
+      result: { indexState: 'ready' },
     })
   })
 

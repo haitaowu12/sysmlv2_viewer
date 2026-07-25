@@ -512,7 +512,7 @@ function parseElement(lexer: Lexer): SysMLNode | null {
     }
 
     // Try to parse each element type
-    let node: SysMLNode | null = null;
+    let node: SysMLNode | null;
 
     if (lexer.lookAheadChar('@')) {
         node = parseMetadataAnnotation(lexer);
@@ -1104,7 +1104,7 @@ function parseRequirementDef(lexer: Lexer): RequirementDef {
 
     // Extract doc and subject from children
     let doc: string | undefined;
-    let subject: { name: string; typeName: string } | undefined;
+    const subject: { name: string; typeName: string } | undefined = undefined;
 
     for (const child of children) {
         if (child.kind === 'Doc') {
@@ -1333,7 +1333,7 @@ function parseEnumBody(lexer: Lexer): SysMLNode[] {
 function parseFlow(lexer: Lexer): FlowUsage {
     lexer.expect('flow');
 
-    let source = '', target = '';
+    let source: string, target = '';
 
     if (lexer.match('from')) {
         source = readReference(lexer);
@@ -1511,7 +1511,7 @@ function parseSuccession(lexer: Lexer): SysMLNode {
     lexer.expect('succession');
 
     if (lexer.match('flow')) {
-        let source = '';
+        let source: string;
         let target = '';
         if (lexer.match('from')) {
             source = readReference(lexer);
@@ -1580,10 +1580,7 @@ function parseImport(lexer: Lexer): ImportNode {
 
     let isAll = false;
 
-    let path = '';
-
-    const firstPart = lexer.readIdentifier();
-    path = firstPart;
+    let path = lexer.readIdentifier();
 
     while (lexer.peek(2) === '::') {
         path += lexer.advance(2);
@@ -1945,14 +1942,11 @@ function readStatementValue(lexer: Lexer): string {
 
 function readReference(lexer: Lexer): string {
     lexer.skipWhitespace();
-    let ref = '';
-
     if (lexer.lookAhead('references')) {
         lexer.match('references');
     }
 
-    ref = lexer.readQualifiedName();
-    return ref;
+    return lexer.readQualifiedName();
 }
 
 function readEndpointReference(lexer: Lexer, stopWords: string[]): string {
@@ -2012,7 +2006,7 @@ function parseViewpointDef(lexer: Lexer): SysMLNode {
 function parseViewpointUsage(lexer: Lexer): SysMLNode {
     lexer.expect('viewpoint');
 
-    let name = 'viewpoint';
+    let name: string;
     let typeName: string | undefined;
     if (lexer.match(':')) {
         typeName = readTypeReference(lexer);
