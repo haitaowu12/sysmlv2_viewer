@@ -29,7 +29,7 @@ jobs:
         run: npm ci
 
       - name: Verify active workbench phase
-        run: npm run verify:phase3
+        run: npm run verify:phase4
 
       - name: Confirm candidate qualification fails closed without engines
         shell: bash

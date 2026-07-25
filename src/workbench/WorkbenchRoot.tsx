@@ -11,7 +11,10 @@ import './workbench.css'
 const LegacyViewer = lazy(() => import('../App.js'))
 
 export default function WorkbenchRoot() {
-  if (new URLSearchParams(window.location.search).get('legacy') === '1') {
+  if (
+    import.meta.env.VITE_WORKBENCH_DEMO === 'legacy' ||
+    new URLSearchParams(window.location.search).get('legacy') === '1'
+  ) {
     return (
       <Suspense fallback={<p>Loading compatibility viewer…</p>}>
         <LegacyViewer />
