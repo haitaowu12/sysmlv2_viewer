@@ -39,12 +39,14 @@ export interface WorkspaceTransactionReceipt {
     backupPath: string
   }>
   completedPaths: string[]
+  metadata?: Record<string, unknown>
 }
 
 export interface CommitWorkspaceTransactionInput {
   rootPath: string
   transactionId: string
   files: WorkspaceTransactionFile[]
+  metadata?: Record<string, unknown>
   faultInjector?: (
     stage: 'after-prepare' | 'before-replace' | 'after-replace' | 'after-commit',
     workspacePath?: string,
@@ -73,6 +75,7 @@ export async function commitWorkspaceTransaction(
     )
   }
   const rootPath = await realpath(input.rootPath)
+  validateMetadata(input.metadata)
   const files = [...input.files]
     .sort((left, right) => left.workspacePath.localeCompare(right.workspacePath))
   const seen = new Set<string>()
@@ -119,6 +122,9 @@ export async function commitWorkspaceTransaction(
     state: 'PREPARED',
     files: [],
     completedPaths: [],
+    ...(input.metadata === undefined
+      ? {}
+      : { metadata: structuredClone(input.metadata) }),
   }
   for (const [index, file] of files.entries()) {
     const backupPath = `backups/${String(index).padStart(4, '0')}-${digest(file.workspacePath).slice(0, 16)}.source`
@@ -378,6 +384,21 @@ function validateTransactionId(value: string): void {
   }
 }
 
+function validateMetadata(value: Record<string, unknown> | undefined): void {
+  if (value === undefined) return
+  let encoded: string
+  try {
+    encoded = JSON.stringify(value)
+  } catch (error) {
+    throw new WorkspaceTransactionError('Transaction metadata is not JSON-safe', {
+      cause: error,
+    })
+  }
+  if (!encoded || encoded.length > 1024 * 1024) {
+    throw new WorkspaceTransactionError('Transaction metadata exceeds the size limit')
+  }
+}
+
 async function replaceDurably(path: string, text: string): Promise<void> {
   const metadata = await stat(path)
   const temporary = resolve(
@@ -461,6 +482,7 @@ function validateJournal(
   transactionRoot: string,
   receipt: WorkspaceTransactionReceipt,
 ): void {
+  validateMetadata(receipt.metadata)
   if (receipt.files.length === 0 || receipt.files.length > 1_000) {
     throw new WorkspaceTransactionError('Transaction journal file count is invalid')
   }

@@ -471,6 +471,9 @@ describe('WorkbenchService', () => {
         },
       },
     })
+    if ('result' in proposal) {
+      expect(proposal.result).not.toHaveProperty('overlayDocuments')
+    }
     expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)
     if (!('result' in proposal)) throw new Error('Command proposal failed')
     const proposalResult = proposal.result as {
@@ -502,6 +505,25 @@ describe('WorkbenchService', () => {
         transaction: { state: 'FINALIZED' },
       },
     })
+    if (!('result' in applied)) throw new Error('Command apply failed')
+    const transactionId = (applied.result as {
+      transaction: { transactionId: string }
+    }).transaction.transactionId
+    const journal = JSON.parse(await readFile(resolve(
+      temporaryRoot,
+      '.sysml-workbench/transactions',
+      transactionId,
+      'journal.json',
+    ), 'utf8'))
+    expect(journal.metadata.commandAudit).toMatchObject({
+      schemaVersion: 1,
+      recordType: 'command-application',
+      proposal: { proposalId: proposalResult.proposalId },
+      approval: { approvalId: 'APPROVAL-001' },
+    })
+    expect(journal.metadata.commandAudit.proposal).not.toHaveProperty(
+      'overlayDocuments',
+    )
     expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
     await expect(
       service.handle({

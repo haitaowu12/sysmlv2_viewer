@@ -40,9 +40,12 @@ import {
   commitWorkspaceTransaction,
   planCommand,
   recoverWorkspaceTransactions,
+  toPublicCommandProposal,
   type ApplyCommandApproval,
   type AppliedCommandReceipt,
   type CommandEnvelope,
+  type CommandTransactionAudit,
+  type InternalCommandProposal,
   type CommandProposal,
 } from '../../command-engine/src/index.js'
 import type {
@@ -85,7 +88,7 @@ interface OpenWorkspace {
   semanticSnapshot?: SemanticSnapshot
   semanticSnapshotPromise?: Promise<SemanticSnapshot>
   queryCache: Map<string, ModelQueryResult>
-  commandProposals: Map<string, CommandProposal>
+  commandProposals: Map<string, InternalCommandProposal>
   commandLease: boolean
   appliedCommands: Map<string, AppliedCommandReceipt>
 }
@@ -425,7 +428,7 @@ export class WorkspaceManager {
           `Command commandId conflict: ${envelope.commandId}`,
         )
       }
-      return structuredClone(existing)
+      return toPublicCommandProposal(existing)
     }
     if (workspace.commandLease) {
       throw new WorkspacePathError('Another command operation holds the workspace lease')
@@ -468,7 +471,7 @@ export class WorkspaceManager {
         planned,
       )
       workspace.commandProposals.set(envelope.commandId, proposal)
-      return structuredClone(proposal)
+      return toPublicCommandProposal(proposal)
     } finally {
       workspace.commandLease = false
     }
@@ -567,10 +570,20 @@ export class WorkspaceManager {
           afterText: identityAfter,
         })
       }
+      const appliedAt = new Date().toISOString()
+      const audit: CommandTransactionAudit = {
+        schemaVersion: 1,
+        recordType: 'command-application',
+        proposal: toPublicCommandProposal(proposal),
+        approval: structuredClone(approval),
+        expectedSnapshotSha256: proposal.semanticDiff!.afterSnapshotSha256,
+        appliedAt,
+      }
       const transaction = await commitWorkspaceTransaction({
         rootPath: workspace.rootPath,
         transactionId: `command-${sha256(Buffer.from(proposal.proposalId)).slice(0, 32)}`,
         files,
+        metadata: { commandAudit: audit },
       })
       workspace.identityRegistry = identities
       workspace.identityRegistry.markPersisted()
@@ -618,7 +631,7 @@ export class WorkspaceManager {
         },
         transaction,
         appliedSnapshotSha256: appliedSnapshot.snapshotSha256,
-        appliedAt: new Date().toISOString(),
+        appliedAt,
         undo: {
           baseSnapshotSha256: appliedSnapshot.snapshotSha256,
           baseDocuments: Object.fromEntries(
@@ -774,8 +787,8 @@ export class WorkspaceManager {
   private async validateCommandOverlay(
     workspace: OpenWorkspace,
     beforeSnapshot: SemanticSnapshot,
-    proposal: CommandProposal,
-  ): Promise<CommandProposal> {
+    proposal: InternalCommandProposal,
+  ): Promise<InternalCommandProposal> {
     if (!this.options.adapter.changeDocument) {
       throw new WorkspacePathError(
         'Authoritative overlay validation requires incremental document updates',
@@ -806,6 +819,7 @@ export class WorkspaceManager {
           current.version + 1,
           overlay.text,
         )
+        current.text = overlay.text
         current.sha256 = overlay.sha256
       }
       const overlayWorkspace: AdapterWorkspace = {

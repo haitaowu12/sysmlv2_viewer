@@ -117,7 +117,6 @@ export interface CommandProposal {
   state: 'proposed'
   envelope: CommandEnvelope
   edits: WorkbenchWorkspaceEdit
-  overlayDocuments: CommandWorkspaceDocument[]
   affectedElementIds: string[]
   diagnosticsBefore: LanguageDiagnostic[]
   diagnosticsAfter: LanguageDiagnostic[]
@@ -132,6 +131,10 @@ export interface CommandProposal {
   validation: {
     state: 'pending-authoritative-validation' | 'validated' | 'rejected'
   }
+}
+
+export interface InternalCommandProposal extends CommandProposal {
+  overlayDocuments: CommandWorkspaceDocument[]
 }
 
 export interface CommandValidationEvidence {
@@ -170,6 +173,15 @@ export interface AppliedCommandReceipt {
   }
 }
 
+export interface CommandTransactionAudit {
+  schemaVersion: 1
+  recordType: 'command-application'
+  proposal: CommandProposal
+  approval: ApplyCommandApproval
+  expectedSnapshotSha256: string
+  appliedAt: string
+}
+
 export interface PlanCommandInput {
   envelope: CommandEnvelope
   snapshot: SemanticSnapshot
@@ -196,7 +208,7 @@ export class SourceEditConflictError extends Error {
 
 export async function planCommand(
   input: PlanCommandInput,
-): Promise<CommandProposal> {
+): Promise<InternalCommandProposal> {
   const { envelope, snapshot, documents } = input
   validateEnvelope(envelope)
   if (envelope.workspaceId !== snapshot.workspace.id) {
@@ -255,9 +267,9 @@ export async function planCommand(
 }
 
 export function completeCommandValidation(
-  proposal: CommandProposal,
+  proposal: InternalCommandProposal,
   evidence: CommandValidationEvidence,
-): CommandProposal {
+): InternalCommandProposal {
   if (
     evidence.beforeSnapshot.snapshotSha256 !==
     proposal.envelope.baseSnapshotSha256
@@ -293,6 +305,16 @@ export function completeCommandValidation(
       state: introducedErrors.length === 0 ? 'validated' : 'rejected',
     },
   }
+}
+
+export function toPublicCommandProposal(
+  proposal: InternalCommandProposal,
+): CommandProposal {
+  const publicProposal = structuredClone(proposal) as CommandProposal & {
+    overlayDocuments?: CommandWorkspaceDocument[]
+  }
+  delete publicProposal.overlayDocuments
+  return publicProposal
 }
 
 export function applySourceEdits(
