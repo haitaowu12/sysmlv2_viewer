@@ -20,6 +20,11 @@ diagnostics, navigation, and explicit semantic evidence. The authoring engine
 can propose completion, token, rename, and formatting edits but cannot override
 semantic diagnostics. Incremental semantic diagnostics return independently;
 authoring requests wait until their ordered document synchronization finishes.
+The non-authoritative authoring workspace opens lazily on first completion,
+token, rename, or formatting request so it cannot delay initial semantic
+navigation. Pre-use edits are folded into that initial authoring document set;
+post-open edits remain version-ordered. First-use authoring latency is measured
+separately from warm completion latency.
 
 The normalized semantic snapshot contains source-backed elements,
 relationships, provenance, current/stale state, and stable identities. Query,

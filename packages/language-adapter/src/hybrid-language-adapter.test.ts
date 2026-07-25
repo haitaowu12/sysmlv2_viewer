@@ -77,7 +77,7 @@ describe('HybridLanguageAdapter', () => {
     expect(authoring.definition).not.toHaveBeenCalled()
   })
 
-  it('fails the hybrid open instead of silently dropping an engine', async () => {
+  it('opens semantics eagerly and reports a lazy authoring-engine failure on use', async () => {
     const semantic = adapter('semantic', [])
     const authoring = adapter('authoring', [])
     vi.mocked(authoring.openWorkspace).mockRejectedValueOnce(
@@ -92,11 +92,15 @@ describe('HybridLanguageAdapter', () => {
       qualificationStatus: 'qualified',
     })
 
-    await expect(hybrid.openWorkspace(workspace)).rejects.toThrow(
-      'authoring failed',
-    )
-    expect(semantic.closeWorkspace).toHaveBeenCalledWith('hybrid-test')
-    expect(authoring.closeWorkspace).toHaveBeenCalledWith('hybrid-test')
+    await expect(hybrid.openWorkspace(workspace)).resolves.toEqual([])
+    await expect(
+      hybrid.completion(workspace.documents[0]!.uri, {
+        line: 0,
+        character: 0,
+      }),
+    ).rejects.toThrow('authoring failed')
+    expect(semantic.closeWorkspace).not.toHaveBeenCalled()
+    expect(authoring.closeWorkspace).not.toHaveBeenCalled()
   })
 
   it('returns authoritative diagnostics without waiting for authoring synchronization', async () => {
@@ -122,6 +126,11 @@ describe('HybridLanguageAdapter', () => {
       referenceRelease: 'test',
       qualificationStatus: 'qualified',
     })
+    await hybrid.openWorkspace(workspace)
+    await hybrid.completion(
+      workspace.documents[0]!.uri,
+      { line: 0, character: 0 },
+    )
 
     await expect(
       hybrid.changeDocument(workspace.documents[0]!.uri, 2, 'package Changed {}'),
@@ -139,6 +148,41 @@ describe('HybridLanguageAdapter', () => {
     expect(completionSettled).toBe(false)
     releaseAuthoring()
     await expect(completion).resolves.toEqual([{ label: 'authoring-completion' }])
+  })
+
+  it('opens the lazy authoring workspace with the latest pre-use document state', async () => {
+    const semantic = adapter('semantic', [])
+    const authoring = adapter('authoring', [])
+    const hybrid = new HybridLanguageAdapter(semantic, authoring, {
+      adapterId: 'test/hybrid',
+      adapterVersion: '1',
+      engineName: 'test',
+      engineVersion: '1',
+      referenceRelease: 'test',
+      qualificationStatus: 'qualified',
+    })
+    await hybrid.openWorkspace(workspace)
+    await hybrid.changeDocument(
+      workspace.documents[0]!.uri,
+      2,
+      'package Latest {}',
+    )
+    expect(authoring.changeDocument).not.toHaveBeenCalled()
+
+    await hybrid.completion(
+      workspace.documents[0]!.uri,
+      { line: 0, character: 0 },
+    )
+    expect(authoring.openWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documents: [
+          expect.objectContaining({
+            version: 2,
+            text: 'package Latest {}',
+          }),
+        ],
+      }),
+    )
   })
 })
 
