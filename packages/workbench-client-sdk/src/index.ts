@@ -11,7 +11,10 @@ import {
   type WorkbenchTextEdit,
   type WorkbenchWorkspaceEdit,
   type WorkspaceStatusResult,
+  type WorkspaceDocumentContent,
+  type SavedWorkbenchView,
 } from '../../workbench-protocol/src/index.js'
+import type { LanguageDiagnostic } from '../../language-adapter/src/index.js'
 import type {
   ModelQuery,
   ModelQueryResult,
@@ -51,6 +54,38 @@ export class WorkbenchClient {
   workspaceStatus(workspaceId: string): Promise<WorkspaceStatusResult> {
     return this.transport.request(WORKBENCH_METHODS.workspaceStatus, {
       workspaceId,
+    })
+  }
+
+  readDocument(
+    workspaceId: string,
+    documentUri: string,
+  ): Promise<WorkspaceDocumentContent> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceReadDocument, {
+      workspaceId,
+      documentUri,
+    })
+  }
+
+  diagnostics(workspaceId: string): Promise<LanguageDiagnostic[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageDiagnostics, {
+      workspaceId,
+    })
+  }
+
+  listViews(workspaceId: string): Promise<SavedWorkbenchView[]> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceListViews, {
+      workspaceId,
+    })
+  }
+
+  saveView(
+    workspaceId: string,
+    view: SavedWorkbenchView,
+  ): Promise<SavedWorkbenchView> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceSaveView, {
+      workspaceId,
+      view,
     })
   }
 
@@ -221,6 +256,34 @@ export interface HttpWorkbenchTransportOptions {
   endpoint: string
   token: string
   csrf: string
+}
+
+export interface LoopbackPairingResult {
+  token: string
+  csrf: string
+  expiresAt: string
+}
+
+export async function pairLoopbackService(
+  serviceOrigin: string,
+  pairingCode: string,
+): Promise<LoopbackPairingResult> {
+  const origin = new URL(serviceOrigin)
+  if (
+    origin.protocol !== 'http:' ||
+    (origin.hostname !== '127.0.0.1' && origin.hostname !== '[::1]')
+  ) {
+    throw new Error('Workbench pairing requires an HTTP loopback service origin')
+  }
+  const response = await fetch(new URL('/pair', origin), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pairingCode }),
+  })
+  if (!response.ok) {
+    throw new Error(`Workbench pairing failed with HTTP ${response.status}`)
+  }
+  return response.json() as Promise<LoopbackPairingResult>
 }
 
 export class HttpWorkbenchTransport implements WorkbenchTransport {

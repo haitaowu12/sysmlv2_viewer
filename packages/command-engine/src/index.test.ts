@@ -87,6 +87,7 @@ describe('command registry', () => {
       'set-property',
       'update-documentation',
       'apply-pattern',
+      'replace-document',
       'undo-command',
       'redo-command',
     ])
@@ -214,6 +215,36 @@ describe('source edit transaction', () => {
 })
 
 describe('command planning', () => {
+  it('wraps a full source draft in the validated command workflow', async () => {
+    const nextSource = 'package Vehicle {\n  part def Motor;\n}\n'
+    const proposal = await planCommand({
+      envelope: {
+        schemaVersion: 1,
+        commandId: 'CMD-SOURCE-001',
+        workspaceId: 'vehicle',
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: { [uri]: document.sha256 },
+        requestedBy: { kind: 'user', id: 'engineer' },
+        command: {
+          kind: 'replace-document',
+          documentUri: uri,
+          text: nextSource,
+        },
+      },
+      snapshot,
+      documents: [document],
+      renameProvider: async () => ({ changes: {} }),
+    })
+
+    expect(proposal.editProfile.id).toBe('source-text-replace')
+    expect(proposal.overlayDocuments[0]!.text).toBe(nextSource)
+    expect(proposal.affectedElementIds).toEqual(['element-engine'])
+    expect(
+      applySourceEdits(proposal.overlayDocuments, proposal.undo)
+        .documents[0]!.text,
+    ).toBe(source)
+  })
+
   it('wraps a language-service rename in a proposal-only transaction', async () => {
     const envelope: CommandEnvelope = {
       schemaVersion: 1,

@@ -79,6 +79,32 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.workspaceReadDocument: {
+          const params = languageDocumentParams(request.params)
+          return success(
+            request.id,
+            this.workspaces.readDocument(params.workspaceId, params.documentUri),
+          )
+        }
+        case WORKBENCH_METHODS.workspaceListViews: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.listViews(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.workspaceSaveView: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.saveView(
+              requireString(params.workspaceId, 'workspaceId'),
+              params.view,
+            ),
+          )
+        }
         case WORKBENCH_METHODS.workspaceClose: {
           const params = requireRecord(request.params)
           return success(request.id, {
