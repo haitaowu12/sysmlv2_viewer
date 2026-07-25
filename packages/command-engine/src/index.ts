@@ -26,6 +26,8 @@ export const COMMAND_KINDS = [
   'set-property',
   'update-documentation',
   'apply-pattern',
+  'undo-command',
+  'redo-command',
 ] as const
 
 export type CommandKind = (typeof COMMAND_KINDS)[number]
@@ -83,6 +85,8 @@ export type WorkbenchCommand =
       ownerId: string
       parameters: Record<string, string | number | boolean>
     }
+  | { kind: 'undo-command'; appliedProposalId: string }
+  | { kind: 'redo-command'; appliedProposalId: string }
 
 export interface CommandEnvelope {
   schemaVersion: 1
@@ -154,6 +158,16 @@ export interface ApplyCommandApproval {
   }
 }
 
+export interface CommandHistoryRequest {
+  workspaceId: string
+  commandId: string
+  appliedProposalId: string
+  requestedBy: {
+    kind: 'user' | 'ai'
+    id: string
+  }
+}
+
 export interface AppliedCommandReceipt {
   schemaVersion: 1
   state: 'applied'
@@ -192,6 +206,14 @@ export interface PlanCommandInput {
   ) => Promise<WorkbenchWorkspaceEdit>
 }
 
+export interface PlanExplicitSourceEditInput {
+  envelope: CommandEnvelope
+  snapshot: SemanticSnapshot
+  documents: CommandWorkspaceDocument[]
+  edits: WorkbenchWorkspaceEdit
+  affectedElementIds: string[]
+}
+
 export class CommandValidationError extends Error {
   constructor(message: string) {
     super(message)
@@ -210,24 +232,7 @@ export async function planCommand(
   input: PlanCommandInput,
 ): Promise<InternalCommandProposal> {
   const { envelope, snapshot, documents } = input
-  validateEnvelope(envelope)
-  if (envelope.workspaceId !== snapshot.workspace.id) {
-    throw new CommandValidationError('Command workspace does not match snapshot')
-  }
-  if (envelope.baseSnapshotSha256 !== snapshot.snapshotSha256) {
-    throw new CommandValidationError('Command base snapshot is stale')
-  }
-  if (snapshot.freshness !== 'current') {
-    throw new CommandValidationError('Command requires a current semantic snapshot')
-  }
-  validateDocumentHashes(documents)
-  const documentsByUri = new Map(documents.map((document) => [document.uri, document]))
-  for (const [uri, expected] of Object.entries(envelope.baseDocuments)) {
-    const document = documentsByUri.get(uri)
-    if (!document || document.sha256 !== expected) {
-      throw new CommandValidationError(`Command base document is stale: ${uri}`)
-    }
-  }
+  validatePlanningContext(envelope, snapshot, documents)
 
   if (envelope.command.kind !== 'rename-element') {
     throw new CommandValidationError(
@@ -237,6 +242,37 @@ export async function planCommand(
   const target = requireTarget(snapshot, envelope.command.targetId)
   requireEditableTarget(target)
   const edits = await input.renameProvider(target, envelope.command.newName)
+  return createProposal(envelope, snapshot, documents, edits, [target.id])
+}
+
+export function planExplicitSourceEditCommand(
+  input: PlanExplicitSourceEditInput,
+): InternalCommandProposal {
+  validatePlanningContext(input.envelope, input.snapshot, input.documents)
+  if (
+    input.envelope.command.kind !== 'undo-command' &&
+    input.envelope.command.kind !== 'redo-command'
+  ) {
+    throw new CommandValidationError(
+      'Explicit source edits are restricted to undo and redo commands',
+    )
+  }
+  return createProposal(
+    input.envelope,
+    input.snapshot,
+    input.documents,
+    input.edits,
+    input.affectedElementIds,
+  )
+}
+
+function createProposal(
+  envelope: CommandEnvelope,
+  snapshot: SemanticSnapshot,
+  documents: CommandWorkspaceDocument[],
+  edits: WorkbenchWorkspaceEdit,
+  affectedElementIds: string[],
+): InternalCommandProposal {
   for (const uri of Object.keys(edits.changes)) {
     if (envelope.baseDocuments[uri] === undefined) {
       throw new CommandValidationError(
@@ -254,7 +290,7 @@ export async function planCommand(
     envelope: structuredClone(envelope),
     edits: structuredClone(edits),
     overlayDocuments: application.documents,
-    affectedElementIds: [target.id],
+    affectedElementIds: [...affectedElementIds],
     diagnosticsBefore: [],
     diagnosticsAfter: [],
     semanticDiff: null,
@@ -387,6 +423,33 @@ export function applySourceEdits(
   return { documents: updated, inverse }
 }
 
+function validatePlanningContext(
+  envelope: CommandEnvelope,
+  snapshot: SemanticSnapshot,
+  documents: CommandWorkspaceDocument[],
+): void {
+  validateEnvelope(envelope)
+  if (envelope.workspaceId !== snapshot.workspace.id) {
+    throw new CommandValidationError('Command workspace does not match snapshot')
+  }
+  if (envelope.baseSnapshotSha256 !== snapshot.snapshotSha256) {
+    throw new CommandValidationError('Command base snapshot is stale')
+  }
+  if (snapshot.freshness !== 'current') {
+    throw new CommandValidationError('Command requires a current semantic snapshot')
+  }
+  validateDocumentHashes(documents)
+  const documentsByUri = new Map(
+    documents.map((document) => [document.uri, document]),
+  )
+  for (const [uri, expected] of Object.entries(envelope.baseDocuments)) {
+    const document = documentsByUri.get(uri)
+    if (!document || document.sha256 !== expected) {
+      throw new CommandValidationError(`Command base document is stale: ${uri}`)
+    }
+  }
+}
+
 function validateEnvelope(envelope: CommandEnvelope): void {
   if (envelope.schemaVersion !== 1) {
     throw new CommandValidationError('Command schemaVersion must be 1')
@@ -403,6 +466,12 @@ function validateEnvelope(envelope: CommandEnvelope): void {
   }
   if (!COMMAND_KINDS.includes(envelope.command.kind)) {
     throw new CommandValidationError('Unknown command kind')
+  }
+  if (
+    envelope.requestedBy.kind !== 'user' &&
+    envelope.requestedBy.kind !== 'ai'
+  ) {
+    throw new CommandValidationError('Command requester kind is invalid')
   }
   if (
     envelope.command.kind === 'rename-element' &&

@@ -13,7 +13,10 @@ import {
 } from '../../workbench-protocol/src/index.js'
 import type { LanguageAdapter } from '../../language-adapter/src/index.js'
 import type { ModelQuery } from '../../query-engine/src/index.js'
-import type { CommandEnvelope } from '../../command-engine/src/index.js'
+import type {
+  CommandEnvelope,
+  CommandHistoryRequest,
+} from '../../command-engine/src/index.js'
 import type { ApplyCommandApproval } from '../../command-engine/src/index.js'
 import { WorkspaceManager } from './workspace.js'
 
@@ -226,6 +229,20 @@ export class WorkbenchService {
             request.id,
             await this.workspaces.proposeCommand(
               requireRecord(request.params) as unknown as CommandEnvelope,
+            ),
+          )
+        case WORKBENCH_METHODS.commandProposeUndo:
+          return success(
+            request.id,
+            await this.workspaces.proposeUndo(
+              requireRecord(request.params) as unknown as CommandHistoryRequest,
+            ),
+          )
+        case WORKBENCH_METHODS.commandProposeRedo:
+          return success(
+            request.id,
+            await this.workspaces.proposeRedo(
+              requireRecord(request.params) as unknown as CommandHistoryRequest,
             ),
           )
         case WORKBENCH_METHODS.commandApply:

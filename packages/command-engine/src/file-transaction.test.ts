@@ -155,6 +155,31 @@ describe('durable workspace file transaction', () => {
     expect(await readFile(first, 'utf8')).toBe('package First;\n')
     expect(await readFile(second, 'utf8')).toBe('package Second;\n')
   })
+
+  it('keeps finalized journals as history after a later transaction changes a file', async () => {
+    const root = await workspace()
+    const first = resolve(root, 'model/first.sysml')
+    await commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'historical-command',
+      files: [
+        change(first, 'model/first.sysml', 'package First;\n', 'package One;\n'),
+      ],
+    })
+    await commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'later-command',
+      files: [
+        change(first, 'model/first.sysml', 'package One;\n', 'package Latest;\n'),
+      ],
+    })
+
+    await expect(recoverWorkspaceTransactions(root)).resolves.toEqual([
+      { transactionId: 'historical-command', state: 'FINALIZED' },
+      { transactionId: 'later-command', state: 'FINALIZED' },
+    ])
+    expect(await readFile(first, 'utf8')).toBe('package Latest;\n')
+  })
 })
 
 async function workspace(): Promise<string> {

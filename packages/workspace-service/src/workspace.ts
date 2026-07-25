@@ -39,14 +39,18 @@ import {
   completeCommandValidation,
   commitWorkspaceTransaction,
   planCommand,
+  planExplicitSourceEditCommand,
+  readWorkspaceTransaction,
   recoverWorkspaceTransactions,
   toPublicCommandProposal,
   type ApplyCommandApproval,
   type AppliedCommandReceipt,
   type CommandEnvelope,
+  type CommandHistoryRequest,
   type CommandTransactionAudit,
   type InternalCommandProposal,
   type CommandProposal,
+  type WorkspaceTransactionReceipt,
 } from '../../command-engine/src/index.js'
 import type {
   AdapterWorkspace,
@@ -477,6 +481,102 @@ export class WorkspaceManager {
     }
   }
 
+  async proposeUndo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.proposeHistoryCommand(request, 'undo-command')
+  }
+
+  async proposeRedo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.proposeHistoryCommand(request, 'redo-command')
+  }
+
+  private async proposeHistoryCommand(
+    request: CommandHistoryRequest,
+    kind: 'undo-command' | 'redo-command',
+  ): Promise<CommandProposal> {
+    const workspace = this.requireWorkspace(request.workspaceId)
+    if (
+      !request.commandId ||
+      !request.appliedProposalId ||
+      request.appliedProposalId.length > 512 ||
+      !request.requestedBy?.id
+    ) {
+      throw new WorkspacePathError('Command history request is incomplete')
+    }
+    const existing = workspace.commandProposals.get(request.commandId)
+    if (existing) {
+      const command = existing.envelope.command
+      if (
+        command.kind !== kind ||
+        command.appliedProposalId !== request.appliedProposalId ||
+        JSON.stringify(existing.envelope.requestedBy) !==
+          JSON.stringify(request.requestedBy)
+      ) {
+        throw new WorkspacePathError(
+          `Command commandId conflict: ${request.commandId}`,
+        )
+      }
+      return toPublicCommandProposal(existing)
+    }
+    if (workspace.commandLease) {
+      throw new WorkspacePathError('Another command operation holds the workspace lease')
+    }
+    workspace.commandLease = true
+    try {
+      const transaction = await readWorkspaceTransaction(
+        workspace.rootPath,
+        commandTransactionId(request.appliedProposalId),
+      )
+      const priorAudit = requireCommandAudit(transaction, request.appliedProposalId)
+      if (
+        kind === 'redo-command' &&
+        priorAudit.proposal.envelope.command.kind !== 'undo-command'
+      ) {
+        throw new WorkspacePathError('Redo must target an applied undo proposal')
+      }
+      const snapshot = await this.semanticSnapshot(request.workspaceId)
+      if (snapshot.snapshotSha256 !== priorAudit.expectedSnapshotSha256) {
+        throw new WorkspacePathError(
+          'Command history is stale; undo and redo require the current head',
+        )
+      }
+      const documents = workspace.adapterWorkspace.documents.map((document) => ({
+        uri: document.uri,
+        workspacePath: relative(workspace.rootPath, document.absolutePath)
+          .replaceAll('\\', '/'),
+        text: document.text,
+        sha256: document.sha256,
+        version: document.version,
+      }))
+      const envelope: CommandEnvelope = {
+        schemaVersion: 1,
+        commandId: request.commandId,
+        workspaceId: request.workspaceId,
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: Object.fromEntries(
+          documents.map((document) => [document.uri, document.sha256]),
+        ),
+        requestedBy: structuredClone(request.requestedBy),
+        command: { kind, appliedProposalId: request.appliedProposalId },
+      }
+      const planned = planExplicitSourceEditCommand({
+        envelope,
+        snapshot,
+        documents,
+        edits: priorAudit.proposal.undo,
+        affectedElementIds: priorAudit.proposal.affectedElementIds,
+      })
+      const proposal = await this.validateCommandOverlay(
+        workspace,
+        snapshot,
+        planned,
+      )
+      workspace.commandProposals.set(request.commandId, proposal)
+      return toPublicCommandProposal(proposal)
+    } finally {
+      workspace.commandLease = false
+    }
+  }
+
   async applyCommand(
     approval: ApplyCommandApproval,
   ): Promise<AppliedCommandReceipt> {
@@ -518,24 +618,26 @@ export class WorkspaceManager {
         throw new WorkspacePathError('Command proposal base snapshot is stale')
       }
       const identities = new IdentityRegistry(workspace.identityRegistry.serialize())
-      const renamed = proposal.semanticDiff?.changes.find(
-        (change) =>
-          change.kind === 'element-renamed' &&
-          change.elementId === proposal.affectedElementIds[0],
+      const identityChanges = new Map(
+        proposal.semanticDiff?.changes
+          .filter((change) =>
+            (change.kind === 'element-renamed' || change.kind === 'element-moved') &&
+            change.elementId &&
+            change.after &&
+            'qualifiedName' in change.after,
+          )
+          .map((change) => [change.elementId!, change.after!]) ?? [],
       )
-      if (
-        proposal.envelope.command.kind === 'rename-element' &&
-        renamed?.after &&
-        'qualifiedName' in renamed.after
-      ) {
+      for (const [elementId, after] of identityChanges) {
+        if (!('qualifiedName' in after)) continue
         identities.migrate(
-          proposal.envelope.command.targetId,
+          elementId,
           {
-            workspacePath: renamed.after.source.workspacePath,
-            qualifiedName: renamed.after.qualifiedName,
-            kind: renamed.after.kind,
+            workspacePath: after.source.workspacePath,
+            qualifiedName: after.qualifiedName,
+            kind: after.kind,
           },
-          renamed.after.fingerprint,
+          after.fingerprint,
           proposal.commandId,
         )
       }
@@ -581,7 +683,7 @@ export class WorkspaceManager {
       }
       const transaction = await commitWorkspaceTransaction({
         rootPath: workspace.rootPath,
-        transactionId: `command-${sha256(Buffer.from(proposal.proposalId)).slice(0, 32)}`,
+        transactionId: commandTransactionId(proposal.proposalId),
         files,
         metadata: { commandAudit: audit },
       })
@@ -849,20 +951,21 @@ export class WorkspaceManager {
         identities: IdentityRegistry.empty(overlayStatus.workspaceId),
       })
       const identities = new IdentityRegistry(workspace.identityRegistry.serialize())
-      const command = proposal.envelope.command
-      if (command.kind === 'rename-element') {
+      for (const affectedElementId of proposal.affectedElementIds) {
         const prior = beforeSnapshot.elements.find(
-          (element) => element.id === command.targetId,
-        )!
+          (element) => element.id === affectedElementId,
+        )
+        if (!prior?.provenance.engineId) continue
         const next = provisional.elements.find(
           (element) =>
             element.provenance.engineId === prior.provenance.engineId,
         )
-        if (!next) {
+        if (!next && proposal.envelope.command.kind === 'rename-element') {
           throw new WorkspacePathError(
             `Validated overlay lost the renamed element: ${prior.id}`,
           )
         }
+        if (!next) continue
         identities.migrate(
           prior.id,
           {
@@ -1171,6 +1274,31 @@ async function assertNoSymlinkSegments(
 
 function sha256(value: Buffer): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function commandTransactionId(proposalId: string): string {
+  return `command-${sha256(Buffer.from(proposalId)).slice(0, 32)}`
+}
+
+function requireCommandAudit(
+  transaction: WorkspaceTransactionReceipt | null,
+  proposalId: string,
+): CommandTransactionAudit {
+  const audit = transaction?.metadata?.commandAudit
+  if (
+    transaction?.state !== 'FINALIZED' ||
+    !isRecord(audit) ||
+    audit.schemaVersion !== 1 ||
+    audit.recordType !== 'command-application' ||
+    !isRecord(audit.proposal) ||
+    audit.proposal.proposalId !== proposalId ||
+    typeof audit.expectedSnapshotSha256 !== 'string'
+  ) {
+    throw new WorkspacePathError(
+      `Applied command audit is unavailable or invalid: ${proposalId}`,
+    )
+  }
+  return structuredClone(audit) as unknown as CommandTransactionAudit
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

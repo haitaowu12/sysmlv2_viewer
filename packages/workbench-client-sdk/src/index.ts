@@ -19,6 +19,7 @@ import type {
 import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
 import type {
   CommandEnvelope,
+  CommandHistoryRequest,
   CommandProposal,
   ApplyCommandApproval,
   AppliedCommandReceipt,
@@ -195,6 +196,14 @@ export class WorkbenchClient {
 
   proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal> {
     return this.transport.request(WORKBENCH_METHODS.commandPropose, envelope)
+  }
+
+  proposeUndo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.transport.request(WORKBENCH_METHODS.commandProposeUndo, request)
+  }
+
+  proposeRedo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.transport.request(WORKBENCH_METHODS.commandProposeRedo, request)
   }
 
   applyCommand(

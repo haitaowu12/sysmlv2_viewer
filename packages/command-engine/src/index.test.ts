@@ -87,6 +87,8 @@ describe('command registry', () => {
       'set-property',
       'update-documentation',
       'apply-pattern',
+      'undo-command',
+      'redo-command',
     ])
   })
 })

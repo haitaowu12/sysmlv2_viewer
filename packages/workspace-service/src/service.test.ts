@@ -525,6 +525,68 @@ describe('WorkbenchService', () => {
       'overlayDocuments',
     )
     expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
+    const undo = await service.handle({
+      jsonrpc: '2.0',
+      id: 66,
+      method: WORKBENCH_METHODS.commandProposeUndo,
+      params: {
+        workspaceId: 'phase1-sample',
+        commandId: 'CMD-UNDO-001',
+        appliedProposalId: proposalResult.proposalId,
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(undo).toMatchObject({
+      result: {
+        validation: { state: 'validated' },
+        envelope: { command: { kind: 'undo-command' } },
+      },
+    })
+    if (!('result' in undo)) throw new Error('Undo proposal failed')
+    const undoProposalId = (undo.result as { proposalId: string }).proposalId
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 67,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: undoProposalId,
+        approvalId: 'APPROVAL-UNDO-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })).resolves.toMatchObject({ result: { state: 'applied' } })
+    expect(await readFile(changedPath, 'utf8')).toBe(changedBefore)
+
+    const redo = await service.handle({
+      jsonrpc: '2.0',
+      id: 68,
+      method: WORKBENCH_METHODS.commandProposeRedo,
+      params: {
+        workspaceId: 'phase1-sample',
+        commandId: 'CMD-REDO-001',
+        appliedProposalId: undoProposalId,
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(redo).toMatchObject({
+      result: {
+        validation: { state: 'validated' },
+        envelope: { command: { kind: 'redo-command' } },
+      },
+    })
+    if (!('result' in redo)) throw new Error('Redo proposal failed')
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 69,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: (redo.result as { proposalId: string }).proposalId,
+        approvalId: 'APPROVAL-REDO-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })).resolves.toMatchObject({ result: { state: 'applied' } })
+    expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
     await expect(
       service.handle({
         jsonrpc: '2.0',

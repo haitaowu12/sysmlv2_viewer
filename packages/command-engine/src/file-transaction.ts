@@ -241,6 +241,36 @@ export async function recoverWorkspaceTransactions(
   return recovered
 }
 
+export async function readWorkspaceTransaction(
+  workspaceRoot: string,
+  transactionId: string,
+): Promise<WorkspaceTransactionReceipt | null> {
+  validateTransactionId(transactionId)
+  const rootPath = await realpath(workspaceRoot)
+  const transactionRoot = resolve(
+    rootPath,
+    '.sysml-workbench',
+    'transactions',
+    transactionId,
+  )
+  try {
+    const metadata = await lstat(transactionRoot)
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+      throw new WorkspaceTransactionError('Transaction directory is unsafe')
+    }
+  } catch (error) {
+    if (isMissing(error)) return null
+    throw error
+  }
+  const receipt = await readExistingJournal(resolve(transactionRoot, 'journal.json'))
+  if (!receipt) return null
+  if (receipt.transactionId !== transactionId) {
+    throw new WorkspaceTransactionError('Transaction journal id is mismatched')
+  }
+  validateJournal(rootPath, transactionRoot, receipt)
+  return structuredClone(receipt)
+}
+
 async function recoverTransaction(
   rootPath: string,
   transactionRoot: string,
@@ -250,9 +280,13 @@ async function recoverTransaction(
   if (receipt.state === 'RECOVERY_CONFLICT') {
     throw new WorkspaceTransactionError('Manual transaction recovery is required')
   }
+  if (receipt.state === 'FINALIZED') return 'FINALIZED'
+  if (receipt.state === 'ROLLED_BACK') return 'ROLLED_BACK'
   const hashes = new Map<string, string>()
   for (const file of receipt.files) {
-    const current = await readFile(resolve(rootPath, file.workspacePath), 'utf8')
+    const absolutePath = resolve(rootPath, file.workspacePath)
+    await assertRegularFile(absolutePath, `Transaction target: ${file.workspacePath}`)
+    const current = await readFile(absolutePath, 'utf8')
     hashes.set(file.workspacePath, digest(current))
   }
   const allBefore = receipt.files.every(
@@ -262,7 +296,7 @@ async function recoverTransaction(
     (file) => hashes.get(file.workspacePath) === file.afterSha256,
   )
 
-  if (receipt.state === 'FINALIZED' || receipt.state === 'COMMITTED') {
+  if (receipt.state === 'COMMITTED') {
     if (!allAfter) {
       throw new WorkspaceTransactionError('Committed transaction files diverged')
     }
@@ -271,7 +305,7 @@ async function recoverTransaction(
     await persistJournal(journalPath, receipt)
     return 'FINALIZED'
   }
-  if (receipt.state === 'ROLLED_BACK' || receipt.state === 'PREPARED') {
+  if (receipt.state === 'PREPARED') {
     if (!allBefore) {
       throw new WorkspaceTransactionError('Uncommitted transaction files diverged')
     }
@@ -321,13 +355,16 @@ async function rollback(
       (candidate) => candidate.workspacePath === workspacePath,
     )!
     const absolutePath = resolve(rootPath, workspacePath)
+    await assertRegularFile(absolutePath, `Rollback target: ${workspacePath}`)
     const current = await readFile(absolutePath, 'utf8')
     if (digest(current) !== record.afterSha256) {
       throw new WorkspaceTransactionError(
         `Rollback found external divergence: ${workspacePath}`,
       )
     }
-    const backup = await readFile(resolve(transactionRoot, record.backupPath), 'utf8')
+    const backupPath = resolve(transactionRoot, record.backupPath)
+    await assertRegularFile(backupPath, `Rollback backup: ${workspacePath}`)
+    const backup = await readFile(backupPath, 'utf8')
     if (digest(backup) !== record.beforeSha256) {
       throw new WorkspaceTransactionError(
         `Rollback backup hash mismatch: ${workspacePath}`,
@@ -343,7 +380,9 @@ async function verifyFinalized(
   receipt: WorkspaceTransactionReceipt,
 ): Promise<void> {
   for (const file of receipt.files) {
-    const current = await readFile(resolve(rootPath, file.workspacePath), 'utf8')
+    const absolutePath = resolve(rootPath, file.workspacePath)
+    await assertRegularFile(absolutePath, `Committed target: ${file.workspacePath}`)
+    const current = await readFile(absolutePath, 'utf8')
     if (digest(current) !== file.afterSha256) {
       throw new WorkspaceTransactionError(
         `Committed file hash mismatch: ${file.workspacePath}`,
@@ -408,6 +447,13 @@ async function replaceDurably(path: string, text: string): Promise<void> {
   await writeDurable(temporary, text, metadata.mode & 0o777)
   await rename(temporary, path)
   await syncDirectory(dirname(path))
+}
+
+async function assertRegularFile(path: string, label: string): Promise<void> {
+  const metadata = await lstat(path)
+  if (!metadata.isFile() || metadata.isSymbolicLink()) {
+    throw new WorkspaceTransactionError(`${label} is unsafe`)
+  }
 }
 
 async function persistJournal(
