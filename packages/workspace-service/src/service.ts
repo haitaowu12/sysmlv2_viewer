@@ -19,6 +19,13 @@ import type {
 } from '../../command-engine/src/index.js'
 import type { ApplyCommandApproval } from '../../command-engine/src/index.js'
 import { WorkspaceManager } from './workspace.js'
+import type {
+  AddReviewFindingInput,
+  CreateBaselineInput,
+  CreateReviewInput,
+  DispositionReviewFindingInput,
+  GenerateReportInput,
+} from './workspace.js'
 
 export interface WorkbenchServiceOptions {
   adapter: LanguageAdapter
@@ -35,6 +42,7 @@ export class WorkbenchService {
     this.workspaces = new WorkspaceManager({
       allowedRoots: options.allowedRoots,
       adapter: options.adapter,
+      workbenchVersion: options.serviceVersion,
     })
   }
 
@@ -250,6 +258,127 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.assuranceEvaluate: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.evaluateAssurance(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.gitStatus: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.gitStatus(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.baselineList: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.listBaselines(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.baselineCreate: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.createBaseline(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as CreateBaselineInput,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.baselineCompare: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.compareBaseline(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireString(params.baselineId, 'baselineId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewList: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.listReviews(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewCreate: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.createReview(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as CreateReviewInput,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewAddFinding: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.addReviewFinding(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as AddReviewFindingInput,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewDispositionFinding: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.dispositionReviewFinding(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as DispositionReviewFindingInput,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewClose: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.closeReview(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireString(params.reviewId, 'reviewId'),
+              requireRecord(params.input, 'input') as {
+                actor: string
+                at: string
+                note?: string
+              },
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reviewStaleness: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.reviewStaleness(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireString(params.reviewId, 'reviewId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.reportGenerate: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.generateReport(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as GenerateReportInput,
+            ),
+          )
+        }
         case WORKBENCH_METHODS.commandPropose:
           return success(
             request.id,
@@ -328,6 +457,10 @@ export class WorkbenchService {
         durableIdentityPersistence: true,
         boundedModelQuery: true,
         typedCommandProposals: true,
+        deterministicAssurance: true,
+        gitBaselines: true,
+        modelAnchoredReviews: true,
+        reproducibleReports: true,
       },
       capabilities: this.options.adapter.capabilities,
       capabilitiesFinal: this.options.adapter.capabilitiesFinal(),

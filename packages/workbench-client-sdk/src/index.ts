@@ -27,6 +27,24 @@ import type {
   ApplyCommandApproval,
   AppliedCommandReceipt,
 } from '../../command-engine/src/index.js'
+import type {
+  BaselineComparison,
+  BaselineManifest,
+  GitWorkspaceStatus,
+} from '../../baseline-service/src/index.js'
+import type {
+  ModelReview,
+  ReviewStaleness,
+} from '../../review-service/src/index.js'
+import type { AssuranceEvaluation } from '../../rule-engine/src/index.js'
+import type { ReportBundleManifest } from '../../report-engine/src/index.js'
+import type {
+  AddReviewFindingInput,
+  CreateBaselineInput,
+  CreateReviewInput,
+  DispositionReviewFindingInput,
+  GenerateReportInput,
+} from '../../workspace-service/src/workspace.js'
 
 export interface WorkbenchTransport {
   request<T>(method: string, params?: unknown): Promise<T>
@@ -226,6 +244,106 @@ export class WorkbenchClient {
     return this.transport.request(WORKBENCH_METHODS.modelQuery, {
       workspaceId,
       query,
+    })
+  }
+
+  evaluateAssurance(workspaceId: string): Promise<AssuranceEvaluation> {
+    return this.transport.request(WORKBENCH_METHODS.assuranceEvaluate, {
+      workspaceId,
+    })
+  }
+
+  gitStatus(workspaceId: string): Promise<GitWorkspaceStatus> {
+    return this.transport.request(WORKBENCH_METHODS.gitStatus, { workspaceId })
+  }
+
+  listBaselines(workspaceId: string): Promise<BaselineManifest[]> {
+    return this.transport.request(WORKBENCH_METHODS.baselineList, { workspaceId })
+  }
+
+  createBaseline(
+    workspaceId: string,
+    input: CreateBaselineInput,
+  ): Promise<BaselineManifest> {
+    return this.transport.request(WORKBENCH_METHODS.baselineCreate, {
+      workspaceId,
+      input,
+    })
+  }
+
+  compareBaseline(
+    workspaceId: string,
+    baselineId: string,
+  ): Promise<BaselineComparison> {
+    return this.transport.request(WORKBENCH_METHODS.baselineCompare, {
+      workspaceId,
+      baselineId,
+    })
+  }
+
+  listReviews(workspaceId: string): Promise<ModelReview[]> {
+    return this.transport.request(WORKBENCH_METHODS.reviewList, { workspaceId })
+  }
+
+  createReview(
+    workspaceId: string,
+    input: CreateReviewInput,
+  ): Promise<ModelReview> {
+    return this.transport.request(WORKBENCH_METHODS.reviewCreate, {
+      workspaceId,
+      input,
+    })
+  }
+
+  addReviewFinding(
+    workspaceId: string,
+    input: AddReviewFindingInput,
+  ): Promise<ModelReview> {
+    return this.transport.request(WORKBENCH_METHODS.reviewAddFinding, {
+      workspaceId,
+      input,
+    })
+  }
+
+  dispositionReviewFinding(
+    workspaceId: string,
+    input: DispositionReviewFindingInput,
+  ): Promise<ModelReview> {
+    return this.transport.request(WORKBENCH_METHODS.reviewDispositionFinding, {
+      workspaceId,
+      input,
+    })
+  }
+
+  closeReview(
+    workspaceId: string,
+    reviewId: string,
+    input: { actor: string; at: string; note?: string },
+  ): Promise<ModelReview> {
+    return this.transport.request(WORKBENCH_METHODS.reviewClose, {
+      workspaceId,
+      reviewId,
+      input,
+    })
+  }
+
+  reviewStaleness(
+    workspaceId: string,
+    reviewId: string,
+  ): Promise<ReviewStaleness> {
+    return this.transport.request(WORKBENCH_METHODS.reviewStaleness, {
+      workspaceId,
+      reviewId,
+    })
+  }
+
+  generateReport(
+    workspaceId: string,
+    input: GenerateReportInput,
+  ): Promise<ReportBundleManifest> {
+    return this.transport.request(WORKBENCH_METHODS.reportGenerate, {
+      workspaceId,
+      input,
     })
   }
 

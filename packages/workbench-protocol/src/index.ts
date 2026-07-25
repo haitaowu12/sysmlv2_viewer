@@ -1,4 +1,4 @@
-export const WORKBENCH_PROTOCOL_VERSION = '0.5.0'
+export const WORKBENCH_PROTOCOL_VERSION = '0.6.0'
 
 export const WORKBENCH_METHODS = {
   initialize: 'workbench/initialize',
@@ -22,6 +22,18 @@ export const WORKBENCH_METHODS = {
   languageRestart: 'language/restart',
   semanticSnapshot: 'semantic/snapshot',
   modelQuery: 'model/query',
+  assuranceEvaluate: 'assurance/evaluate',
+  gitStatus: 'git/status',
+  baselineList: 'baseline/list',
+  baselineCreate: 'baseline/create',
+  baselineCompare: 'baseline/compare',
+  reviewList: 'review/list',
+  reviewCreate: 'review/create',
+  reviewAddFinding: 'review/addFinding',
+  reviewDispositionFinding: 'review/dispositionFinding',
+  reviewClose: 'review/close',
+  reviewStaleness: 'review/staleness',
+  reportGenerate: 'report/generate',
   commandPropose: 'command/propose',
   commandProposeUndo: 'command/proposeUndo',
   commandProposeRedo: 'command/proposeRedo',
@@ -103,6 +115,10 @@ export interface InitializeResult {
     durableIdentityPersistence: boolean
     boundedModelQuery: boolean
     typedCommandProposals: boolean
+    deterministicAssurance: boolean
+    gitBaselines: boolean
+    modelAnchoredReviews: boolean
+    reproducibleReports: boolean
   }
   capabilities: LanguageCapabilities
   capabilitiesFinal: boolean
