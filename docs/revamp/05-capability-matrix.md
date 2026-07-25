@@ -1,9 +1,10 @@
 # Language and Workbench Capability Matrix
 
-Profile version: `sysml-2.0-kerml-1.0/workbench-3-candidate`
+Profile version: `sysml-2.0-kerml-1.0/workbench-5-candidate`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Gate P4 rule: only bounded capabilities backed by mandatory tests and exact
-locked-runtime evidence are claimed; assurance and later targets remain planned.
+Gate P5 rule: only bounded capabilities backed by mandatory tests and exact
+locked-runtime evidence are claimed; controlled AI and release targets remain
+planned.
 
 ## Status vocabulary
 
@@ -98,12 +99,12 @@ locked-runtime evidence are claimed; assurance and later targets remain planned.
 | language-aware source surface | component-qualified P4 | service completion, hover, definition, references, formatting; edits require command approval | EDITOR-P4-001 |
 | saved projections/layouts | component-qualified P4 | bounded workspace-owned JSON with stable-identity positions | VIEW-SAVE-001 |
 | matrices/tables | component-qualified P4 | semantic projection table, sort-ready schema and CSV export | MATRIX-001 |
-| requirements coverage | simple diagram only | P5 | ASSURE-REQ-001 |
-| verification readiness | unsupported | P5 | ASSURE-VER-001 |
-| interface assurance | simple interconnection view | P5 | ASSURE-IF-001 |
-| model-anchored reviews | unsupported | P5 | REVIEW-001 |
-| Git semantic diff | unsupported | P5 | DIFF-001 |
-| deterministic reports | SVG/PNG only | P5 | REPORT-DET-001 |
+| requirements coverage | supported P5 profile | deterministic direct satisfy/verify gap rules over normalized relationships | ASSURE-REQ-001 |
+| verification readiness | supported P5 profile | direct verification coverage and missing-verification findings | ASSURE-VER-001 |
+| interface assurance | supported P5 profile | endpoint/type/ownership/basis/verification rules where normalized semantics exist | ASSURE-IF-001 |
+| model-anchored reviews | supported P5 | diffable JSON, frozen baseline/scope, stable anchors, transitions, history, staleness | REVIEW-001 |
+| Git semantic diff | supported P5 | branch/status/baseline manifests plus stable-identity semantic comparison | DIFF-001 |
+| deterministic reports | supported P5 | sanitized HTML, byte-stable PDF, CSV registers, hashed provenance manifests | REPORT-DET-001 |
 | constrained AI | whole-document mutation | P6 | AI-SAFE-001 |
 | public web evaluation | static app | bounded A profile P4/P7 | DEPLOY-A-001 |
 | browser + local companion | unsupported | production B profile P4/P7 | DEPLOY-B-001 |

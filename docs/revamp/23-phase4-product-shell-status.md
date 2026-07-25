@@ -1,7 +1,7 @@
 # Phase 4 Product Shell Status
 
-Status: component qualification passed; Gate P4 remains open  
-Branch: `codex/sysml-workbench-phase4-product-shell`  
+Status: Gate P4 passed through the integrated Phase 5 pilot
+Branch: `codex/sysml-workbench-phase4-product-shell`
 Draft PR: #6
 
 ## Delivered
@@ -25,8 +25,8 @@ Draft PR: #6
 
 ## Evidence
 
-- `npm run test:workbench`: 14 files, 58 tests passed.
-- `npm test`: 34 files and 211 tests passed; 19 optional upstream-corpus tests
+- `npm run test:workbench`: 18 files, 73 tests passed.
+- `npm test`: 38 files and 227 tests passed; 19 optional upstream-corpus tests
   skipped because the optional corpus was not configured.
 - `npm run build`: TypeScript, service distribution, and Vite production build
   passed.
@@ -38,27 +38,30 @@ Draft PR: #6
 - Browser pairing and workspace opening were exercised against the qualified
   loopback service. Rendered evidence is stored under `output/playwright/`.
 - Machine-readable evidence:
-  `docs/revamp/phase4-qualification-observation.json`.
+  `docs/revamp/phase4-qualification-observation.json` and
+  `docs/revamp/phase5-qualification-observation.json`.
 
 ## Gate disposition
 
-The product-shell component is qualified. Gate P4 is not yet declared complete
-because its mandated usability pilot includes three workflows whose authority
-belongs to Phase 5:
+Gate P4 passes. The integrated locked-runtime pilot exercises all eight
+mandated tasks through the workbench service and product surfaces:
 
-1. compare two Git baselines semantically;
-2. record and close a model-anchored review finding;
-3. export an interface assurance report.
+1. open the realistic four-document infrastructure workspace;
+2. locate an unresolved reference while preserving canonical source;
+3. navigate from a requirement into the semantic model;
+4. identify four unverified requirements;
+5. add an interface through a typed command with no pre-approval write;
+6. compare two Git baselines semantically;
+7. close a stable-identity-anchored review finding with no stale anchor;
+8. export a deterministic HTML/PDF/CSV interface register.
 
-Calling Gate P4 complete before those tasks exist would redefine the acceptance
-gate downward. Phase 5 will be implemented as a stacked branch from this exact
-head. The integrated eight-task pilot will then qualify both Gate P4 usability
-and Gate P5 assurance before either PR is made ready.
+The exact qualified implementation head is `8a69813`. The semantic authority
+artifact SHA-256 is
+`8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160`.
+The pilot result is machine-recorded as `pass`.
 
 ## Next slice
 
-1. Git repository/baseline service and semantic comparison.
-2. Model-anchored review persistence and stale-finding detection.
-3. Requirement/verification and interface rule packs.
-4. Deterministic interface and closure reports.
-5. Integrated browser usability pilot using a copied infrastructure workspace.
+Gate P5 closure and controlled-AI Gate P6. The project remains a release
+candidate under construction; Gate P7 packaging, security, accessibility, and
+clean-machine evidence are still required before any production claim.
