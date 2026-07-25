@@ -13,6 +13,7 @@ import {
 } from '../../workbench-protocol/src/index.js'
 import type { LanguageAdapter } from '../../language-adapter/src/index.js'
 import type { ModelQuery } from '../../query-engine/src/index.js'
+import type { CommandEnvelope } from '../../command-engine/src/index.js'
 import { WorkspaceManager } from './workspace.js'
 
 export interface WorkbenchServiceOptions {
@@ -219,6 +220,13 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.commandPropose:
+          return success(
+            request.id,
+            await this.workspaces.proposeCommand(
+              requireRecord(request.params) as unknown as CommandEnvelope,
+            ),
+          )
         default:
           return failure(
             request.id,
@@ -268,6 +276,7 @@ export class WorkbenchService {
         normalizedSemanticSnapshot: true,
         durableIdentityPersistence: true,
         boundedModelQuery: true,
+        typedCommandProposals: true,
       },
       capabilities: this.options.adapter.capabilities,
       capabilitiesFinal: this.options.adapter.capabilitiesFinal(),

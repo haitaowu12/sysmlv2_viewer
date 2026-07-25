@@ -24,7 +24,8 @@
     "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts",
     "test:watch": "vitest",
     "verify:phase1": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
-    "verify:phase2": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production"
+    "verify:phase2": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
+    "verify:phase3": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production"
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",

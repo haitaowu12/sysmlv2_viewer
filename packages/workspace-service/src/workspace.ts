@@ -17,6 +17,7 @@ import type {
   WorkbenchHover,
   WorkbenchLocation,
   WorkbenchPosition,
+  WorkbenchRange,
   WorkbenchSemanticTokens,
   WorkbenchTextEdit,
   WorkbenchWorkspaceEdit,
@@ -34,6 +35,11 @@ import {
   type ModelQuery,
   type ModelQueryResult,
 } from '../../query-engine/src/index.js'
+import {
+  planCommand,
+  type CommandEnvelope,
+  type CommandProposal,
+} from '../../command-engine/src/index.js'
 import type {
   AdapterWorkspace,
   EngineSemanticEvidence,
@@ -74,6 +80,7 @@ interface OpenWorkspace {
   semanticSnapshot?: SemanticSnapshot
   semanticSnapshotPromise?: Promise<SemanticSnapshot>
   queryCache: Map<string, ModelQueryResult>
+  commandProposals: Map<string, CommandProposal>
 }
 
 export interface WorkspaceManagerOptions {
@@ -187,6 +194,7 @@ export class WorkspaceManager {
       rootPath,
       semanticRevision: 0,
       queryCache: new Map(),
+      commandProposals: new Map(),
     })
     return status
   }
@@ -386,6 +394,51 @@ export class WorkspaceManager {
     return structuredClone(workspace.status)
   }
 
+  async proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal> {
+    const workspace = this.requireWorkspace(envelope.workspaceId)
+    const existing = workspace.commandProposals.get(envelope.commandId)
+    if (existing) {
+      if (JSON.stringify(existing.envelope) !== JSON.stringify(envelope)) {
+        throw new WorkspacePathError(
+          `Command commandId conflict: ${envelope.commandId}`,
+        )
+      }
+      return structuredClone(existing)
+    }
+    const snapshot = await this.semanticSnapshot(envelope.workspaceId)
+    const documents = workspace.adapterWorkspace.documents.map((document) => ({
+      uri: document.uri,
+      workspacePath: relative(workspace.rootPath, document.absolutePath)
+        .replaceAll('\\', '/'),
+      text: document.text,
+      sha256: document.sha256,
+      version: document.version,
+    }))
+    const proposal = await planCommand({
+      envelope,
+      snapshot,
+      documents,
+      renameProvider: async (target, newName) => {
+        const document = workspace.adapterWorkspace.documents.find(
+          (candidate) => candidate.uri === target.source.uri,
+        )
+        if (!document) {
+          throw new WorkspacePathError(
+            `Command target source is outside the workspace: ${target.id}`,
+          )
+        }
+        return this.rename(
+          envelope.workspaceId,
+          target.source.uri,
+          locateElementName(document.text, target.source.range, target.name),
+          newName,
+        )
+      },
+    })
+    workspace.commandProposals.set(envelope.commandId, proposal)
+    return structuredClone(proposal)
+  }
+
   async semanticSnapshot(workspaceId: string): Promise<SemanticSnapshot> {
     const workspace = this.requireWorkspace(workspaceId)
     const health = this.options.adapter.health()
@@ -560,6 +613,40 @@ function selectConfiguration(configuration: WorkspaceConfiguration): {
     sourceRoots: selected?.sourceRoots ?? configuration.sourceRoots,
     libraries: selected?.libraries ?? configuration.libraries ?? [],
   }
+}
+
+function locateElementName(
+  text: string,
+  range: WorkbenchRange,
+  name: string,
+): WorkbenchPosition {
+  const lines = text.split('\n')
+  const selected = lines
+    .slice(range.start.line, range.end.line + 1)
+    .map((line, index) => {
+      const absoluteLine = range.start.line + index
+      const start = absoluteLine === range.start.line ? range.start.character : 0
+      const end =
+        absoluteLine === range.end.line ? range.end.character : line.length
+      return { absoluteLine, start, text: line.slice(start, end) }
+    })
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const token = new RegExp(`(^|[^\\p{L}\\p{N}_])(${escaped})(?=$|[^\\p{L}\\p{N}_])`, 'gu')
+  const matches: WorkbenchPosition[] = []
+  for (const line of selected) {
+    for (const match of line.text.matchAll(token)) {
+      matches.push({
+        line: line.absoluteLine,
+        character: line.start + match.index! + match[1]!.length,
+      })
+    }
+  }
+  if (matches.length !== 1) {
+    throw new WorkspacePathError(
+      `Command target name is not uniquely located in its authoritative range: ${name}`,
+    )
+  }
+  return matches[0]!
 }
 
 async function collectModelFiles(

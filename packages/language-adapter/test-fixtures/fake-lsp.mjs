@@ -187,10 +187,18 @@ function handle(message) {
         elements: [{
           engineId: `fake-package:${message.params.uri}`,
           metaclass: 'Package',
-          name: 'Fake',
-          qualifiedName: 'Fake',
+          name: process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
+          qualifiedName: process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
           ownerEngineId: null,
-          range: range()
+          range: process.env.FAKE_LSP_SEMANTIC_NAME
+            ? {
+                start: { line: 0, character: 0 },
+                end: {
+                  line: 0,
+                  character: process.env.FAKE_LSP_SEMANTIC_NAME.length
+                }
+              }
+            : range()
         }],
         relationships: []
       }

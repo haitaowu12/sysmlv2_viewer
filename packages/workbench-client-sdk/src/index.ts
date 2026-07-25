@@ -17,6 +17,10 @@ import type {
   ModelQueryResult,
 } from '../../query-engine/src/index.js'
 import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
+import type {
+  CommandEnvelope,
+  CommandProposal,
+} from '../../command-engine/src/index.js'
 
 export interface WorkbenchTransport {
   request<T>(method: string, params?: unknown): Promise<T>
@@ -185,6 +189,10 @@ export class WorkbenchClient {
       workspaceId,
       query,
     })
+  }
+
+  proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal> {
+    return this.transport.request(WORKBENCH_METHODS.commandPropose, envelope)
   }
 
   async close(): Promise<void> {

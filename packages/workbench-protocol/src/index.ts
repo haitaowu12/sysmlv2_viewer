@@ -1,4 +1,4 @@
-export const WORKBENCH_PROTOCOL_VERSION = '0.2.0'
+export const WORKBENCH_PROTOCOL_VERSION = '0.3.0'
 
 export const WORKBENCH_METHODS = {
   initialize: 'workbench/initialize',
@@ -19,6 +19,7 @@ export const WORKBENCH_METHODS = {
   languageRestart: 'language/restart',
   semanticSnapshot: 'semantic/snapshot',
   modelQuery: 'model/query',
+  commandPropose: 'command/propose',
 } as const
 
 export type WorkbenchMethod =
@@ -95,6 +96,7 @@ export interface InitializeResult {
     normalizedSemanticSnapshot: boolean
     durableIdentityPersistence: boolean
     boundedModelQuery: boolean
+    typedCommandProposals: boolean
   }
   capabilities: LanguageCapabilities
   capabilitiesFinal: boolean

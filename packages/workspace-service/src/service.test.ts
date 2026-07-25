@@ -400,6 +400,99 @@ describe('WorkbenchService', () => {
       .not.toBe(semantic.snapshotSha256)
   })
 
+  it('returns a proposal-only typed rename without changing canonical source', async () => {
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-command-proposal-'),
+    )
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter(
+        { FAKE_LSP_SEMANTIC_NAME: 'package' },
+        'qualified',
+      ),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    const opened = await service.handle({
+      jsonrpc: '2.0',
+      id: 60,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: {
+        workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml'),
+      },
+    })
+    if (!('result' in opened)) throw new Error('Workspace open failed')
+    const snapshotResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 61,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in snapshotResponse)) throw new Error('Snapshot failed')
+    const snapshot = snapshotResponse.result as {
+      snapshotSha256: string
+      documents: Array<{ uri: string; sha256: string }>
+      elements: Array<{ id: string }>
+    }
+    const sourcePath = resolve(temporaryRoot, 'model/vehicle.sysml')
+    const sourceBefore = await readFile(sourcePath, 'utf8')
+    const proposal = await service.handle({
+      jsonrpc: '2.0',
+      id: 62,
+      method: WORKBENCH_METHODS.commandPropose,
+      params: {
+        schemaVersion: 1,
+        commandId: 'CMD-SERVICE-001',
+        workspaceId: 'phase1-sample',
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: Object.fromEntries(
+          snapshot.documents.map((document) => [document.uri, document.sha256]),
+        ),
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+        command: {
+          kind: 'rename-element',
+          targetId: snapshot.elements[0]!.id,
+          newName: 'RenamedPackage',
+        },
+      },
+    })
+
+    expect(proposal).toMatchObject({
+      result: {
+        state: 'proposed',
+        commandId: 'CMD-SERVICE-001',
+        approval: { required: true, approved: false },
+        validation: { state: 'pending-authoritative-validation' },
+      },
+    })
+    expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 63,
+        method: WORKBENCH_METHODS.commandPropose,
+        params: {
+          schemaVersion: 1,
+          commandId: 'CMD-SERVICE-001',
+          workspaceId: 'phase1-sample',
+          baseSnapshotSha256: snapshot.snapshotSha256,
+          baseDocuments: Object.fromEntries(
+            snapshot.documents.map((document) => [document.uri, document.sha256]),
+          ),
+          requestedBy: { kind: 'user', id: 'test-engineer' },
+          command: {
+            kind: 'rename-element',
+            targetId: snapshot.elements[0]!.id,
+            newName: 'DifferentName',
+          },
+        },
+      }),
+    ).resolves.toMatchObject({
+      error: { message: expect.stringContaining('commandId conflict') },
+    })
+  })
+
   it('rejects an identity registry path that traverses a workspace symlink', async () => {
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), 'sysml-workbench-identity-link-'),

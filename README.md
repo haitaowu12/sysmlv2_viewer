@@ -6,7 +6,7 @@ backed by a locked, qualified language-engine runtime.
 
 ## Current implemented state
 
-Phase 2 provides:
+Gate P2 provides:
 
 - multi-file workspace loading and configured libraries;
 - locked VinQut/Pilot semantic authority plus non-authoritative Spec42
@@ -22,13 +22,23 @@ Phase 2 provides:
 - an explorer projection built only from the normalized snapshot;
 - identity-aware rename/move semantic diff classification.
 
+Phase 3 foundation adds a proposal-only typed command boundary:
+
+- versioned command registry and command envelopes;
+- mandatory base snapshot/document hashes;
+- deterministic workspace edits with overlap, range, and scope rejection;
+- exact inverse edits for later undo transactions;
+- proposal-only rename through protocol, service, and client SDK;
+- command-id idempotency conflicts;
+- canonical source remains unchanged before approval.
+
 The existing Vite viewer remains a compatibility/demo surface during the
 revamp. Its hand-written parser, fixed diagram tabs, Draw.io round trip, and
 browser store are not authoritative workbench architecture. They will be
 retired or isolated in later gated phases.
 
-Not yet implemented as production workbench claims: typed source-edit
-commands, native graphical mutation, the new application shell, assurance
+Not yet implemented as production workbench claims: approved source-edit
+transactions, native graphical mutation, the new application shell, assurance
 workflows, review persistence, Git baseline UI, deterministic reports,
 controlled AI, desktop packaging, or release-candidate hardening.
 
@@ -36,7 +46,7 @@ controlled AI, desktop packaging, or release-candidate hardening.
 
 ```bash
 npm install
-npm run verify:phase2
+npm run verify:phase3
 ```
 
 Run the service without a configured engine in preservation-control mode:
@@ -60,6 +70,7 @@ npm run benchmark:workbench -- \
 - language decision: `docs/adr/ADR-001-language-reference-and-runtime-engine-selection.md`;
 - identity model: `docs/adr/ADR-002-model-identity.md`;
 - Phase 2 gate record: `docs/revamp/19-phase2-semantic-core-status.md`;
+- Phase 3 execution plan: `docs/revamp/20-phase3-command-editing-plan.md`;
 - exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
 - medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
 - mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
@@ -72,6 +83,7 @@ No broad “supports SysML v2” claim is made. Capability boundaries are in
 The workbench service authorizes workspace roots, rejects path traversal and
 symlink-backed model/identity paths, binds shared access to authenticated
 loopback transport, and keeps source local. Provider-backed AI is not part of
-the Phase 2 authority path and cannot mutate canonical source.
+the authority path and cannot mutate canonical source. Phase 3 commands remain
+proposal-only until an explicit, validated approval transaction is implemented.
 
 The project is not yet a production release. Gate P7 remains required.
