@@ -1,6 +1,6 @@
 # ADR-001: Language Reference and Runtime Engine Selection
 
-- Status: proposed for revised Gate P0
+- Status: accepted at Gate P0
 - Date: 2026-07-24
 - Decision owner: product owner
 - Phase 1 update required: yes, after comparative qualification

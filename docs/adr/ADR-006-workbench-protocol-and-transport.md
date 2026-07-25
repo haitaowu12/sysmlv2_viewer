@@ -1,6 +1,6 @@
 # ADR-006: Workbench Protocol and Transport
 
-- Status: proposed for revised Gate P0
+- Status: accepted at Gate P0
 - Date: 2026-07-24
 
 ## Decision

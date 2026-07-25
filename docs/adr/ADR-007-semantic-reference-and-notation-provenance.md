@@ -1,6 +1,6 @@
 # ADR-007: Semantic Reference and Notation Provenance
 
-- Status: proposed for revised Gate P0
+- Status: accepted at Gate P0
 - Date: 2026-07-24
 
 ## Decision

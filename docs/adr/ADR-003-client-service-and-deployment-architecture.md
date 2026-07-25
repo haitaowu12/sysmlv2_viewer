@@ -1,6 +1,6 @@
 # ADR-003: Client, Service, and Deployment Architecture
 
-- Status: proposed for revised Gate P0
+- Status: accepted at Gate P0
 - Date: 2026-07-24
 
 ## Decision
