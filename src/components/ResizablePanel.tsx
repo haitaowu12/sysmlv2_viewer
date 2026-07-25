@@ -73,7 +73,7 @@ export default function ResizablePanel({ defaultWidth, minWidth, maxWidth, side,
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const step = e.shiftKey ? 40 : 10;
-    let nextWidth = width;
+    let nextWidth: number;
 
     if (e.key === 'ArrowLeft') {
       nextWidth = side === 'left' ? width - step : width + step;

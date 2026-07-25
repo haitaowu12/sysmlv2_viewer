@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "outcome": "HYBRID GO",
+  "adapterVersion": "0.2.0",
+  "referenceRelease": {
+    "name": "2026-05",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "semantic": {
+    "candidateId": "vinqut",
+    "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+    "artifactEnvironment": "SYSML_WORKBENCH_SEMANTIC_ARTIFACT",
+    "artifactSha256": "e717eec5fc406b739983f8896ae5c8a6b4eb9510568225988a7cda3e95437dbe",
+    "launchMode": "java-jar"
+  },
+  "authoring": {
+    "candidateId": "spec42",
+    "commit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+    "artifactEnvironment": "SYSML_WORKBENCH_AUTHORING_ARTIFACT",
+    "artifactSha256": "22911d70f7f41251e257aef3ae4a3a402e77063d2271ed394a114834d7ee362e",
+    "launchMode": "executable"
+  },
+  "officialLibraryIndexSha256": "d010a8644265b8aadab103f1cc9024bb143b34d825ea2139e11590ee337cd8fe"
+}

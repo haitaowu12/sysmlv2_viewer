@@ -1,7 +1,7 @@
 # ADR-001: Language Reference and Runtime Engine Selection
 
-- Status: accepted at Gate P0
-- Date: 2026-07-24
+- Status: amended and accepted at Gate P1
+- Date: 2026-07-25
 - Decision owner: product owner
 - Phase 1 update required: yes, after comparative qualification
 
@@ -85,3 +85,36 @@ The current hand-written parser may remain only as a qualification control and t
 - [Official SysML v2 release repository](https://github.com/Systems-Modeling/SysML-v2-Release)
 - [Official Pilot implementation](https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation)
 - [LSP specification](https://microsoft.github.io/language-server-protocol/)
+
+## Gate P1 amendment
+
+Phase 1 records **HYBRID GO** for adapter `0.2.0`.
+
+VinQut `373dfb960860c3ac259f56169ddabc06d2847eca`, rebuilt
+against official Pilot `fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa`, is the
+only semantic authority for parse, resolve, diagnostics, symbols, definition,
+references, and hover. Spec42
+`a3f066ee4095a0eb8b37545ffd4846d42804658a` is limited to
+non-authoritative completion, semantic tokens, rename proposals, and formatting
+proposals. Product-owned code owns source inventory, security, normalized DTOs,
+artifact locking, health, and visible failure.
+
+Rationale:
+
+- VinQut alone passed the 95-document exact `2026-05` official-library
+  workspace with zero diagnostics;
+- Spec42 produced 859 errors on that library but supplied materially better
+  authoring operations;
+- daltskin parsed the library but had release-skew and scale/stability concerns;
+- no standalone official Pilot service artifact was qualified.
+
+The responsibility table, exact artifact hashes, comparative report, supported
+profile, performance conditions, license state, and migration consequences are
+recorded in `docs/revamp/18-phase1-gate-decision.md` and
+`config/language-engine-runtime-lock.json`.
+
+No automatic fallback is permitted. Both processes must be present for the
+declared hybrid capability set; loss of either fails the session. Semantic
+snapshot remains false until P2 supplies the normalized product-owned contract.
+Direct KPAR loading and the large production profile are excluded. This is not
+a SysML v2 conformance or production-release claim.

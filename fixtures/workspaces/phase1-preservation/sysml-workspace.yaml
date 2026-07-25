@@ -1,0 +1,9 @@
+schemaVersion: 1
+id: phase1-preservation
+name: Phase 1 byte preservation probe
+sourceRoots:
+  - model
+libraries: []
+activeConfiguration: default
+modelConfigurations:
+  default: {}
