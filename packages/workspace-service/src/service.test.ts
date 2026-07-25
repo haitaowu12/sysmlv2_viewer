@@ -616,6 +616,12 @@ describe('WorkbenchService', () => {
     })).resolves.toMatchObject({
       result: {
         reportKind: 'review-closure',
+        provenance: {
+          workspace: {
+            id: 'phase1-sample',
+            name: 'Phase 1 multi-file qualification sample',
+          },
+        },
         artifacts: expect.arrayContaining([
           expect.objectContaining({ format: 'html' }),
           expect.objectContaining({ format: 'pdf' }),

@@ -108,6 +108,7 @@ interface WorkspaceConfiguration {
 
 interface OpenWorkspace {
   adapterWorkspace: AdapterWorkspace
+  displayName: string
   status: WorkspaceStatusResult
   diagnostics: LanguageDiagnostic[]
   identityRegistry: IdentityRegistry
@@ -269,6 +270,7 @@ export class WorkspaceManager {
     )
     this.workspaces.set(workspaceId, {
       adapterWorkspace,
+      displayName: configuration.name?.trim() || selection.name,
       status,
       diagnostics,
       identityRegistry,
@@ -1094,7 +1096,7 @@ export class WorkspaceManager {
       provenance: {
         workspace: {
           id: snapshot.workspace.id,
-          name: snapshot.workspace.configurationName,
+          name: workspace.displayName,
         },
         commitSha: gitStatus.head,
         baseline: input.baselineId ?? null,
