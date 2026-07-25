@@ -80,6 +80,7 @@ export interface LanguageAdapter {
   readonly capabilities: LanguageCapabilities
   capabilitiesFinal(): boolean
   initialize(): Promise<void>
+  prepareWorkspace?(workspace: AdapterWorkspace): Promise<void>
   openWorkspace(workspace: AdapterWorkspace): Promise<LanguageDiagnostic[]>
   closeWorkspace(workspaceId: string): Promise<void>
   dispose(): Promise<void>
