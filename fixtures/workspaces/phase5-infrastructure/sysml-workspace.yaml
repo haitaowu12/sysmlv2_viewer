@@ -1,0 +1,7 @@
+schemaVersion: 1
+id: phase5-infrastructure-pilot
+name: Regional telemetry and control interface assurance pilot
+sourceRoots:
+  - model
+libraries:
+  - libraries

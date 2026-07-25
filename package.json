@@ -20,6 +20,7 @@
     "qualify:phase2": "tsx scripts/workbench-qualify-phase2.ts",
     "qualify:phase3": "tsx scripts/workbench-qualify-phase3.ts",
     "qualify:phase4": "tsx scripts/workbench-qualify-phase4.ts",
+    "qualify:phase5": "tsx scripts/workbench-qualify-phase5.ts",
     "benchmark:workbench": "tsx scripts/workbench-benchmark.ts",
     "release:inventory": "tsx scripts/workbench-release-inventory.ts",
     "audit:production": "npm audit --omit=dev",
@@ -28,7 +29,8 @@
     "verify:phase1": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
     "verify:phase2": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
     "verify:phase3": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
-    "verify:phase4": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production"
+    "verify:phase4": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
+    "verify:phase5": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production"
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
