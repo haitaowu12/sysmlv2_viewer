@@ -104,7 +104,7 @@ function handle(message) {
       }
     })
   } else if (message.method === 'textDocument/documentSymbol') {
-    send({
+    const response = {
       jsonrpc: '2.0',
       id: message.id,
       result: [{
@@ -115,7 +115,10 @@ function handle(message) {
         selectionRange: range(),
         children: []
       }]
-    })
+    }
+    const delay = Number(process.env.FAKE_LSP_SYMBOL_DELAY_MS ?? 0)
+    if (delay > 0) setTimeout(() => send(response), delay)
+    else send(response)
   } else if (message.method === 'textDocument/definition') {
     send({
       jsonrpc: '2.0',

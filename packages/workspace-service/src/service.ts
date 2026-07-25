@@ -12,6 +12,7 @@ import {
   type JsonRpcResponse,
 } from '../../workbench-protocol/src/index.js'
 import type { LanguageAdapter } from '../../language-adapter/src/index.js'
+import type { ModelQuery } from '../../query-engine/src/index.js'
 import { WorkspaceManager } from './workspace.js'
 
 export interface WorkbenchServiceOptions {
@@ -199,6 +200,25 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.semanticSnapshot: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.semanticSnapshot(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.modelQuery: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.modelQuery(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.query, 'query') as unknown as ModelQuery,
+            ),
+          )
+        }
         default:
           return failure(
             request.id,
@@ -244,6 +264,11 @@ export class WorkbenchService {
       },
       languageAuthority: this.options.adapter.metadata,
       transport: this.options.transport,
+      serviceCapabilities: {
+        normalizedSemanticSnapshot: true,
+        durableIdentityPersistence: true,
+        boundedModelQuery: true,
+      },
       capabilities: this.options.adapter.capabilities,
       capabilitiesFinal: this.options.adapter.capabilitiesFinal(),
     }

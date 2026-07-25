@@ -12,6 +12,11 @@ import {
   type WorkbenchWorkspaceEdit,
   type WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
+import type {
+  ModelQuery,
+  ModelQueryResult,
+} from '../../query-engine/src/index.js'
+import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
 
 export interface WorkbenchTransport {
   request<T>(method: string, params?: unknown): Promise<T>
@@ -163,6 +168,22 @@ export class WorkbenchClient {
   ): Promise<WorkspaceStatusResult> {
     return this.transport.request(WORKBENCH_METHODS.languageRestart, {
       workspaceId,
+    })
+  }
+
+  semanticSnapshot(workspaceId: string): Promise<SemanticSnapshot> {
+    return this.transport.request(WORKBENCH_METHODS.semanticSnapshot, {
+      workspaceId,
+    })
+  }
+
+  modelQuery(
+    workspaceId: string,
+    query: ModelQuery,
+  ): Promise<ModelQueryResult> {
+    return this.transport.request(WORKBENCH_METHODS.modelQuery, {
+      workspaceId,
+      query,
     })
   }
 
