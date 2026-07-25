@@ -3,7 +3,7 @@
 - Date: 2026-07-25
 - Base: Gate P2 merge `e018dc8cde07a3a9b2a4da2ef33680f7c5d4d9cf`
 - Branch: `codex/sysml-workbench-phase3-command-editing`
-- Decision: **implementation and local qualification pass; exact-head CI and PR merge pending**
+- Decision: **implementation, clean reproduction, and local qualification pass; exact-head CI and PR merge pending**
 - Production claim: **not authorized**; P4-P7 remain required
 
 ## Acceptance decision
@@ -23,7 +23,8 @@
 | preservation | complete engine ranges only; opaque/truncated ranges reject; unknown adjacent bytes remain unchanged | pass |
 | native consumer | structural/interconnection editor creates typed commands and requires patch review/approval | pass |
 | exact runtime | locked VinQut/Pilot + Spec42 create/apply/undo/reopen qualification | pass |
-| clean exact-head CI | required after final commit | pending |
+| clean detached-worktree reproduction | `597917d` with fresh `npm ci` | pass |
+| GitHub exact-head CI | required after final evidence commit | pending |
 
 ## Exact-runtime result
 
@@ -52,6 +53,17 @@ Authority lock:
 - The native command editor is not yet integrated into the P4 primary shell.
 - Platform fault injection is currently exercised on macOS; Windows installer
   and filesystem behavior remain P7 evidence.
+
+## Clean reproduction
+
+Detached commit `597917d` passed from a fresh dependency install:
+
+- 14 Workbench test files / 56 tests;
+- 33 repository test files / 206 tests;
+- one optional upstream file / 19 optional tests skipped by declared policy;
+- lint, TypeScript builds, Vite production build, and production audit;
+- zero production dependency vulnerabilities;
+- exact locked-runtime Phase 3 qualification from the same detached commit.
 
 Gate P3 may be accepted only after the final source state passes clean exact-head
 CI and the draft PR records that head. Acceptance advances the staged program to
