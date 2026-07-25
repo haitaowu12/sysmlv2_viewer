@@ -3,7 +3,7 @@
 - Date: 2026-07-25
 - Base: Gate P2 merge `e018dc8cde07a3a9b2a4da2ef33680f7c5d4d9cf`
 - Branch: `codex/sysml-workbench-phase3-command-editing`
-- Gate state: candidate complete; exact-head CI and PR merge pending
+- Gate state: accepted; PR merge pending
 
 ## Closed gap
 

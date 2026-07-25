@@ -3,7 +3,7 @@
 - Date: 2026-07-25
 - Base: Gate P2 merge `e018dc8cde07a3a9b2a4da2ef33680f7c5d4d9cf`
 - Branch: `codex/sysml-workbench-phase3-command-editing`
-- Decision: **implementation, clean reproduction, and local qualification pass; exact-head CI and PR merge pending**
+- Decision: **Gate P3 accepted; PR merge pending**
 - Production claim: **not authorized**; P4-P7 remain required
 
 ## Acceptance decision
@@ -24,7 +24,7 @@
 | native consumer | structural/interconnection editor creates typed commands and requires patch review/approval | pass |
 | exact runtime | locked VinQut/Pilot + Spec42 create/apply/undo/reopen qualification | pass |
 | clean detached-worktree reproduction | `597917d` with fresh `npm ci` | pass |
-| GitHub exact-head CI | required after final evidence commit | pending |
+| GitHub exact-head CI | Actions run `30174852722`, implementation/evidence head `d967e98` | pass |
 
 ## Exact-runtime result
 
@@ -65,6 +65,7 @@ Detached commit `597917d` passed from a fresh dependency install:
 - zero production dependency vulnerabilities;
 - exact locked-runtime Phase 3 qualification from the same detached commit.
 
-Gate P3 may be accepted only after the final source state passes clean exact-head
-CI and the draft PR records that head. Acceptance advances the staged program to
-P4; it does not authorize a production release.
+Gate P3 is accepted on the combined mandatory tests, fault/recovery evidence,
+locked-runtime qualification, detached clean reproduction, and exact-head CI.
+This advances the staged program to P4; it does not authorize a production
+release.
