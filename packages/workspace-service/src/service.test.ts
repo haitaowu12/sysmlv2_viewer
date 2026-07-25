@@ -87,6 +87,23 @@ describe('WorkbenchService', () => {
       documentCount: 3,
       semanticAuthority: 'none',
     })
+    const readDocument = await service.handle({
+      jsonrpc: '2.0',
+      id: 21,
+      method: WORKBENCH_METHODS.workspaceReadDocument,
+      params: {
+        workspaceId: 'phase1-sample',
+        documentUri: sampleDocument,
+      },
+    })
+    expect(readDocument).toMatchObject({
+      result: {
+        uri: sampleDocument,
+        languageId: 'sysml',
+        version: 1,
+        text: expect.stringContaining('package'),
+      },
+    })
     const closed = await service.handle({
       jsonrpc: '2.0',
       id: 3,
@@ -94,6 +111,44 @@ describe('WorkbenchService', () => {
       params: { workspaceId: 'phase1-sample' },
     })
     expect(closed).toMatchObject({ result: { closed: true } })
+  })
+
+  it('persists bounded saved views as workspace-owned JSON', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-views-'))
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(createFakeLspAdapter(), [temporaryRoot])
+    await initialize(service)
+    await service.handle({
+      jsonrpc: '2.0', id: 30, method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    const saved = await service.handle({
+      jsonrpc: '2.0', id: 31, method: WORKBENCH_METHODS.workspaceSaveView,
+      params: {
+        workspaceId: 'phase1-sample',
+        view: {
+          schemaVersion: 1,
+          id: 'interface-review',
+          name: 'Interface review',
+          query: { mode: 'interfaces', depth: 3 },
+          notation: 'interconnection',
+          layout: { positions: { 'element:one': { x: 10, y: 20 } } },
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    })
+    expect(saved).toMatchObject({ result: { id: 'interface-review' } })
+    await expect(service.handle({
+      jsonrpc: '2.0', id: 32, method: WORKBENCH_METHODS.workspaceListViews,
+      params: { workspaceId: 'phase1-sample' },
+    })).resolves.toMatchObject({ result: [{ id: 'interface-review' }] })
+    expect(JSON.parse(await readFile(resolve(temporaryRoot, 'views/interface-review.json'), 'utf8'))).toMatchObject({ id: 'interface-review' })
+
+    await expect(service.handle({
+      jsonrpc: '2.0', id: 33, method: WORKBENCH_METHODS.workspaceSaveView,
+      params: { workspaceId: 'phase1-sample', view: { schemaVersion: 1, id: '../escape', name: 'bad', query: {}, notation: 'table', updatedAt: '2026-01-01T00:00:00.000Z' } },
+    })).resolves.toMatchObject({ error: { code: -32010 } })
   })
 
   it('negotiates language capabilities after open and protects document scope', async () => {
