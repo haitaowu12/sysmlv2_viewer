@@ -1,6 +1,6 @@
 # Language Engine Options
 
-Status: candidate set approved for qualification by proposed ADR-001; no runtime selected.
+Status: candidate set approved for qualification by accepted ADR-001; no runtime selected.
 
 ## Decision frame
 

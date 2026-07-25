@@ -1,7 +1,7 @@
 # Revised Phase 0 Decision and Requirement Traceability
 
-Status: Gate P0 review record
-Owner approval: pending
+Status: Gate P0 approved
+Owner approval: accepted 2026-07-24
 Rule: covered means a Phase 0 decision/evidence artifact exists; it does not claim implementation.
 
 ## Package trace
@@ -27,21 +27,21 @@ Rule: covered means a Phase 0 decision/evidence artifact exists; it does not cla
 
 | Question | Proposed answer | Evidence | Owner |
 |---|---|---|---|
-| official semantic authority? | OMG SysML 2.0/KerML 1.0/API 1.0 specifications, resolutions, exact official release | ADR-001 | pending |
-| behavioral oracle? | matching official Pilot and official fixtures; discrepancies recorded | ADR-001, `14-*` | pending |
-| runtime engines qualified? | Spec42, Pilot service, daltskin, VinQut, official hybrid, legacy control | ADR-001 | pending |
-| selection method? | reproducible weighted matrix with blocking fidelity/preservation/failure/license gates | `14-*` | pending |
-| Workbench Service boundary? | workspace/language adapter/semantics/identity/commands/queries/views/reviews/diff/rules/reports/AI/audit | ADR-003 | pending |
-| same UI for desktop/local/hosted? | yes: shared web application + Client SDK + protocol | ADR-003/006/008 | pending |
-| practical browser use? | yes: full authoring through B and review/compare/report/disposition without desktop | `13-*`, `15-*` | pending |
-| what requires local install? | arbitrary local folders/Git/engine, offline reports, local secrets/evidence | `15-*` | pending |
-| non-modeler web functions? | scoped views/traces/properties/findings/reports/baseline compare/dispositions | `04-*`, `15-*` | pending |
-| notation provenance? | each view/mark labeled reference, conventional, or analytical | ADR-007, `11-*` | pending |
-| industry patterns adopted? | IDE indexing/refactor; viewpoint queries; compartments/matrices; trace gaps; frozen review; Git decision states | `10-*`, `13-*` | pending |
-| third-party reuse? | only exact licensed qualified components behind adapters; patterns otherwise | ADR-001, `01-*` | pending |
-| product-owned responsibilities? | protocol/SDK, adapter, normalized semantics, identity, commands, projections, reviews/diff/rules/reports/audit | `03-*` | pending |
-| licensing/redistribution? | exact pins, notices, SBOM, bundled-library provenance, legal/distribution gate | `01-*`, `14-*` | pending |
-| path to hosted? | same service/protocol with auth and persistence adapters; no semantic rewrite | ADR-003/005/008 | pending |
+| official semantic authority? | OMG SysML 2.0/KerML 1.0/API 1.0 specifications, resolutions, exact official release | ADR-001 | approved |
+| behavioral oracle? | matching official Pilot and official fixtures; discrepancies recorded | ADR-001, `14-*` | approved |
+| runtime engines qualified? | Spec42, Pilot service, daltskin, VinQut, official hybrid, legacy control | ADR-001 | approved |
+| selection method? | reproducible weighted matrix with blocking fidelity/preservation/failure/license gates | `14-*` | approved |
+| Workbench Service boundary? | workspace/language adapter/semantics/identity/commands/queries/views/reviews/diff/rules/reports/AI/audit | ADR-003 | approved |
+| same UI for desktop/local/hosted? | yes: shared web application + Client SDK + protocol | ADR-003/006/008 | approved |
+| practical browser use? | yes: full authoring through B and review/compare/report/disposition without desktop | `13-*`, `15-*` | approved |
+| what requires local install? | arbitrary local folders/Git/engine, offline reports, local secrets/evidence | `15-*` | approved |
+| non-modeler web functions? | scoped views/traces/properties/findings/reports/baseline compare/dispositions | `04-*`, `15-*` | approved |
+| notation provenance? | each view/mark labeled reference, conventional, or analytical | ADR-007, `11-*` | approved |
+| industry patterns adopted? | IDE indexing/refactor; viewpoint queries; compartments/matrices; trace gaps; frozen review; Git decision states | `10-*`, `13-*` | approved |
+| third-party reuse? | only exact licensed qualified components behind adapters; patterns otherwise | ADR-001, `01-*` | approved |
+| product-owned responsibilities? | protocol/SDK, adapter, normalized semantics, identity, commands, projections, reviews/diff/rules/reports/audit | `03-*` | approved |
+| licensing/redistribution? | exact pins, notices, SBOM, bundled-library provenance, legal/distribution gate | `01-*`, `14-*` | approved |
+| path to hosted? | same service/protocol with auth and persistence adapters; no semantic rewrite | ADR-003/005/008 | approved |
 
 ## Pilot steps
 
@@ -56,11 +56,13 @@ Rule: covered means a Phase 0 decision/evidence artifact exists; it does not cla
 | deterministic report/evidence | REPORT-DET-001 | P5 |
 | optional grounded AI proposal | AI-SAFE-001 | P6 |
 
-## Owner record template
+## Owner approval record
 
 ```yaml
-decisionDate: ...
-phase0Head: ...
+decisionDate: 2026-07-24
+approvedBy: owner
+approvalSource: Codex task message "approve"
+approvedPhase0Head: dc276c586dbac5d41150fe62ea9f539c1d29b3ea
 baseline: 638e5aa1cc63ddb3a1c770f36432d6acedfbc541
 acceptedAdrs:
   - ADR-001
@@ -72,18 +74,22 @@ acceptedAdrs:
   - ADR-007
   - ADR-008
 ownerDecisions:
-  productName: ...
-  deploymentProfiles: ...
-  publicEvaluation: ...
-  drawio: ...
-  collaboration: ...
-  firstPilot: ...
-  aiProviderPolicy: ...
-  operatingSystems: ...
-  distribution: ...
-  qualificationRelease: ...
+  productName: SysML Engineering Workbench
+  deploymentProfiles:
+    publicEvaluation: A
+    production: [B-browser-local-companion, C-tauri-desktop]
+    future: D-managed-hosted
+  publicEvaluation: retained
+  drawio: export-and-markup-only
+  collaboration: defer-real-time-use-git-and-review-artifacts
+  firstPilot: OMC4-interface-assurance
+  aiProviderPolicy: disabled-by-default-explicit-proposal-only
+  operatingSystems: [macOS, Windows]
+  distribution: signed-desktop-and-local-companion-at-P7
+  qualificationRelease: 2026-05
 exceptions: []
 authorizedNextPhase: P1-engine-qualification-and-workbench-service-foundation
+nextPhaseStarted: false
 ```
 
-Until this record exists, PR #2 remains draft and no Phase 1 production implementation is authorized.
+Gate P0 is approved. Phase 1 is authorized but has not started. Runtime selection remains a Phase 1 decision.

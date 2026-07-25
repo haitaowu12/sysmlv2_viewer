@@ -1,6 +1,6 @@
 # ADR-004: Source-Edit Command Model
 
-- Status: proposed for Gate P0
+- Status: accepted at Gate P0
 - Date: 2026-07-24
 
 ## Decision

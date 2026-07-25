@@ -1,7 +1,7 @@
 # Target Product Contract
 
 Working name: **SysML Engineering Workbench**
-Phase 0 status: proposed architecture candidate awaiting Gate P0 owner approval; no production feature claims
+Phase 0 status: accepted at Gate P0 on 2026-07-24; no production feature claims
 
 ## Mission
 

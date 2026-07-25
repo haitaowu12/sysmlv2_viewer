@@ -125,6 +125,8 @@ Gate: AI cannot mutate without exact approved operation; invented identities are
 - clean-machine B and C installation/recovery;
 - release manifest and owner go/no-go.
 
-## Gate P0 stop
+## Gate P0 approval
 
-No P1 production work begins until the owner reviews ADR-001–008, updated traceability, owner packet, qualification plan, deployment/access strategy, license direction, and first pilot. Approval authorizes P1 only and does not preselect Spec42.
+The owner approved ADR-001–008 and the recommended decision packet on 2026-07-24 against Phase 0 head `dc276c586dbac5d41150fe62ea9f539c1d29b3ea`.
+
+Phase 1 is authorized but not started. Authorization is limited to **Engine Qualification and Workbench Service Foundation** and does not preselect Spec42.
