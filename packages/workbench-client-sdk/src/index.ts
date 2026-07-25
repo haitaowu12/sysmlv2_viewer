@@ -1,0 +1,155 @@
+import {
+  WORKBENCH_METHODS,
+  WORKBENCH_PROTOCOL_VERSION,
+  type InitializeResult,
+  type WorkbenchCompletionItem,
+  type WorkbenchDocumentSymbol,
+  type WorkbenchHover,
+  type WorkbenchLocation,
+  type WorkbenchPosition,
+  type WorkspaceStatusResult,
+} from '../../workbench-protocol/src/index.js'
+
+export interface WorkbenchTransport {
+  request<T>(method: string, params?: unknown): Promise<T>
+  close?(): Promise<void>
+}
+
+export class WorkbenchClient {
+  constructor(private readonly transport: WorkbenchTransport) {}
+
+  initialize(
+    client = { name: 'workbench-client-sdk', version: '0.1.0' },
+  ): Promise<InitializeResult> {
+    return this.transport.request(WORKBENCH_METHODS.initialize, {
+      protocolVersion: WORKBENCH_PROTOCOL_VERSION,
+      client,
+    })
+  }
+
+  openWorkspace(workspaceFile: string): Promise<WorkspaceStatusResult> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceOpen, {
+      workspaceFile,
+    })
+  }
+
+  workspaceStatus(workspaceId: string): Promise<WorkspaceStatusResult> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceStatus, {
+      workspaceId,
+    })
+  }
+
+  closeWorkspace(workspaceId: string): Promise<{ closed: boolean }> {
+    return this.transport.request(WORKBENCH_METHODS.workspaceClose, {
+      workspaceId,
+    })
+  }
+
+  health(): Promise<{ status: 'ok'; initialized: boolean }> {
+    return this.transport.request(WORKBENCH_METHODS.health)
+  }
+
+  documentSymbols(
+    workspaceId: string,
+    documentUri: string,
+  ): Promise<WorkbenchDocumentSymbol[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageDocumentSymbols, {
+      workspaceId,
+      documentUri,
+    })
+  }
+
+  definition(
+    workspaceId: string,
+    documentUri: string,
+    position: WorkbenchPosition,
+  ): Promise<WorkbenchLocation[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageDefinition, {
+      workspaceId,
+      documentUri,
+      position,
+    })
+  }
+
+  references(
+    workspaceId: string,
+    documentUri: string,
+    position: WorkbenchPosition,
+  ): Promise<WorkbenchLocation[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageReferences, {
+      workspaceId,
+      documentUri,
+      position,
+    })
+  }
+
+  hover(
+    workspaceId: string,
+    documentUri: string,
+    position: WorkbenchPosition,
+  ): Promise<WorkbenchHover | null> {
+    return this.transport.request(WORKBENCH_METHODS.languageHover, {
+      workspaceId,
+      documentUri,
+      position,
+    })
+  }
+
+  completion(
+    workspaceId: string,
+    documentUri: string,
+    position: WorkbenchPosition,
+  ): Promise<WorkbenchCompletionItem[]> {
+    return this.transport.request(WORKBENCH_METHODS.languageCompletion, {
+      workspaceId,
+      documentUri,
+      position,
+    })
+  }
+
+  async close(): Promise<void> {
+    await this.transport.close?.()
+  }
+}
+
+export interface HttpWorkbenchTransportOptions {
+  endpoint: string
+  token: string
+  csrf: string
+}
+
+export class HttpWorkbenchTransport implements WorkbenchTransport {
+  private nextId = 1
+
+  constructor(private readonly options: HttpWorkbenchTransportOptions) {}
+
+  async request<T>(method: string, params?: unknown): Promise<T> {
+    const response = await fetch(this.options.endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.options.token}`,
+        'Content-Type': 'application/json',
+        'X-Workbench-CSRF': this.options.csrf,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: this.nextId++,
+        method,
+        params,
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`Workbench service returned HTTP ${response.status}`)
+    }
+    const payload = (await response.json()) as {
+      result?: T
+      error?: { code: number; message: string }
+    }
+    if (payload.error) {
+      throw new Error(
+        `Workbench request failed (${payload.error.code}): ${payload.error.message}`,
+      )
+    }
+    return payload.result as T
+  }
+}
