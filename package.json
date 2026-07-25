@@ -15,6 +15,8 @@
     "workbench:service": "node dist-workbench/apps/workbench-service/src/main.js",
     "workbench:service:dev": "tsx apps/workbench-service/src/main.ts",
     "qualify:engines": "tsx scripts/workbench-qualify-engines.ts",
+    "qualify:fixtures": "tsx scripts/workbench-qualify-fixtures.ts",
+    "benchmark:workbench": "tsx scripts/workbench-benchmark.ts",
     "audit:production": "npm audit --omit=dev",
     "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts",
     "test:watch": "vitest",

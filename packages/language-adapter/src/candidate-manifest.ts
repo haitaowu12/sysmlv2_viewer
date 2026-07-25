@@ -51,6 +51,10 @@ export async function readCandidateManifest(
 export async function createCandidateAdapter(
   manifestPath: string,
   candidateId: string,
+  runtime: {
+    requestTimeoutMs?: number
+    diagnosticSettleMs?: number
+  } = {},
 ): Promise<LspProcessAdapter> {
   const manifest = await readCandidateManifest(manifestPath)
   const candidate = manifest.candidates.find((item) => item.id === candidateId)
@@ -81,6 +85,8 @@ export async function createCandidateAdapter(
     },
     command,
     arguments: parseArgumentsEnvironment(candidate.argumentsEnvironment),
+    requestTimeoutMs: runtime.requestTimeoutMs,
+    diagnosticSettleMs: runtime.diagnosticSettleMs,
   })
 }
 

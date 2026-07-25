@@ -1,6 +1,7 @@
 let input = Buffer.alloc(0)
 let documentUri = ''
 let crashScheduled = false
+let initialized = false
 
 process.stdin.on('data', (chunk) => {
   input = Buffer.concat([input, chunk])
@@ -25,6 +26,15 @@ function consume() {
 
 function handle(message) {
   if (message.method === 'initialize') {
+    if (initialized) {
+      send({
+        jsonrpc: '2.0',
+        id: message.id,
+        error: { code: -32600, message: 'initialize may only be sent once' }
+      })
+      return
+    }
+    initialized = true
     send({
       jsonrpc: '2.0',
       id: message.id,

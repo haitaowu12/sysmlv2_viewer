@@ -1,0 +1,9 @@
+schemaVersion: 1
+id: phase1-malformed
+name: Phase 1 malformed input probe
+sourceRoots:
+  - model
+libraries: []
+activeConfiguration: default
+modelConfigurations:
+  default: {}

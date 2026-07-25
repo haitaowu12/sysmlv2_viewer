@@ -24,6 +24,7 @@ const fakeServer = resolve(
 const sampleDocument = pathToFileURL(
   resolve(sampleRoot, 'model/vehicle.sysml'),
 ).href
+const workspacesRoot = resolve(sampleRoot, '..')
 const services: WorkbenchService[] = []
 
 afterEach(async () => {
@@ -103,6 +104,12 @@ describe('WorkbenchService', () => {
         },
       },
     })
+    await expect(openSample(service)).resolves.toMatchObject({
+      result: {
+        workspaceId: 'phase1-sample',
+        capabilitiesFinal: true,
+      },
+    })
 
     await expect(
       service.handle({
@@ -170,14 +177,40 @@ describe('WorkbenchService', () => {
       result: { indexState: 'stale' },
     })
   })
+
+  it('restarts the language process when the workspace root changes', async () => {
+    const service = createService(createFakeLspAdapter(), [workspacesRoot])
+    await initialize(service)
+    await openSample(service)
+
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 7,
+        method: WORKBENCH_METHODS.workspaceOpen,
+        params: {
+          workspaceFile: resolve(
+            workspacesRoot,
+            'phase1-standard-library/sysml-workspace.yaml',
+          ),
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        workspaceId: 'phase1-standard-library',
+        capabilitiesFinal: true,
+      },
+    })
+  })
 })
 
 function createService(
   adapter: LanguageAdapter = new PreservationControlAdapter(),
+  allowedRoots = [sampleRoot],
 ): WorkbenchService {
   const service = new WorkbenchService({
     adapter,
-    allowedRoots: [sampleRoot],
+    allowedRoots,
     transport: { kind: 'stdio', secure: true },
   })
   services.push(service)

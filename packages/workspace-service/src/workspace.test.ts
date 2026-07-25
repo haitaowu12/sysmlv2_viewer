@@ -1,5 +1,13 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,6 +19,7 @@ const sampleRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../fixtures/workspaces/phase1-sample',
 )
+const fixturesRoot = resolve(sampleRoot, '..', '..')
 const managers: WorkspaceManager[] = []
 
 afterEach(async () => {
@@ -65,5 +74,60 @@ describe('WorkspaceManager', () => {
     await expect(
       manager.open(resolve(root, 'sysml-workspace.yaml')),
     ).rejects.toThrow(/Symbolic link escapes/)
+  })
+
+  it('inventories unknown syntax without changing source bytes', async () => {
+    const root = resolve(fixturesRoot, 'workspaces/phase1-preservation')
+    const source = resolve(root, 'model/preservation.sysml')
+    const before = await readFile(source)
+    const manager = new WorkspaceManager({
+      allowedRoots: [root],
+      adapter: new PreservationControlAdapter(),
+    })
+    managers.push(manager)
+
+    const opened = await manager.open(resolve(root, 'sysml-workspace.yaml'))
+    const after = await readFile(source)
+
+    expect(after).toEqual(before)
+    expect(opened.documents).toEqual([
+      expect.objectContaining({
+        sha256: createHash('sha256').update(before).digest('hex'),
+        byteLength: before.byteLength,
+      }),
+    ])
+    expect(opened.semanticAuthority).toBe('none')
+  })
+
+  it('keeps every mandatory fixture manifest entry addressable', async () => {
+    const manifestPath = resolve(fixturesRoot, 'language/fixture-manifest.json')
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      schemaVersion: number
+      fixtures: Array<{
+        id: string
+        workspace: string
+        expectation: string
+      }>
+    }
+    expect(manifest.schemaVersion).toBe(1)
+    expect(manifest.fixtures.map((fixture) => fixture.id)).toEqual([
+      'valid-multifile',
+      'standard-library',
+      'malformed-recovery',
+      'byte-preservation-control',
+    ])
+    for (const fixture of manifest.fixtures) {
+      const workspace = resolve(
+        dirname(manifestPath),
+        fixture.workspace,
+      )
+      await expect(stat(workspace)).resolves.toMatchObject({ size: expect.any(Number) })
+      expect([
+        'zero-errors',
+        'zero-diagnostics',
+        'one-or-more-errors',
+        'inventory-only',
+      ]).toContain(fixture.expectation)
+    }
   })
 })

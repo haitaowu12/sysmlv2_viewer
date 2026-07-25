@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "qualificationRelease": {
+    "name": "2026-05",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "fixtures": [
+    {
+      "id": "valid-multifile",
+      "workspace": "../workspaces/phase1-sample/sysml-workspace.yaml",
+      "purpose": [
+        "multi-file imports",
+        "definitions and usages",
+        "requirements",
+        "ports",
+        "cross-file definition and references"
+      ],
+      "expectation": "zero-diagnostics"
+    },
+    {
+      "id": "standard-library",
+      "workspace": "../workspaces/phase1-standard-library/sysml-workspace.yaml",
+      "purpose": [
+        "standard-library reference",
+        "ScalarValues::Real resolution"
+      ],
+      "expectation": "zero-diagnostics"
+    },
+    {
+      "id": "malformed-recovery",
+      "workspace": "../workspaces/phase1-malformed/sysml-workspace.yaml",
+      "purpose": [
+        "malformed input",
+        "deterministic diagnostic recovery"
+      ],
+      "expectation": "one-or-more-errors"
+    },
+    {
+      "id": "byte-preservation-control",
+      "workspace": "../workspaces/phase1-preservation/sysml-workspace.yaml",
+      "purpose": [
+        "comments",
+        "whitespace",
+        "Unicode",
+        "unknown syntax preservation"
+      ],
+      "expectation": "inventory-only"
+    }
+  ]
+}
