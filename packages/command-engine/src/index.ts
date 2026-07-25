@@ -8,6 +8,11 @@ import type {
   SemanticElement,
   SemanticSnapshot,
 } from '../../semantic-model/src/index.js'
+import type { LanguageDiagnostic } from '../../language-adapter/src/index.js'
+import {
+  compareSemanticSnapshots,
+  type SemanticDiff,
+} from '../../semantic-diff/src/index.js'
 
 export const COMMAND_KINDS = [
   'create-element',
@@ -113,9 +118,9 @@ export interface CommandProposal {
   edits: WorkbenchWorkspaceEdit
   overlayDocuments: CommandWorkspaceDocument[]
   affectedElementIds: string[]
-  diagnosticsBefore: unknown[]
-  diagnosticsAfter: unknown[]
-  semanticDiff: null
+  diagnosticsBefore: LanguageDiagnostic[]
+  diagnosticsAfter: LanguageDiagnostic[]
+  semanticDiff: SemanticDiff | null
   conflicts: Array<{ code: string; message: string }>
   approval: {
     required: true
@@ -124,8 +129,15 @@ export interface CommandProposal {
   undo: WorkbenchWorkspaceEdit
   authority: SemanticSnapshot['authority']
   validation: {
-    state: 'pending-authoritative-validation'
+    state: 'pending-authoritative-validation' | 'validated' | 'rejected'
   }
+}
+
+export interface CommandValidationEvidence {
+  beforeSnapshot: SemanticSnapshot
+  afterSnapshot: SemanticSnapshot
+  diagnosticsBefore: LanguageDiagnostic[]
+  diagnosticsAfter: LanguageDiagnostic[]
 }
 
 export interface PlanCommandInput {
@@ -209,6 +221,47 @@ export async function planCommand(
     undo: application.inverse,
     authority: structuredClone(snapshot.authority),
     validation: { state: 'pending-authoritative-validation' },
+  }
+}
+
+export function completeCommandValidation(
+  proposal: CommandProposal,
+  evidence: CommandValidationEvidence,
+): CommandProposal {
+  if (
+    evidence.beforeSnapshot.snapshotSha256 !==
+    proposal.envelope.baseSnapshotSha256
+  ) {
+    throw new CommandValidationError(
+      'Validation snapshot does not match the command base',
+    )
+  }
+  const beforeErrors = new Set(
+    evidence.diagnosticsBefore
+      .filter((diagnostic) => diagnostic.severity === 'error')
+      .map(diagnosticKey),
+  )
+  const introducedErrors = evidence.diagnosticsAfter.filter(
+    (diagnostic) =>
+      diagnostic.severity === 'error' &&
+      !beforeErrors.has(diagnosticKey(diagnostic)),
+  )
+  const conflicts = introducedErrors.map((diagnostic) => ({
+    code: 'AUTHORITATIVE_DIAGNOSTIC_ERROR',
+    message: `${diagnostic.code}: ${diagnostic.message}`,
+  }))
+  return {
+    ...structuredClone(proposal),
+    diagnosticsBefore: structuredClone(evidence.diagnosticsBefore),
+    diagnosticsAfter: structuredClone(evidence.diagnosticsAfter),
+    semanticDiff: compareSemanticSnapshots(
+      evidence.beforeSnapshot,
+      evidence.afterSnapshot,
+    ),
+    conflicts,
+    validation: {
+      state: introducedErrors.length === 0 ? 'validated' : 'rejected',
+    },
   }
 }
 
@@ -305,6 +358,16 @@ function validateEnvelope(envelope: CommandEnvelope): void {
   ) {
     throw new CommandValidationError('Rename target must be a SysML identifier')
   }
+}
+
+function diagnosticKey(diagnostic: LanguageDiagnostic): string {
+  return stableJson({
+    uri: diagnostic.uri,
+    severity: diagnostic.severity,
+    code: diagnostic.code,
+    message: diagnostic.message,
+    range: diagnostic.range,
+  })
 }
 
 function validateDocumentHashes(documents: CommandWorkspaceDocument[]): void {

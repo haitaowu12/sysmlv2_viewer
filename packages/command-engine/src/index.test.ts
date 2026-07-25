@@ -4,6 +4,7 @@ import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
 import {
   applySourceEdits,
   COMMAND_KINDS,
+  completeCommandValidation,
   planCommand,
   SourceEditConflictError,
   type CommandEnvelope,
@@ -218,6 +219,83 @@ describe('command planning', () => {
     expect(proposal.overlayDocuments[0]!.text).toContain('part def Motor;')
     expect(proposal.undo.changes[uri]![0]!.newText).toBe('Engine')
     expect(proposal.conflicts).toEqual([])
+  })
+
+  it('attaches authoritative diagnostics and identity-aware semantic diff', async () => {
+    const envelope: CommandEnvelope = {
+      schemaVersion: 1,
+      commandId: 'CMD-VALIDATE-001',
+      workspaceId: 'vehicle',
+      baseSnapshotSha256: snapshot.snapshotSha256,
+      baseDocuments: { [uri]: document.sha256 },
+      requestedBy: { kind: 'user', id: 'engineer' },
+      command: {
+        kind: 'rename-element',
+        targetId: 'element-engine',
+        newName: 'Motor',
+      },
+    }
+    const planned = await planCommand({
+      envelope,
+      snapshot,
+      documents: [document],
+      renameProvider: async () => ({
+        changes: {
+          [uri]: [
+            {
+              range: {
+                start: { line: 1, character: 11 },
+                end: { line: 1, character: 17 },
+              },
+              newText: 'Motor',
+            },
+          ],
+        },
+      }),
+    })
+    const after: SemanticSnapshot = {
+      ...structuredClone(snapshot),
+      snapshotSha256: 'snapshot-after',
+      elements: [
+        {
+          ...structuredClone(snapshot.elements[0]!),
+          name: 'Motor',
+          qualifiedName: 'Vehicle::Motor',
+          fingerprint: 'fingerprint-motor',
+        },
+      ],
+    }
+    const validated = completeCommandValidation(planned, {
+      beforeSnapshot: snapshot,
+      afterSnapshot: after,
+      diagnosticsBefore: [],
+      diagnosticsAfter: [],
+    })
+
+    expect(validated.validation).toEqual({ state: 'validated' })
+    expect(validated.semanticDiff?.changes.map((change) => change.kind)).toEqual([
+      'element-renamed',
+      'element-content-changed',
+    ])
+
+    const rejected = completeCommandValidation(planned, {
+      beforeSnapshot: snapshot,
+      afterSnapshot: after,
+      diagnosticsBefore: [],
+      diagnosticsAfter: [
+        {
+          uri,
+          severity: 'error',
+          code: 'TEST-ERROR',
+          message: 'invalid overlay',
+        },
+      ],
+    })
+    expect(rejected.validation).toEqual({ state: 'rejected' })
+    expect(rejected.conflicts).toContainEqual({
+      code: 'AUTHORITATIVE_DIAGNOSTIC_ERROR',
+      message: 'TEST-ERROR: invalid overlay',
+    })
   })
 
   it('rejects stale snapshots, stale documents, opaque targets, and unsupported commands', async () => {

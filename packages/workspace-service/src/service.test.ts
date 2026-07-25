@@ -408,7 +408,7 @@ describe('WorkbenchService', () => {
     await cp(sampleRoot, temporaryRoot, { recursive: true })
     const service = createService(
       createFakeLspAdapter(
-        { FAKE_LSP_SEMANTIC_NAME: 'package' },
+        { FAKE_LSP_DYNAMIC_SEMANTICS: '1' },
         'qualified',
       ),
       [temporaryRoot],
@@ -463,7 +463,12 @@ describe('WorkbenchService', () => {
         state: 'proposed',
         commandId: 'CMD-SERVICE-001',
         approval: { required: true, approved: false },
-        validation: { state: 'pending-authoritative-validation' },
+        validation: { state: 'validated' },
+        semanticDiff: {
+          changes: expect.arrayContaining([
+            expect.objectContaining({ kind: 'element-renamed' }),
+          ]),
+        },
       },
     })
     expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)

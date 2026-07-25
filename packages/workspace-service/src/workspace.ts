@@ -36,6 +36,7 @@ import {
   type ModelQueryResult,
 } from '../../query-engine/src/index.js'
 import {
+  completeCommandValidation,
   planCommand,
   type CommandEnvelope,
   type CommandProposal,
@@ -81,6 +82,7 @@ interface OpenWorkspace {
   semanticSnapshotPromise?: Promise<SemanticSnapshot>
   queryCache: Map<string, ModelQueryResult>
   commandProposals: Map<string, CommandProposal>
+  commandLease: boolean
 }
 
 export interface WorkspaceManagerOptions {
@@ -195,6 +197,7 @@ export class WorkspaceManager {
       semanticRevision: 0,
       queryCache: new Map(),
       commandProposals: new Map(),
+      commandLease: false,
     })
     return status
   }
@@ -334,6 +337,11 @@ export class WorkspaceManager {
     text: string,
   ): Promise<WorkspaceStatusResult> {
     const workspace = this.requireDocument(workspaceId, uri)
+    if (workspace.commandLease) {
+      throw new WorkspacePathError(
+        'Workspace document changes are blocked during command validation',
+      )
+    }
     if (!this.options.adapter.changeDocument) {
       throw new WorkspacePathError('Incremental document changes are not supported')
     }
@@ -369,11 +377,17 @@ export class WorkspaceManager {
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
     workspace.queryCache.clear()
+    workspace.commandProposals.clear()
     return structuredClone(workspace.status)
   }
 
   async restart(workspaceId: string): Promise<WorkspaceStatusResult> {
     const workspace = this.requireWorkspace(workspaceId)
+    if (workspace.commandLease) {
+      throw new WorkspacePathError(
+        'Language restart is blocked during command validation',
+      )
+    }
     if (!this.options.adapter.restartWorkspace) {
       throw new WorkspacePathError('Language engine restart is not supported')
     }
@@ -391,6 +405,7 @@ export class WorkspaceManager {
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
     workspace.queryCache.clear()
+    workspace.commandProposals.clear()
     return structuredClone(workspace.status)
   }
 
@@ -405,38 +420,51 @@ export class WorkspaceManager {
       }
       return structuredClone(existing)
     }
-    const snapshot = await this.semanticSnapshot(envelope.workspaceId)
-    const documents = workspace.adapterWorkspace.documents.map((document) => ({
-      uri: document.uri,
-      workspacePath: relative(workspace.rootPath, document.absolutePath)
-        .replaceAll('\\', '/'),
-      text: document.text,
-      sha256: document.sha256,
-      version: document.version,
-    }))
-    const proposal = await planCommand({
-      envelope,
-      snapshot,
-      documents,
-      renameProvider: async (target, newName) => {
-        const document = workspace.adapterWorkspace.documents.find(
-          (candidate) => candidate.uri === target.source.uri,
-        )
-        if (!document) {
-          throw new WorkspacePathError(
-            `Command target source is outside the workspace: ${target.id}`,
+    if (workspace.commandLease) {
+      throw new WorkspacePathError('Another command operation holds the workspace lease')
+    }
+    workspace.commandLease = true
+    try {
+      const snapshot = await this.semanticSnapshot(envelope.workspaceId)
+      const documents = workspace.adapterWorkspace.documents.map((document) => ({
+        uri: document.uri,
+        workspacePath: relative(workspace.rootPath, document.absolutePath)
+          .replaceAll('\\', '/'),
+        text: document.text,
+        sha256: document.sha256,
+        version: document.version,
+      }))
+      const planned = await planCommand({
+        envelope,
+        snapshot,
+        documents,
+        renameProvider: async (target, newName) => {
+          const document = workspace.adapterWorkspace.documents.find(
+            (candidate) => candidate.uri === target.source.uri,
           )
-        }
-        return this.rename(
-          envelope.workspaceId,
-          target.source.uri,
-          locateElementName(document.text, target.source.range, target.name),
-          newName,
-        )
-      },
-    })
-    workspace.commandProposals.set(envelope.commandId, proposal)
-    return structuredClone(proposal)
+          if (!document) {
+            throw new WorkspacePathError(
+              `Command target source is outside the workspace: ${target.id}`,
+            )
+          }
+          return this.rename(
+            envelope.workspaceId,
+            target.source.uri,
+            locateElementName(document.text, target.source.range, target.name),
+            newName,
+          )
+        },
+      })
+      const proposal = await this.validateCommandOverlay(
+        workspace,
+        snapshot,
+        planned,
+      )
+      workspace.commandProposals.set(envelope.commandId, proposal)
+      return structuredClone(proposal)
+    } finally {
+      workspace.commandLease = false
+    }
   }
 
   async semanticSnapshot(workspaceId: string): Promise<SemanticSnapshot> {
@@ -571,6 +599,125 @@ export class WorkspaceManager {
     workspace.identityRegistry = candidateIdentities
     workspace.semanticSnapshot = snapshot
     return snapshot
+  }
+
+  private async validateCommandOverlay(
+    workspace: OpenWorkspace,
+    beforeSnapshot: SemanticSnapshot,
+    proposal: CommandProposal,
+  ): Promise<CommandProposal> {
+    if (!this.options.adapter.changeDocument) {
+      throw new WorkspacePathError(
+        'Authoritative overlay validation requires incremental document updates',
+      )
+    }
+    const originals = new Map(
+      workspace.adapterWorkspace.documents.map((document) => [
+        document.uri,
+        {
+          text: document.text,
+          sha256: document.sha256,
+          version: document.version,
+        },
+      ]),
+    )
+    const changed = proposal.overlayDocuments.filter((overlay) => {
+      const original = originals.get(overlay.uri)
+      return original && original.text !== overlay.text
+    })
+    let diagnosticsAfter = structuredClone(workspace.diagnostics)
+    try {
+      for (const overlay of changed) {
+        const current = workspace.adapterWorkspace.documents.find(
+          (document) => document.uri === overlay.uri,
+        )!
+        diagnosticsAfter = await this.options.adapter.changeDocument(
+          overlay.uri,
+          current.version + 1,
+          overlay.text,
+        )
+        current.sha256 = overlay.sha256
+      }
+      const overlayWorkspace: AdapterWorkspace = {
+        ...workspace.adapterWorkspace,
+        documents: workspace.adapterWorkspace.documents.map((document) => ({
+          ...document,
+          sha256: sha256(Buffer.from(document.text, 'utf8')),
+        })),
+      }
+      const overlayStatus = buildStatus(
+        overlayWorkspace,
+        this.options.adapter,
+        diagnosticsAfter,
+      )
+      const evidence = new Map<string, EngineSemanticEvidence>()
+      for (const document of overlayWorkspace.documents) {
+        evidence.set(
+          document.uri,
+          await this.options.adapter.semanticEvidence!(document.uri),
+        )
+      }
+      const provisional = buildSemanticSnapshot({
+        status: overlayStatus,
+        authority: this.options.adapter.metadata,
+        documents: overlayWorkspace.documents,
+        evidence,
+        identities: IdentityRegistry.empty(overlayStatus.workspaceId),
+      })
+      const identities = new IdentityRegistry(workspace.identityRegistry.serialize())
+      const command = proposal.envelope.command
+      if (command.kind === 'rename-element') {
+        const prior = beforeSnapshot.elements.find(
+          (element) => element.id === command.targetId,
+        )!
+        const next = provisional.elements.find(
+          (element) =>
+            element.provenance.engineId === prior.provenance.engineId,
+        )
+        if (!next) {
+          throw new WorkspacePathError(
+            `Validated overlay lost the renamed element: ${prior.id}`,
+          )
+        }
+        identities.migrate(
+          prior.id,
+          {
+            workspacePath: next.source.workspacePath,
+            qualifiedName: next.qualifiedName,
+            kind: next.kind,
+          },
+          next.fingerprint,
+          proposal.commandId,
+        )
+      }
+      const afterSnapshot = buildSemanticSnapshot({
+        status: overlayStatus,
+        authority: this.options.adapter.metadata,
+        documents: overlayWorkspace.documents,
+        evidence,
+        identities,
+      })
+      return completeCommandValidation(proposal, {
+        beforeSnapshot,
+        afterSnapshot,
+        diagnosticsBefore: workspace.diagnostics,
+        diagnosticsAfter,
+      })
+    } finally {
+      for (const overlay of [...changed].reverse()) {
+        const original = originals.get(overlay.uri)!
+        const current = workspace.adapterWorkspace.documents.find(
+          (document) => document.uri === overlay.uri,
+        )!
+        await this.options.adapter.changeDocument(
+          overlay.uri,
+          current.version + 1,
+          original.text,
+        )
+        current.text = original.text
+        current.sha256 = original.sha256
+      }
+    }
   }
 }
 

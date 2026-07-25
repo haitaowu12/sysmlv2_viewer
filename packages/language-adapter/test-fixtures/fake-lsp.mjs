@@ -3,6 +3,7 @@ let documentUri = ''
 let crashScheduled = false
 let initialized = false
 let documentVersion = 0
+const documentTexts = new Map()
 
 process.stdin.on('data', (chunk) => {
   input = Buffer.concat([input, chunk])
@@ -61,6 +62,7 @@ function handle(message) {
   } else if (message.method === 'textDocument/didOpen') {
     documentUri = message.params.textDocument.uri
     documentVersion = message.params.textDocument.version
+    documentTexts.set(documentUri, message.params.textDocument.text ?? '')
     send({
       jsonrpc: '2.0',
       method: 'textDocument/publishDiagnostics',
@@ -87,6 +89,7 @@ function handle(message) {
   } else if (message.method === 'textDocument/didChange') {
     documentVersion = message.params.textDocument.version
     const text = message.params.contentChanges[0]?.text ?? ''
+    documentTexts.set(message.params.textDocument.uri, text)
     send({
       jsonrpc: '2.0',
       method: 'textDocument/publishDiagnostics',
@@ -159,13 +162,20 @@ function handle(message) {
       result: { data: [0, 0, 4, 0, 1] }
     })
   } else if (message.method === 'textDocument/rename') {
+    const renameUri = message.params.textDocument.uri
+    const renameRange = process.env.FAKE_LSP_DYNAMIC_SEMANTICS === '1'
+      ? identifierRangeAt(
+          documentTexts.get(renameUri) ?? '',
+          message.params.position
+        )
+      : range()
     send({
       jsonrpc: '2.0',
       id: message.id,
       result: {
         changes: {
-          [documentUri]: [{
-            range: range(),
+          [renameUri]: [{
+            range: renameRange,
             newText: message.params.newName
           }]
         }
@@ -178,6 +188,9 @@ function handle(message) {
       result: [{ range: range(), newText: 'package Fake {}\\n' }]
     })
   } else if (message.method === 'sysml/semanticEvidence') {
+    const dynamic = process.env.FAKE_LSP_DYNAMIC_SEMANTICS === '1'
+      ? packageEvidence(documentTexts.get(message.params.uri) ?? '')
+      : null
     const response = {
       jsonrpc: '2.0',
       id: message.id,
@@ -187,10 +200,10 @@ function handle(message) {
         elements: [{
           engineId: `fake-package:${message.params.uri}`,
           metaclass: 'Package',
-          name: process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
-          qualifiedName: process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
+          name: dynamic?.name ?? process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
+          qualifiedName: dynamic?.name ?? process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
           ownerEngineId: null,
-          range: process.env.FAKE_LSP_SEMANTIC_NAME
+          range: dynamic?.range ?? (process.env.FAKE_LSP_SEMANTIC_NAME
             ? {
                 start: { line: 0, character: 0 },
                 end: {
@@ -198,7 +211,7 @@ function handle(message) {
                   character: process.env.FAKE_LSP_SEMANTIC_NAME.length
                 }
               }
-            : range()
+            : range())
         }],
         relationships: []
       }
@@ -220,6 +233,44 @@ function range() {
     start: { line: 0, character: 0 },
     end: { line: 0, character: 4 }
   }
+}
+
+function packageEvidence(text) {
+  const match = /\bpackage\s+([A-Za-z_][A-Za-z0-9_]*)/.exec(text)
+  if (!match) return { name: 'package', range: range() }
+  const start = match.index + match[0].lastIndexOf(match[1])
+  return {
+    name: match[1],
+    range: rangeFromOffsets(text, start, start + match[1].length)
+  }
+}
+
+function identifierRangeAt(text, position) {
+  const offset = offsetAt(text, position)
+  let start = offset
+  let end = offset
+  while (start > 0 && /[A-Za-z0-9_]/.test(text[start - 1])) start--
+  while (end < text.length && /[A-Za-z0-9_]/.test(text[end])) end++
+  return rangeFromOffsets(text, start, end)
+}
+
+function offsetAt(text, position) {
+  const lines = text.split('\n')
+  let offset = 0
+  for (let line = 0; line < position.line; line++) {
+    offset += (lines[line] ?? '').length + 1
+  }
+  return offset + position.character
+}
+
+function rangeFromOffsets(text, start, end) {
+  return { start: positionAt(text, start), end: positionAt(text, end) }
+}
+
+function positionAt(text, offset) {
+  const prefix = text.slice(0, offset)
+  const lines = prefix.split('\n')
+  return { line: lines.length - 1, character: lines.at(-1).length }
 }
 
 function send(message) {
