@@ -853,6 +853,68 @@ describe('WorkbenchService', () => {
     })
   })
 
+  it('correlates a rename when engine-internal identities are regenerated', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-volatile-rename-'))
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter({
+        FAKE_LSP_DYNAMIC_SEMANTICS: '1',
+        FAKE_LSP_VOLATILE_ENGINE_IDS: '1',
+      }, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 70,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    const snapshotResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 71,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in snapshotResponse)) throw new Error('Snapshot failed')
+    const snapshot = snapshotResponse.result as {
+      snapshotSha256: string
+      documents: Array<{ uri: string; sha256: string }>
+      elements: Array<{ id: string }>
+    }
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 72,
+      method: WORKBENCH_METHODS.commandPropose,
+      params: {
+        schemaVersion: 1,
+        commandId: 'CMD-VOLATILE-RENAME-001',
+        workspaceId: 'phase1-sample',
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: Object.fromEntries(snapshot.documents.map((document) => [
+          document.uri,
+          document.sha256,
+        ])),
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+        command: {
+          kind: 'rename-element',
+          targetId: snapshot.elements[0]!.id,
+          newName: 'RegeneratedIdentityPackage',
+        },
+      },
+    })).resolves.toMatchObject({
+      result: {
+        validation: { state: 'validated' },
+        semanticDiff: {
+          changes: expect.arrayContaining([
+            expect.objectContaining({ kind: 'element-renamed' }),
+          ]),
+        },
+      },
+    })
+  })
+
   it('rejects an identity registry path that traverses a workspace symlink', async () => {
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), 'sysml-workbench-identity-link-'),
