@@ -39,6 +39,12 @@ import type {
 import type { AssuranceEvaluation } from '../../rule-engine/src/index.js'
 import type { ReportBundleManifest } from '../../report-engine/src/index.js'
 import type {
+  AiApplyApproval,
+  AiAssistantRequest,
+  AiOperationRecord,
+  AiOrchestratorStatus,
+} from '../../ai-orchestrator/src/index.js'
+import type {
   AddReviewFindingInput,
   CreateBaselineInput,
   CreateReviewInput,
@@ -344,6 +350,36 @@ export class WorkbenchClient {
     return this.transport.request(WORKBENCH_METHODS.reportGenerate, {
       workspaceId,
       input,
+    })
+  }
+
+  aiStatus(): Promise<AiOrchestratorStatus> {
+    return this.transport.request(WORKBENCH_METHODS.aiStatus)
+  }
+
+  requestAi(
+    workspaceId: string,
+    input: AiAssistantRequest,
+  ): Promise<AiOperationRecord> {
+    return this.transport.request(WORKBENCH_METHODS.aiRequest, {
+      workspaceId,
+      input,
+    })
+  }
+
+  listAiAudit(workspaceId: string): Promise<AiOperationRecord[]> {
+    return this.transport.request(WORKBENCH_METHODS.aiListAudit, {
+      workspaceId,
+    })
+  }
+
+  applyAi(
+    workspaceId: string,
+    approval: AiApplyApproval,
+  ): Promise<AiOperationRecord> {
+    return this.transport.request(WORKBENCH_METHODS.aiApply, {
+      workspaceId,
+      approval,
     })
   }
 
