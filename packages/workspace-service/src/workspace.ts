@@ -52,6 +52,7 @@ import {
   type CommandTransactionAudit,
   type InternalCommandProposal,
   type CommandProposal,
+  type WorkbenchCommand,
   type WorkspaceTransactionReceipt,
 } from '../../command-engine/src/index.js'
 import type {
@@ -91,6 +92,21 @@ import {
   type ReportBundleManifest,
   type ReportKind,
 } from '../../report-engine/src/index.js'
+import {
+  AiAuditRepository,
+  AiOrchestrator,
+  LocalDeterministicAiProvider,
+  type AiApplyApproval,
+  type AiAssistantRequest,
+  type AiOperationRecord,
+  type AiOrchestratorStatus,
+  type AiProvider,
+  type AiToolName,
+  type AiWorkspaceToolHost,
+  type ApplyApprovedCommandsInput,
+  type ApplyApprovedCommandsResult,
+  type ValidateCommandsResult,
+} from '../../ai-orchestrator/src/index.js'
 
 const MODEL_EXTENSIONS = new Set(['.sysml', '.kerml'])
 const DEFAULT_MAX_FILES = 2_000
@@ -129,6 +145,8 @@ export interface WorkspaceManagerOptions {
   workbenchVersion?: string
   maxFiles?: number
   maxBytes?: number
+  aiProviders?: AiProvider[]
+  allowNetworkAi?: boolean
 }
 
 export interface CreateBaselineInput {
@@ -174,12 +192,19 @@ export interface GenerateReportInput {
 
 export class WorkspaceManager {
   private readonly workspaces = new Map<string, OpenWorkspace>()
+  private readonly aiOrchestrator: AiOrchestrator
   private initialized = false
 
   constructor(private readonly options: WorkspaceManagerOptions) {
     if (options.allowedRoots.length === 0) {
       throw new WorkspacePathError('At least one authorized workspace root is required')
     }
+    const providers = options.aiProviders ?? [new LocalDeterministicAiProvider()]
+    this.aiOrchestrator = new AiOrchestrator({
+      providers,
+      defaultProviderId: providers[0]?.id ?? 'local-deterministic',
+      networkProvidersEnabled: options.allowNetworkAi === true,
+    })
   }
 
   async initialize(): Promise<void> {
@@ -562,7 +587,7 @@ export class WorkspaceManager {
     const workspace = this.requireWorkspace(envelope.workspaceId)
     const existing = workspace.commandProposals.get(envelope.commandId)
     if (existing) {
-      if (JSON.stringify(existing.envelope) !== JSON.stringify(envelope)) {
+      if (canonicalWorkspaceJson(existing.envelope) !== canonicalWorkspaceJson(envelope)) {
         throw new WorkspacePathError(
           `Command commandId conflict: ${envelope.commandId}`,
         )
@@ -1117,6 +1142,45 @@ export class WorkspaceManager {
     })
   }
 
+  aiStatus(): AiOrchestratorStatus {
+    return this.aiOrchestrator.status()
+  }
+
+  async requestAi(
+    workspaceId: string,
+    input: AiAssistantRequest,
+  ): Promise<AiOperationRecord> {
+    const workspace = this.requireWorkspace(workspaceId)
+    if (input.workspaceId !== workspaceId) {
+      throw new WorkspacePathError('AI request workspace identity mismatch')
+    }
+    return this.aiOrchestrator.request(
+      input,
+      this.aiToolHost(workspaceId),
+      new AiAuditRepository(workspace.rootPath, workspaceId),
+    )
+  }
+
+  async applyAi(
+    workspaceId: string,
+    approval: AiApplyApproval,
+  ): Promise<AiOperationRecord> {
+    const workspace = this.requireWorkspace(workspaceId)
+    if (approval.workspaceId !== workspaceId) {
+      throw new WorkspacePathError('AI approval workspace identity mismatch')
+    }
+    return this.aiOrchestrator.apply(
+      approval,
+      this.aiToolHost(workspaceId),
+      new AiAuditRepository(workspace.rootPath, workspaceId),
+    )
+  }
+
+  async listAiAudit(workspaceId: string): Promise<AiOperationRecord[]> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new AiAuditRepository(workspace.rootPath, workspaceId).list()
+  }
+
   async close(workspaceId: string): Promise<boolean> {
     if (!this.workspaces.has(workspaceId)) return false
     await this.options.adapter.closeWorkspace(workspaceId)
@@ -1152,6 +1216,202 @@ export class WorkspaceManager {
       throw new WorkspacePathError(`Unknown workspace: ${workspaceId}`)
     }
     return workspace
+  }
+
+  private aiToolHost(workspaceId: string): AiWorkspaceToolHost {
+    return {
+      snapshot: () => this.semanticSnapshot(workspaceId),
+      executeTool: (name, input) =>
+        this.executeAiTool(workspaceId, name, input),
+    }
+  }
+
+  private async executeAiTool(
+    workspaceId: string,
+    name: AiToolName,
+    input: unknown,
+  ): Promise<unknown> {
+    const snapshot = await this.semanticSnapshot(workspaceId)
+    const record = requireAiToolRecord(input)
+    switch (name) {
+      case 'search_elements': {
+        const nameContains = optionalAiString(record.nameContains, 'nameContains')
+          ?.toLocaleLowerCase()
+        const includeKinds = optionalAiStringArray(
+          record.includeKinds,
+          'includeKinds',
+          100,
+        )
+        const includeKindSet = includeKinds
+          ? new Set(includeKinds)
+          : undefined
+        const maxResults = boundedAiInteger(
+          record.maxResults,
+          'maxResults',
+          1,
+          500,
+          100,
+        )
+        return snapshot.elements
+          .filter((element) =>
+            (!nameContains ||
+              element.name.toLocaleLowerCase().includes(nameContains) ||
+              element.qualifiedName.toLocaleLowerCase().includes(nameContains)) &&
+            (!includeKindSet || includeKindSet.has(element.kind)),
+          )
+          .sort((left, right) => left.id.localeCompare(right.id))
+          .slice(0, maxResults)
+      }
+      case 'get_element': {
+        const elementId = requiredAiString(record.elementId, 'elementId')
+        return snapshot.elements.find((element) => element.id === elementId) ?? null
+      }
+      case 'get_relationships': {
+        const elementId = requiredAiString(record.elementId, 'elementId')
+        const element = snapshot.elements.find(
+          (candidate) => candidate.id === elementId,
+        )
+        if (!element) {
+          throw new WorkspacePathError(`Unknown model identity: ${elementId}`)
+        }
+        const direction = optionalAiString(record.direction, 'direction') ?? 'both'
+        if (!['inbound', 'outbound', 'both'].includes(direction)) {
+          throw new WorkspacePathError('direction must be inbound, outbound, or both')
+        }
+        const relationships = snapshot.relationships
+          .filter((relationship) =>
+            (direction !== 'inbound' && relationship.sourceId === elementId) ||
+            (direction !== 'outbound' && relationship.targetId === elementId),
+          )
+          .sort((left, right) => left.id.localeCompare(right.id))
+          .slice(0, 1_000)
+        return { element, relationships }
+      }
+      case 'get_requirements':
+        return this.modelQuery(workspaceId, {
+          schemaVersion: 1,
+          mode: 'requirements',
+          depth: boundedAiInteger(record.depth, 'depth', 0, 20, 5),
+          maxResults: boundedAiInteger(
+            record.maxResults,
+            'maxResults',
+            1,
+            5_000,
+            1_000,
+          ),
+        })
+      case 'get_verification':
+        return this.modelQuery(workspaceId, {
+          schemaVersion: 1,
+          mode: 'verification',
+          depth: boundedAiInteger(record.depth, 'depth', 0, 20, 5),
+          maxResults: boundedAiInteger(
+            record.maxResults,
+            'maxResults',
+            1,
+            5_000,
+            1_000,
+          ),
+        })
+      case 'get_interfaces':
+        return this.modelQuery(workspaceId, {
+          schemaVersion: 1,
+          mode: 'interfaces',
+          depth: boundedAiInteger(record.depth, 'depth', 0, 20, 5),
+          maxResults: boundedAiInteger(
+            record.maxResults,
+            'maxResults',
+            1,
+            5_000,
+            1_000,
+          ),
+        })
+      case 'get_diagnostics':
+        return this.diagnostics(workspaceId)
+      case 'run_model_query':
+        return this.modelQuery(
+          workspaceId,
+          requireAiToolRecord(record.query) as unknown as ModelQuery,
+        )
+      case 'compare_baselines':
+        return this.compareBaseline(
+          workspaceId,
+          requiredAiString(record.baselineId, 'baselineId'),
+        )
+      case 'propose_commands': {
+        const commands = requireAiCommands(record.commands)
+        return {
+          accepted: true,
+          commands: structuredClone(commands),
+        }
+      }
+      case 'validate_commands': {
+        const operationId = requiredAiString(record.operationId, 'operationId')
+        const requestedBy = requiredAiString(record.requestedBy, 'requestedBy')
+        const commands = requireAiCommands(record.commands)
+        const baseDocuments = Object.fromEntries(
+          snapshot.documents.map((document) => [document.uri, document.sha256]),
+        )
+        const proposals: CommandProposal[] = []
+        for (const [index, command] of commands.entries()) {
+          proposals.push(await this.proposeCommand({
+            schemaVersion: 1,
+            commandId: `${operationId}:${index + 1}`,
+            workspaceId,
+            baseSnapshotSha256: snapshot.snapshotSha256,
+            baseDocuments,
+            requestedBy: {
+              kind: 'ai',
+              id: requestedBy,
+            },
+            command,
+          }))
+        }
+        return { proposals } satisfies ValidateCommandsResult
+      }
+      case 'apply_approved_commands': {
+        const applyInput = record as unknown as ApplyApprovedCommandsInput
+        if (
+          !applyInput.operation ||
+          applyInput.operation.context.workspaceId !== workspaceId ||
+          applyInput.operation.state !== 'proposed' ||
+          !applyInput.operation.validation.accepted ||
+          !Array.isArray(applyInput.approvals) ||
+          applyInput.approvals.length !== applyInput.operation.proposals.length
+        ) {
+          throw new WorkspacePathError(
+            'AI apply requires an accepted operation and matching user approvals',
+          )
+        }
+        const receipts: AppliedCommandReceipt[] = []
+        for (const [index, stored] of applyInput.operation.proposals.entries()) {
+          const approval = applyInput.approvals[index]!
+          if (
+            approval.approvedBy?.kind !== 'user' ||
+            approval.workspaceId !== workspaceId ||
+            approval.proposalId !== stored.proposalId
+          ) {
+            throw new WorkspacePathError(
+              'AI apply approval does not match the validated proposal',
+            )
+          }
+          const refreshed = await this.proposeCommand(stored.envelope)
+          if (
+            refreshed.proposalId !== stored.proposalId ||
+            canonicalWorkspaceJson(refreshed.edits) !==
+              canonicalWorkspaceJson(stored.edits) ||
+            canonicalWorkspaceJson(refreshed.semanticDiff) !==
+              canonicalWorkspaceJson(stored.semanticDiff)
+          ) {
+            throw new WorkspacePathError(
+              'AI command validation changed; request a fresh proposal',
+            )
+          }
+          receipts.push(await this.applyCommand(approval))
+        }
+        return { receipts } satisfies ApplyApprovedCommandsResult
+      }
+    }
   }
 
   private async createSemanticSnapshot(
@@ -1613,6 +1873,22 @@ function sha256(value: Buffer): string {
   return createHash('sha256').update(value).digest('hex')
 }
 
+function canonicalWorkspaceJson(value: unknown): string {
+  return JSON.stringify(sortWorkspaceJson(value))
+}
+
+function sortWorkspaceJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortWorkspaceJson)
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, sortWorkspaceJson(nested)]),
+    )
+  }
+  return value
+}
+
 function commandTransactionId(proposalId: string): string {
   return `command-${sha256(Buffer.from(proposalId)).slice(0, 32)}`
 }
@@ -1706,6 +1982,99 @@ function validateSavedView(value: unknown): SavedWorkbenchView {
     }
   }
   return structuredClone(value) as unknown as SavedWorkbenchView
+}
+
+function requireAiToolRecord(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new WorkspacePathError('AI tool input must be an object')
+  }
+  if (Buffer.byteLength(JSON.stringify(value), 'utf8') > 1024 * 1024) {
+    throw new WorkspacePathError('AI tool input exceeds the 1 MiB limit')
+  }
+  return value
+}
+
+function requiredAiString(value: unknown, field: string): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim().length === 0 ||
+    value.length > 20_000
+  ) {
+    throw new WorkspacePathError(
+      `AI tool field ${field} must be a non-empty bounded string`,
+    )
+  }
+  return value
+}
+
+function optionalAiString(
+  value: unknown,
+  field: string,
+): string | undefined {
+  if (value === undefined) return undefined
+  return requiredAiString(value, field)
+}
+
+function optionalAiStringArray(
+  value: unknown,
+  field: string,
+  maxItems: number,
+): string[] | undefined {
+  if (value === undefined) return undefined
+  if (
+    !Array.isArray(value) ||
+    value.length > maxItems ||
+    value.some(
+      (item) =>
+        typeof item !== 'string' ||
+        item.trim().length === 0 ||
+        item.length > 512,
+    )
+  ) {
+    throw new WorkspacePathError(
+      `AI tool field ${field} must be a bounded string array`,
+    )
+  }
+  return [...value]
+}
+
+function boundedAiInteger(
+  value: unknown,
+  field: string,
+  minimum: number,
+  maximum: number,
+  fallback: number,
+): number {
+  if (value === undefined) return fallback
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < minimum ||
+    value > maximum
+  ) {
+    throw new WorkspacePathError(
+      `AI tool field ${field} must be an integer from ${minimum} to ${maximum}`,
+    )
+  }
+  return value
+}
+
+function requireAiCommands(value: unknown): WorkbenchCommand[] {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > 1 ||
+    value.some(
+      (command) =>
+        !isRecord(command) ||
+        typeof command.kind !== 'string',
+    )
+  ) {
+    throw new WorkspacePathError(
+      'Controlled AI accepts exactly one typed command per approval',
+    )
+  }
+  return structuredClone(value) as WorkbenchCommand[]
 }
 
 function isStringArray(value: unknown): value is string[] {
