@@ -6,7 +6,7 @@ backed by a locked, qualified language-engine runtime.
 
 ## Current implemented state
 
-Gates P1-P3 provide:
+Gates P1-P5 provide:
 
 - multi-file workspace loading and configured libraries;
 - locked VinQut/Pilot semantic authority plus non-authoritative Spec42
@@ -54,21 +54,35 @@ The Phase 4 product-shell component now adds:
   cannot write before explicit human approval;
 - workspace-owned saved views and stable-identity layout positions.
 
+Phase 5 adds the qualified engineering-assurance workflow:
+
+- deterministic requirements, verification, and interface rule packs;
+- Git status, workspace-owned baseline manifests, and stable-identity semantic
+  comparison;
+- model-anchored reviews with explicit dispositions, history, and stale-anchor
+  detection;
+- reproducible, sanitized HTML and byte-deterministic PDF reports, with CSV
+  exports for registers;
+- operational Interfaces, Verification, Changes, Reviews, and Reports
+  workbench surfaces;
+- a realistic four-document infrastructure pilot with two Git baselines, an
+  approved source-backed interface edit, a completed review cycle, and
+  generated evidence.
+
 The old Vite viewer is isolated behind `?legacy=1` and remains the explicit
 read-only GitHub Pages compatibility demo. Its parser, fixed diagram tabs,
 Draw.io round trip, and browser store are not authoritative architecture.
 
 Not yet implemented as production workbench claims: complete notation-specific
-graphical mutation, assurance rules, review persistence, Git baseline UI,
-deterministic reports, controlled AI, desktop packaging, or release-candidate
-hardening. Gate P4 remains open until Phase 5 completes the integrated
-eight-task usability pilot.
+graphical mutation, controlled AI, desktop packaging, or release-candidate
+hardening. Gates P4 and P5 passed the integrated eight-task pilot. Gate P7
+remains mandatory before production release.
 
 ## Development
 
 ```bash
 npm install
-npm run verify:phase4
+npm run verify:phase5
 ```
 
 Run the service without a configured engine in preservation-control mode:
@@ -85,6 +99,7 @@ bindings in `config/language-engine-runtime-lock.json`. With those configured:
 npm run qualify:phase2
 npm run qualify:phase3
 npm run qualify:phase4
+npm run qualify:phase5
 npm run benchmark:workbench -- \
   --candidate qualified-hybrid --profile medium --repetitions 1
 ```
@@ -97,11 +112,14 @@ npm run benchmark:workbench -- \
 - Phase 3 execution plan: `docs/revamp/20-phase3-command-editing-plan.md`;
 - Phase 3 gate candidate: `docs/revamp/21-phase3-gate-decision.md`;
 - Phase 4 component status: `docs/revamp/23-phase4-product-shell-status.md`;
+- Phase 5 gate decision: `docs/revamp/25-phase5-gate-decision.md`;
 - exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
 - exact Phase 3 command observation:
   `docs/revamp/phase3-qualification-observation.json`;
 - Phase 4 component observation:
   `docs/revamp/phase4-qualification-observation.json`;
+- integrated Phase 5 observation:
+  `docs/revamp/phase5-qualification-observation.json`;
 - medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
 - mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
 

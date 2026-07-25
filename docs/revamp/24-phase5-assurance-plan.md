@@ -1,7 +1,7 @@
 # Phase 5 — Engineering Assurance Plan
 
-Status: in progress  
-Stack base: `codex/sysml-workbench-phase4-product-shell` at `7ac19e6`  
+Status: completed; Gate P5 passed
+Stack base: `codex/sysml-workbench-phase4-product-shell` at `7ac19e6`
 Branch: `codex/sysml-workbench-phase5-assurance`
 
 ## Objective
@@ -57,10 +57,16 @@ reports. Complete the integrated usability pilot required by Gates P4 and P5.
 6. Infrastructure pilot workspace with two baselines and one review cycle.
 7. Automated and browser-based eight-task usability pilot.
 
-## Acceptance
+## Acceptance result
 
-Gates P4 and P5 remain open until the pilot proves, without developer-only
-operations: workspace opening, diagnostic navigation, requirement trace
-navigation, unverified requirement identification, approved interface edit,
+The exact locked-runtime pilot passed all required P4/P5 operations from a
+clean copied workspace: workspace opening, diagnostic navigation, requirement
+navigation, unverified-requirement identification, approved interface edit,
 semantic baseline comparison, review finding closure, and interface report
-export. All evidence must be reproducible from a clean copied workspace.
+export. The qualified implementation head is `8a69813`; evidence is in
+`phase5-qualification-observation.json`.
+
+The outcome is deliberately bounded. Rules report only semantics present in
+the normalized snapshot; unavailable units, protocol, timing, safety, and
+security attributes are not invented. Direct traceability is evaluated; broad
+SysML conformance is not claimed.
