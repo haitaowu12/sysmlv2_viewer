@@ -1,17 +1,54 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "status": "pending",
   "productName": "SysML Engineering Workbench",
   "version": "0.7.0-rc.1",
+  "sourceCommit": "",
   "qualifiedPlatforms": [],
-  "cleanMachineEvidence": [],
-  "productLicenseApproved": false,
-  "runtimeLicenseReconciled": false,
-  "distributionSigned": false,
-  "manualAccessibilityPassed": false,
-  "recoveryPassed": false,
-  "usabilityParticipants": [],
-  "owner": "",
   "approvedAt": "",
-  "evidence": []
+  "ownerApproval": {
+    "approved": false,
+    "owner": "",
+    "role": "",
+    "approvedAt": "",
+    "statement": ""
+  },
+  "evidence": [
+    {
+      "id": "product-license",
+      "type": "product-license",
+      "path": "release/evidence/0.7.0-rc.1/product-license.json",
+      "sha256": ""
+    },
+    {
+      "id": "runtime-license",
+      "type": "runtime-license",
+      "path": "release/evidence/0.7.0-rc.1/runtime-license.json",
+      "sha256": ""
+    },
+    {
+      "id": "platform-darwin-arm64",
+      "type": "platform-qualification",
+      "path": "release/evidence/0.7.0-rc.1/platform-darwin-arm64.json",
+      "sha256": ""
+    },
+    {
+      "id": "signing-darwin-arm64",
+      "type": "distribution-signing",
+      "path": "release/evidence/0.7.0-rc.1/signing-darwin-arm64.json",
+      "sha256": ""
+    },
+    {
+      "id": "accessibility-darwin-arm64",
+      "type": "accessibility",
+      "path": "release/evidence/0.7.0-rc.1/accessibility-darwin-arm64.json",
+      "sha256": ""
+    },
+    {
+      "id": "usability",
+      "type": "usability",
+      "path": "release/evidence/0.7.0-rc.1/usability.json",
+      "sha256": ""
+    }
+  ]
 }

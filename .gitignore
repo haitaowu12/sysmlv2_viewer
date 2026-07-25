@@ -16,6 +16,7 @@ generated/benchmarks/
 generated/release/
 generated/release-evidence/
 release/
+config/release-approval.json
 *.local
 
 # Editor directories and files

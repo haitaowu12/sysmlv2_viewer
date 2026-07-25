@@ -27,6 +27,8 @@
     "release:inventory": "tsx scripts/workbench-release-inventory.ts",
     "release:license-policy": "tsx scripts/workbench-license-policy.ts",
     "release:runtime-provenance": "tsx scripts/workbench-runtime-provenance.ts",
+    "release:init-evidence": "tsx scripts/workbench-init-release-evidence.ts",
+    "release:validate-approval": "tsx scripts/workbench-validate-release-approval.ts",
     "release:package": "tsx scripts/workbench-package-release.ts",
     "release:verify-bundle": "tsx scripts/workbench-verify-release-bundle.ts",
     "release:smoke-bundle": "tsx scripts/workbench-smoke-release-bundle.ts",

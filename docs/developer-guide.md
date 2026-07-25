@@ -102,5 +102,6 @@ inventory, runtime/library provenance, notices, launchers, and an embedded
 integrity verifier. The copied-bundle smoke must open the Phase 5 pilot without
 repository-relative imports or network.
 
-See `docs/developer/release-checklist.md` and
+See `docs/developer/release-checklist.md`,
+`docs/developer/release-evidence.md`, and
 `docs/revamp/28-phase7-release-plan.md`.

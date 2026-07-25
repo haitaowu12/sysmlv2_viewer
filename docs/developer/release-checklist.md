@@ -3,6 +3,8 @@
 ## Source and exact runtime
 
 - [ ] clean checkout and `npm ci`;
+- [ ] `npm run release:validate-approval` validates hash-bound external
+  evidence; see `docs/developer/release-evidence.md`;
 - [ ] `npm run verify:release` passes without waiver flags;
 - [ ] runtime hashes and official release commit match the lock;
 - [ ] mandatory fixture and P1–P6 regression qualifications pass;
@@ -32,6 +34,8 @@
 
 - [ ] product name and version approved;
 - [ ] three independent pilot users complete all eight usability tasks;
+- [ ] every participant record is independent, unassisted, complete, and
+  hash-bound by the release approval manifest;
 - [ ] critical pilot findings closed and remaining findings owned/dated;
 - [ ] capability matrix and README match implemented behavior;
 - [ ] release manifest binds commit, runtime/library versions, rules, reports,

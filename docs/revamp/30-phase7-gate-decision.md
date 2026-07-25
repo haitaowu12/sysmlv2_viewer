@@ -12,8 +12,8 @@ file is not approval.
 
 ## Technical evidence
 
-- release-source verification: 19 workbench files/86 tests and 39 passing +
-  1 skipped full files/240 passing + 19 skipped tests;
+- release-source verification: 20 workbench files/91 tests and 40 passing +
+  1 skipped full files/245 passing + 19 skipped tests;
 - TypeScript and production UI/service builds pass;
 - production npm audit: zero vulnerabilities;
 - production dependency graph: 42 components, no unapproved npm license
@@ -71,7 +71,8 @@ binary.
   provenance, copied-bundle log safety, and exact bundle checks.
 - `npm run verify:release`: production gate; fails without owner approval,
   legal closure, exact runtime, signed distribution, platform, usability, and
-  accessibility evidence.
+  accessibility evidence. Version 2 approval records are external, hash-bound,
+  exact-commit/artifact-bound, and validated rather than trusted as booleans.
 
 ## Owner decisions required
 

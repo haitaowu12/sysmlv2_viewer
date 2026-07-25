@@ -104,19 +104,27 @@ try {
     licenseRecord(
       'vinqut-wrapper-license',
       resolve(semanticSourceRoot, 'LICENSE'),
+      'VinQut/LICENSE',
     ),
     licenseRecord(
       'vinqut-runtime-notice',
       resolve(semanticSourceRoot, 'NOTICE'),
+      'VinQut/NOTICE',
     ),
-    licenseRecord('official-pilot-license', pilotLicense),
+    licenseRecord(
+      'official-pilot-license',
+      pilotLicense,
+      'SysML-v2-Pilot-Implementation/LICENSE',
+    ),
     licenseRecord(
       'official-release-license',
       resolve(libraryRepositoryRoot, 'LICENSE'),
+      'SysML-v2-Release/LICENSE',
     ),
     licenseRecord(
       'spec42-license-copy',
       resolve(repositoryRoot, 'docs/licenses/spec42-MIT.txt'),
+      'workbench/docs/licenses/spec42-MIT.txt',
     ),
   ])
   const noticeText = await readFile(resolve(semanticSourceRoot, 'NOTICE'), 'utf8')
@@ -131,12 +139,12 @@ try {
     sourceCommit: await gitCommit(repositoryRoot),
     lockedRuntime: {
       semantic: {
-        path: semanticArtifact,
+        artifact: basename(semanticArtifact),
         sha256: semanticSha256,
         sourceCheckout: semanticCheckout,
       },
       authoring: {
-        path: authoringArtifact,
+        artifact: basename(authoringArtifact),
         sha256: authoringSha256,
         sourceCommit: lock.authoring.commit,
       },
@@ -368,14 +376,13 @@ async function jarTable(path: string): Promise<string[]> {
 
 async function gitEvidence(
   root: string,
-): Promise<{ root: string; commit: string; dirty: boolean; remote: string | null }> {
+): Promise<{ commit: string; dirty: boolean; remote: string | null }> {
   const [commit, status, remote] = await Promise.all([
     git(root, ['rev-parse', 'HEAD']),
     git(root, ['status', '--porcelain']),
     git(root, ['remote', 'get-url', 'origin']).catch(() => ''),
   ])
   return {
-    root,
     commit,
     dirty: status.length > 0,
     remote: remote || null,
@@ -397,11 +404,12 @@ async function git(root: string, argumentsList: string[]): Promise<string> {
 async function licenseRecord(
   id: string,
   path: string,
-): Promise<{ id: string; path: string; sha256: string; firstLine: string }> {
+  source: string,
+): Promise<{ id: string; source: string; sha256: string; firstLine: string }> {
   const text = await readFile(path, 'utf8')
   return {
     id,
-    path,
+    source,
     sha256: sha256(text),
     firstLine: text.split(/\r?\n/).find((line) => line.trim()) ?? '',
   }

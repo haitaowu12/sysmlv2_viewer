@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
+import { validateReleaseApproval } from '../packages/release-evidence/src/index.js'
 
 interface PackageJson {
   version: string
@@ -18,13 +20,6 @@ const packageJson = JSON.parse(
 ) as PackageJson
 const platform = valueAfter('--platform') ?? `${process.platform}-${process.arch}`
 const allowOwnerBlockers = process.argv.includes('--allow-owner-blockers')
-if (!allowOwnerBlockers) {
-  await validateReleaseApproval(
-    resolve(repositoryRoot, 'config/release-approval.json'),
-    packageJson.version,
-    platform,
-  )
-}
 const requiredEnvironment = [
   'SYSML_WORKBENCH_SEMANTIC_ARTIFACT',
   'SYSML_WORKBENCH_AUTHORING_ARTIFACT',
@@ -135,12 +130,40 @@ const { stdout: commitOutput } = await execFileAsync(
   ['rev-parse', 'HEAD'],
   { cwd: repositoryRoot },
 )
+const sourceCommit = commitOutput.trim()
+const runtimeProvenancePath = resolve(
+  evidenceRoot,
+  'phase7-runtime-provenance.json',
+)
+const archivePath = resolve(
+  outputRoot,
+  `sysml-engineering-workbench-${packageJson.version}-${platform}.tar.gz`,
+)
+if (!allowOwnerBlockers) {
+  const runtimeLock = JSON.parse(
+    await readFile(
+      resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+      'utf8',
+    ),
+  ) as { semantic: { artifactSha256: string } }
+  await validateReleaseApproval({
+    repositoryRoot,
+    manifestPath: resolve(repositoryRoot, 'config/release-approval.json'),
+    productName: 'SysML Engineering Workbench',
+    version: packageJson.version,
+    platform,
+    sourceCommit,
+    runtimeArtifactSha256: runtimeLock.semantic.artifactSha256,
+    runtimeProvenanceSha256: await fileSha256(runtimeProvenancePath),
+    releaseArtifactSha256: await fileSha256(archivePath),
+  })
+}
 const report = {
   schemaVersion: 1,
   outcome: allowOwnerBlockers
     ? 'technical-release-candidate-passed-owner-blockers-open'
     : 'release-gate-passed',
-  sourceCommit: commitOutput.trim(),
+  sourceCommit,
   version: packageJson.version,
   platform,
   bundle: bundleRoot,
@@ -185,50 +208,6 @@ function valueAfter(flag: string): string | undefined {
   return value
 }
 
-async function validateReleaseApproval(
-  path: string,
-  version: string,
-  platform: string,
-): Promise<void> {
-  let value: unknown
-  try {
-    value = JSON.parse(await readFile(path, 'utf8'))
-  } catch {
-    throw new Error(
-      'Production release requires config/release-approval.json; use the example contract and attach actual owner evidence',
-    )
-  }
-  if (!value || typeof value !== 'object') {
-    throw new Error('Release approval manifest must be an object')
-  }
-  const approval = value as Record<string, unknown>
-  const participants = approval.usabilityParticipants
-  const platforms = approval.qualifiedPlatforms
-  const cleanMachines = approval.cleanMachineEvidence
-  if (
-    approval.schemaVersion !== 1 ||
-    approval.status !== 'approved' ||
-    approval.productName !== 'SysML Engineering Workbench' ||
-    approval.version !== version ||
-    !Array.isArray(platforms) ||
-    !platforms.includes(platform) ||
-    !Array.isArray(cleanMachines) ||
-    !cleanMachines.includes(platform) ||
-    approval.productLicenseApproved !== true ||
-    approval.runtimeLicenseReconciled !== true ||
-    approval.distributionSigned !== true ||
-    approval.manualAccessibilityPassed !== true ||
-    approval.recoveryPassed !== true ||
-    !Array.isArray(participants) ||
-    participants.length < 3 ||
-    participants.some((item) => typeof item !== 'string' || !item) ||
-    typeof approval.owner !== 'string' ||
-    !approval.owner ||
-    typeof approval.approvedAt !== 'string' ||
-    !approval.approvedAt ||
-    !Array.isArray(approval.evidence) ||
-    approval.evidence.length === 0
-  ) {
-    throw new Error('Release approval manifest is incomplete or does not approve this artifact')
-  }
+async function fileSha256(path: string): Promise<string> {
+  return createHash('sha256').update(await readFile(path)).digest('hex')
 }
