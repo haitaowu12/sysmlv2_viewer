@@ -126,6 +126,8 @@ await runNpm([
   ),
   '--model-marker',
   'ControlCentre',
+  '--output',
+  resolve(evidenceRoot, 'phase7-copied-bundle-smoke.json'),
 ])
 
 const { stdout: commitOutput } = await execFileAsync(
