@@ -12,8 +12,8 @@ file is not approval.
 
 ## Technical evidence
 
-- release-source verification: 19 workbench files/85 tests and 39 passing +
-  1 skipped full files/239 passing + 19 skipped tests;
+- release-source verification: 19 workbench files/86 tests and 39 passing +
+  1 skipped full files/240 passing + 19 skipped tests;
 - TypeScript and production UI/service builds pass;
 - production npm audit: zero vulnerabilities;
 - production dependency graph: 42 components, no unapproved npm license
@@ -21,11 +21,18 @@ file is not approval.
 - automated axe: zero serious/critical findings on the primary shell and
   assistant (rendered contrast remains a manual gate);
 - exact P6 controlled-AI regression passes after authoring lifecycle changes;
+- hard-exit multi-file recovery restores source byte-exactly, and full-project
+  backup/restore preserves the semantic snapshot and stable identity set;
+- transaction-journal retention is explicit, dry-run by default, and protects
+  all non-terminal recovery states;
 - deterministic release assembly rejects dirty source, runtime hash drift,
   official-library commit drift, links, extra/missing files, and mutations;
 - embedded verifier covers 2,176 files before launch;
 - copied bundle serves strict-CSP UI, starts the qualified hybrid authority,
-  and opens the four-document pilot without network or repository imports;
+  opens the four-document pilot without network or repository imports, and
+  scans captured output for model/session/CSRF leakage;
+- runtime provenance binds 15 local inputs and 36 Maven component records to
+  the locked fat JAR; all ten `org.omg.*` inputs match the pinned Pilot bytes;
 - medium performance: five warmups, thirty valid samples, all seven mandated
   p95 targets pass; see `phase7-benchmark-observation.json`.
 
@@ -40,12 +47,13 @@ the lazy lifecycle does not bypass authoring or semantic validation.
 | Gate | State | Required closure |
 |---|---|---|
 | product license | blocked | owner selects and records the repository/distribution license |
-| runtime license provenance | blocked | reconcile VinQut fat-JAR LGPL notice with pinned Pilot checkout EPL license and redistributed class obligations |
+| runtime license provenance | blocked | reconcile VinQut NOTICE LGPL claim with pinned Pilot EPL license and establish exact provenance for five byte-different UML inputs |
 | supported OS | blocked | owner selects minimum OS set; each claimed platform receives its own locked artifact and clean-machine run |
 | distribution | blocked | signed/notarized installer or explicit internal-only policy |
 | usability | blocked | three independent participants pass all eight tasks in `29-usability-pilot-protocol.md` |
 | manual accessibility | blocked | rendered contrast, zoom, screen reader, keyboard, and diagram-alternative evidence |
-| recovery/operations | blocked | clean-machine install, backup/restore, incomplete-command recovery, and crash/log-content review |
+| recovery integrity | passed automated | hard-exit rollback plus project backup/restore reproduce bytes, semantic snapshot, and identities |
+| recovery/operations | blocked external | clean-machine signed-install recovery plus OS crash/log-content inspection |
 | product approval | blocked | name, version, residual risks, and evidence manifest signed by owner |
 
 Windows is not a release claim. The runtime lock currently binds one macOS arm64
@@ -57,7 +65,8 @@ binary.
 - `npm run verify:release:source`: mandatory clean-CI source/security/license
   evidence; records owner/legal blockers without hiding them.
 - `npm run verify:release:technical`: exact-runtime internal RC qualification;
-  the waiver flag is explicit in its output.
+  the waiver flag is explicit in its output; includes recovery, runtime
+  provenance, copied-bundle log safety, and exact bundle checks.
 - `npm run verify:release`: production gate; fails without owner approval,
   legal closure, exact runtime, signed distribution, platform, usability, and
   accessibility evidence.
