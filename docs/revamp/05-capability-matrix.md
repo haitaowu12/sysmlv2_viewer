@@ -2,8 +2,8 @@
 
 Profile version: `sysml-2.0-kerml-1.0/workbench-1`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Gate P1 rule: only the bounded capabilities below are claimed; Phase 2+ targets
-remain planned until their mandatory tests exist.
+Gate P2 rule: only bounded capabilities backed by mandatory tests and exact
+locked-runtime evidence are claimed; Phase 3+ targets remain planned.
 
 ## Status vocabulary
 
@@ -73,7 +73,7 @@ remain planned until their mandatory tests exist.
 | formatting | proposal-only | Spec42; cannot apply before P3 validation | LSP-FMT-001 |
 | full-document incremental sync | supported | both selected engines; increasing versions | LSP-CHANGE-001 |
 | timeout/cancel/restart | supported | visible failure; no fallback | LSP-RECOVER-001 |
-| normalized semantic snapshot | unsupported at P1 | mandatory first P2 slice | SEM-SNAP-001 |
+| normalized semantic snapshot | unsupported at P1 | supported P2 semantic-evidence profile | SEM-SNAP-001 |
 | source preservation | partial | inventory byte stability only; edit safety is P3 | LANG-OPAQUE-001 |
 | medium scale | conditional | warm p95 1.659 s; cold p95 6.109 s | BENCH-MEDIUM-001 |
 | large scale | experimental | no crash; excessive memory and latency | BENCH-LARGE-001 |
@@ -87,9 +87,11 @@ remain planned until their mandatory tests exist.
 | stdio service transport | unsupported | P1 | TRANSPORT-STDIO-001 |
 | authenticated loopback transport | unsupported | P1 | TRANSPORT-LOOPBACK-001 |
 | workspace lifecycle/reopen | unsupported | P1 qualification foundation | E2E-WS-001 |
-| normalized semantic snapshot | dual shallow models | P2 | SEM-SNAP-001 |
-| stable identity | line/name/path hash | P2 | ID-STABLE-001 |
-| model query API | unsupported | P2 | QUERY-001 |
+| normalized semantic snapshot | dual shallow models | supported P2 profile | SEM-SNAP-001 |
+| stable identity | line/name/path hash | supported P2 schema 2 lifecycle | ID-STABLE-001 |
+| model query API | unsupported | supported P2, seven bounded modes | QUERY-001 |
+| explorer projection core | legacy AST/store | supported P2 normalized projection | PROJECTION-001 |
+| identity-aware semantic diff core | unsupported | supported P2 lifecycle categories | DIFF-P2-001 |
 | typed command transaction | unsupported | P3 | CMD-TRANS-001 |
 | native source-backed editing | ad hoc subset | P3 | CMD-DIAG-001 |
 | saved projections/layouts | unsupported | P4 | VIEW-SAVE-001 |

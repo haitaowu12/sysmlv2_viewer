@@ -44,6 +44,10 @@ Gate P1:
 
 ## P2 — Semantic model, identity, and query
 
+Delivery state: implementation and exact-runtime qualification complete;
+clean-checkout/CI/PR delivery gate pending. Measured first-use latency exception
+is recorded without reducing the target.
+
 - normalized snapshot and provenance;
 - stable identity/locator/fingerprint/alias receipts;
 - bounded query API;

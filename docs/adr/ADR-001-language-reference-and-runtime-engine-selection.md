@@ -118,3 +118,21 @@ declared hybrid capability set; loss of either fails the session. Semantic
 snapshot remains false until P2 supplies the normalized product-owned contract.
 Direct KPAR loading and the large production profile are excluded. This is not
 a SysML v2 conformance or production-release claim.
+
+## Gate P2 amendment
+
+The semantic runtime now carries a product-owned, read-only
+`sysml/semanticEvidence` extension. The extension returns source-backed Pilot
+EMF metaclasses and explicit, resolved, non-derived `EReference` evidence. The
+workbench normalizer—not React and not the legacy parser—maps that evidence to
+the versioned semantic snapshot.
+
+The overlay source, exact upstream pins, reproducible ShadowJar settings, and
+patch hash are in `integrations/vinqut-semantic-evidence/`. The qualified jar
+SHA-256 is locked in `config/language-engine-runtime-lock.json`. Exact hybrid
+qualification proves all eight P2 relationship kinds and clean restart from
+the mandatory multi-file fixture.
+
+Failure behavior is closed: no endpoint/capability means no semantic snapshot;
+derived, unresolved, unknown-document, invalid-range, over-limit, and
+conflicting engine evidence cannot become authoritative relationships.

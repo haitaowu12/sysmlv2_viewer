@@ -92,3 +92,29 @@ It may intentionally change after delete/recreate unless an owner-approved alias
 ## Consequences
 
 The workbench owns a small non-semantic identity registry. Manual source changes can require reconciliation. This cost is necessary for reliable engineering anchors without polluting canonical source.
+
+## Phase 2 implementation status
+
+The schema-2 registry implements:
+
+- durable id `wb:<workspace-slug>:<sha256(workspace-id, relative-path,
+  qualified-name, kind, generation)>`;
+- current locator `{workspacePath, qualifiedName, kind}`;
+- source-backed structural fingerprint;
+- active/tombstone lifecycle and generation increment on same-locator
+  delete/recreate;
+- explicit command aliases and command-migration receipts;
+- unique-fingerprint uncontrolled-move reconciliation with a persisted receipt;
+- visible failure with candidate ids when reconciliation is ambiguous;
+- anchor states `resolved`, `stale`, and `missing`;
+- schema-1 read migration;
+- atomic `0600` primary persistence plus atomic `.bak` recovery;
+- fail-closed JSON/merge-marker and duplicate active-locator handling.
+
+Formatting, line movement, ordinary content edits, clone portability,
+controlled rename/move, uncontrolled unique file move, collision ambiguity,
+delete/recreate, backup recovery, and merge-conflict behavior are mandatory
+tests. `packages/semantic-diff` classifies one durable id whose name/path moves
+as rename/move and proves it is not delete/create.
+
+The registry remains anchoring metadata only. It never defines SysML semantics.

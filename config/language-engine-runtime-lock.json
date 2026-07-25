@@ -10,8 +10,14 @@
     "candidateId": "vinqut",
     "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
     "artifactEnvironment": "SYSML_WORKBENCH_SEMANTIC_ARTIFACT",
-    "artifactSha256": "e717eec5fc406b739983f8896ae5c8a6b4eb9510568225988a7cda3e95437dbe",
-    "launchMode": "java-jar"
+    "artifactSha256": "8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160",
+    "launchMode": "java-jar",
+    "semanticEvidenceExtension": {
+      "method": "sysml/semanticEvidence",
+      "patchSha256": "364da283242e02ec8f68dabf45af646c532db3453b7dcfccf85c3e2d00178e45",
+      "modelSourceSha256": "16a6ade27f3518651f5d5e16d07355d44bc76314090a2a9110d9514713ec097a",
+      "serviceSourceSha256": "c63dd0e09dc1595764d9069807d002b8af9391dfcf2fe802082c747358722d94"
+    }
   },
   "authoring": {
     "candidateId": "spec42",

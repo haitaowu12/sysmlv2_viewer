@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T19:47:44.525Z",
+  "gate": "P2",
+  "result": "pass",
+  "runtimeLock": {
+    "schemaVersion": 1,
+    "outcome": "HYBRID GO",
+    "adapterVersion": "0.2.0",
+    "referenceRelease": {
+      "name": "2026-05",
+      "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+    },
+    "semantic": {
+      "candidateId": "vinqut",
+      "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "artifactEnvironment": "SYSML_WORKBENCH_SEMANTIC_ARTIFACT",
+      "artifactSha256": "8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160",
+      "launchMode": "java-jar",
+      "semanticEvidenceExtension": {
+        "method": "sysml/semanticEvidence",
+        "patchSha256": "364da283242e02ec8f68dabf45af646c532db3453b7dcfccf85c3e2d00178e45",
+        "modelSourceSha256": "16a6ade27f3518651f5d5e16d07355d44bc76314090a2a9110d9514713ec097a",
+        "serviceSourceSha256": "c63dd0e09dc1595764d9069807d002b8af9391dfcf2fe802082c747358722d94"
+      }
+    },
+    "authoring": {
+      "candidateId": "spec42",
+      "commit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "artifactEnvironment": "SYSML_WORKBENCH_AUTHORING_ARTIFACT",
+      "artifactSha256": "22911d70f7f41251e257aef3ae4a3a402e77063d2271ed394a114834d7ee362e",
+      "launchMode": "executable"
+    },
+    "officialLibraryIndexSha256": "d010a8644265b8aadab103f1cc9024bb143b34d825ea2139e11590ee337cd8fe"
+  },
+  "fixture": {
+    "id": "phase2-semantic",
+    "documents": 2,
+    "diagnostics": []
+  },
+  "performance": {
+    "openMs": 4305,
+    "snapshotMs": 576,
+    "reopenMs": 777,
+    "queries": [
+      {
+        "mode": "containment",
+        "durationMs": 0.63,
+        "elements": 16,
+        "relationships": 15,
+        "truncated": false
+      },
+      {
+        "mode": "type-hierarchy",
+        "durationMs": 0.27,
+        "elements": 1,
+        "relationships": 0,
+        "truncated": false
+      },
+      {
+        "mode": "dependency",
+        "durationMs": 0.15,
+        "elements": 2,
+        "relationships": 1,
+        "truncated": false
+      },
+      {
+        "mode": "neighbourhood",
+        "durationMs": 0.26,
+        "elements": 18,
+        "relationships": 26,
+        "truncated": false
+      },
+      {
+        "mode": "requirements",
+        "durationMs": 0.21,
+        "elements": 16,
+        "relationships": 16,
+        "truncated": false
+      },
+      {
+        "mode": "verification",
+        "durationMs": 0.22,
+        "elements": 16,
+        "relationships": 17,
+        "truncated": false
+      },
+      {
+        "mode": "interfaces",
+        "durationMs": 0.24,
+        "elements": 18,
+        "relationships": 24,
+        "truncated": false
+      }
+    ]
+  },
+  "semantic": {
+    "snapshotSha256": "cf47d207c1a628a82c8884df28a981a69f606a63b4e584a9118e89aaf29170a5",
+    "elements": 18,
+    "relationships": 26,
+    "relationshipKinds": [
+      "connection",
+      "containment",
+      "dependency",
+      "flow",
+      "interface",
+      "satisfaction",
+      "typing",
+      "verification"
+    ],
+    "stableIdsAcrossReopen": true
+  },
+  "projection": {
+    "mode": "containment",
+    "nodes": 16,
+    "edges": 15,
+    "source": "normalized-semantic-snapshot"
+  }
+}

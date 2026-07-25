@@ -49,7 +49,8 @@
       "license": "MIT wrapper; Pilot obligations apply",
       "adapter": "lsp-stdio",
       "commandEnvironment": "SYSML_WORKBENCH_VINQUT_COMMAND",
-      "argumentsEnvironment": "SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON"
+      "argumentsEnvironment": "SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON",
+      "semanticEvidenceMethod": "sysml/semanticEvidence"
     },
     {
       "id": "official-hybrid-spike",

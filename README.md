@@ -1,95 +1,77 @@
-# SysML Viewer
+# SysML Engineering Workbench
 
-Private/local SysML v2 visual editor for a practical supported subset, with synchronized text, diagram, Draw.io, SVG, and AI-assisted modeling workflows.
+Local-first SysML v2 engineering workbench under staged architectural revamp.
+SysML/KerML source is canonical. The production path is a workspace service
+backed by a locked, qualified language-engine runtime.
 
-Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) - systems engineering tools, assurance workflows, and learning simulations.
+## Current implemented state
 
-## Features
+Phase 2 provides:
 
-- SysML v2 text editor with live parsing and diagnostics.
-- Diagram views for General, Interconnection, Action Flow, State Transition, Requirements, Viewpoints, and Draw.io.
-- Import/export for `.sysml`, `.drawio`, `.svg`, and `.png`.
-- Bidirectional SysML v2 to Draw.io synchronization for the supported structural subset.
-- Local AI API with server-held provider keys and local heuristic fallback.
-- Undo/redo, panel resizing, dark/light theme, keyboard shortcuts, and component library insertion.
+- multi-file workspace loading and configured libraries;
+- locked VinQut/Pilot semantic authority plus non-authoritative Spec42
+  authoring assistance;
+- deterministic diagnostics and standard LSP navigation operations;
+- explicit Pilot EMF semantic evidence with no legacy-parser fallback;
+- normalized elements and containment, typing, dependency, satisfaction,
+  verification, connection, flow, and interface relationships;
+- durable identity registry with aliases, tombstones, reconciliation receipts,
+  conflict failure, and backup recovery;
+- bounded containment, type, dependency, neighbourhood, requirements,
+  verification, and interface queries;
+- an explorer projection built only from the normalized snapshot;
+- identity-aware rename/move semantic diff classification.
 
-See `docs/r2-product-contract.md` for the R2 mission, non-goals, support boundaries, acceptance gates, and static vs API-enabled deployment model.
+The existing Vite viewer remains a compatibility/demo surface during the
+revamp. Its hand-written parser, fixed diagram tabs, Draw.io round trip, and
+browser store are not authoritative workbench architecture. They will be
+retired or isolated in later gated phases.
 
-## Quickstart
+Not yet implemented as production workbench claims: typed source-edit
+commands, native graphical mutation, the new application shell, assurance
+workflows, review persistence, Git baseline UI, deterministic reports,
+controlled AI, desktop packaging, or release-candidate hardening.
+
+## Development
 
 ```bash
 npm install
-npm run dev
+npm run verify:phase2
 ```
 
-Open the Vite URL, normally `http://localhost:5173/sysmlv2_viewer/`.
-
-For the standalone local API server:
+Run the service without a configured engine in preservation-control mode:
 
 ```bash
-npm run dev:api
+npm run build:workbench
+npm run workbench:service -- --stdio --workspace-root /authorized/root
 ```
 
-## AI Configuration
-
-Browser requests never send provider API keys. Configure keys on the local API server:
+The qualified hybrid requires the exact runtime artifacts and environment
+bindings in `config/language-engine-runtime-lock.json`. With those configured:
 
 ```bash
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-GOOGLE_API_KEY=...
-SYSML_AI_PROVIDER=openai
-SYSML_AI_MODEL=gpt-4.1-mini
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+npm run qualify:phase2
+npm run benchmark:workbench -- \
+  --candidate qualified-hybrid --profile medium --repetitions 1
 ```
 
-If no provider key is configured, AI generation falls back to the local heuristic generator.
+## Authority and evidence
 
-## Scripts
+- language decision: `docs/adr/ADR-001-language-reference-and-runtime-engine-selection.md`;
+- identity model: `docs/adr/ADR-002-model-identity.md`;
+- Phase 2 gate record: `docs/revamp/19-phase2-semantic-core-status.md`;
+- exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
+- medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
+- mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
 
-- `npm run dev` - Vite development app with the local API plugin.
-- `npm run dev:api` - standalone Node API server on `PORT` or `8787`.
-- `npm run build` - TypeScript and production Vite build.
-- `npm run lint` - ESLint production gate.
-- `npm run test` - Vitest suite.
-- `npm run test:release` - in-repo release baseline tests plus optional upstream fixture smoke tests when `SYSML_V2_RELEASE_DIR` is set.
-- `npm run preview` - serve the production build.
+No broad “supports SysML v2” claim is made. Capability boundaries are in
+`docs/revamp/05-capability-matrix.md` and must remain linked to tests.
 
-## SysML v2 Release Baseline
+## Security posture
 
-Project examples, AI generation guardrails, and parser fixture work are anchored to:
+The workbench service authorizes workspace roots, rejects path traversal and
+symlink-backed model/identity paths, binds shared access to authenticated
+loopback transport, and keeps source local. Provider-backed AI is not part of
+the Phase 2 authority path and cannot mutate canonical source.
 
-- `Systems-Modeling/SysML-v2-Release`
-- tag `2026-04`
-- commit `9baca5908ca28b53da085de69336fde48420ea8f`
-
-See `docs/sysml-v2-release-baseline.md` and `docs/webel-cameo-pilot-coverage.md`. Webel is used only as a non-authoritative visual coverage map; no Webel images or page bodies are vendored.
-
-Optional upstream fixture check. CI may skip upstream corpus tests when the corpus checkout is absent; in-repo release baseline tests still run.
-
-```bash
-SYSML_V2_RELEASE_DIR=/path/to/SysML-v2-Release npm run test:release
-```
-
-## Security Notes
-
-- Default CORS is restricted to local Vite/preview origins.
-- AI provider keys are read from server environment variables only.
-- Draw.io embed messaging is restricted to `https://embed.diagrams.net`.
-- The app is intended for private/local use. Do not expose the API server publicly without adding authentication, request logging policy, and stricter deployment controls.
-- GitHub Pages deploys the static app only. API-enabled/provider-backed AI use requires a separate trusted server.
-
-## Supported SysML Subset
-
-Primary roundtrip coverage includes `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
-
-The parser intentionally recovers from unsupported syntax where possible so partial models remain inspectable. `calc`, `individual`, `occurrence`, snapshots/time slices, `variation`/`variant`, metadata `about`, and message/event constructs are partial/recovery-only areas with explicit diagnostics until fixture-driven support is completed. `alias` has first-tranche parsing, but broader alias-aware reference resolution is still partial.
-
-Unsupported areas include full SysML v2/KerML coverage, official conformance validation, public API hosting without hardening, and arbitrary Draw.io import as semantically valid SysML. See `docs/r2-product-contract.md`.
-
-## Troubleshooting
-
-- Draw.io not loading: use the Draw.io tab's advanced XML editor fallback.
-- AI provider call falls back locally: confirm the matching provider env key is present on the API server.
-- Diagram appears offscreen after heavy edits: switch views or use the Draw.io reflow action.
-- Import has parse errors: check the editor markers and status bar diagnostics.
+The project is not yet a production release. Gate P7 remains required.
