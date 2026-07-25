@@ -37,7 +37,6 @@ try {
     const packageElement = requireElement(initialSnapshot, 'InfrastructurePilot')
     const sourceEndpoint = requireElement(initialSnapshot, 'InfrastructurePilot::remoteStation::telemetryOut')
     const targetEndpoint = requireElement(initialSnapshot, 'InfrastructurePilot::controlCentre::telemetryIn')
-    const changedRequirement = requireElement(initialSnapshot, 'InfrastructureRequirements::failoverNotification')
 
     const diagnosticDocument = initialSnapshot.documents.find((document) =>
       document.uri.endsWith('/model/open-issues.sysml'))
@@ -90,19 +89,24 @@ try {
       change.after.kind === 'InterfaceUsage')) {
       throw new Error('Graphical interface command did not preview a semantic interface creation')
     }
+    const snapshotAfterInterface = await manager.semanticSnapshot(status.workspaceId)
+    const changedRequirement = requireElement(
+      snapshotAfterInterface,
+      'InfrastructureRequirements::failoverNotification',
+    )
     const requirementCommand = await proposeAndApply(
       manager,
       status.workspaceId,
-      'P5-RENAME-REQUIREMENT-001',
+      'P5-CHANGE-REQUIREMENT-001',
       {
-        kind: 'rename-element',
+        kind: 'update-documentation',
         targetId: changedRequirement.id,
-        newName: 'pathFailoverNotification',
+        documentation: 'The network carrier shall notify both owning parties within the approved failover response interval.',
       },
     )
     if (!requirementCommand.proposal.semanticDiff?.changes.some((change) =>
-      change.kind === 'element-renamed')) {
-      throw new Error('Requirement change was not classified as a semantic rename')
+      change.kind === 'element-content-changed')) {
+      throw new Error('Requirement change was not classified as semantic content change')
     }
     const changedSnapshot = await manager.semanticSnapshot(status.workspaceId)
     const createdInterface = changedSnapshot.elements.find((element) =>
@@ -115,8 +119,8 @@ try {
     if (!comparison.semanticDiff.changes.some((change) => change.kind === 'element-created')) {
       throw new Error('Baseline comparison omitted the created interface')
     }
-    if (!comparison.semanticDiff.changes.some((change) => change.kind === 'element-renamed')) {
-      throw new Error('Baseline comparison omitted the requirement rename')
+    if (!comparison.semanticDiff.changes.some((change) => change.kind === 'element-content-changed')) {
+      throw new Error('Baseline comparison omitted the requirement content change')
     }
     const baselineB = await manager.createBaseline(status.workspaceId, {
       id: 'pilot-baseline-b',

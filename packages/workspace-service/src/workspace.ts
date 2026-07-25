@@ -1270,10 +1270,26 @@ export class WorkspaceManager {
           (element) => element.id === affectedElementId,
         )
         if (!prior?.provenance.engineId) continue
-        const next = provisional.elements.find(
+        let next = provisional.elements.find(
           (element) =>
             element.provenance.engineId === prior.provenance.engineId,
         )
+        if (!next && proposal.envelope.command.kind === 'rename-element') {
+          const renamedElementName = proposal.envelope.command.newName
+          const candidates = provisional.elements.filter(
+            (element) =>
+              element.kind === prior.kind &&
+              element.name === renamedElementName &&
+              element.source.workspacePath === prior.source.workspacePath,
+          )
+          if (candidates.length === 1) {
+            next = candidates[0]
+          } else if (candidates.length > 1) {
+            throw new WorkspacePathError(
+              `Validated overlay produced an ambiguous renamed element: ${prior.id}`,
+            )
+          }
+        }
         if (!next && proposal.envelope.command.kind === 'rename-element') {
           throw new WorkspacePathError(
             `Validated overlay lost the renamed element: ${prior.id}`,
