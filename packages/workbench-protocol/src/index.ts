@@ -1,10 +1,13 @@
-export const WORKBENCH_PROTOCOL_VERSION = '0.4.0'
+export const WORKBENCH_PROTOCOL_VERSION = '0.5.0'
 
 export const WORKBENCH_METHODS = {
   initialize: 'workbench/initialize',
   health: 'health/status',
   workspaceOpen: 'workspace/open',
   workspaceStatus: 'workspace/status',
+  workspaceReadDocument: 'workspace/readDocument',
+  workspaceListViews: 'workspace/listViews',
+  workspaceSaveView: 'workspace/saveView',
   workspaceClose: 'workspace/close',
   languageDiagnostics: 'language/diagnostics',
   languageDocumentSymbols: 'language/documentSymbols',
@@ -177,6 +180,30 @@ export interface WorkspaceDocumentSummary {
   languageId: 'sysml' | 'kerml'
   sha256: string
   byteLength: number
+}
+
+export interface WorkspaceDocumentContent extends WorkspaceDocumentSummary {
+  version: number
+  text: string
+}
+
+export interface SavedWorkbenchView {
+  schemaVersion: 1
+  id: string
+  name: string
+  query: {
+    roots?: string[]
+    mode?: 'containment' | 'type-hierarchy' | 'dependency' | 'neighbourhood' | 'requirements' | 'verification' | 'interfaces'
+    relationships?: Array<'containment' | 'typing' | 'dependency' | 'satisfaction' | 'verification' | 'connection' | 'flow' | 'interface'>
+    direction?: 'outbound' | 'inbound' | 'both'
+    depth?: number
+    maxResults?: number
+  }
+  notation: 'model-structure' | 'interconnection' | 'traceability' | 'action-flow' | 'state-transition' | 'verification-context' | 'table'
+  layout?: {
+    positions: Record<string, { x: number; y: number; width?: number; height?: number }>
+  }
+  updatedAt: string
 }
 
 export interface WorkspaceStatusResult {

@@ -21,6 +21,8 @@ import type {
   WorkbenchSemanticTokens,
   WorkbenchTextEdit,
   WorkbenchWorkspaceEdit,
+  WorkspaceDocumentContent,
+  SavedWorkbenchView,
   WorkspaceDocumentSummary,
   WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
@@ -237,6 +239,72 @@ export class WorkspaceManager {
       throw new WorkspacePathError(`Unknown workspace: ${workspaceId}`)
     }
     return structuredClone(workspace.diagnostics)
+  }
+
+  readDocument(
+    workspaceId: string,
+    uri: string,
+  ): WorkspaceDocumentContent {
+    const workspace = this.requireDocument(workspaceId, uri)
+    const document = workspace.adapterWorkspace.documents.find(
+      (candidate) => candidate.uri === uri,
+    )!
+    return {
+      uri: document.uri,
+      languageId: document.languageId,
+      sha256: document.sha256,
+      byteLength: Buffer.byteLength(document.text, 'utf8'),
+      version: document.version,
+      text: document.text,
+    }
+  }
+
+  async listViews(workspaceId: string): Promise<SavedWorkbenchView[]> {
+    const workspace = this.requireWorkspace(workspaceId)
+    const viewsDirectory = resolve(workspace.rootPath, 'views')
+    await mkdir(viewsDirectory, { recursive: true })
+    const entries = await readdir(viewsDirectory, { withFileTypes: true })
+    const views: SavedWorkbenchView[] = []
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+      const path = await resolveExistingWithin(viewsDirectory, entry.name)
+      const raw: unknown = JSON.parse(await readFile(path, 'utf8'))
+      views.push(validateSavedView(raw))
+    }
+    return views
+  }
+
+  async saveView(
+    workspaceId: string,
+    value: unknown,
+  ): Promise<SavedWorkbenchView> {
+    const workspace = this.requireWorkspace(workspaceId)
+    const view = validateSavedView(value)
+    const viewsDirectory = resolve(workspace.rootPath, 'views')
+    await mkdir(viewsDirectory, { recursive: true })
+    const canonicalDirectory = await realpath(viewsDirectory)
+    if (!isPathWithin(workspace.rootPath, canonicalDirectory)) {
+      throw new WorkspacePathError('Views directory resolves outside the workspace')
+    }
+    const destination = resolve(canonicalDirectory, `${view.id}.json`)
+    if (!isPathWithin(canonicalDirectory, destination)) {
+      throw new WorkspacePathError('Saved view path escapes the views directory')
+    }
+    const persisted = {
+      ...view,
+      updatedAt: new Date().toISOString(),
+    }
+    const temporary = resolve(
+      canonicalDirectory,
+      `.${view.id}.${process.pid}.${Date.now()}.tmp`,
+    )
+    await writeFile(temporary, `${JSON.stringify(persisted, null, 2)}\n`, {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: 0o600,
+    })
+    await rename(temporary, destination)
+    return persisted
   }
 
   async documentSymbols(
@@ -1323,6 +1391,72 @@ function requireCommandAudit(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateSavedView(value: unknown): SavedWorkbenchView {
+  if (!isRecord(value) || value.schemaVersion !== 1) {
+    throw new WorkspacePathError('Saved view schemaVersion must be 1')
+  }
+  if (
+    typeof value.id !== 'string' ||
+    !/^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id)
+  ) {
+    throw new WorkspacePathError('Saved view id must be a bounded lowercase slug')
+  }
+  if (
+    typeof value.name !== 'string' ||
+    value.name.trim() === '' ||
+    value.name.length > 200
+  ) {
+    throw new WorkspacePathError('Saved view name is invalid')
+  }
+  if (!isRecord(value.query)) {
+    throw new WorkspacePathError('Saved view query must be an object')
+  }
+  const notations = new Set([
+    'model-structure',
+    'interconnection',
+    'traceability',
+    'action-flow',
+    'state-transition',
+    'verification-context',
+    'table',
+  ])
+  if (typeof value.notation !== 'string' || !notations.has(value.notation)) {
+    throw new WorkspacePathError('Saved view notation is unsupported')
+  }
+  if (
+    value.updatedAt !== undefined &&
+    (typeof value.updatedAt !== 'string' || Number.isNaN(Date.parse(value.updatedAt)))
+  ) {
+    throw new WorkspacePathError('Saved view updatedAt is invalid')
+  }
+  const serialized = JSON.stringify(value)
+  if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
+    throw new WorkspacePathError('Saved view exceeds the 1 MiB limit')
+  }
+  if (value.layout !== undefined) {
+    if (!isRecord(value.layout) || !isRecord(value.layout.positions)) {
+      throw new WorkspacePathError('Saved view layout is invalid')
+    }
+    const positions = Object.entries(value.layout.positions)
+    if (positions.length > 5_000) {
+      throw new WorkspacePathError('Saved view layout exceeds 5000 positions')
+    }
+    for (const [identity, position] of positions) {
+      if (
+        identity.length === 0 ||
+        !isRecord(position) ||
+        typeof position.x !== 'number' ||
+        !Number.isFinite(position.x) ||
+        typeof position.y !== 'number' ||
+        !Number.isFinite(position.y)
+      ) {
+        throw new WorkspacePathError('Saved view contains an invalid layout position')
+      }
+    }
+  }
+  return structuredClone(value) as unknown as SavedWorkbenchView
 }
 
 function isStringArray(value: unknown): value is string[] {
