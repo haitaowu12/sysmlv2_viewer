@@ -44,9 +44,24 @@ jobs:
             if (report.outcome !== "blocked" || report.selection !== null) process.exit(1);
           ' "$RUNNER_TEMP/qualification/qualification-report.json"
 
+      - name: Confirm fixture qualification fails closed without engines
+        shell: bash
+        run: |
+          set +e
+          npm run qualify:fixtures -- --output "$RUNNER_TEMP/fixture-qualification"
+          result=$?
+          set -e
+          test "$result" -eq 2
+          node -e '
+            const report = require(process.argv[1]);
+            if (report.outcome !== "blocked" || report.selection !== null) process.exit(1);
+          ' "$RUNNER_TEMP/fixture-qualification/fixture-qualification-report.json"
+
       - name: Upload control qualification evidence
         uses: actions/upload-artifact@v4
         with:
           name: phase1-control-qualification
-          path: ${{ runner.temp }}/qualification/qualification-report.json
+          path: |
+            ${{ runner.temp }}/qualification/qualification-report.json
+            ${{ runner.temp }}/fixture-qualification/fixture-qualification-report.json
           if-no-files-found: error

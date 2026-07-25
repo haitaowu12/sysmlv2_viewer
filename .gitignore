@@ -12,6 +12,7 @@ dist
 dist-workbench
 dist-ssr
 generated/qualification/
+generated/benchmarks/
 *.local
 
 # Editor directories and files

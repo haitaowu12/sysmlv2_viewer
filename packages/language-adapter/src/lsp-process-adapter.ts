@@ -56,6 +56,7 @@ export class LspProcessAdapter implements LanguageAdapter {
   private nextId = 1
   private readonly pending = new Map<number, PendingRequest>()
   private readonly diagnostics = new Map<string, LanguageDiagnostic[]>()
+  private lastDiagnosticAt = 0
   private stdoutCapture: Buffer<ArrayBufferLike> = Buffer.alloc(0)
   private stderrCapture: Buffer<ArrayBufferLike> = Buffer.alloc(0)
   private captureTruncated = false
@@ -63,6 +64,7 @@ export class LspProcessAdapter implements LanguageAdapter {
   private signal: NodeJS.Signals | null = null
   private activeWorkspace?: AdapterWorkspace
   private negotiated = false
+  private initializedRootUri?: string
   private healthState: {
     state: 'ready' | 'starting' | 'failed'
     message?: string
@@ -118,9 +120,14 @@ export class LspProcessAdapter implements LanguageAdapter {
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
     await this.initialize()
+    if (this.negotiated && this.initializedRootUri !== workspace.rootUri) {
+      await this.restartProcess()
+    }
     this.activeWorkspace = workspace
     this.diagnostics.clear()
-    const initializeResult = await this.request('initialize', {
+    this.lastDiagnosticAt = 0
+    if (!this.negotiated) {
+      const initializeResult = await this.request('initialize', {
       processId: process.pid,
       rootUri: workspace.rootUri,
       workspaceFolders: [
@@ -209,10 +216,12 @@ export class LspProcessAdapter implements LanguageAdapter {
         name: 'SysML Engineering Workbench',
         version: '0.1.0',
       },
-    })
-    this.capabilities = capabilitiesFromInitialize(initializeResult)
-    this.negotiated = true
-    this.notify('initialized', {})
+      })
+      this.capabilities = capabilitiesFromInitialize(initializeResult)
+      this.negotiated = true
+      this.initializedRootUri = workspace.rootUri
+      this.notify('initialized', {})
+    }
     for (const document of workspace.documents) {
       this.notify('textDocument/didOpen', {
         textDocument: {
@@ -391,6 +400,19 @@ export class LspProcessAdapter implements LanguageAdapter {
     this.send({ jsonrpc: '2.0', method, params })
   }
 
+  private async restartProcess(): Promise<void> {
+    await this.dispose()
+    this.buffer = Buffer.alloc(0)
+    this.diagnostics.clear()
+    this.capabilities = emptyCapabilities()
+    this.negotiated = false
+    this.initializedRootUri = undefined
+    this.exitCode = null
+    this.signal = null
+    this.healthState = { state: 'starting' }
+    await this.initialize()
+  }
+
   private send(message: unknown): void {
     if (!this.process) {
       throw new Error('Language engine process is not running')
@@ -486,6 +508,7 @@ export class LspProcessAdapter implements LanguageAdapter {
           .map((diagnostic) => normalizeDiagnostic(params.uri, diagnostic))
           .filter((diagnostic): diagnostic is LanguageDiagnostic => diagnostic !== undefined),
       )
+      this.lastDiagnosticAt = performance.now()
     }
   }
 
@@ -561,13 +584,23 @@ export class LspProcessAdapter implements LanguageAdapter {
     timeoutMs: number,
   ): Promise<void> {
     const deadline = performance.now() + timeoutMs
+    const quietPeriodMs = Math.min(
+      500,
+      Math.max(20, Math.floor(timeoutMs / 4)),
+    )
     while (performance.now() < deadline) {
       if (this.healthState.state === 'failed') {
         throw new Error(
           this.healthState.message ?? 'Language engine failed while indexing',
         )
       }
-      if (documentUris.every((uri) => this.diagnostics.has(uri))) return
+      if (
+        documentUris.every((uri) => this.diagnostics.has(uri)) &&
+        this.lastDiagnosticAt > 0 &&
+        performance.now() - this.lastDiagnosticAt >= quietPeriodMs
+      ) {
+        return
+      }
       await delay(10)
     }
   }

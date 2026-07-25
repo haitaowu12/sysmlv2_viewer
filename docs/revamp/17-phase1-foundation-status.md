@@ -75,6 +75,23 @@ not cover the official corpus, source preservation, standard libraries/KPAR,
 incremental behavior, rename/formatting edits, normalized semantic snapshots,
 large workspaces, clean restart, cross-platform packaging, or redistribution.
 
+A second clean-process run used the versioned mandatory fixture manifest:
+
+| Candidate | Multi-file | standard library | malformed recovery | preservation control |
+|---|---:|---:|---:|---:|
+| Spec42 | pass, 0 diagnostics | **fail**, unresolved import/type warnings | pass, deterministic error | byte-identical inventory test |
+| daltskin | pass, 0 diagnostics | pass, 0 diagnostics | pass, deterministic error | byte-identical inventory test |
+| VinQut + Pilot | pass, 0 diagnostics | **fail**, unresolved import/type errors | pass, deterministic error | byte-identical inventory test |
+
+The standard-library probe imports `ScalarValues::Real` using syntax present in
+the official 2026-05 release. Spec42's bundled 2026-04 library was materialized
+and explicitly supplied, but resolution still failed. VinQut did not load its
+Pilot libraries in this isolated workspace. Daltskin is the only candidate that
+returned zero diagnostics, but its exact standard-library release alignment
+still requires proof. These are blocking discrepancies, not warnings to waive.
+The normalized record is
+`docs/revamp/phase1-fixture-qualification-observation.json`.
+
 ## Packaging and license observations
 
 | Candidate | Reproduction observation | Open release issue |
@@ -96,8 +113,8 @@ and the independent license scan remain release gates.
 `npm run verify:phase1` passed on 2026-07-24:
 
 - ESLint: pass;
-- workbench tests: 5 files, 11 tests;
-- full tests: 22 files passed, 1 skipped; 159 passed, 19 skipped;
+- workbench tests: 5 files, 14 tests;
+- full tests: 22 files passed, 1 skipped; 162 passed, 19 skipped;
 - TypeScript application and workbench builds: pass;
 - Vite production build: pass;
 - production dependency audit: zero findings;
@@ -107,6 +124,29 @@ and the independent license scan remain release gates.
 The crash test forces the child language process to exit with code 17. Service
 health becomes failed, the last indexed workspace becomes stale, disposal does
 not write to the dead process, and no fallback engine activates.
+
+## Synthetic benchmark observation
+
+The benchmark generator creates the mandated file/element profiles without
+committing generated models. Each run opens, closes, and reopens the same
+workspace through the product adapter and checks snapshot and diagnostic
+stability. Results are single-run engineering observations, not final p95 data.
+
+| Candidate | Medium cold/warm | Medium diagnostic result | Large cold/warm | Large diagnostic result |
+|---|---:|---|---:|---|
+| Spec42 | 1,250 / 1,466 ms | stable but 300 false duplicate-member warnings | 21,883 / 12,732 ms | clean and stable; non-monotonic result requires investigation |
+| daltskin | 1,524 / 1,244 ms | stable; 10k `missing-doc` + 10k `unused-definition` rules | 4,584 / 20,904 ms | unstable partial counts; 16 MiB raw-output capture limit reached |
+| VinQut + Pilot | 5,655 / 1,101 ms | clean and stable; cold exceeds 5 s target | 6,615 / 2,500 ms | clean and stable |
+
+All runs produced deterministic workspace hashes. None proves full engine memory:
+the recorded RSS is the Node adapter process and excludes the Rust/Node/Java
+child. The benchmark record is
+`docs/revamp/phase1-benchmark-observation.json`.
+
+The run also repaired two product-adapter defects: diagnostics now require a
+bounded quiet period after every document has reported, and reopening the same
+root reuses one legal LSP initialization while changing root explicitly restarts
+the engine. Tests reject a second `initialize` in one process.
 
 ## Gate P1 open work
 
@@ -118,7 +158,8 @@ not write to the dead process, and no fallback engine activates.
    filesystem-watcher behavior;
 4. expose semantic tokens, rename, formatting, and candidate-independent
    snapshot observations;
-5. run 1k/10k/50k benchmarks and record p50/p95/memory;
+5. repeat 1k/10k/50k benchmarks to obtain p50/p95, measure child-process
+   memory, and classify the observed scale/stability defects;
 6. produce clean-machine macOS/Windows artifacts, SBOMs, notices, offline proof,
    and license/redistribution decisions;
 7. harden loopback WebSocket conformance and complete the local-daemon threat
