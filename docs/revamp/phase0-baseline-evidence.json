@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-07-24",
+  "repository": "haitaowu12/sysmlv2_viewer",
+  "baseline": {
+    "ref": "origin/main",
+    "commit": "638e5aa1cc63ddb3a1c770f36432d6acedfbc541",
+    "trackedFiles": 104
+  },
+  "environment": {
+    "os": "Darwin 25.5.0 arm64",
+    "node": "v22.18.0",
+    "npm": "10.9.3"
+  },
+  "commands": [
+    {
+      "command": "npm ci",
+      "exitCode": 0,
+      "classification": "PASS_WITH_FINDINGS",
+      "summary": "Clean install completed; npm reported 9 vulnerabilities across all dependency scopes: 2 low, 2 moderate, 5 high."
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "npm run test",
+      "exitCode": 0,
+      "classification": "PASS_WITH_SKIPS",
+      "summary": "17 test files passed, 1 skipped; 148 tests passed, 19 skipped; 3.85 seconds on final verification run."
+    },
+    {
+      "command": "npm run test:release",
+      "exitCode": 0,
+      "classification": "CORPUS_QUALIFICATION_NOT_RUN",
+      "summary": "2 baseline tests passed; 19 upstream corpus tests skipped because SYSML_V2_RELEASE_DIR was absent."
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "classification": "PASS",
+      "summary": "Vite 7.3.3; 1,958 modules; main JS 406.58 kB / 117.57 kB gzip."
+    },
+    {
+      "command": "npm audit --omit=dev",
+      "exitCode": 1,
+      "classification": "FAIL",
+      "summary": "2 moderate production vulnerabilities through monaco-editor and dompurify; fix available."
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "output/playwright/phase0-current-general.png",
+      "sha256": "a11a1bc62b4b0898d4c7b61dc12c9674c6eb620d50cdda500ef6835432c29688"
+    },
+    {
+      "path": "output/playwright/phase0-current-interconnection.png",
+      "sha256": "3e0423a5cc8b6bc2a3dc1a64fe5523fd93f4d62c2522965387579343ee5448dc"
+    },
+    {
+      "path": "output/playwright/phase0-current-source-navigation.png",
+      "sha256": "23b6061599eb12d9a64e20c3f002e1aaf35d275aa9f77d665191c8a5a97444e9"
+    },
+    {
+      "path": "output/playwright/phase0-current-drawio.png",
+      "sha256": "fee2ab7f327407580ee81e80c184b4c00d81fed559797f3e3c85c33cba770f8c"
+    },
+    {
+      "path": "output/playwright/phase0-current-ai-panel.png",
+      "sha256": "f347229ba7c974464e7ee40d5854d5edfff59e4227a7342b571a4900bbcd3f23"
+    }
+  ],
+  "reproduce": [
+    "git checkout 638e5aa1cc63ddb3a1c770f36432d6acedfbc541",
+    "npm ci",
+    "npm run lint",
+    "npm run test",
+    "npm run test:release",
+    "npm run build",
+    "npm audit --omit=dev"
+  ],
+  "limitations": [
+    "Full raw terminal streams were not retained as tracked artifacts.",
+    "The upstream corpus lane was not executed and is not evidence of conformance.",
+    "Performance results are baseline command timings only, not target-workspace benchmarks."
+  ]
+}
