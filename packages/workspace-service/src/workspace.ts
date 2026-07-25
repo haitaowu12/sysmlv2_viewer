@@ -39,6 +39,7 @@ import {
   completeCommandValidation,
   commitWorkspaceTransaction,
   planCommand,
+  recoverWorkspaceTransactions,
   type ApplyCommandApproval,
   type AppliedCommandReceipt,
   type CommandEnvelope,
@@ -120,6 +121,7 @@ export class WorkspaceManager {
       workspaceFile,
     )
     const rootPath = dirname(authorized.path)
+    await recoverWorkspaceTransactions(rootPath)
     const rawConfig = await readFile(authorized.path, 'utf8')
     const configuration = validateConfiguration(parse(rawConfig))
     const selection = selectConfiguration(configuration)

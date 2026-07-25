@@ -4,6 +4,7 @@ import {
   mkdir,
   open,
   readFile,
+  readdir,
   realpath,
   rename,
   stat,
@@ -48,6 +49,11 @@ export interface CommitWorkspaceTransactionInput {
     stage: 'after-prepare' | 'before-replace' | 'after-replace' | 'after-commit',
     workspacePath?: string,
   ) => void | Promise<void>
+}
+
+export interface WorkspaceTransactionRecovery {
+  transactionId: string
+  state: 'FINALIZED' | 'ROLLED_BACK'
 }
 
 export class WorkspaceTransactionError extends Error {
@@ -172,6 +178,131 @@ export async function commitWorkspaceTransaction(
       { cause: error },
     )
   }
+}
+
+export async function recoverWorkspaceTransactions(
+  workspaceRoot: string,
+): Promise<WorkspaceTransactionRecovery[]> {
+  const rootPath = await realpath(workspaceRoot)
+  const transactionsRoot = resolve(
+    rootPath,
+    '.sysml-workbench',
+    'transactions',
+  )
+  let entries
+  try {
+    entries = await readdir(transactionsRoot, { withFileTypes: true })
+  } catch (error) {
+    if (isMissing(error)) return []
+    throw error
+  }
+
+  const recovered: WorkspaceTransactionRecovery[] = []
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      throw new WorkspaceTransactionError(
+        `Transaction directory is unsafe: ${entry.name}`,
+      )
+    }
+    validateTransactionId(entry.name)
+    const transactionRoot = resolve(transactionsRoot, entry.name)
+    const journalPath = resolve(transactionRoot, 'journal.json')
+    const receipt = await readExistingJournal(journalPath)
+    if (!receipt || receipt.transactionId !== entry.name) {
+      throw new WorkspaceTransactionError(
+        `Transaction journal is missing or mismatched: ${entry.name}`,
+      )
+    }
+    validateJournal(rootPath, transactionRoot, receipt)
+
+    try {
+      const state = await recoverTransaction(
+        rootPath,
+        transactionRoot,
+        journalPath,
+        receipt,
+      )
+      recovered.push({ transactionId: receipt.transactionId, state })
+    } catch (error) {
+      receipt.state = 'RECOVERY_CONFLICT'
+      await persistJournal(journalPath, receipt)
+      throw new WorkspaceTransactionError(
+        `Workspace transaction recovery conflict: ${receipt.transactionId}`,
+        { cause: error },
+      )
+    }
+  }
+  return recovered
+}
+
+async function recoverTransaction(
+  rootPath: string,
+  transactionRoot: string,
+  journalPath: string,
+  receipt: WorkspaceTransactionReceipt,
+): Promise<'FINALIZED' | 'ROLLED_BACK'> {
+  if (receipt.state === 'RECOVERY_CONFLICT') {
+    throw new WorkspaceTransactionError('Manual transaction recovery is required')
+  }
+  const hashes = new Map<string, string>()
+  for (const file of receipt.files) {
+    const current = await readFile(resolve(rootPath, file.workspacePath), 'utf8')
+    hashes.set(file.workspacePath, digest(current))
+  }
+  const allBefore = receipt.files.every(
+    (file) => hashes.get(file.workspacePath) === file.beforeSha256,
+  )
+  const allAfter = receipt.files.every(
+    (file) => hashes.get(file.workspacePath) === file.afterSha256,
+  )
+
+  if (receipt.state === 'FINALIZED' || receipt.state === 'COMMITTED') {
+    if (!allAfter) {
+      throw new WorkspaceTransactionError('Committed transaction files diverged')
+    }
+    receipt.state = 'FINALIZED'
+    receipt.completedPaths = receipt.files.map((file) => file.workspacePath)
+    await persistJournal(journalPath, receipt)
+    return 'FINALIZED'
+  }
+  if (receipt.state === 'ROLLED_BACK' || receipt.state === 'PREPARED') {
+    if (!allBefore) {
+      throw new WorkspaceTransactionError('Uncommitted transaction files diverged')
+    }
+    receipt.state = 'ROLLED_BACK'
+    receipt.completedPaths = []
+    await persistJournal(journalPath, receipt)
+    return 'ROLLED_BACK'
+  }
+  if (allAfter) {
+    receipt.state = 'FINALIZED'
+    receipt.completedPaths = receipt.files.map((file) => file.workspacePath)
+    await persistJournal(journalPath, receipt)
+    return 'FINALIZED'
+  }
+  if (allBefore) {
+    receipt.state = 'ROLLED_BACK'
+    receipt.completedPaths = []
+    await persistJournal(journalPath, receipt)
+    return 'ROLLED_BACK'
+  }
+
+  const completed = new Set(receipt.completedPaths)
+  for (const file of receipt.files) {
+    const currentHash = hashes.get(file.workspacePath)
+    const expected = completed.has(file.workspacePath)
+      ? file.afterSha256
+      : file.beforeSha256
+    if (currentHash !== expected) {
+      throw new WorkspaceTransactionError(
+        `Transaction journal does not match file state: ${file.workspacePath}`,
+      )
+    }
+  }
+  await rollback(rootPath, transactionRoot, receipt)
+  receipt.state = 'ROLLED_BACK'
+  await persistJournal(journalPath, receipt)
+  return 'ROLLED_BACK'
 }
 
 async function rollback(
@@ -323,6 +454,59 @@ async function readExistingJournal(
     }
     throw error
   }
+}
+
+function validateJournal(
+  rootPath: string,
+  transactionRoot: string,
+  receipt: WorkspaceTransactionReceipt,
+): void {
+  if (receipt.files.length === 0 || receipt.files.length > 1_000) {
+    throw new WorkspaceTransactionError('Transaction journal file count is invalid')
+  }
+  if (![
+    'PREPARED',
+    'COMMITTING',
+    'COMMITTED',
+    'FINALIZED',
+    'ROLLED_BACK',
+    'RECOVERY_CONFLICT',
+  ].includes(receipt.state)) {
+    throw new WorkspaceTransactionError('Transaction journal state is invalid')
+  }
+  const seen = new Set<string>()
+  for (const file of receipt.files) {
+    if (
+      !file.workspacePath ||
+      file.workspacePath.startsWith('/') ||
+      file.workspacePath.split('/').includes('..') ||
+      seen.has(file.workspacePath) ||
+      !isWithin(rootPath, resolve(rootPath, file.workspacePath)) ||
+      !/^[a-f0-9]{64}$/.test(file.beforeSha256) ||
+      !/^[a-f0-9]{64}$/.test(file.afterSha256) ||
+      !file.backupPath.startsWith('backups/') ||
+      file.backupPath.split('/').includes('..') ||
+      !isWithin(transactionRoot, resolve(transactionRoot, file.backupPath))
+    ) {
+      throw new WorkspaceTransactionError('Transaction journal file record is invalid')
+    }
+    seen.add(file.workspacePath)
+  }
+  if (
+    receipt.completedPaths.some((path) => !seen.has(path)) ||
+    new Set(receipt.completedPaths).size !== receipt.completedPaths.length
+  ) {
+    throw new WorkspaceTransactionError('Transaction journal completion list is invalid')
+  }
+}
+
+function isMissing(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    error.code === 'ENOENT',
+  )
 }
 
 function isWithin(rootPath: string, candidate: string): boolean {

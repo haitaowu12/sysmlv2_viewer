@@ -12,6 +12,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   commitWorkspaceTransaction,
+  recoverWorkspaceTransactions,
   WorkspaceTransactionError,
 } from './file-transaction.js'
 
@@ -109,6 +110,50 @@ describe('durable workspace file transaction', () => {
       ),
     )
     expect(persisted.state).toBe('ROLLED_BACK')
+  })
+
+  it('recovers a mixed COMMITTING journal by verified rollback', async () => {
+    const root = await workspace()
+    const first = resolve(root, 'model/first.sysml')
+    const second = resolve(root, 'model/second.sysml')
+    const transactionRoot = resolve(
+      root,
+      '.sysml-workbench/transactions/interrupted',
+    )
+    await mkdir(resolve(transactionRoot, 'backups'), { recursive: true })
+    await writeFile(resolve(transactionRoot, 'backups/first.source'), 'package First;\n')
+    await writeFile(resolve(transactionRoot, 'backups/second.source'), 'package Second;\n')
+    await writeFile(first, 'package One;\n')
+    await writeFile(
+      resolve(transactionRoot, 'journal.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transactionId: 'interrupted',
+        state: 'COMMITTING',
+        files: [
+          {
+            workspacePath: 'model/first.sysml',
+            beforeSha256: digest('package First;\n'),
+            afterSha256: digest('package One;\n'),
+            backupPath: 'backups/first.source',
+          },
+          {
+            workspacePath: 'model/second.sysml',
+            beforeSha256: digest('package Second;\n'),
+            afterSha256: digest('package Two;\n'),
+            backupPath: 'backups/second.source',
+          },
+        ],
+        completedPaths: ['model/first.sysml'],
+      }, null, 2)}\n`,
+    )
+
+    const recovery = await recoverWorkspaceTransactions(root)
+    expect(recovery).toEqual([
+      { transactionId: 'interrupted', state: 'ROLLED_BACK' },
+    ])
+    expect(await readFile(first, 'utf8')).toBe('package First;\n')
+    expect(await readFile(second, 'utf8')).toBe('package Second;\n')
   })
 })
 
