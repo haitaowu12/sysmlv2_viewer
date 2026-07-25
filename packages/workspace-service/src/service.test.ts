@@ -22,6 +22,10 @@ const sampleRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../fixtures/workspaces/phase1-sample',
 )
+const phase5PilotRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../fixtures/workspaces/phase5-infrastructure',
+)
 const fakeServer = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../language-adapter/test-fixtures/fake-lsp.mjs',
@@ -114,6 +118,28 @@ describe('WorkbenchService', () => {
       params: { workspaceId: 'phase1-sample' },
     })
     expect(closed).toMatchObject({ result: { closed: true } })
+  })
+
+  it('keeps the multi-file infrastructure pilot in mandatory workspace CI', async () => {
+    const service = createService(createFakeLspAdapter(), [phase5PilotRoot])
+    await initialize(service)
+    const opened = await service.handle({
+      jsonrpc: '2.0',
+      id: 10,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(phase5PilotRoot, 'sysml-workspace.yaml') },
+    })
+    expect(opened).toMatchObject({
+      result: {
+        workspaceId: 'phase5-infrastructure-pilot',
+        documentCount: 4,
+        configurationName: 'default',
+      },
+    })
+    expect(await readFile(resolve(phase5PilotRoot, 'model/system.sysml'), 'utf8'))
+      .toContain('interface telemetryInterface connect')
+    expect(await readFile(resolve(phase5PilotRoot, 'model/requirements.sysml'), 'utf8'))
+      .toContain('requirement failoverNotification')
   })
 
   it('persists bounded saved views as workspace-owned JSON', async () => {
