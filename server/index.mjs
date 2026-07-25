@@ -24,7 +24,7 @@ function applyCors(req, res) {
   res.setHeader('Access-Control-Allow-Origin', matchedOrigin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-ai-provider, x-ai-model');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 const server = http.createServer(async (req, res) => {
