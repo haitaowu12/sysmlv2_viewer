@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T21:23:32.751Z",
+  "gate": "P4",
+  "result": "component-pass",
+  "gateStatus": "pending-integrated-usability-pilot",
+  "fixture": {
+    "id": "phase2-semantic",
+    "documents": 2
+  },
+  "shell": {
+    "primaryRoute": "service-backed-workbench",
+    "compatibilityRoute": "?legacy=1",
+    "activities": [
+      "Explorer",
+      "Model",
+      "Diagrams",
+      "Traceability",
+      "Interfaces",
+      "Verification",
+      "Reviews",
+      "Changes",
+      "Reports",
+      "Settings"
+    ],
+    "surfaces": [
+      "source",
+      "diagram",
+      "matrix",
+      "properties",
+      "problems"
+    ],
+    "languageFeatures": [
+      "completion",
+      "hover",
+      "definition",
+      "references",
+      "formatting"
+    ],
+    "screenshots": [
+      {
+        "path": "output/playwright/phase4-workspace-open.png",
+        "sha256": "9a5a7a25deac5ace78072576cdaaf92f30d257832599b10846eb57f7a445bebc",
+        "bytes": 226085
+      },
+      {
+        "path": "output/playwright/phase4-workbench-shell.png",
+        "sha256": "02f0b09f730afd696a266ef2593227dc3cd57fd906a292d77c7de327b6ec827d",
+        "bytes": 117372
+      }
+    ]
+  },
+  "projections": [
+    {
+      "mode": "containment",
+      "elements": 18,
+      "relationships": 16,
+      "truncated": false
+    },
+    {
+      "mode": "type-hierarchy",
+      "elements": 2,
+      "relationships": 0,
+      "truncated": false
+    },
+    {
+      "mode": "dependency",
+      "elements": 2,
+      "relationships": 1,
+      "truncated": false
+    },
+    {
+      "mode": "neighbourhood",
+      "elements": 18,
+      "relationships": 26,
+      "truncated": false
+    },
+    {
+      "mode": "requirements",
+      "elements": 18,
+      "relationships": 17,
+      "truncated": false
+    },
+    {
+      "mode": "verification",
+      "elements": 18,
+      "relationships": 18,
+      "truncated": false
+    },
+    {
+      "mode": "interfaces",
+      "elements": 18,
+      "relationships": 24,
+      "truncated": false
+    }
+  ],
+  "savedView": {
+    "id": "qualification-interface-review",
+    "listedAfterSave": true,
+    "layoutIdentities": 18
+  },
+  "sourceEdit": {
+    "proposalId": "proposal:db35409c691a347d76bc6482959e30f0",
+    "validation": "validated",
+    "editProfile": {
+      "id": "source-text-replace",
+      "version": "1.0.0"
+    },
+    "canonicalUnchangedBeforeApproval": true,
+    "approvalId": "P4-SOURCE-APPROVAL-001",
+    "transactionState": "FINALIZED",
+    "createdElementId": "wb:phase2-semantic:bfe4f613c16a2da4f05aa1cb5c1e13d4",
+    "crossNavigationIdentityMatched": true,
+    "semanticChanges": [
+      "element-content-changed",
+      "element-created",
+      "relationship-created",
+      "relationship-created"
+    ]
+  },
+  "undo": {
+    "proposalId": "proposal:38eabe96e0209355c5821ad88e9a960b",
+    "transactionState": "FINALIZED",
+    "byteExactRestore": true
+  },
+  "diagnostics": [],
+  "deferredToP5": [
+    "Git baseline comparison",
+    "model-anchored review lifecycle",
+    "interface evidence report"
+  ]
+}

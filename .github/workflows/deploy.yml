@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy read-only compatibility demo to GitHub Pages
 
 on:
   push:
@@ -38,6 +38,8 @@ jobs:
 
       - name: Build static app
         run: npm run build
+        env:
+          VITE_WORKBENCH_DEMO: legacy
 
       - name: Production dependency audit
         run: npm audit --omit=dev
