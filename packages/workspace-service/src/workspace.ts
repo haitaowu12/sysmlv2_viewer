@@ -68,6 +68,29 @@ import {
   resolveWithinAnyRoot,
   WorkspacePathError,
 } from './path-security.js'
+import {
+  BaselineRepository,
+  readGitStatus,
+  type BaselineComparison,
+  type BaselineManifest,
+  type GitWorkspaceStatus,
+} from '../../baseline-service/src/index.js'
+import {
+  ReviewRepository,
+  type FindingDisposition,
+  type ModelReview,
+  type ReviewStaleness,
+} from '../../review-service/src/index.js'
+import {
+  evaluateAssurance,
+  RULE_PACK_VERSION,
+  type AssuranceEvaluation,
+} from '../../rule-engine/src/index.js'
+import {
+  writeReportBundle,
+  type ReportBundleManifest,
+  type ReportKind,
+} from '../../report-engine/src/index.js'
 
 const MODEL_EXTENSIONS = new Set(['.sysml', '.kerml'])
 const DEFAULT_MAX_FILES = 2_000
@@ -102,8 +125,50 @@ interface OpenWorkspace {
 export interface WorkspaceManagerOptions {
   allowedRoots: string[]
   adapter: LanguageAdapter
+  workbenchVersion?: string
   maxFiles?: number
   maxBytes?: number
+}
+
+export interface CreateBaselineInput {
+  id: string
+  actor: string
+  at: string
+}
+
+export interface CreateReviewInput {
+  id: string
+  title: string
+  scope: ModelReview['scope']
+  participants?: ModelReview['participants']
+  actor: string
+  at: string
+}
+
+export interface AddReviewFindingInput {
+  reviewId: string
+  finding: Omit<Parameters<ReviewRepository['addFinding']>[1], 'actor' | 'at'> & {
+    actor: string
+    at: string
+  }
+}
+
+export interface DispositionReviewFindingInput {
+  reviewId: string
+  findingId: string
+  disposition: FindingDisposition
+  response: string
+  actor: string
+  at: string
+}
+
+export interface GenerateReportInput {
+  reportId: string
+  kind: ReportKind
+  at: string
+  baselineId?: string
+  viewConfiguration?: string
+  exclusions?: string[]
 }
 
 export class WorkspaceManager {
@@ -889,6 +954,167 @@ export class WorkspaceManager {
     return result
   }
 
+  async evaluateAssurance(workspaceId: string): Promise<AssuranceEvaluation> {
+    return evaluateAssurance(await this.semanticSnapshot(workspaceId))
+  }
+
+  async gitStatus(workspaceId: string): Promise<GitWorkspaceStatus> {
+    return readGitStatus(this.requireWorkspace(workspaceId).rootPath)
+  }
+
+  async listBaselines(workspaceId: string): Promise<BaselineManifest[]> {
+    return new BaselineRepository(this.requireWorkspace(workspaceId).rootPath).list()
+  }
+
+  async createBaseline(
+    workspaceId: string,
+    input: CreateBaselineInput,
+  ): Promise<BaselineManifest> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new BaselineRepository(workspace.rootPath).create({
+      id: input.id,
+      snapshot: await this.semanticSnapshot(workspaceId),
+      diagnostics: this.diagnostics(workspaceId),
+      actor: input.actor,
+      at: input.at,
+      workbenchVersion: this.options.workbenchVersion ?? '0.0.0',
+      rulePackVersion: RULE_PACK_VERSION,
+    })
+  }
+
+  async compareBaseline(
+    workspaceId: string,
+    baselineId: string,
+  ): Promise<BaselineComparison> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new BaselineRepository(workspace.rootPath).compare(
+      baselineId,
+      await this.semanticSnapshot(workspaceId),
+      this.diagnostics(workspaceId),
+    )
+  }
+
+  async listReviews(workspaceId: string): Promise<ModelReview[]> {
+    return new ReviewRepository(this.requireWorkspace(workspaceId).rootPath).list()
+  }
+
+  async createReview(
+    workspaceId: string,
+    input: CreateReviewInput,
+  ): Promise<ModelReview> {
+    const workspace = this.requireWorkspace(workspaceId)
+    const status = await readGitStatus(workspace.rootPath)
+    return new ReviewRepository(workspace.rootPath).create(
+      {
+        ...input,
+        baseline: `git:${status.head}`,
+      },
+      await this.semanticSnapshot(workspaceId),
+    )
+  }
+
+  async addReviewFinding(
+    workspaceId: string,
+    input: AddReviewFindingInput,
+  ): Promise<ModelReview> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new ReviewRepository(workspace.rootPath).addFinding(
+      input.reviewId,
+      input.finding,
+      await this.semanticSnapshot(workspaceId),
+    )
+  }
+
+  async dispositionReviewFinding(
+    workspaceId: string,
+    input: DispositionReviewFindingInput,
+  ): Promise<ModelReview> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new ReviewRepository(workspace.rootPath).dispositionFinding(
+      input.reviewId,
+      input.findingId,
+      {
+        disposition: input.disposition,
+        response: input.response,
+        actor: input.actor,
+        at: input.at,
+      },
+    )
+  }
+
+  async closeReview(
+    workspaceId: string,
+    reviewId: string,
+    input: { actor: string; at: string; note?: string },
+  ): Promise<ModelReview> {
+    return new ReviewRepository(this.requireWorkspace(workspaceId).rootPath)
+      .close(reviewId, input)
+  }
+
+  async reviewStaleness(
+    workspaceId: string,
+    reviewId: string,
+  ): Promise<ReviewStaleness> {
+    const workspace = this.requireWorkspace(workspaceId)
+    return new ReviewRepository(workspace.rootPath).staleness(
+      reviewId,
+      await this.semanticSnapshot(workspaceId),
+    )
+  }
+
+  async generateReport(
+    workspaceId: string,
+    input: GenerateReportInput,
+  ): Promise<ReportBundleManifest> {
+    const workspace = this.requireWorkspace(workspaceId)
+    const snapshot = await this.semanticSnapshot(workspaceId)
+    const gitStatus = await readGitStatus(workspace.rootPath)
+    const baselineRepository = new BaselineRepository(workspace.rootPath)
+    const baseline = input.baselineId
+      ? await baselineRepository.get(input.baselineId)
+      : undefined
+    const comparison = input.kind === 'semantic-change-impact'
+      ? await baselineRepository.compare(
+        requireBaselineId(input.baselineId),
+        snapshot,
+        workspace.diagnostics,
+      )
+      : undefined
+    const assurance = [
+      'requirement-coverage',
+      'verification-readiness',
+      'interface-register',
+      'interface-quality',
+    ].includes(input.kind) ? evaluateAssurance(snapshot) : undefined
+    const reviews = input.kind === 'review-findings' || input.kind === 'review-closure'
+      ? await new ReviewRepository(workspace.rootPath).list()
+      : undefined
+    return writeReportBundle(workspace.rootPath, input.reportId, {
+      kind: input.kind,
+      provenance: {
+        workspace: {
+          id: snapshot.workspace.id,
+          name: snapshot.workspace.configurationName,
+        },
+        commitSha: gitStatus.head,
+        baseline: input.baselineId ?? null,
+        languageRelease: snapshot.authority.referenceRelease,
+        workbenchVersion: this.options.workbenchVersion ?? '0.0.0',
+        rulePackVersion: RULE_PACK_VERSION,
+        viewConfiguration: input.viewConfiguration ?? null,
+        generatedAt: input.at,
+        unresolvedDiagnostics: workspace.diagnostics.length,
+        exclusions: [...new Set(input.exclusions ?? [])].sort(),
+      },
+      assurance,
+      diagnostics: workspace.diagnostics,
+      gitStatus,
+      baseline,
+      comparison,
+      reviews,
+    })
+  }
+
   async close(workspaceId: string): Promise<boolean> {
     if (!this.workspaces.has(workspaceId)) return false
     await this.options.adapter.closeWorkspace(workspaceId)
@@ -1094,6 +1320,11 @@ export class WorkspaceManager {
       }
     }
   }
+}
+
+function requireBaselineId(value: string | undefined): string {
+  if (!value) throw new WorkspacePathError('Report requires a baseline id')
+  return value
 }
 
 function validateConfiguration(value: unknown): WorkspaceConfiguration {

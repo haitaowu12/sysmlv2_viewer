@@ -1,9 +1,11 @@
 // @vitest-environment node
+import { execFile } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { access, cp, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   PreservationControlAdapter,
@@ -30,6 +32,7 @@ const sampleDocument = pathToFileURL(
 const workspacesRoot = resolve(sampleRoot, '..')
 const services: WorkbenchService[] = []
 const temporaryDirectories: string[] = []
+const executeFile = promisify(execFile)
 
 afterEach(async () => {
   await Promise.all(services.splice(0).map((service) => service.dispose()))
@@ -453,6 +456,146 @@ describe('WorkbenchService', () => {
     if (!('result' in refreshed)) throw new Error('Refreshed query failed')
     expect((refreshed.result as { snapshotSha256: string }).snapshotSha256)
       .not.toBe(semantic.snapshotSha256)
+  })
+
+  it('exposes assurance, Git baselines, anchored reviews, and reproducible reports', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-assurance-'))
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter({}, 'qualified'),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 40,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    const snapshotResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 41,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in snapshotResponse)) throw new Error('Snapshot failed')
+    const snapshot = snapshotResponse.result as { elements: Array<{ id: string }> }
+    await git(temporaryRoot, ['init'])
+    await git(temporaryRoot, ['config', 'user.email', 'test@example.invalid'])
+    await git(temporaryRoot, ['config', 'user.name', 'Workbench Test'])
+    await git(temporaryRoot, ['add', '.'])
+    await git(temporaryRoot, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'baseline'])
+
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 42,
+      method: WORKBENCH_METHODS.assuranceEvaluate,
+      params: { workspaceId: 'phase1-sample' },
+    })).resolves.toMatchObject({
+      result: { schemaVersion: 1, rulePack: { version: '1.0.0' } },
+    })
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 43,
+      method: WORKBENCH_METHODS.gitStatus,
+      params: { workspaceId: 'phase1-sample' },
+    })).resolves.toMatchObject({ result: { dirty: false } })
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 44,
+      method: WORKBENCH_METHODS.baselineCreate,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: { id: 'baseline-a', actor: 'engineer', at: '2026-07-25T12:00:00.000Z' },
+      },
+    })).resolves.toMatchObject({ result: { id: 'baseline-a' } })
+    await git(temporaryRoot, ['add', 'baselines'])
+    await git(temporaryRoot, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'record baseline'])
+
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 45,
+      method: WORKBENCH_METHODS.reviewCreate,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: {
+          id: 'RVW-001',
+          title: 'Engineering assurance review',
+          scope: { query: { schemaVersion: 1, depth: 1, maxResults: 100 } },
+          actor: 'chair',
+          at: '2026-07-25T12:01:00.000Z',
+        },
+      },
+    })).resolves.toMatchObject({ result: { id: 'RVW-001', status: 'open' } })
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 46,
+      method: WORKBENCH_METHODS.reviewAddFinding,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: {
+          reviewId: 'RVW-001',
+          finding: {
+            id: 'F-001',
+            elementId: snapshot.elements[0]!.id,
+            severity: 'major',
+            category: 'quality',
+            statement: 'Confirm package ownership.',
+            actor: 'reviewer',
+            at: '2026-07-25T12:02:00.000Z',
+          },
+        },
+      },
+    })).resolves.toMatchObject({ result: { status: 'in-review', findings: [{ id: 'F-001' }] } })
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 47,
+      method: WORKBENCH_METHODS.reviewDispositionFinding,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: {
+          reviewId: 'RVW-001',
+          findingId: 'F-001',
+          disposition: 'closed',
+          response: 'Ownership confirmed.',
+          actor: 'owner',
+          at: '2026-07-25T12:03:00.000Z',
+        },
+      },
+    })
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 48,
+      method: WORKBENCH_METHODS.reviewClose,
+      params: {
+        workspaceId: 'phase1-sample',
+        reviewId: 'RVW-001',
+        input: { actor: 'chair', at: '2026-07-25T12:04:00.000Z' },
+      },
+    })).resolves.toMatchObject({ result: { status: 'closed' } })
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 49,
+      method: WORKBENCH_METHODS.reportGenerate,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: {
+          reportId: 'review-closure-001',
+          kind: 'review-closure',
+          at: '2026-07-25T12:05:00.000Z',
+          baselineId: 'baseline-a',
+        },
+      },
+    })).resolves.toMatchObject({
+      result: {
+        reportKind: 'review-closure',
+        artifacts: expect.arrayContaining([
+          expect.objectContaining({ format: 'html' }),
+          expect.objectContaining({ format: 'pdf' }),
+        ]),
+      },
+    })
   })
 
   it('returns a proposal-only typed rename without changing canonical source', async () => {
@@ -963,5 +1106,12 @@ function initialize(service: WorkbenchService) {
       protocolVersion: WORKBENCH_PROTOCOL_VERSION,
       client: { name: 'test', version: '1' },
     },
+  })
+}
+
+async function git(root: string, argumentsList: string[]): Promise<void> {
+  await executeFile('git', ['-C', root, ...argumentsList], {
+    encoding: 'utf8',
+    maxBuffer: 4 * 1024 * 1024,
   })
 }
