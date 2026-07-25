@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SemanticSnapshot } from '../../packages/semantic-model/src/index.js'
 import type { WorkbenchGateway } from '../workbench/gateway.js'
+import type { AiOperationRecord } from '../../packages/ai-orchestrator/src/index.js'
 import { WorkbenchShell } from '../workbench/WorkbenchShell.js'
 
 vi.mock('@monaco-editor/react', () => ({
@@ -143,6 +144,42 @@ describe('service-backed workbench shell', () => {
     expect(await screen.findByRole('heading', { name: 'Workspace Health' })).toBeInTheDocument()
     expect(screen.getByText(/generated\/reports\/health\/health\.pdf/)).toBeInTheDocument()
   })
+
+  it('reviews a grounded AI patch before a separate approval applies it', async () => {
+    const gateway = createGateway()
+    vi.mocked(gateway.requestAi).mockResolvedValue(aiOperation('proposed'))
+    vi.mocked(gateway.applyAi).mockResolvedValue(aiOperation('applied'))
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }))
+    expect(await screen.findByRole('heading', { name: 'Grounded model operations' })).toBeInTheDocument()
+    expect(screen.getByText('Network disabled')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Request'), {
+      target: { value: 'rename controller to PrimaryController' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Run grounded request' }))
+
+    await waitFor(() => expect(gateway.requestAi).toHaveBeenCalledWith(
+      'pilot',
+      expect.objectContaining({
+        workspaceId: 'pilot',
+        userRequest: 'rename controller to PrimaryController',
+      }),
+    ))
+    expect(await screen.findByRole('heading', { name: 'Proposal ready for review' })).toBeInTheDocument()
+    expect(screen.getByText('Canonical source is unchanged.')).toBeInTheDocument()
+    expect(gateway.applyAi).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve and apply validated patch' }))
+    await waitFor(() => expect(gateway.applyAi).toHaveBeenCalledWith(
+      'pilot',
+      expect.objectContaining({
+        operationId: 'AI-UI-001',
+        approvedBy: { kind: 'user', id: 'engineer' },
+      }),
+    ))
+    expect(await screen.findByRole('heading', { name: 'Applied after approval' })).toBeInTheDocument()
+  })
 })
 
 function element(id: string, kind: SemanticSnapshot['elements'][number]['kind'], name: string, qualifiedName: string): SemanticSnapshot['elements'][number] {
@@ -215,8 +252,125 @@ function createGateway(): WorkbenchGateway & Record<string, ReturnType<typeof vi
     closeReview: vi.fn(async () => { throw new Error('qualification stub') }),
     reviewStaleness: vi.fn(async () => ({ reviewId: 'RVW-001', stale: [] })),
     generateReport: vi.fn(async () => { throw new Error('qualification stub') }),
+    aiStatus: vi.fn(async () => ({
+      schemaVersion: 1 as const,
+      defaultProviderId: 'local-deterministic',
+      networkProvidersEnabled: false,
+      providers: [{
+        id: 'local-deterministic',
+        displayName: 'Local deterministic assistant',
+        model: 'bounded-rules-1.0.0',
+        networkAccess: false,
+        enabled: true,
+      }],
+      tools: [],
+    })),
+    requestAi: vi.fn(async () => { throw new Error('qualification stub') }),
+    listAiAudit: vi.fn(async () => []),
+    applyAi: vi.fn(async () => { throw new Error('must not apply') }),
     proposeCommand: vi.fn(async () => { throw new Error('qualification stub') }),
     applyCommand: vi.fn(async () => { throw new Error('must not apply') }),
   }
   return gateway as WorkbenchGateway & Record<string, ReturnType<typeof vi.fn>>
+}
+
+function aiOperation(state: 'proposed' | 'applied'): AiOperationRecord {
+  const proposal = {
+    schemaVersion: 1 as const,
+    proposalId: 'proposal:ui-ai',
+    commandId: 'AI-UI-001:1',
+    state: 'proposed' as const,
+    envelope: {
+      schemaVersion: 1 as const,
+      commandId: 'AI-UI-001:1',
+      workspaceId: 'pilot',
+      baseSnapshotSha256: 'snapshot-1',
+      baseDocuments: { [uri]: 'doc-1' },
+      requestedBy: { kind: 'ai' as const, id: 'engineer' },
+      command: {
+        kind: 'rename-element' as const,
+        targetId: 'controller',
+        newName: 'PrimaryController',
+      },
+    },
+    edits: {
+      changes: {
+        [uri]: [{
+          range: {
+            start: { line: 1, character: 11 },
+            end: { line: 1, character: 21 },
+          },
+          newText: 'PrimaryController',
+        }],
+      },
+    },
+    affectedElementIds: ['controller'],
+    diagnosticsBefore: [],
+    diagnosticsAfter: [],
+    semanticDiff: null,
+    conflicts: [],
+    approval: { required: true as const, approved: false as const },
+    undo: { changes: {} },
+    authority: snapshot.authority,
+    editProfile: {
+      id: 'language-service-rename' as const,
+      version: '1.0.0' as const,
+    },
+    validation: { state: 'validated' as const },
+  }
+  return {
+    schemaVersion: 1,
+    orchestratorVersion: '1.0.0',
+    operationId: 'AI-UI-001',
+    state,
+    request: {
+      userRequest: 'rename controller to PrimaryController',
+      requestedBy: 'engineer',
+      at: '2026-07-25T22:30:00.000Z',
+    },
+    context: {
+      workspaceId: 'pilot',
+      snapshotSha256: 'snapshot-1',
+      baselineId: null,
+    },
+    provider: {
+      id: 'local-deterministic',
+      displayName: 'Local deterministic assistant',
+      model: 'bounded-rules-1.0.0',
+      networkAccess: false,
+    },
+    answer: 'Proposed renaming System::Controller to PrimaryController.',
+    citations: [snapshot.elements[1]!],
+    assumptions: ['The cited controller is the intended target.'],
+    commands: [proposal.envelope.command],
+    proposals: [proposal],
+    affectedElementIds: ['controller'],
+    validation: {
+      accepted: true,
+      reasons: [],
+      diagnosticsBefore: [],
+      diagnosticsAfter: [],
+    },
+    toolCalls: [{
+      sequence: 1,
+      name: 'get_element',
+      inputSha256: 'a'.repeat(64),
+      resultSha256: 'b'.repeat(64),
+      outcome: 'success',
+    }],
+    approval: state === 'applied'
+      ? {
+          required: true,
+          approved: true,
+          approvalId: 'APPROVE-UI-001',
+          approvedBy: 'engineer',
+          approvedAt: '2026-07-25T22:31:00.000Z',
+        }
+      : { required: true, approved: false },
+    receipts: [],
+    audit: {
+      path: '.sysml-workbench/audit/ai/AI-UI-001.json',
+      recordSha256: 'c'.repeat(64),
+    },
+  }
 }
