@@ -5,6 +5,9 @@ import type {
   WorkbenchHover,
   WorkbenchLocation,
   WorkbenchPosition,
+  WorkbenchSemanticTokens,
+  WorkbenchTextEdit,
+  WorkbenchWorkspaceEdit,
   WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
 
@@ -69,6 +72,19 @@ export interface LanguageAdapter {
     uri: string,
     position: WorkbenchPosition,
   ): Promise<WorkbenchCompletionItem[]>
+  semanticTokens?(uri: string): Promise<WorkbenchSemanticTokens>
+  rename?(
+    uri: string,
+    position: WorkbenchPosition,
+    newName: string,
+  ): Promise<WorkbenchWorkspaceEdit>
+  formatting?(uri: string): Promise<WorkbenchTextEdit[]>
+  changeDocument?(
+    uri: string,
+    version: number,
+    text: string,
+  ): Promise<LanguageDiagnostic[]>
+  restartWorkspace?(workspace: AdapterWorkspace): Promise<LanguageDiagnostic[]>
   health(): {
     state: 'ready' | 'starting' | 'failed'
     message?: string
@@ -140,4 +156,5 @@ export function semanticAuthorityFor(
 }
 
 export * from './lsp-process-adapter.js'
+export * from './hybrid-language-adapter.js'
 export * from './candidate-manifest.js'

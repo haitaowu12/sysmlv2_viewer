@@ -1,5 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import {
   createCandidateAdapter,
   readCandidateManifest,
@@ -67,12 +69,29 @@ const candidateManifest = await readCandidateManifest(candidateManifestPath)
 const fixtureManifest = JSON.parse(
   await readFile(fixtureManifestPath, 'utf8'),
 ) as FixtureManifest
+const officialReleaseDirectory =
+  process.env.SYSML_WORKBENCH_OFFICIAL_RELEASE_DIR
+const execFileAsync = promisify(execFile)
 validateFixtureManifest(fixtureManifest)
 if (
   fixtureManifest.qualificationRelease.commit !==
   candidateManifest.qualificationRelease.commit
 ) {
   throw new Error('Fixture and candidate qualification releases do not match')
+}
+if (officialReleaseDirectory) {
+  const { stdout } = await execFileAsync('git', [
+    '-C',
+    officialReleaseDirectory,
+    'rev-parse',
+    'HEAD',
+  ])
+  const actualCommit = stdout.trim()
+  if (actualCommit !== candidateManifest.qualificationRelease.commit) {
+    throw new Error(
+      `Official release checkout is ${actualCommit}; expected ${candidateManifest.qualificationRelease.commit}`,
+    )
+  }
 }
 
 await mkdir(outputDirectory, { recursive: true })
@@ -91,6 +110,13 @@ const report = {
   qualificationRelease: candidateManifest.qualificationRelease,
   behavioralOracle: candidateManifest.behavioralOracle,
   fixtureManifest: relative(repositoryRoot, fixtureManifestPath),
+  officialLibrary:
+    officialReleaseDirectory === undefined
+      ? { mode: 'candidate-bundled' }
+      : {
+          mode: 'materialized-exact-release',
+          commit: candidateManifest.qualificationRelease.commit,
+        },
   candidates: candidateResults,
 }
 await writeFile(
@@ -152,7 +178,7 @@ async function observeFixture(
   fixture: FixtureManifest['fixtures'][number],
 ): Promise<FixtureObservation> {
   const startedAt = performance.now()
-  const workspaceFile = resolve(dirname(fixtureManifestPath), fixture.workspace)
+  const workspaceFile = await qualificationWorkspaceFile(fixture)
   const adapter = await createCandidateAdapter(
     candidateManifestPath,
     candidate.id,
@@ -217,6 +243,55 @@ async function observeFixture(
   } finally {
     await manager.dispose()
   }
+}
+
+async function qualificationWorkspaceFile(
+  fixture: FixtureManifest['fixtures'][number],
+): Promise<string> {
+  const sourceWorkspaceFile = resolve(
+    dirname(fixtureManifestPath),
+    fixture.workspace,
+  )
+  if (!officialReleaseDirectory || fixture.id !== 'standard-library') {
+    return sourceWorkspaceFile
+  }
+
+  const sourceWorkspaceRoot = dirname(sourceWorkspaceFile)
+  const destinationRoot = resolve(
+    outputDirectory,
+    'materialized',
+    fixture.id,
+  )
+  await mkdir(destinationRoot, { recursive: true })
+  await cp(
+    resolve(sourceWorkspaceRoot, 'model'),
+    resolve(destinationRoot, 'model'),
+    { recursive: true, force: true },
+  )
+  await cp(
+    resolve(officialReleaseDirectory, 'sysml.library'),
+    resolve(destinationRoot, 'libraries/sysml.library'),
+    { recursive: true, force: true },
+  )
+  const workspaceFile = resolve(destinationRoot, 'sysml-workspace.yaml')
+  await writeFile(
+    workspaceFile,
+    [
+      'schemaVersion: 1',
+      'id: phase1-standard-library-exact',
+      'name: Phase 1 exact standard library probe',
+      'sourceRoots:',
+      '  - model',
+      'libraries:',
+      '  - libraries/sysml.library',
+      'activeConfiguration: default',
+      'modelConfigurations:',
+      '  default: {}',
+      '',
+    ].join('\n'),
+    'utf8',
+  )
+  return workspaceFile
 }
 
 async function sealRawEvidence(

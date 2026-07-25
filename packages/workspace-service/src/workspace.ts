@@ -9,6 +9,9 @@ import type {
   WorkbenchHover,
   WorkbenchLocation,
   WorkbenchPosition,
+  WorkbenchSemanticTokens,
+  WorkbenchTextEdit,
+  WorkbenchWorkspaceEdit,
   WorkspaceDocumentSummary,
   WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
@@ -234,6 +237,111 @@ export class WorkspaceManager {
     return this.options.adapter.completion!(uri, position)
   }
 
+  async semanticTokens(
+    workspaceId: string,
+    uri: string,
+  ): Promise<WorkbenchSemanticTokens> {
+    this.requireDocument(workspaceId, uri)
+    if (!this.options.adapter.capabilities.semanticTokens) {
+      throw new WorkspacePathError('Semantic tokens are not supported')
+    }
+    return this.options.adapter.semanticTokens!(uri)
+  }
+
+  async rename(
+    workspaceId: string,
+    uri: string,
+    position: WorkbenchPosition,
+    newName: string,
+  ): Promise<WorkbenchWorkspaceEdit> {
+    const workspace = this.requireDocument(workspaceId, uri)
+    if (!this.options.adapter.capabilities.rename) {
+      throw new WorkspacePathError('Rename is not supported')
+    }
+    const edit = await this.options.adapter.rename!(uri, position, newName)
+    const authorizedUris = new Set(
+      workspace.adapterWorkspace.documents.map((document) => document.uri),
+    )
+    for (const changedUri of Object.keys(edit.changes)) {
+      if (!authorizedUris.has(changedUri)) {
+        throw new WorkspacePathError(
+          `Language engine proposed an edit outside the active workspace: ${changedUri}`,
+        )
+      }
+    }
+    return edit
+  }
+
+  async formatting(
+    workspaceId: string,
+    uri: string,
+  ): Promise<WorkbenchTextEdit[]> {
+    this.requireDocument(workspaceId, uri)
+    if (!this.options.adapter.capabilities.formatting) {
+      throw new WorkspacePathError('Formatting is not supported')
+    }
+    return this.options.adapter.formatting!(uri)
+  }
+
+  async changeDocument(
+    workspaceId: string,
+    uri: string,
+    version: number,
+    text: string,
+  ): Promise<WorkspaceStatusResult> {
+    const workspace = this.requireDocument(workspaceId, uri)
+    if (!this.options.adapter.changeDocument) {
+      throw new WorkspacePathError('Incremental document changes are not supported')
+    }
+    const document = workspace.adapterWorkspace.documents.find(
+      (item) => item.uri === uri,
+    )!
+    const nextTotalBytes = workspace.adapterWorkspace.documents.reduce(
+      (total, item) =>
+        total +
+        Buffer.byteLength(item.uri === uri ? text : item.text, 'utf8'),
+      0,
+    )
+    if (nextTotalBytes > (this.options.maxBytes ?? DEFAULT_MAX_BYTES)) {
+      throw new WorkspacePathError(
+        'Workspace model content exceeds the configured byte limit',
+      )
+    }
+    const diagnostics = await this.options.adapter.changeDocument(
+      uri,
+      version,
+      text,
+    )
+    document.version = version
+    document.text = text
+    document.sha256 = sha256(Buffer.from(text, 'utf8'))
+    workspace.diagnostics = diagnostics
+    workspace.status = buildStatus(
+      workspace.adapterWorkspace,
+      this.options.adapter,
+      diagnostics,
+    )
+    return structuredClone(workspace.status)
+  }
+
+  async restart(workspaceId: string): Promise<WorkspaceStatusResult> {
+    const workspace = this.requireWorkspace(workspaceId)
+    if (!this.options.adapter.restartWorkspace) {
+      throw new WorkspacePathError('Language engine restart is not supported')
+    }
+    workspace.status.indexState = 'indexing'
+    const diagnostics = await this.options.adapter.restartWorkspace(
+      workspace.adapterWorkspace,
+    )
+    workspace.diagnostics = diagnostics
+    workspace.status = buildStatus(
+      workspace.adapterWorkspace,
+      this.options.adapter,
+      diagnostics,
+    )
+    return structuredClone(workspace.status)
+  }
+
   async close(workspaceId: string): Promise<boolean> {
     if (!this.workspaces.has(workspaceId)) return false
     await this.options.adapter.closeWorkspace(workspaceId)
@@ -249,11 +357,8 @@ export class WorkspaceManager {
     await this.options.adapter.dispose()
   }
 
-  private requireDocument(workspaceId: string, uri: string): void {
-    const workspace = this.workspaces.get(workspaceId)
-    if (!workspace) {
-      throw new WorkspacePathError(`Unknown workspace: ${workspaceId}`)
-    }
+  private requireDocument(workspaceId: string, uri: string): OpenWorkspace {
+    const workspace = this.requireWorkspace(workspaceId)
     if (
       !workspace.adapterWorkspace.documents.some(
         (document) => document.uri === uri,
@@ -263,6 +368,15 @@ export class WorkspaceManager {
         `Document URI is outside the active workspace: ${uri}`,
       )
     }
+    return workspace
+  }
+
+  private requireWorkspace(workspaceId: string): OpenWorkspace {
+    const workspace = this.workspaces.get(workspaceId)
+    if (!workspace) {
+      throw new WorkspacePathError(`Unknown workspace: ${workspaceId}`)
+    }
+    return workspace
   }
 }
 

@@ -44,6 +44,37 @@ Status: Phase 0 design model. Closure evidence is required before each affected 
 | T15 | hosted cross-tenant access | hosted service→persistence/jobs | server-side object auth, isolation, quotas, encryption, audit, tests | before D |
 | T16 | database becomes shadow model | hosted adapter→semantics | canonical source/artifact schemas, adapter equivalence, immutable manifests | before D |
 | T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
+
+## Phase 1 control status
+
+Implemented and tested:
+
+- canonical allowed-root checks and rejection of escaping or any model-source
+  symlink;
+- file-count, aggregate-byte, JSON-RPC message, LSP header/message, and raw
+  capture limits;
+- child processes launched without a shell and with bounded request timeouts;
+- LSP cancellation on timeout, visible failed/stale state, and explicit restart;
+- exact loopback Host/Origin, pairing expiry, bearer, CSRF, and security headers;
+- locked runtime artifact SHA-256 verification before qualified startup;
+- engine-proposed workspace edits rejected when any URI is outside the active
+  document set;
+- zero-finding npm audit and deterministic production SBOM/license inventory.
+
+Not exposed at P1:
+
+- filesystem watching is not implemented, so an unsafe watcher cannot run;
+- `.kpar` extraction is not implemented and archives fail closed;
+- no remote/shared listener, telemetry, automatic update, or external AI egress
+  exists in the new service.
+
+Carried gates:
+
+- progressive indexing/cancellation beyond individual LSP requests;
+- watcher debounce/quotas and TOCTOU tests when watching is introduced;
+- process sandboxing and large-workspace memory budgets;
+- Windows packaging/IPC review, signing, and installer threat tests;
+- owner product-license decision and full bundled runtime notices.
 | T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
 
 ## Security invariants

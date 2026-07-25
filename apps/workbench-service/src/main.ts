@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import {
   createCandidateAdapter,
+  createQualifiedHybridAdapter,
   PreservationControlAdapter,
   type LanguageAdapter,
 } from '../../../packages/language-adapter/src/index.js'
@@ -16,12 +17,19 @@ interface CliOptions {
   port: number
   candidate?: string
   candidateManifest: string
+  qualifiedRuntime: boolean
+  runtimeLock: string
 }
 
 const options = parseArguments(process.argv.slice(2))
-const adapter: LanguageAdapter = options.candidate
-  ? await createCandidateAdapter(options.candidateManifest, options.candidate)
-  : new PreservationControlAdapter()
+const adapter: LanguageAdapter = options.qualifiedRuntime
+  ? await createQualifiedHybridAdapter(
+      options.candidateManifest,
+      options.runtimeLock,
+    )
+  : options.candidate
+    ? await createCandidateAdapter(options.candidateManifest, options.candidate)
+    : new PreservationControlAdapter()
 const service = new WorkbenchService({
   adapter,
   allowedRoots: options.workspaceRoots,
@@ -70,9 +78,14 @@ function parseArguments(argumentsList: string[]): CliOptions {
   let address: CliOptions['address'] = '127.0.0.1'
   let port = 0
   let candidate: string | undefined
+  let qualifiedRuntime = false
   let candidateManifest = resolve(
     import.meta.dirname,
     '../../../config/language-engine-candidates.json',
+  )
+  let runtimeLock = resolve(
+    import.meta.dirname,
+    '../../../config/language-engine-runtime-lock.json',
   )
   const workspaceRoots: string[] = []
   const origins: string[] = []
@@ -98,8 +111,14 @@ function parseArguments(argumentsList: string[]): CliOptions {
       }
     } else if (argument === '--candidate') {
       candidate = requireArgument(argumentsList, ++index, argument)
+    } else if (argument === '--qualified-runtime') {
+      qualifiedRuntime = true
     } else if (argument === '--candidate-manifest') {
       candidateManifest = resolve(
+        requireArgument(argumentsList, ++index, argument),
+      )
+    } else if (argument === '--runtime-lock') {
+      runtimeLock = resolve(
         requireArgument(argumentsList, ++index, argument),
       )
     } else {
@@ -109,6 +128,9 @@ function parseArguments(argumentsList: string[]): CliOptions {
 
   if (workspaceRoots.length === 0) {
     throw new Error('At least one --workspace-root is required')
+  }
+  if (candidate && qualifiedRuntime) {
+    throw new Error('--candidate and --qualified-runtime are mutually exclusive')
   }
   if (transport === 'loopback' && origins.length === 0) {
     throw new Error('Loopback transport requires at least one exact --origin')
@@ -121,6 +143,8 @@ function parseArguments(argumentsList: string[]): CliOptions {
     port,
     candidate,
     candidateManifest,
+    qualifiedRuntime,
+    runtimeLock,
   }
 }
 

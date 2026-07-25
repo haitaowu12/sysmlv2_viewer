@@ -1,15 +1,16 @@
 # Phase 1 Foundation Status
 
-- Date: 2026-07-24
+- Date: 2026-07-25
 - Phase 0 baseline: `ade6e07fd1cecd615f21d42744dfd56380a42934`
 - Branch: `codex/sysml-workbench-phase1-engine-service`
-- Gate state: **open**
-- Runtime selection: **none**
+- Gate state: **accepted with bounded conditions**
+- Runtime selection: **HYBRID GO — VinQut semantic authority + Spec42 authoring assistance**
 - Production claim: **none**
 
-This is the first bounded Phase 1 implementation slice. It establishes an
-independently executable, engine-neutral service and records comparative
-observations. It does not satisfy Gate P1 or amend ADR-001.
+Phase 1 now establishes an independently executable, engine-neutral service,
+records comparative observations, and closes Gate P1 with the bounded decision
+in `18-phase1-gate-decision.md`. ADR-001 is amended. Phase 2 is authorized; no
+production claim is made.
 
 ## Implemented boundary
 
@@ -148,24 +149,16 @@ bounded quiet period after every document has reported, and reopening the same
 root reuses one legal LSP initialization while changing root explicitly restarts
 the engine. Tests reject a second `initialize` in one process.
 
-## Gate P1 open work
+## Gate P1 closure
 
-1. expand mandatory CI fixtures across grammar, imports/aliases/visibility,
-   standard libraries/KPAR, malformed input, metadata, comments, Unicode,
-   unknown syntax, and preservation;
-2. run official-corpus and Pilot differential tests and classify disagreements;
-3. add incremental edit, cancellation, timeout, restart, corrupted-cache, and
-   filesystem-watcher behavior;
-4. expose semantic tokens, rename, formatting, and candidate-independent
-   snapshot observations;
-5. repeat 1k/10k/50k benchmarks to obtain p50/p95, measure child-process
-   memory, and classify the observed scale/stability defects;
-6. produce clean-machine macOS/Windows artifacts, SBOMs, notices, offline proof,
-   and license/redistribution decisions;
-7. harden loopback WebSocket conformance and complete the local-daemon threat
-   model controls;
-8. select `GO`, `GO WITH CONDITIONS`, `NO-GO`, or `HYBRID GO`, then amend
-   ADR-001 with the exact runtime and supported capability profile.
+Gate P1 is accepted through the explicit bounded profile in
+`18-phase1-gate-decision.md`. The runtime lock, hybrid adapter, incremental
+operations, timeout/cancel/restart behavior, exact-library qualification,
+five-run medium/large distributions, child-process RSS, deterministic SBOM,
+license inventory, notices, and zero-finding npm audit are now implemented.
 
-No Phase 2 semantic model or application-shell work starts from this branch
-until those blocking gates close and the Phase 1 decision is accepted.
+KPAR archives, candidate-independent semantic snapshot, large-profile memory,
+Windows packaging, signed distribution, and the missing product license are
+not represented as complete. They are explicit P2/P7 conditions. Phase 2 may
+start because normalized semantics, identity, and query are its defined scope;
+release and production claims remain blocked.

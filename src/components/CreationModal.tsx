@@ -39,7 +39,7 @@ export default function CreationModal() {
     if (!creationModal || !creationModal.isOpen) return null;
 
     const handleCreate = () => {
-        let finalCode = '';
+        let finalCode: string;
         const kind = creationModal.kind.toLowerCase(); // 'part', 'action', etc.
 
         if (isUsage) {

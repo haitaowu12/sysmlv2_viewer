@@ -8,6 +8,9 @@ import type {
   WorkbenchLocation,
   WorkbenchPosition,
   WorkbenchRange,
+  WorkbenchSemanticTokens,
+  WorkbenchTextEdit,
+  WorkbenchWorkspaceEdit,
 } from '../../workbench-protocol/src/index.js'
 import type {
   AdapterWorkspace,
@@ -45,6 +48,7 @@ export interface ProcessEvidence {
   captureTruncated: boolean
   exitCode: number | null
   signal: NodeJS.Signals | null
+  processId: number | null
 }
 
 export class LspProcessAdapter implements LanguageAdapter {
@@ -65,6 +69,10 @@ export class LspProcessAdapter implements LanguageAdapter {
   private activeWorkspace?: AdapterWorkspace
   private negotiated = false
   private initializedRootUri?: string
+  private semanticTokenLegend = {
+    tokenTypes: [] as string[],
+    tokenModifiers: [] as string[],
+  }
   private healthState: {
     state: 'ready' | 'starting' | 'failed'
     message?: string
@@ -119,7 +127,11 @@ export class LspProcessAdapter implements LanguageAdapter {
   async openWorkspace(
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
-    await this.initialize()
+    if (this.negotiated && !this.process) {
+      await this.restartProcess()
+    } else {
+      await this.initialize()
+    }
     if (this.negotiated && this.initializedRootUri !== workspace.rootUri) {
       await this.restartProcess()
     }
@@ -218,6 +230,7 @@ export class LspProcessAdapter implements LanguageAdapter {
       },
       })
       this.capabilities = capabilitiesFromInitialize(initializeResult)
+      this.semanticTokenLegend = semanticTokenLegendFromInitialize(initializeResult)
       this.negotiated = true
       this.initializedRootUri = workspace.rootUri
       this.notify('initialized', {})
@@ -345,6 +358,92 @@ export class LspProcessAdapter implements LanguageAdapter {
       )
   }
 
+  async semanticTokens(uri: string): Promise<WorkbenchSemanticTokens> {
+    this.requireActiveDocument(uri)
+    const value = await this.request('textDocument/semanticTokens/full', {
+      textDocument: { uri },
+    })
+    return {
+      legend: structuredClone(this.semanticTokenLegend),
+      data:
+        isRecord(value) &&
+        Array.isArray(value.data) &&
+        value.data.every((item) => Number.isInteger(item) && item >= 0)
+          ? (value.data as number[])
+          : [],
+    }
+  }
+
+  async rename(
+    uri: string,
+    position: WorkbenchPosition,
+    newName: string,
+  ): Promise<WorkbenchWorkspaceEdit> {
+    this.requireActiveDocument(uri)
+    return normalizeWorkspaceEdit(
+      await this.request('textDocument/rename', {
+        textDocument: { uri },
+        position,
+        newName,
+      }),
+    )
+  }
+
+  async formatting(uri: string): Promise<WorkbenchTextEdit[]> {
+    this.requireActiveDocument(uri)
+    const value = await this.request('textDocument/formatting', {
+      textDocument: { uri },
+      options: {
+        tabSize: 4,
+        insertSpaces: true,
+        trimTrailingWhitespace: true,
+        insertFinalNewline: true,
+        trimFinalNewlines: true,
+      },
+    })
+    return Array.isArray(value)
+      ? value
+          .map(normalizeTextEdit)
+          .filter((edit): edit is WorkbenchTextEdit => edit !== undefined)
+      : []
+  }
+
+  async changeDocument(
+    uri: string,
+    version: number,
+    text: string,
+  ): Promise<LanguageDiagnostic[]> {
+    this.requireActiveDocument(uri)
+    const document = this.activeWorkspace!.documents.find(
+      (item) => item.uri === uri,
+    )!
+    if (!Number.isInteger(version) || version <= document.version) {
+      throw new Error(
+        `Document version must increase from ${document.version}; received ${version}`,
+      )
+    }
+    document.version = version
+    document.text = text
+    this.diagnostics.delete(uri)
+    this.lastDiagnosticAt = 0
+    this.notify('textDocument/didChange', {
+      textDocument: { uri, version },
+      contentChanges: [{ text }],
+    })
+    await this.waitForDiagnostics(
+      [uri],
+      this.options.diagnosticSettleMs ?? 500,
+    )
+    return [...this.diagnostics.values()].flat()
+  }
+
+  async restartWorkspace(
+    workspace: AdapterWorkspace,
+  ): Promise<LanguageDiagnostic[]> {
+    await this.restartProcess()
+    return this.openWorkspace(workspace)
+  }
+
   evidence(): ProcessEvidence {
     return {
       command: this.options.command,
@@ -356,6 +455,7 @@ export class LspProcessAdapter implements LanguageAdapter {
       captureTruncated: this.captureTruncated,
       exitCode: this.exitCode,
       signal: this.signal,
+      processId: this.process?.pid ?? null,
     }
   }
 
@@ -383,6 +483,9 @@ export class LspProcessAdapter implements LanguageAdapter {
     return new Promise((resolveRequest, rejectRequest) => {
       const timeout = setTimeout(() => {
         this.pending.delete(id)
+        if (this.process) {
+          this.notify('$/cancelRequest', { id })
+        }
         rejectRequest(
           new Error(`Language engine request timed out: ${method} (${timeoutMs} ms)`),
         )
@@ -405,6 +508,7 @@ export class LspProcessAdapter implements LanguageAdapter {
     this.buffer = Buffer.alloc(0)
     this.diagnostics.clear()
     this.capabilities = emptyCapabilities()
+    this.semanticTokenLegend = { tokenTypes: [], tokenModifiers: [] }
     this.negotiated = false
     this.initializedRootUri = undefined
     this.exitCode = null
@@ -625,6 +729,61 @@ function capabilitiesFromInitialize(value: unknown): LanguageCapabilities {
   }
 }
 
+function semanticTokenLegendFromInitialize(value: unknown): {
+  tokenTypes: string[]
+  tokenModifiers: string[]
+} {
+  const result = isRecord(value) ? value : {}
+  const capabilities = isRecord(result.capabilities) ? result.capabilities : {}
+  const provider = isRecord(capabilities.semanticTokensProvider)
+    ? capabilities.semanticTokensProvider
+    : {}
+  const legend = isRecord(provider.legend) ? provider.legend : {}
+  return {
+    tokenTypes: stringArray(legend.tokenTypes),
+    tokenModifiers: stringArray(legend.tokenModifiers),
+  }
+}
+
+function normalizeWorkspaceEdit(value: unknown): WorkbenchWorkspaceEdit {
+  if (!isRecord(value)) return { changes: {} }
+  const normalized: Record<string, WorkbenchTextEdit[]> = {}
+  if (isRecord(value.changes)) {
+    for (const [uri, edits] of Object.entries(value.changes)) {
+      if (!Array.isArray(edits)) continue
+      normalized[uri] = edits
+        .map(normalizeTextEdit)
+        .filter((edit): edit is WorkbenchTextEdit => edit !== undefined)
+    }
+  }
+  if (Array.isArray(value.documentChanges)) {
+    for (const change of value.documentChanges) {
+      if (
+        !isRecord(change) ||
+        !isRecord(change.textDocument) ||
+        typeof change.textDocument.uri !== 'string' ||
+        !Array.isArray(change.edits)
+      ) {
+        continue
+      }
+      const uri = change.textDocument.uri
+      normalized[uri] = [
+        ...(normalized[uri] ?? []),
+        ...change.edits
+          .map(normalizeTextEdit)
+          .filter((edit): edit is WorkbenchTextEdit => edit !== undefined),
+      ]
+    }
+  }
+  return { changes: normalized }
+}
+
+function normalizeTextEdit(value: unknown): WorkbenchTextEdit | undefined {
+  if (!isRecord(value) || typeof value.newText !== 'string') return undefined
+  const range = normalizeWorkbenchRange(value.range)
+  return range ? { range, newText: value.newText } : undefined
+}
+
 function normalizeDiagnostic(
   uriValue: unknown,
   value: unknown,
@@ -797,6 +956,12 @@ function symbolKind(value: unknown): string {
 
 function numberOrZero(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function emptyCapabilities(): LanguageCapabilities {
