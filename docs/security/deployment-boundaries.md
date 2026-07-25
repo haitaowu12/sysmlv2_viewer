@@ -1,49 +1,88 @@
 # Deployment Boundaries
 
-Status: Phase 0 baseline
+## Shared invariant
 
-## Desktop production
+All profiles use the same shared web application, Workbench Client SDK, versioned Workbench Protocol, independent Workbench Service contract, Language Service Adapter, normalized semantics, command receipts, and artifact schemas. Deployment changes privileges and persistence adapters—not meaning.
 
-- Tauri application with packaged local UI;
-- privileged application service;
-- checksum-verified Spec42 sidecar/library;
-- pinned standard libraries;
-- approved local workspace roots;
-- OS keystore;
-- no listening network socket required;
-- outbound network denied except explicitly enabled provider/update/export adapters.
+## Profile A — Public web evaluation
 
-## Local development
+Trust boundary:
 
-Vite UI may connect to an authenticated loopback service. Bind loopback only, use an ephemeral credential, validate origin, and expose the same typed protocol. Development convenience must not enter production defaults.
+- static/public host → browser sandbox → packaged sample data.
 
-## Static web demo
+Allowed:
 
-- packaged sample semantic snapshots only;
-- read-only;
-- no local filesystem, Git, report writes, AI credentials, or source mutations;
-- CSP and no privileged service assumptions;
-- visibly labeled demonstration, not production workbench.
+- navigate/query packaged samples;
+- inspect reference/analytical views;
+- compare packaged baselines;
+- export sample reports.
 
-## Remote/shared deployment
+Denied:
 
-Deferred. Requires a new ADR and:
+- arbitrary local paths/processes/Git;
+- local companion auto-discovery;
+- provider AI/model egress;
+- authoritative private persistence.
 
-- authentication and authorization;
-- tenant isolation and encryption;
-- repository/storage authority decision;
-- audit/retention/privacy policy;
-- rate/resource limits;
-- secrets management;
-- collaboration/concurrency semantics;
-- threat model and operational controls.
+Controls: restrictive CSP, no active mixed content, sanitized reports/markdown/SVG, immutable sample provenance, no sensitive logs/telemetry.
 
-The local daemon must never be exposed as a remote service by configuration alone.
+## Profile B — Browser + local companion
 
-## Optional Draw.io
+Trust boundaries:
 
-Default export is local file generation with no remote code. If the owner retains remote diagrams.net markup, it is a separate sandboxed WebView with no application IPC, no source/library access, explicit per-action diagram-payload consent, visible network state, and documented provider/privacy/retention terms. Local-only mode disables it. Returned markup is evidence input only and cannot write canonical source.
+```text
+approved web origin
+  ⇄ authenticated loopback HTTPS/WSS
+local Workbench Service
+  ⇄ scoped workspace/file handles
+approved local roots + Git + engine + report tools + keystore
+```
 
-## Updates
+Controls:
 
-Application and engine updates are signed, version-pinned, rollback-capable, and never silently change the language/library profile of an existing workspace.
+- explicit IPv4/IPv6 loopback bind only; OS-selected port;
+- user-confirmed one-time pairing for exact origin/service/capabilities;
+- exact Host and Origin allowlists; no wildcard or reflected CORS;
+- short-lived audience/origin/session-bound credentials; expiry, revocation, replay control;
+- CSRF protection for state changes and Origin/token validation on WebSocket upgrade;
+- service-issued opaque workspace/file capability handles;
+- canonical-path, symlink-escape, traversal, watcher, file-size/type, and repository-root validation;
+- payload, connection, rate, job, and memory limits;
+- outbound egress denied by default and surfaced in UI;
+- no source/prompt/token content in logs by default.
+
+TLS is used where practical. If platform/browser constraints require loopback HTTP, credentials are short-lived, never reusable off-session, and the service never binds non-loopback.
+
+## Profile C — Tauri desktop
+
+Trust boundaries:
+
+- signed Tauri host/WebView → scoped IPC/stdio → bundled Workbench Service → approved local roots/processes/keystore.
+
+Tauri grants folder picker, lifecycle, secure storage, and packaging capabilities only. It does not implement semantic operations. Capability files are minimal per window; remote content is not loaded into privileged WebViews; CSP/navigation/external-open inputs are restricted.
+
+Offline mode has no required network after installation.
+
+## Profile D — Managed hosted
+
+Future boundaries:
+
+- authenticated browser → TLS edge/service → tenant/workspace authorization → isolated job/runtime → repository/object/database adapters.
+
+Required before implementation:
+
+- identity/SSO and least-privilege roles;
+- tenant/workspace object-level authorization;
+- encrypted transport/storage and managed secrets;
+- resource isolation, quotas, rate limits, malware/content sanitization;
+- immutable baseline/evidence/audit storage and retention;
+- backup/recovery and incident response;
+- provider/region/egress policy;
+- no database row id as model identity;
+- protocol/persistence equivalence tests against local profiles.
+
+## External services
+
+AI providers, remote Draw.io/markup, telemetry, crash upload, update checks, and managed repository integrations are separate egress capabilities. Each is off by default except a policy-approved update channel, named in the network indicator, minimized, authenticated server-side, and audited without content by default.
+
+References: [OWASP WebSocket Security](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html), [RFC 6455](https://www.rfc-editor.org/info/rfc6455/), [Tauri capabilities](https://v2.tauri.app/security/capabilities/).

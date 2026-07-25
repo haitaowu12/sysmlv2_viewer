@@ -1,49 +1,62 @@
 # Threat Model
 
-Status: Phase 0 architecture baseline; each control closes before its capability enters
+Status: Phase 0 design model. Closure evidence is required before each affected capability ships.
 
 ## Assets
 
-- proprietary model source and libraries;
-- Git history/baselines;
-- reviews/evidence/reports;
-- provider credentials;
-- local filesystem integrity;
-- command approvals/audit history;
-- signed application/engine binaries.
+- canonical source, Git history, libraries, workspace configuration;
+- stable identities, reviews, findings, baselines, evidence, audit;
+- credentials and provider configuration;
+- command proposals/approvals/receipts;
+- semantic/report integrity and official-release provenance;
+- local filesystem/process/keystore capabilities;
+- hosted tenant identity and authorization.
 
-## Trust boundaries
+## Adversaries and untrusted input
 
-```mermaid
-flowchart LR
-  User --> WebView[Unprivileged UI]
-  WebView -->|typed IPC| App[Privileged application service]
-  App -->|versioned protocol| Engine[Language sidecar]
-  App --> Workspace[Approved workspace/Git]
-  App --> Keystore[OS keystore]
-  App -. explicit egress .-> Provider[AI provider]
-  App -. isolated export .-> Drawio[Optional Draw.io]
-```
+- malicious model/library/KPAR/archive/report/evidence content;
+- malicious website attempting local companion access;
+- compromised dependency, runtime engine, sidecar, extension, or update;
+- unauthorized local user/process;
+- authenticated user exceeding role/workspace scope;
+- hostile/compromised hosted tenant;
+- prompt injection or malicious external AI output;
+- crafted Git repository/path/symlink/file watcher state.
 
 ## Threats and controls
 
-| Threat | Control |
-|---|---|
-| path traversal/symlink escape | canonical paths, approved roots, no follow-outside-root |
-| malicious workspace content | bounded parser/renderer resources, no code execution, sanitization |
-| IPC privilege escalation | allowlisted commands, schemas, window identity, capability scopes |
-| sidecar substitution | signed/checksummed pinned binary and schema handshake |
-| compromised/exploitable sidecar | app-mediated documents, no direct workspace write/path API, network denied, private working directory, OS sandbox where available, resource limits, escape tests |
-| watcher races/TOCTOU | canonical handles, source hashes, stale-base conflicts |
-| command partial write | overlay validation, atomic multi-file journal/rollback |
-| report XSS/injection | escaping, CSP, sanitized HTML/SVG, safe PDF pipeline |
-| credential/model leakage | keystore, redacted logs, explicit minimized egress |
-| remote content/native bridge | local export by default; any owner-approved remote markup view is a separate sandboxed WebView with no IPC and explicit egress consent |
-| malicious Git config/hooks | no implicit hook execution; bounded Git arguments/environment |
-| denial of service | document/byte/graph/deadline limits and cancellation |
-| AI prompt/tool abuse | narrow read/proposal tools, identity validation, explicit approval |
-| dependency compromise | lockfiles, SBOM, signature/checksum, audit policy |
+| ID | Threat | Boundary | Controls | Closure |
+|---|---|---|---|---|
+| T1 | path traversal/symlink escape | service→filesystem | canonical roots, capability handles, no client paths, TOCTOU-safe operations, tests | P1 |
+| T2 | unsafe watcher/large tree exhaustion | service→workspace | allowlisted roots, ignore rules, quotas, debounce, cancellation | P1 |
+| T3 | engine crash/RCE/untrusted parse | service→engine | separate least-privilege process, time/memory limits, checksum/SBOM, no shell strings, restart | P1/P7 |
+| T4 | semantic downgrade/silent fallback | adapter→candidate | exact pins, capability handshake, visible stale/failure, no automatic legacy fallback | P1 |
+| T5 | malicious origin reaches companion | browser→loopback | pairing, exact Origin/Host, anti-rebinding, short token, CSRF/WS checks | P1 |
+| T6 | loopback token replay/theft | browser→companion | memory-only short TTL, audience/origin binding, nonce/idempotency, revocation | P1 |
+| T7 | protocol injection/DoS | client→service | generated schemas, size/rate/job limits, timeouts, fuzzing, backpressure | P1/P7 |
+| T8 | privileged desktop WebView compromise | UI→Tauri | local trusted content, CSP, minimal per-window capabilities, navigation/sender validation | P4/P7 |
+| T9 | command corrupts unknown source | service→source | exact snapshot/range, opaque guards, atomic journal, validation, diff, approval, undo | P3 |
+| T10 | identity spoof/stale review anchor | semantic→governance | scoped stable ids, locator/fingerprint, alias receipts, baseline binding, staleness | P2/P5 |
+| T11 | report/markup XSS or active content | service→browser/export | sanitize/escape, CSP, safe SVG/PDF pipeline, no arbitrary embedded scripts | P4/P5 |
+| T12 | AI leaks/invents/applies | service→provider/source | off by default, context manifest, narrow tools, citation validation, proposal-only approval | P6 |
+| T13 | logs/crash dumps leak content | all | content-minimized structured logs, redaction, opt-in crash upload, retention | P1/P7 |
+| T14 | malicious update/dependency | distribution | signed artifacts, hashes, SBOM, pinned builds, vulnerability/license scanning | P1/P7 |
+| T15 | hosted cross-tenant access | hosted service→persistence/jobs | server-side object auth, isolation, quotas, encryption, audit, tests | before D |
+| T16 | database becomes shadow model | hosted adapter→semantics | canonical source/artifact schemas, adapter equivalence, immutable manifests | before D |
+| T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
+| T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
 
-## Security acceptance
+## Security invariants
 
-Threats receive accountable owners, evidence ids, and closure before the first phase that introduces the capability. P1 closes workspace, sidecar, IPC, path, watcher, Git, and dependency controls used by P1. P4 closes diagram/export and report-rendering controls used by P4. P6 closes AI/credential/egress controls. P7 verifies the integrated release and residual-risk acceptance. Remote/shared deployment requires a separate authentication/authorization/tenant threat model.
+- no renderer, client, AI, or transport bypasses service authorization and command validation;
+- no engine output is authoritative outside the declared capability profile;
+- no network listener binds beyond loopback in local profiles;
+- no remote/shared deployment enumerates a workspace before authentication;
+- no source/provider key enters client bundles or committed project artifacts;
+- no visual/report output omits unresolved diagnostics/exclusions without disclosure.
+
+## Verification
+
+Use unit/property/fuzz/integration/E2E/clean-machine tests plus dependency, license, static, and dynamic scans. Profile B requires malicious-origin/DNS-rebinding/CSRF/CSWSH/path tests. Profile C requires Tauri capability/navigation/IPC tests. Profile D requires a separate hosted threat-model amendment and penetration assessment.
+
+Residual critical risk needs a dated owner disposition, affected criteria, compensating control, accountable owner, and expiry. P7 revalidates; it does not defer first closure.

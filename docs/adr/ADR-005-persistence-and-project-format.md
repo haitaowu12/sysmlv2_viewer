@@ -5,7 +5,7 @@
 
 ## Decision
 
-Use a source-first, diffable project format rooted by `sysml-workspace.yaml`.
+Use a source-first, diffable logical project format rooted by `sysml-workspace.yaml`. Filesystem storage is the local implementation; hosted repository/object/database adapters may store the same versioned artifacts without changing canonical source or protocol schemas.
 
 ```text
 project/
@@ -35,23 +35,24 @@ languageProfile: sysml-2.0-kerml-1.0
 sourceRoots: [model]
 libraries:
   - id: omg-sysml
-    release: 2026-04
-    commit: 9baca5908ca28b53da085de69336fde48420ea8f
+    release: 2026-05
+    commit: de1070ae8e79c21532b8004fc663d47b35d0e9fa
     contentSha256: "<verified library/KPAR tree hash>"
-    source: libraries/omg-2026-04
+    source: libraries/omg-2026-05
     provenance: https://github.com/Systems-Modeling/SysML-v2-Release
 modelConfigurations:
   default:
     include: ["model/**/*.sysml", "model/**/*.kerml"]
-engine:
-  name: spec42
-  version: 0.46.0
-  commit: a3f066ee4095a0eb8b37545ffd4846d42804658a
-  artifact: spec42-workbench-sidecar-aarch64-apple-darwin
-  artifactSha256: "<verified binary hash>"
+engineQualification:
+  decisionId: pending-phase-1
+  candidatePins:
+    spec42: a3f066ee4095a0eb8b37545ffd4846d42804658a
+  selectedRuntime: null
 adapter:
   version: 0.1.0
   schemaVersion: 1
+protocol:
+  version: 0.1.0
 ```
 
 ## Ownership
@@ -73,11 +74,13 @@ Durable model identities are project artifacts, not cache state. Team policy dec
 - binary evidence is referenced by content hash/manifest;
 - generated reports are never used to reconstruct source;
 - no browser-local-only authoritative state;
+- hosted persistence must preserve source blobs, immutable commits/baselines, artifact schema versions, identity aliases, and audit records; it may not expose database row ids as model identity;
+- server-issued workspace and file handles are scoped capabilities, not portable project data;
 - migrations are explicit, backed up, previewable, and versioned.
 
 ## Git
 
-The workspace may be a Git repository. Baselines identify immutable commits/tags. Working state is explicit. Review/report manifests include commit or a dirty-tree content manifest.
+The workspace may be a local Git repository or a hosted repository adapter. Baselines identify immutable commits/tags or immutable content manifests. Working state is explicit. Review/report manifests include commit or a dirty-tree/content manifest.
 
 ## Rejected
 
@@ -86,6 +89,8 @@ The workspace may be a Git repository. Baselines identify immutable commits/tags
 - mixing caches/generated output with source;
 - unversioned view/review JSON;
 - absolute machine-specific paths in committed configuration.
+- a hosted database schema that becomes a second semantic model;
+- deployment-specific project schemas.
 
 ## Acceptance
 
@@ -96,3 +101,4 @@ The workspace may be a Git repository. Baselines identify immutable commits/tags
 - path traversal/symlink tests pass;
 - report/review/evidence manifests resolve by content hash;
 - Git clean/dirty/baseline status is accurate.
+- filesystem and hosted test adapters produce equivalent logical artifact manifests.
