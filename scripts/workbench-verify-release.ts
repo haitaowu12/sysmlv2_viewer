@@ -18,6 +18,13 @@ const packageJson = JSON.parse(
 ) as PackageJson
 const platform = valueAfter('--platform') ?? `${process.platform}-${process.arch}`
 const allowOwnerBlockers = process.argv.includes('--allow-owner-blockers')
+if (!allowOwnerBlockers) {
+  await validateReleaseApproval(
+    resolve(repositoryRoot, 'config/release-approval.json'),
+    packageJson.version,
+    platform,
+  )
+}
 const requiredEnvironment = [
   'SYSML_WORKBENCH_SEMANTIC_ARTIFACT',
   'SYSML_WORKBENCH_AUTHORING_ARTIFACT',
@@ -112,6 +119,7 @@ const report = {
   bundleIntegrity: 'passed',
   copiedBundleSmoke: 'passed',
   ownerBlockersAllowed: allowOwnerBlockers,
+  ownerApprovalManifest: allowOwnerBlockers ? 'bypassed-for-technical-rc' : 'approved',
 }
 await writeFile(
   resolve(evidenceRoot, 'phase7-technical-verification.json'),
@@ -141,4 +149,52 @@ function valueAfter(flag: string): string | undefined {
   const value = process.argv[index + 1]
   if (!value) throw new Error(`${flag} requires a value`)
   return value
+}
+
+async function validateReleaseApproval(
+  path: string,
+  version: string,
+  platform: string,
+): Promise<void> {
+  let value: unknown
+  try {
+    value = JSON.parse(await readFile(path, 'utf8'))
+  } catch {
+    throw new Error(
+      'Production release requires config/release-approval.json; use the example contract and attach actual owner evidence',
+    )
+  }
+  if (!value || typeof value !== 'object') {
+    throw new Error('Release approval manifest must be an object')
+  }
+  const approval = value as Record<string, unknown>
+  const participants = approval.usabilityParticipants
+  const platforms = approval.qualifiedPlatforms
+  const cleanMachines = approval.cleanMachineEvidence
+  if (
+    approval.schemaVersion !== 1 ||
+    approval.status !== 'approved' ||
+    approval.productName !== 'SysML Engineering Workbench' ||
+    approval.version !== version ||
+    !Array.isArray(platforms) ||
+    !platforms.includes(platform) ||
+    !Array.isArray(cleanMachines) ||
+    !cleanMachines.includes(platform) ||
+    approval.productLicenseApproved !== true ||
+    approval.runtimeLicenseReconciled !== true ||
+    approval.distributionSigned !== true ||
+    approval.manualAccessibilityPassed !== true ||
+    approval.recoveryPassed !== true ||
+    !Array.isArray(participants) ||
+    participants.length < 3 ||
+    participants.some((item) => typeof item !== 'string' || !item) ||
+    typeof approval.owner !== 'string' ||
+    !approval.owner ||
+    typeof approval.approvedAt !== 'string' ||
+    !approval.approvedAt ||
+    !Array.isArray(approval.evidence) ||
+    approval.evidence.length === 0
+  ) {
+    throw new Error('Release approval manifest is incomplete or does not approve this artifact')
+  }
 }
