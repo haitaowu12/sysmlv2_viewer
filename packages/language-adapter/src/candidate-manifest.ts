@@ -13,6 +13,7 @@ export interface EngineCandidate {
   adapter: 'lsp-stdio' | 'unimplemented' | 'legacy-control'
   commandEnvironment?: string
   argumentsEnvironment?: string
+  semanticEvidenceMethod?: string
 }
 
 export interface EngineCandidateManifest {
@@ -108,6 +109,7 @@ export async function createCandidateAdapter(
     arguments: parseArgumentsEnvironment(candidate.argumentsEnvironment),
     requestTimeoutMs: runtime.requestTimeoutMs,
     diagnosticSettleMs: runtime.diagnosticSettleMs,
+    semanticEvidenceMethod: candidate.semanticEvidenceMethod,
   })
 }
 

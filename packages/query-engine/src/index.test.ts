@@ -73,6 +73,43 @@ describe('bounded model query', () => {
       }),
     ).toThrow('at most 100')
   })
+
+  it('supports bounded type, requirement, verification, interface, dependency, and neighbourhood modes', () => {
+    const value = snapshot()
+    value.relationships.push(
+      typedRelationship('vehicle-type', 'command-port', 'vehicle', 'typing'),
+      typedRelationship('requirement', 'vehicle', 'system', 'satisfaction'),
+      typedRelationship('verification', 'command-port', 'system', 'verification'),
+      typedRelationship('interface', 'command-port', 'vehicle', 'interface'),
+      typedRelationship('dependency', 'system', 'command-port', 'dependency'),
+    )
+    const neighbourhood = executeModelQuery(value, {
+      schemaVersion: 1,
+      roots: ['vehicle'],
+      mode: 'neighbourhood',
+      direction: 'both',
+      depth: 1,
+    })
+    expect(neighbourhood.elements.map((element) => element.id)).toEqual([
+      'command-port',
+      'system',
+      'vehicle',
+    ])
+    for (const mode of [
+      'type-hierarchy',
+      'dependency',
+      'requirements',
+      'verification',
+      'interfaces',
+    ] as const) {
+      expect(() => executeModelQuery(value, {
+        schemaVersion: 1,
+        roots: ['vehicle'],
+        mode,
+        depth: 1,
+      })).not.toThrow()
+    }
+  })
 })
 
 function snapshot(): SemanticSnapshot {
@@ -136,8 +173,9 @@ function element(
     fingerprint: id,
     provenance: {
       authority: 'qualified-language-engine',
-      extraction: 'document-symbol+bounded-source-classification',
-      classification: 'recognized-declaration',
+      extraction: 'pilot-emf-semantic-evidence',
+      classification: 'engine-metaclass',
+      engineId: id,
     },
   }
 }
@@ -150,7 +188,21 @@ function relationship(id: string, sourceId: string, targetId: string) {
     targetId,
     provenance: {
       authority: 'qualified-language-engine' as const,
-      extraction: 'document-symbol-tree' as const,
+      extraction: 'pilot-emf-explicit-reference' as const,
+      engineMetaclass: 'OwningMembership',
+      features: ['source', 'memberElement'],
     },
+  }
+}
+
+function typedRelationship(
+  id: string,
+  sourceId: string,
+  targetId: string,
+  kind: import('../../semantic-model/src/index.js').SemanticRelationshipKind,
+) {
+  return {
+    ...relationship(id, sourceId, targetId),
+    kind,
   }
 }

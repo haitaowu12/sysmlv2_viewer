@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T19:44:30.985Z",
+  "qualificationRelease": {
+    "name": "2026-05",
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Release",
+    "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "candidate": {
+    "id": "qualified-hybrid",
+    "version": "runtime-lock-0.2.0",
+    "commit": "373dfb960860c3ac259f56169ddabc06d2847eca+a3f066ee4095a0eb8b37545ffd4846d42804658a"
+  },
+  "profile": {
+    "name": "medium",
+    "files": 100,
+    "declaredElements": 10000,
+    "bytes": 281190
+  },
+  "result": {
+    "repetitions": 1,
+    "distributions": {
+      "coldOpenMs": {
+        "min": 5555,
+        "median": 5555,
+        "p95": 5555,
+        "max": 5555
+      },
+      "warmOpenMs": {
+        "min": 1381,
+        "median": 1381,
+        "p95": 1381,
+        "max": 1381
+      },
+      "semanticSnapshotMs": {
+        "min": 6647,
+        "median": 6647,
+        "p95": 6647,
+        "max": 6647
+      },
+      "explorerQueryMs": {
+        "min": 131,
+        "median": 131,
+        "p95": 131,
+        "max": 131
+      }
+    },
+    "expectedDiagnosticCodes": [
+      "missing-doc",
+      "unused-definition"
+    ],
+    "allRunsValid": true,
+    "runs": [
+      {
+        "run": 1,
+        "coldOpenMs": 5555,
+        "warmOpenMs": 1381,
+        "semanticSnapshotMs": 6647,
+        "explorerQueryMs": 131,
+        "semanticElementCount": 10100,
+        "semanticRelationshipCount": 10000,
+        "explorerResultCount": 10000,
+        "coldDiagnostics": {
+          "errors": 0,
+          "warnings": 0,
+          "information": 0,
+          "hints": 0
+        },
+        "warmDiagnostics": {
+          "errors": 0,
+          "warnings": 0,
+          "information": 0,
+          "hints": 0
+        },
+        "coldDiagnosticCodes": {},
+        "warmDiagnosticCodes": {},
+        "diagnosticsStable": true,
+        "validWorkspaceClean": true,
+        "deterministicSnapshot": true,
+        "clientProcessRssBytes": {
+          "before": 179486720,
+          "afterCold": 140115968,
+          "afterWarm": 169099264
+        },
+        "languageProcessRssBytes": {
+          "afterCold": {
+            "semantic": 391331840,
+            "authoring": 193953792
+          },
+          "afterWarm": {
+            "semantic": 492748800,
+            "authoring": 231112704
+          }
+        },
+        "languageProcess": {
+          "semantic": {
+            "stdoutSha256": "681c54c2707c844fc6cf7e59eec0a991b88e8b84585f4f6f6178fbf8a4b1a92a",
+            "stderrSha256": "50e8d3b036829c19cf7842b92c73dbfa0ff291a4f8ac78c6de7842cbf35f12d9",
+            "stdoutBytes": 16777216,
+            "stderrBytes": 558,
+            "captureTruncated": true,
+            "exitCode": null,
+            "signal": null
+          },
+          "authoring": {
+            "stdoutSha256": "46ce7670e89b37b057da8eef7b62be9c7c6efb9557f1cd075cfeb2155bd04513",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stdoutBytes": 229793,
+            "stderrBytes": 0,
+            "captureTruncated": false,
+            "exitCode": null,
+            "signal": null
+          }
+        },
+        "diagnosticSamples": []
+      }
+    ]
+  }
+}

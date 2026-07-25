@@ -1,0 +1,36 @@
+diff --git a/server/build.gradle.kts b/server/build.gradle.kts
+index 611ed84..e2854f6 100644
+--- a/server/build.gradle.kts
++++ b/server/build.gradle.kts
+@@ -76,6 +76,8 @@ dependencies {
+ }
+
+ tasks.shadowJar {
++    isPreserveFileTimestamps = false
++    isReproducibleFileOrder = true
+     archiveBaseName.set("sysmlv2-lsp-server")
+     archiveClassifier.set("")
+     archiveVersion.set("")
+diff --git a/server/src/main/java/org/omg/sysml/lsp/SysMLLanguageServerLauncher.java b/server/src/main/java/org/omg/sysml/lsp/SysMLLanguageServerLauncher.java
+index d3d85eb..a968b6c 100644
+--- a/server/src/main/java/org/omg/sysml/lsp/SysMLLanguageServerLauncher.java
++++ b/server/src/main/java/org/omg/sysml/lsp/SysMLLanguageServerLauncher.java
+@@ -87,12 +87,17 @@ public class SysMLLanguageServerLauncher {
+         // Registered as an additional LSP4J local service alongside the Xtext
+         // language server; LSP4J merges their @JsonRequest methods.
+         DiagramService diagramService = new DiagramService(languageServer);
++        SemanticEvidenceService semanticEvidenceService =
++                new SemanticEvidenceService(languageServer);
+
+         System.err.println("Language server instance created, building LSP launcher...");
+
+         // Build the LSP4J launcher for stdio communication
+         Launcher.Builder<LanguageClient> builder = new Launcher.Builder<LanguageClient>()
+-                .setLocalServices(java.util.Arrays.asList(languageServer, diagramService))
++                .setLocalServices(java.util.Arrays.asList(
++                        languageServer,
++                        diagramService,
++                        semanticEvidenceService))
+                 .setRemoteInterface(LanguageClient.class)
+                 // With multiple local services LSP4J cannot infer a common
+                 // classloader for the client proxy (it picks the bootstrap loader,

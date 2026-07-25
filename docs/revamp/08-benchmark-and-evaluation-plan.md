@@ -41,6 +41,25 @@ Discrepancies are classified against formal specifications/resolutions, official
 
 P1 measures language/service targets. Later phases measure projections, matrices, diff, report, and UI separately so transport/render time is not attributed to the engine.
 
+## P2 measured observation
+
+The exact locked hybrid was measured on 2026-07-25 with the medium generated
+workspace. `phase2-benchmark-observation.json` records one characterization run,
+not a statistically sufficient p95 campaign:
+
+| Measure | Observation | Target result |
+|---|---:|---|
+| cold open | 5.555 s | characterization only |
+| warm reopen | 1.381 s | pass against 3 s |
+| normalized snapshot | 6.647 s | contributes to first-use miss |
+| cached 10,000-result explorer query | 131 ms | pass against 500 ms matrix/query proxy |
+
+The warm-open plus initial snapshot path exceeds the 5 s first-use target.
+Mitigation is a workspace-wide/batched semantic-evidence request and
+incremental snapshot cache in P3/P4. Target ownership remains unchanged; the
+observation is not a waiver. The release-candidate performance campaign still
+requires the sample counts defined below.
+
 ## Protocol
 
 - identify hardware, OS, power mode, commit, candidate/adapter/protocol/reference/library pins;

@@ -177,6 +177,27 @@ function handle(message) {
       id: message.id,
       result: [{ range: range(), newText: 'package Fake {}\\n' }]
     })
+  } else if (message.method === 'sysml/semanticEvidence') {
+    const response = {
+      jsonrpc: '2.0',
+      id: message.id,
+      result: {
+        schemaVersion: 1,
+        uri: message.params.uri,
+        elements: [{
+          engineId: `fake-package:${message.params.uri}`,
+          metaclass: 'Package',
+          name: 'Fake',
+          qualifiedName: 'Fake',
+          ownerEngineId: null,
+          range: range()
+        }],
+        relationships: []
+      }
+    }
+    const delay = Number(process.env.FAKE_LSP_SYMBOL_DELAY_MS ?? 0)
+    if (delay > 0) setTimeout(() => send(response), delay)
+    else send(response)
   } else if (message.method === '$/cancelRequest') {
     // Cancellation is deliberately accepted without a response.
   } else if (message.method === 'shutdown') {

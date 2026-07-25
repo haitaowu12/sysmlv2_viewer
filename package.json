@@ -17,6 +17,7 @@
     "qualify:engines": "tsx scripts/workbench-qualify-engines.ts",
     "qualify:fixtures": "tsx scripts/workbench-qualify-fixtures.ts",
     "qualify:phase1-summary": "tsx scripts/workbench-summarize-phase1.ts",
+    "qualify:phase2": "tsx scripts/workbench-qualify-phase2.ts",
     "benchmark:workbench": "tsx scripts/workbench-benchmark.ts",
     "release:inventory": "tsx scripts/workbench-release-inventory.ts",
     "audit:production": "npm audit --omit=dev",
