@@ -1397,17 +1397,26 @@ export class WorkspaceManager {
           }
           const refreshed = await this.proposeCommand(stored.envelope)
           if (
-            refreshed.proposalId !== stored.proposalId ||
             canonicalWorkspaceJson(refreshed.edits) !==
               canonicalWorkspaceJson(stored.edits) ||
-            canonicalWorkspaceJson(refreshed.semanticDiff) !==
-              canonicalWorkspaceJson(stored.semanticDiff)
+            canonicalWorkspaceJson(
+              semanticDiffIdentitySignature(refreshed.semanticDiff),
+            ) !== canonicalWorkspaceJson(
+              semanticDiffIdentitySignature(stored.semanticDiff),
+            ) ||
+            canonicalWorkspaceJson(refreshed.affectedElementIds) !==
+              canonicalWorkspaceJson(stored.affectedElementIds) ||
+            canonicalWorkspaceJson(refreshed.diagnosticsAfter) !==
+              canonicalWorkspaceJson(stored.diagnosticsAfter)
           ) {
             throw new WorkspacePathError(
               'AI command validation changed; request a fresh proposal',
             )
           }
-          receipts.push(await this.applyCommand(approval))
+          receipts.push(await this.applyCommand({
+            ...approval,
+            proposalId: refreshed.proposalId,
+          }))
         }
         return { receipts } satisfies ApplyApprovedCommandsResult
       }
@@ -1875,6 +1884,17 @@ function sha256(value: Buffer): string {
 
 function canonicalWorkspaceJson(value: unknown): string {
   return JSON.stringify(sortWorkspaceJson(value))
+}
+
+function semanticDiffIdentitySignature(
+  diff: CommandProposal['semanticDiff'],
+): unknown {
+  if (!diff) return null
+  return diff.changes.map((change) => ({
+    kind: change.kind,
+    elementId: change.elementId ?? null,
+    relationshipId: change.relationshipId ?? null,
+  }))
 }
 
 function sortWorkspaceJson(value: unknown): unknown {
