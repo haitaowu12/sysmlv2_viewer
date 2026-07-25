@@ -10,12 +10,14 @@ export interface NativeCommandEditorProps {
   gateway: CommandReviewGateway
   snapshot: SemanticSnapshot
   userId: string
+  onApplied?: () => void
 }
 
 export function NativeCommandEditor({
   gateway,
   snapshot,
   userId,
+  onApplied,
 }: NativeCommandEditorProps) {
   const [operation, setOperation] = useState<'create-port' | 'connect'>('create-port')
   const [ownerId, setOwnerId] = useState(snapshot.elements[0]?.id ?? '')
@@ -114,6 +116,7 @@ export function NativeCommandEditor({
           gateway={gateway}
           envelope={envelope}
           approvalUserId={userId}
+          onApplied={onApplied}
         />
       )}
     </section>
