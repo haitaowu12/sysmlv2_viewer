@@ -473,6 +473,7 @@ describe('WorkbenchService', () => {
     })
     if ('result' in proposal) {
       expect(proposal.result).not.toHaveProperty('overlayDocuments')
+      expect(proposal.result).not.toHaveProperty('validatedAfterSnapshot')
     }
     expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)
     if (!('result' in proposal)) throw new Error('Command proposal failed')

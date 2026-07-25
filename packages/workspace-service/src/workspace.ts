@@ -641,6 +641,26 @@ export class WorkspaceManager {
           proposal.commandId,
         )
       }
+      if (!proposal.validatedAfterSnapshot) {
+        throw new WorkspacePathError('Command proposal is missing validated identity state')
+      }
+      identities.beginSnapshot()
+      try {
+        for (const element of proposal.validatedAfterSnapshot.elements) {
+          identities.resolve(
+            {
+              workspacePath: element.source.workspacePath,
+              qualifiedName: element.qualifiedName,
+              kind: element.kind,
+            },
+            element.fingerprint,
+          )
+        }
+        identities.completeSnapshot()
+      } catch (error) {
+        identities.abortSnapshot()
+        throw error
+      }
       const files = proposal.overlayDocuments
         .map((overlay) => {
           const current = workspace.adapterWorkspace.documents.find(

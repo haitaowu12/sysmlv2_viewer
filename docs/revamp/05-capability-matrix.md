@@ -1,9 +1,9 @@
 # Language and Workbench Capability Matrix
 
-Profile version: `sysml-2.0-kerml-1.0/workbench-1`
+Profile version: `sysml-2.0-kerml-1.0/workbench-3-candidate`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Gate P2 rule: only bounded capabilities backed by mandatory tests and exact
-locked-runtime evidence are claimed; Phase 3+ targets remain planned.
+Gate P3 rule: only bounded capabilities backed by mandatory tests and exact
+locked-runtime evidence are claimed; Phase 4+ targets remain planned.
 
 ## Status vocabulary
 
@@ -69,7 +69,7 @@ locked-runtime evidence are claimed; Phase 3+ targets remain planned.
 | hover | supported in qualified sample | VinQut | LSP-HOVER-001 |
 | completion | partial, proposal-only | Spec42; non-authoritative | LSP-COMP-001 |
 | semantic tokens | partial, presentation-only | Spec42; non-authoritative | LSP-TOKEN-001 |
-| rename | proposal-only | Spec42; cannot apply before P3 validation | LSP-RENAME-001 |
+| rename | supported command profile | Spec42 edit plus authoritative overlay validation and human-approved transaction | LSP-RENAME-001/CMD-TRANS-001 |
 | formatting | proposal-only | Spec42; cannot apply before P3 validation | LSP-FMT-001 |
 | full-document incremental sync | supported | both selected engines; increasing versions | LSP-CHANGE-001 |
 | timeout/cancel/restart | supported | visible failure; no fallback | LSP-RECOVER-001 |
@@ -92,8 +92,8 @@ locked-runtime evidence are claimed; Phase 3+ targets remain planned.
 | model query API | unsupported | supported P2, seven bounded modes | QUERY-001 |
 | explorer projection core | legacy AST/store | supported P2 normalized projection | PROJECTION-001 |
 | identity-aware semantic diff core | unsupported | supported P2 lifecycle categories | DIFF-P2-001 |
-| typed command transaction | unsupported | P3 | CMD-TRANS-001 |
-| native source-backed editing | ad hoc subset | P3 | CMD-DIAG-001 |
+| typed command transaction | supported P3 candidate | exact runtime plus mandatory transaction/recovery tests | CMD-TRANS-001 |
+| native source-backed editing | partial P3 profile | conservative known declaration shapes; ambiguity fails closed | CMD-DIAG-001 |
 | saved projections/layouts | unsupported | P4 | VIEW-SAVE-001 |
 | matrices/tables | unsupported | P4 | MATRIX-001 |
 | requirements coverage | simple diagram only | P5 | ASSURE-REQ-001 |

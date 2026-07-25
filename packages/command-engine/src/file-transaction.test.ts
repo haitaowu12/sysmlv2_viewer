@@ -112,6 +112,43 @@ describe('durable workspace file transaction', () => {
     expect(persisted.state).toBe('ROLLED_BACK')
   })
 
+  it('detects an external writer at the final pre-replacement check', async () => {
+    const root = await workspace()
+    const first = resolve(root, 'model/first.sysml')
+    await expect(commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'proposal-external-race',
+      files: [
+        change(first, 'model/first.sysml', 'package First;\n', 'package One;\n'),
+      ],
+      async faultInjector(stage) {
+        if (stage === 'before-replace') {
+          await writeFile(first, 'external writer\n')
+        }
+      },
+    })).rejects.toThrow('rolled back')
+    expect(await readFile(first, 'utf8')).toBe('external writer\n')
+  })
+
+  it('recovers a crash after durable prepare without touching source', async () => {
+    const root = await workspace()
+    const first = resolve(root, 'model/first.sysml')
+    await expect(commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'proposal-prepared-crash',
+      files: [
+        change(first, 'model/first.sysml', 'package First;\n', 'package One;\n'),
+      ],
+      faultInjector(stage) {
+        if (stage === 'after-prepare') throw new Error('simulated process exit')
+      },
+    })).rejects.toThrow('simulated process exit')
+    await expect(recoverWorkspaceTransactions(root)).resolves.toEqual([
+      { transactionId: 'proposal-prepared-crash', state: 'ROLLED_BACK' },
+    ])
+    expect(await readFile(first, 'utf8')).toBe('package First;\n')
+  })
+
   it('recovers a mixed COMMITTING journal by verified rollback', async () => {
     const root = await workspace()
     const first = resolve(root, 'model/first.sysml')

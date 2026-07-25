@@ -173,6 +173,44 @@ describe('source edit transaction', () => {
       ),
     ).toThrow('document hash does not match content')
   })
+
+  it('round-trips deterministic generated edits through inverse patches', () => {
+    const random = seededRandom(0x5a17c0de)
+    const characters = Array.from('abc_ 012\nΩ中')
+    for (let iteration = 0; iteration < 200; iteration += 1) {
+      const generated = Array.from(
+        { length: 8 + Math.floor(random() * 80) },
+        () => characters[Math.floor(random() * characters.length)]!,
+      ).join('')
+      const generatedDocument: CommandWorkspaceDocument = {
+        uri,
+        workspacePath: 'model/generated.sysml',
+        text: generated,
+        sha256: digest(generated),
+        version: iteration + 1,
+      }
+      const first = Math.floor(random() * (generated.length + 1))
+      const second = Math.floor(random() * (generated.length + 1))
+      const start = Math.min(first, second)
+      const end = Math.max(first, second)
+      const replacement = random() > 0.5 ? `replacement_${iteration}` : ''
+      const application = applySourceEdits([generatedDocument], {
+        changes: {
+          [uri]: [{
+            range: {
+              start: testPosition(generated, start),
+              end: testPosition(generated, end),
+            },
+            newText: replacement,
+          }],
+        },
+      })
+      expect(
+        applySourceEdits(application.documents, application.inverse)
+          .documents[0]!.text,
+      ).toBe(generated)
+    }
+  })
 })
 
 describe('command planning', () => {
@@ -300,7 +338,7 @@ describe('command planning', () => {
     })
   })
 
-  it('rejects stale snapshots, stale documents, opaque targets, and unsupported commands', async () => {
+  it('rejects stale snapshots and documents and plans supported deletion', async () => {
     const base: CommandEnvelope = {
       schemaVersion: 1,
       commandId: 'CMD-002',
@@ -323,8 +361,7 @@ describe('command planning', () => {
       }),
     ).rejects.toThrow('base snapshot is stale')
 
-    await expect(
-      planCommand({
+    await expect(planCommand({
         envelope: {
           ...base,
           baseSnapshotSha256: snapshot.snapshotSha256,
@@ -349,11 +386,26 @@ describe('command planning', () => {
         snapshot,
         documents: [document],
         renameProvider: async () => ({ changes: {} }),
-      }),
-    ).rejects.toThrow('not implemented by the active command profile')
+      })).resolves.toMatchObject({
+        editProfile: { id: 'structured-source-edits', version: '1.0.0' },
+        affectedElementIds: ['element-engine'],
+      })
   })
 })
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0
+  return () => {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0
+    return state / 0x1_0000_0000
+  }
+}
+
+function testPosition(text: string, offset: number) {
+  const lines = text.slice(0, offset).split('\n')
+  return { line: lines.length - 1, character: lines.at(-1)!.length }
 }

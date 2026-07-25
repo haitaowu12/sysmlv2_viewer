@@ -147,13 +147,13 @@ export async function commitWorkspaceTransaction(
     receipt.state = 'COMMITTING'
     await persistJournal(journalPath, receipt)
     for (const file of files) {
+      await input.faultInjector?.('before-replace', file.workspacePath)
       const current = await readFile(file.absolutePath, 'utf8')
       if (digest(current) !== file.beforeSha256) {
         throw new WorkspaceTransactionError(
           `Workspace transaction external-writer conflict: ${file.workspacePath}`,
         )
       }
-      await input.faultInjector?.('before-replace', file.workspacePath)
       await replaceDurably(file.absolutePath, file.afterText)
       receipt.completedPaths.push(file.workspacePath)
       await persistJournal(journalPath, receipt)

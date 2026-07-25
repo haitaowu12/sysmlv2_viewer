@@ -14,6 +14,9 @@ import {
   type SemanticDiff,
 } from '../../semantic-diff/src/index.js'
 import type { WorkspaceTransactionReceipt } from './file-transaction.js'
+import {
+  planStructuredSourceEdits,
+} from './structured-source-edits.js'
 
 export const COMMAND_KINDS = [
   'create-element',
@@ -132,6 +135,10 @@ export interface CommandProposal {
   }
   undo: WorkbenchWorkspaceEdit
   authority: SemanticSnapshot['authority']
+  editProfile: {
+    id: 'language-service-rename' | 'structured-source-edits' | 'command-history'
+    version: '1.0.0'
+  }
   validation: {
     state: 'pending-authoritative-validation' | 'validated' | 'rejected'
   }
@@ -139,6 +146,7 @@ export interface CommandProposal {
 
 export interface InternalCommandProposal extends CommandProposal {
   overlayDocuments: CommandWorkspaceDocument[]
+  validatedAfterSnapshot?: SemanticSnapshot
 }
 
 export interface CommandValidationEvidence {
@@ -234,15 +242,32 @@ export async function planCommand(
   const { envelope, snapshot, documents } = input
   validatePlanningContext(envelope, snapshot, documents)
 
-  if (envelope.command.kind !== 'rename-element') {
+  if (
+    envelope.command.kind === 'undo-command' ||
+    envelope.command.kind === 'redo-command'
+  ) {
     throw new CommandValidationError(
       `Command ${envelope.command.kind} is not implemented by the active command profile`,
     )
   }
-  const target = requireTarget(snapshot, envelope.command.targetId)
-  requireEditableTarget(target)
-  const edits = await input.renameProvider(target, envelope.command.newName)
-  return createProposal(envelope, snapshot, documents, edits, [target.id])
+  if (envelope.command.kind === 'rename-element') {
+    const target = requireTarget(snapshot, envelope.command.targetId)
+    requireEditableTarget(target)
+    const edits = await input.renameProvider(target, envelope.command.newName)
+    return createProposal(envelope, snapshot, documents, edits, [target.id])
+  }
+  const structured = planStructuredSourceEdits(
+    envelope.command,
+    snapshot,
+    documents,
+  )
+  return createProposal(
+    envelope,
+    snapshot,
+    documents,
+    structured.edits,
+    structured.affectedElementIds,
+  )
 }
 
 export function planExplicitSourceEditCommand(
@@ -298,6 +323,14 @@ function createProposal(
     approval: { required: true, approved: false },
     undo: application.inverse,
     authority: structuredClone(snapshot.authority),
+    editProfile: {
+      id: envelope.command.kind === 'rename-element'
+        ? 'language-service-rename'
+        : envelope.command.kind === 'undo-command' || envelope.command.kind === 'redo-command'
+          ? 'command-history'
+          : 'structured-source-edits',
+      version: '1.0.0',
+    },
     validation: { state: 'pending-authoritative-validation' },
   }
 }
@@ -324,21 +357,29 @@ export function completeCommandValidation(
       diagnostic.severity === 'error' &&
       !beforeErrors.has(diagnosticKey(diagnostic)),
   )
+  const semanticDiff = compareSemanticSnapshots(
+    evidence.beforeSnapshot,
+    evidence.afterSnapshot,
+  )
   const conflicts = introducedErrors.map((diagnostic) => ({
     code: 'AUTHORITATIVE_DIAGNOSTIC_ERROR',
     message: `${diagnostic.code}: ${diagnostic.message}`,
   }))
+  if (semanticDiff.changes.length === 0) {
+    conflicts.push({
+      code: 'NO_SEMANTIC_CHANGE',
+      message: 'The authoritative semantic snapshot contains no command change',
+    })
+  }
   return {
     ...structuredClone(proposal),
     diagnosticsBefore: structuredClone(evidence.diagnosticsBefore),
     diagnosticsAfter: structuredClone(evidence.diagnosticsAfter),
-    semanticDiff: compareSemanticSnapshots(
-      evidence.beforeSnapshot,
-      evidence.afterSnapshot,
-    ),
+    semanticDiff,
+    validatedAfterSnapshot: structuredClone(evidence.afterSnapshot),
     conflicts,
     validation: {
-      state: introducedErrors.length === 0 ? 'validated' : 'rejected',
+      state: conflicts.length === 0 ? 'validated' : 'rejected',
     },
   }
 }
@@ -348,8 +389,10 @@ export function toPublicCommandProposal(
 ): CommandProposal {
   const publicProposal = structuredClone(proposal) as CommandProposal & {
     overlayDocuments?: CommandWorkspaceDocument[]
+    validatedAfterSnapshot?: SemanticSnapshot
   }
   delete publicProposal.overlayDocuments
+  delete publicProposal.validatedAfterSnapshot
   return publicProposal
 }
 
