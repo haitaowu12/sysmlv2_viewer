@@ -29,6 +29,7 @@ export const COMMAND_KINDS = [
   'set-property',
   'update-documentation',
   'apply-pattern',
+  'replace-document',
   'undo-command',
   'redo-command',
 ] as const
@@ -88,6 +89,7 @@ export type WorkbenchCommand =
       ownerId: string
       parameters: Record<string, string | number | boolean>
     }
+  | { kind: 'replace-document'; documentUri: string; text: string }
   | { kind: 'undo-command'; appliedProposalId: string }
   | { kind: 'redo-command'; appliedProposalId: string }
 
@@ -136,7 +138,7 @@ export interface CommandProposal {
   undo: WorkbenchWorkspaceEdit
   authority: SemanticSnapshot['authority']
   editProfile: {
-    id: 'language-service-rename' | 'structured-source-edits' | 'command-history'
+    id: 'language-service-rename' | 'structured-source-edits' | 'source-text-replace' | 'command-history'
     version: '1.0.0'
   }
   validation: {
@@ -256,6 +258,40 @@ export async function planCommand(
     const edits = await input.renameProvider(target, envelope.command.newName)
     return createProposal(envelope, snapshot, documents, edits, [target.id])
   }
+  if (envelope.command.kind === 'replace-document') {
+    const command = envelope.command
+    const document = documents.find(
+      (candidate) => candidate.uri === command.documentUri,
+    )
+    if (!document) {
+      throw new CommandValidationError(
+        `Source edit targets a document outside the workspace: ${command.documentUri}`,
+      )
+    }
+    if (command.text === document.text) {
+      throw new CommandValidationError('Source edit does not change the document')
+    }
+    if (Buffer.byteLength(command.text, 'utf8') > 16 * 1024 * 1024) {
+      throw new CommandValidationError('Source edit exceeds the 16 MiB command limit')
+    }
+    const affected = snapshot.elements
+      .filter((element) => element.source.uri === document.uri)
+      .map((element) => element.id)
+    return createProposal(
+      envelope,
+      snapshot,
+      documents,
+      {
+        changes: {
+          [document.uri]: [{
+            range: fullDocumentRange(document.text),
+            newText: command.text,
+          }],
+        },
+      },
+      affected,
+    )
+  }
   const structured = planStructuredSourceEdits(
     envelope.command,
     snapshot,
@@ -326,6 +362,8 @@ function createProposal(
     editProfile: {
       id: envelope.command.kind === 'rename-element'
         ? 'language-service-rename'
+        : envelope.command.kind === 'replace-document'
+          ? 'source-text-replace'
         : envelope.command.kind === 'undo-command' || envelope.command.kind === 'redo-command'
           ? 'command-history'
           : 'structured-source-edits',
@@ -521,6 +559,20 @@ function validateEnvelope(envelope: CommandEnvelope): void {
     !/^[\p{L}_][\p{L}\p{N}_]*$/u.test(envelope.command.newName)
   ) {
     throw new CommandValidationError('Rename target must be a SysML identifier')
+  }
+}
+
+function fullDocumentRange(text: string): {
+  start: WorkbenchPosition
+  end: WorkbenchPosition
+} {
+  const lines = text.split('\n')
+  return {
+    start: { line: 0, character: 0 },
+    end: {
+      line: lines.length - 1,
+      character: lines.at(-1)!.length,
+    },
   }
 }
 

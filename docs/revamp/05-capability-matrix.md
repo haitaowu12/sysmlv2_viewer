@@ -2,8 +2,8 @@
 
 Profile version: `sysml-2.0-kerml-1.0/workbench-3-candidate`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Gate P3 rule: only bounded capabilities backed by mandatory tests and exact
-locked-runtime evidence are claimed; Phase 4+ targets remain planned.
+Gate P4 rule: only bounded capabilities backed by mandatory tests and exact
+locked-runtime evidence are claimed; assurance and later targets remain planned.
 
 ## Status vocabulary
 
@@ -94,8 +94,10 @@ locked-runtime evidence are claimed; Phase 4+ targets remain planned.
 | identity-aware semantic diff core | unsupported | supported P2 lifecycle categories | DIFF-P2-001 |
 | typed command transaction | supported P3 candidate | exact runtime plus mandatory transaction/recovery tests | CMD-TRANS-001 |
 | native source-backed editing | partial P3 profile | conservative known declaration shapes; ambiguity fails closed | CMD-DIAG-001 |
-| saved projections/layouts | unsupported | P4 | VIEW-SAVE-001 |
-| matrices/tables | unsupported | P4 | MATRIX-001 |
+| service-backed product shell | component-qualified P4 | activity rail, semantic explorer, source/diagram/matrix, inspector, Problems, command palette | SHELL-P4-001 |
+| language-aware source surface | component-qualified P4 | service completion, hover, definition, references, formatting; edits require command approval | EDITOR-P4-001 |
+| saved projections/layouts | component-qualified P4 | bounded workspace-owned JSON with stable-identity positions | VIEW-SAVE-001 |
+| matrices/tables | component-qualified P4 | semantic projection table, sort-ready schema and CSV export | MATRIX-001 |
 | requirements coverage | simple diagram only | P5 | ASSURE-REQ-001 |
 | verification readiness | unsupported | P5 | ASSURE-VER-001 |
 | interface assurance | simple interconnection view | P5 | ASSURE-IF-001 |

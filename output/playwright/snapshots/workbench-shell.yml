@@ -1,0 +1,162 @@
+- main "SysML Engineering Workbench" [ref=e17]:
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]: SW
+      - strong [ref=e21]: SysML Engineering Workbench
+      - generic [ref=e22]: default
+    - generic [ref=e23]:
+      - text: ready · qualified-engine
+      - button "⌘K" [ref=e25] [cursor=pointer]
+  - generic [ref=e26]:
+    - navigation "Workbench activities" [ref=e27]:
+      - button "Explorer" [pressed] [ref=e28] [cursor=pointer]
+      - button "Model" [ref=e40] [cursor=pointer]
+      - button "Diagrams" [ref=e47] [cursor=pointer]
+      - button "Traceability" [ref=e54] [cursor=pointer]
+      - button "Interfaces" [ref=e60] [cursor=pointer]
+      - button "Verification" [ref=e65] [cursor=pointer]
+      - button "Reviews" [ref=e71] [cursor=pointer]
+      - button "Changes" [ref=e76] [cursor=pointer]
+      - button "Reports" [ref=e85] [cursor=pointer]
+      - button "Settings" [ref=e92] [cursor=pointer]
+    - complementary "explorer navigation" [ref=e97]:
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - paragraph [ref=e100]: explorer
+          - heading "Explorer" [level=2] [ref=e101]
+        - button "Save current view" [ref=e102] [cursor=pointer]
+      - textbox "Filter model elements" [ref=e111]:
+        - /placeholder: Filter model
+      - generic [ref=e112]:
+        - text: Explorer mode
+        - combobox "Explorer mode" [ref=e113] [cursor=pointer]:
+          - option "Containment" [selected]
+          - option "Types"
+          - option "Dependencies"
+          - option "Neighbourhood"
+          - option "Requirements"
+          - option "Verification"
+          - option "Interfaces"
+      - tree "containment model explorer" [ref=e114]:
+        - treeitem "P Phase1Requirements" [selected] [ref=e115] [cursor=pointer]:
+          - generic [ref=e118]: P
+          - generic [ref=e119]: Phase1Requirements
+        - treeitem "I commandPort" [ref=e120] [cursor=pointer]:
+          - generic [ref=e123]: I
+          - generic [ref=e124]: commandPort
+        - treeitem "I CommandPort" [ref=e125] [cursor=pointer]:
+          - generic [ref=e128]: I
+          - generic [ref=e129]: CommandPort
+        - treeitem "D Vehicle" [ref=e130] [cursor=pointer]:
+          - generic [ref=e133]: D
+          - generic [ref=e134]: Vehicle
+        - treeitem "P Phase1Library" [ref=e135] [cursor=pointer]:
+          - generic [ref=e138]: P
+          - generic [ref=e139]: Phase1Library
+        - treeitem "P Phase1Sample" [ref=e140] [cursor=pointer]:
+          - generic [ref=e143]: P
+          - generic [ref=e144]: Phase1Sample
+        - treeitem "U vehicle" [ref=e145] [cursor=pointer]:
+          - generic [ref=e148]: U
+          - generic [ref=e149]: vehicle
+        - treeitem "R VehicleCommandRequirement" [ref=e150] [cursor=pointer]:
+          - generic [ref=e153]: R
+          - generic [ref=e154]: VehicleCommandRequirement
+      - region "Saved views" [ref=e155]:
+        - heading "Saved views 0" [level=3] [ref=e156]:
+          - text: Saved views
+          - generic [ref=e157]: "0"
+    - generic [ref=e158]:
+      - tablist "Workbench surfaces" [ref=e159]:
+        - tab "source" [ref=e160] [cursor=pointer]
+        - tab "diagram" [selected] [ref=e166] [cursor=pointer]
+        - tab "matrix" [ref=e172] [cursor=pointer]
+        - generic [ref=e175]: Containment
+      - generic "Semantic diagram" [ref=e177]:
+        - button "Package Phase1Requirements 1 relationships" [ref=e179] [cursor=pointer]:
+          - generic [ref=e180]: Package
+          - strong [ref=e181]: Phase1Requirements
+          - generic [ref=e182]: 1 relationships
+        - button "PortUsage commandPort 1 relationships" [ref=e183] [cursor=pointer]:
+          - generic [ref=e184]: PortUsage
+          - strong [ref=e185]: commandPort
+          - generic [ref=e186]: 1 relationships
+        - button "PortDefinition CommandPort 1 relationships" [ref=e187] [cursor=pointer]:
+          - generic [ref=e188]: PortDefinition
+          - strong [ref=e189]: CommandPort
+          - generic [ref=e190]: 1 relationships
+        - button "PartDefinition Vehicle 2 relationships" [ref=e191] [cursor=pointer]:
+          - generic [ref=e192]: PartDefinition
+          - strong [ref=e193]: Vehicle
+          - generic [ref=e194]: 2 relationships
+        - button "Package Phase1Library 1 relationships" [ref=e195] [cursor=pointer]:
+          - generic [ref=e196]: Package
+          - strong [ref=e197]: Phase1Library
+          - generic [ref=e198]: 1 relationships
+        - button "Package Phase1Sample 2 relationships" [ref=e199] [cursor=pointer]:
+          - generic [ref=e200]: Package
+          - strong [ref=e201]: Phase1Sample
+          - generic [ref=e202]: 2 relationships
+        - button "PartUsage vehicle 1 relationships" [ref=e203] [cursor=pointer]:
+          - generic [ref=e204]: PartUsage
+          - strong [ref=e205]: vehicle
+          - generic [ref=e206]: 1 relationships
+        - button "RequirementDefinition VehicleCommandRequirement 1 relationships" [ref=e207] [cursor=pointer]:
+          - generic [ref=e208]: RequirementDefinition
+          - strong [ref=e209]: VehicleCommandRequirement
+          - generic [ref=e210]: 1 relationships
+      - region "Workbench bottom panel" [ref=e211]:
+        - generic [ref=e212]:
+          - button "problems 0" [ref=e213] [cursor=pointer]
+          - button "output" [ref=e214] [cursor=pointer]
+          - button "query" [ref=e215] [cursor=pointer]
+          - button "changes" [ref=e216] [cursor=pointer]
+          - button "Toggle bottom panel" [ref=e217] [cursor=pointer]
+        - paragraph [ref=e221]: No language diagnostics.
+    - complementary "Model inspector" [ref=e222]:
+      - generic [ref=e224]:
+        - paragraph [ref=e225]: INSPECTOR
+        - heading "Phase1Requirements" [level=2] [ref=e226]
+      - generic [ref=e227]:
+        - term [ref=e228]: Identity
+        - definition [ref=e229]: wb:phase…0ba93f
+        - term [ref=e230]: Qualified name
+        - definition [ref=e231]: Phase1Requirements
+        - term [ref=e232]: Kind
+        - definition [ref=e233]: Package
+        - term [ref=e234]: Owner
+        - definition [ref=e235]: Workspace root
+        - term [ref=e236]: Source
+        - definition [ref=e237]:
+          - button "model/requirements.sysml:1" [ref=e238] [cursor=pointer]
+        - term [ref=e239]: Diagnostics
+        - definition [ref=e240]: "0"
+        - term [ref=e241]: Relationships
+        - definition [ref=e242]: "1"
+      - generic [ref=e243]:
+        - heading "Relationships" [level=3] [ref=e244]
+        - button "containment VehicleCommandRequirement" [ref=e245] [cursor=pointer]:
+          - generic [ref=e246]: containment
+          - text: VehicleCommandRequirement
+      - region "Native model editor" [ref=e247]:
+        - heading "Native model edit" [level=2] [ref=e248]
+        - generic [ref=e249]:
+          - text: Operation
+          - combobox "Operation" [ref=e250] [cursor=pointer]:
+            - option "Create port" [selected]
+            - option "Connect elements"
+        - generic [ref=e251]:
+          - text: Owner
+          - combobox "Owner" [ref=e252] [cursor=pointer]:
+            - option "Phase1Library"
+            - option "Phase1Library::CommandPort"
+            - option "Phase1Requirements" [selected]
+            - option "Phase1Requirements::VehicleCommandRequirement"
+            - option "Phase1Sample"
+            - option "Phase1Sample::vehicle"
+            - option "Phase1Sample::Vehicle"
+            - option "Phase1Sample::Vehicle::commandPort"
+        - generic [ref=e253]:
+          - text: Name
+          - textbox "Name" [ref=e254]: newPort
+        - button "Review source patch" [ref=e255] [cursor=pointer]

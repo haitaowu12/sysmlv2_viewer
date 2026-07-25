@@ -1,0 +1,21 @@
+- main [ref=e3]:
+  - region [ref=e4]:
+    - paragraph [ref=e5]: LOCAL ENGINEERING ENVIRONMENT
+    - heading "SysML Engineering Workbench" [level=1] [ref=e6]
+    - paragraph [ref=e7]: Open a source-canonical workspace through the qualified local language service. Model content remains on this machine.
+    - generic [ref=e8]:
+      - text: Local service
+      - textbox "Local service" [ref=e9]: http://127.0.0.1:4317
+    - generic [ref=e10]:
+      - text: One-time pairing code
+      - textbox "One-time pairing code" [ref=e11]
+    - generic [ref=e12]:
+      - text: Workspace file
+      - textbox "Workspace file" [ref=e13]:
+        - /placeholder: /project/sysml-workspace.yaml
+    - button "Open workspace" [disabled] [ref=e14]
+    - paragraph [ref=e15]:
+      - text: Need the retired single-file workflow?
+      - link "Open compatibility viewer" [ref=e16] [cursor=pointer]:
+        - /url: "?legacy=1"
+      - text: .

@@ -26,7 +26,7 @@ export class StructuredSourceEditError extends Error {
 }
 
 export function planStructuredSourceEdits(
-  command: Exclude<WorkbenchCommand, { kind: 'rename-element' | 'undo-command' | 'redo-command' }>,
+  command: Exclude<WorkbenchCommand, { kind: 'rename-element' | 'replace-document' | 'undo-command' | 'redo-command' }>,
   snapshot: SemanticSnapshot,
   documents: CommandWorkspaceDocument[],
 ): StructuredSourceEditPlan {

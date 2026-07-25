@@ -6,7 +6,7 @@ backed by a locked, qualified language-engine runtime.
 
 ## Current implemented state
 
-Gate P2 provides:
+Gates P1-P3 provide:
 
 - multi-file workspace loading and configured libraries;
 - locked VinQut/Pilot semantic authority plus non-authoritative Spec42
@@ -22,7 +22,7 @@ Gate P2 provides:
 - an explorer projection built only from the normalized snapshot;
 - identity-aware rename/move semantic diff classification.
 
-The Phase 3 gate candidate adds a typed, reviewable command boundary:
+The Phase 3 command boundary includes:
 
 - versioned command registry and command envelopes;
 - mandatory base snapshot/document hashes;
@@ -39,21 +39,36 @@ The Phase 3 gate candidate adds a typed, reviewable command boundary:
   and startup recovery;
 - canonical source remains unchanged before approval.
 
-The existing Vite viewer remains a compatibility/demo surface during the
-revamp. Its hand-written parser, fixed diagram tabs, Draw.io round trip, and
-browser store are not authoritative workbench architecture. They will be
-retired or isolated in later gated phases.
+The Phase 4 product-shell component now adds:
 
-Not yet implemented as production workbench claims: integration of the native
-editor into the new primary application shell, full graphical mutation,
-assurance workflows, review persistence, Git baseline UI, deterministic
-reports, controlled AI, desktop packaging, or release-candidate hardening.
+- the service-backed workbench as the primary local application route;
+- Explorer, Model, Diagrams, Traceability, Interfaces, Verification, Reviews,
+  Changes, Reports, and Settings activities;
+- containment, type, dependency, neighbourhood, requirements, verification,
+  and interface explorer modes;
+- source, semantic diagram, matrix, inspector, Problems, saved-view, and
+  command-palette surfaces;
+- Monaco completion, hover, definition, references, and formatting delegated
+  to the language service;
+- source drafts that become validated `replace-document` command proposals and
+  cannot write before explicit human approval;
+- workspace-owned saved views and stable-identity layout positions.
+
+The old Vite viewer is isolated behind `?legacy=1` and remains the explicit
+read-only GitHub Pages compatibility demo. Its parser, fixed diagram tabs,
+Draw.io round trip, and browser store are not authoritative architecture.
+
+Not yet implemented as production workbench claims: complete notation-specific
+graphical mutation, assurance rules, review persistence, Git baseline UI,
+deterministic reports, controlled AI, desktop packaging, or release-candidate
+hardening. Gate P4 remains open until Phase 5 completes the integrated
+eight-task usability pilot.
 
 ## Development
 
 ```bash
 npm install
-npm run verify:phase3
+npm run verify:phase4
 ```
 
 Run the service without a configured engine in preservation-control mode:
@@ -69,6 +84,7 @@ bindings in `config/language-engine-runtime-lock.json`. With those configured:
 ```bash
 npm run qualify:phase2
 npm run qualify:phase3
+npm run qualify:phase4
 npm run benchmark:workbench -- \
   --candidate qualified-hybrid --profile medium --repetitions 1
 ```
@@ -80,9 +96,12 @@ npm run benchmark:workbench -- \
 - Phase 2 gate record: `docs/revamp/19-phase2-semantic-core-status.md`;
 - Phase 3 execution plan: `docs/revamp/20-phase3-command-editing-plan.md`;
 - Phase 3 gate candidate: `docs/revamp/21-phase3-gate-decision.md`;
+- Phase 4 component status: `docs/revamp/23-phase4-product-shell-status.md`;
 - exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
 - exact Phase 3 command observation:
   `docs/revamp/phase3-qualification-observation.json`;
+- Phase 4 component observation:
+  `docs/revamp/phase4-qualification-observation.json`;
 - medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
 - mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
 
