@@ -26,6 +26,9 @@ export class HybridLanguageAdapter implements LanguageAdapter {
   readonly metadata: LanguageAdapterMetadata
   private authoringSync: Promise<void> = Promise.resolve()
   private authoringSyncError: unknown
+  private authoringWorkspace?: AdapterWorkspace
+  private authoringWorkspaceOpened = false
+  private authoringOpening?: Promise<void>
 
   constructor(
     private readonly semantic: LanguageAdapter,
@@ -72,27 +75,30 @@ export class HybridLanguageAdapter implements LanguageAdapter {
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
     try {
-      const [diagnostics] = await Promise.all([
-        this.semantic.openWorkspace(workspace),
-        this.authoring.openWorkspace(structuredClone(workspace)),
-      ])
+      const diagnostics = await this.semantic.openWorkspace(workspace)
+      this.authoringWorkspace = structuredClone(workspace)
+      this.authoringWorkspaceOpened = false
+      this.authoringOpening = undefined
+      this.authoringSync = Promise.resolve()
+      this.authoringSyncError = undefined
       return diagnostics
     } catch (error) {
-      await Promise.allSettled([
-        this.semantic.closeWorkspace(workspace.workspaceId),
-        this.authoring.closeWorkspace(workspace.workspaceId),
-      ])
+      await this.semantic.closeWorkspace(workspace.workspaceId)
       throw error
     }
   }
 
   async closeWorkspace(workspaceId: string): Promise<void> {
+    await this.authoringOpening?.catch(() => undefined)
     await this.authoringSync
     const syncError = this.authoringSyncError
-    await Promise.all([
-      this.semantic.closeWorkspace(workspaceId),
-      this.authoring.closeWorkspace(workspaceId),
-    ])
+    await this.semantic.closeWorkspace(workspaceId)
+    if (this.authoringWorkspaceOpened) {
+      await this.authoring.closeWorkspace(workspaceId)
+    }
+    this.authoringWorkspace = undefined
+    this.authoringWorkspaceOpened = false
+    this.authoringOpening = undefined
     this.authoringSyncError = undefined
     if (syncError) throw syncError
   }
@@ -195,20 +201,30 @@ export class HybridLanguageAdapter implements LanguageAdapter {
     text: string,
   ): Promise<LanguageDiagnostic[]> {
     if (this.authoringSyncError) throw this.authoringSyncError
-    const authoringChange = this.requireOperation(
-      this.authoring.changeDocument,
-      'authoring incremental update',
+    const pendingDocument = this.authoringWorkspace?.documents.find(
+      (document) => document.uri === uri,
     )
-    const priorSync = this.authoringSync
-    const nextSync = priorSync.then(() =>
-      authoringChange.call(this.authoring, uri, version, text),
-    )
-    this.authoringSync = nextSync.then(
-      () => undefined,
-      (error: unknown) => {
-        this.authoringSyncError = error
-      },
-    )
+    if (pendingDocument) {
+      pendingDocument.version = version
+      pendingDocument.text = text
+    }
+    if (this.authoringWorkspaceOpened || this.authoringOpening) {
+      const authoringChange = this.requireOperation(
+        this.authoring.changeDocument,
+        'authoring incremental update',
+      )
+      const priorSync = this.authoringSync
+      const opening = this.authoringOpening ?? Promise.resolve()
+      const nextSync = Promise.all([priorSync, opening]).then(() =>
+        authoringChange.call(this.authoring, uri, version, text),
+      )
+      this.authoringSync = nextSync.then(
+        () => undefined,
+        (error: unknown) => {
+          this.authoringSyncError = error
+        },
+      )
+    }
     return this.requireOperation(
       this.semantic.changeDocument,
       'semantic incremental update',
@@ -218,26 +234,51 @@ export class HybridLanguageAdapter implements LanguageAdapter {
   async restartWorkspace(
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
+    await this.authoringOpening?.catch(() => undefined)
     await this.authoringSync.catch(() => undefined)
     this.authoringSyncError = undefined
-    const [diagnostics] = await Promise.all([
-      this.requireOperation(
-        this.semantic.restartWorkspace,
-        'semantic restart',
-      ).call(this.semantic, workspace),
-      this.requireOperation(
+    const diagnostics = await this.requireOperation(
+      this.semantic.restartWorkspace,
+      'semantic restart',
+    ).call(this.semantic, workspace)
+    this.authoringWorkspace = structuredClone(workspace)
+    if (this.authoringWorkspaceOpened) {
+      await this.requireOperation(
         this.authoring.restartWorkspace,
         'authoring restart',
-      ).call(this.authoring, structuredClone(workspace)),
-    ])
+      ).call(this.authoring, structuredClone(workspace))
+    } else {
+      this.authoringOpening = undefined
+    }
     return diagnostics
   }
 
   private async awaitAuthoringSync(): Promise<void> {
+    await this.ensureAuthoringWorkspace()
     await this.authoringSync
     if (this.authoringSyncError) {
       throw this.authoringSyncError
     }
+  }
+
+  private async ensureAuthoringWorkspace(): Promise<void> {
+    if (this.authoringWorkspaceOpened) return
+    if (!this.authoringWorkspace) {
+      throw new Error('Authoring workspace is not open')
+    }
+    if (!this.authoringOpening) {
+      const workspace = structuredClone(this.authoringWorkspace)
+      this.authoringOpening = this.authoring.openWorkspace(workspace).then(
+        () => {
+          this.authoringWorkspaceOpened = true
+        },
+        (error: unknown) => {
+          this.authoringSyncError = error
+          throw error
+        },
+      )
+    }
+    await this.authoringOpening
   }
 
   health(): ReturnType<LanguageAdapter['health']> {

@@ -38,6 +38,8 @@ interface BenchmarkRun {
   semanticDiffMs: number | null
   definitionMs: number | null
   incrementalDiagnosticsMs: number | null
+  authoringFirstCompletionMs: number | null
+  authoringWarmCompletionMs: number | null
   validWorkspaceClean: boolean
   deterministicSnapshot: boolean
   diagnosticsStable: boolean
@@ -123,7 +125,12 @@ for (let run = 1; run <= repetitions + warmups; run += 1) {
     let semanticDiffMs: number | null = null
     let definitionMs: number | null = null
     let incrementalDiagnosticsMs: number | null = null
-    if (adapter.capabilities.semanticEvidence) {
+    let authoringFirstCompletionMs: number | null = null
+    let authoringWarmCompletionMs: number | null = null
+    if (
+      candidateId === 'qualified-hybrid' &&
+      adapter.capabilities.semanticEvidence
+    ) {
       const semanticStartedAt = performance.now()
       const semanticSnapshot = await manager.semanticSnapshot(warm.workspaceId)
       semanticSnapshotMs = Math.round(performance.now() - semanticStartedAt)
@@ -204,6 +211,20 @@ for (let run = 1; run <= repetitions + warmups; run += 1) {
         document.text,
       )
     }
+    if (primaryDocument && adapter.capabilities.completion) {
+      const firstCompletionStartedAt = performance.now()
+      await manager.completion(warm.workspaceId, primaryDocument.uri, {
+        line: 1,
+        character: 15,
+      })
+      authoringFirstCompletionMs = preciseDuration(firstCompletionStartedAt)
+      const warmCompletionStartedAt = performance.now()
+      await manager.completion(warm.workspaceId, primaryDocument.uri, {
+        line: 1,
+        character: 15,
+      })
+      authoringWarmCompletionMs = preciseDuration(warmCompletionStartedAt)
+    }
     measuredWorkspaceBytes = warm.documents.reduce(
       (total, document) => total + document.byteLength,
       0,
@@ -223,6 +244,8 @@ for (let run = 1; run <= repetitions + warmups; run += 1) {
       semanticDiffMs,
       definitionMs,
       incrementalDiagnosticsMs,
+      authoringFirstCompletionMs,
+      authoringWarmCompletionMs,
       semanticElementCount,
       semanticRelationshipCount,
       explorerResultCount,
@@ -308,6 +331,12 @@ const report = {
       ),
       definitionMs: nullableDistribution(
         runs.map((run) => run.definitionMs),
+      ),
+      authoringFirstCompletionMs: nullableDistribution(
+        runs.map((run) => run.authoringFirstCompletionMs),
+      ),
+      authoringWarmCompletionMs: nullableDistribution(
+        runs.map((run) => run.authoringWarmCompletionMs),
       ),
       diagramProjectionMs: nullableDistribution(
         runs.map((run) => run.diagramProjectionMs),
