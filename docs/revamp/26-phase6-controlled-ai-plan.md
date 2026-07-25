@@ -1,6 +1,6 @@
 # Phase 6 — Controlled AI Plan
 
-Status: in progress
+Status: completed; Gate P6 passed
 Baseline: `b42b2baa25fd98bc3c255ec6c67151b878d39c4f`
 Branch: `codex/sysml-workbench-phase6-ai`
 
@@ -84,3 +84,9 @@ timestamps. They do not log full source documents.
   the audit.
 - External provider networking is disabled by default.
 - The legacy whole-document mutation endpoint is unavailable.
+
+## Result
+
+All criteria passed at implementation head `5eb193e`. See
+`27-phase6-gate-decision.md` and
+`phase6-qualification-observation.json`.
