@@ -27,6 +27,7 @@ import type { SavedWorkbenchView, WorkspaceDocumentContent } from '../../package
 import { CommandReviewPanel } from '../components/CommandReviewPanel.js'
 import { NativeCommandEditor } from '../components/NativeCommandEditor.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
+import { AssuranceSurface, type AssuranceActivity } from './AssuranceSurface.js'
 
 type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'settings'
 type SurfaceId = 'source' | 'diagram' | 'matrix'
@@ -272,14 +273,27 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
             <span className="surface-context">{EXPLORER_MODES.find((item) => item.id === mode)?.label}</span>
           </div>
           <div className="surface-content">
-            {surface === 'source' && document && (
+            {isAssuranceActivity(activity) && (
+              <AssuranceSurface
+                activity={activity}
+                gateway={gateway}
+                workspaceId={workspaceId}
+                userId={userId}
+                selected={selected}
+                onSelectId={(identity) => {
+                  const element = workspace.snapshot.elements.find((candidate) => candidate.id === identity)
+                  if (element) selectElement(element)
+                }}
+              />
+            )}
+            {!isAssuranceActivity(activity) && surface === 'source' && document && (
               <SourceSurface gateway={gateway} workspace={workspace} document={document} userId={userId} onApplied={refreshWorkspace} />
             )}
-            {surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
-            {surface === 'diagram' && (
+            {!isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
+            {!isAssuranceActivity(activity) && surface === 'diagram' && (
               <DiagramSurface snapshot={workspace.snapshot} result={queryResult} selectedId={selectedId} onSelect={selectElement} />
             )}
-            {surface === 'matrix' && (
+            {!isAssuranceActivity(activity) && surface === 'matrix' && (
               <MatrixSurface snapshot={workspace.snapshot} result={queryResult} onSelect={selectElement} />
             )}
           </div>
@@ -628,6 +642,14 @@ function kindGlyph(kind: string): string {
 
 function activityLabel(activity: ActivityId): string {
   return ACTIVITIES.find((item) => item.id === activity)?.label ?? activity
+}
+
+function isAssuranceActivity(activity: ActivityId): activity is AssuranceActivity {
+  return activity === 'interfaces' ||
+    activity === 'verification' ||
+    activity === 'reviews' ||
+    activity === 'changes' ||
+    activity === 'reports'
 }
 
 function shortId(id: string): string { return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id }

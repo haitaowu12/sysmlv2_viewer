@@ -3,6 +3,7 @@ let documentUri = ''
 let crashScheduled = false
 let initialized = false
 let documentVersion = 0
+let semanticEvidenceRevision = 0
 const documentTexts = new Map()
 
 process.stdin.on('data', (chunk) => {
@@ -188,6 +189,7 @@ function handle(message) {
       result: [{ range: range(), newText: 'package Fake {}\\n' }]
     })
   } else if (message.method === 'sysml/semanticEvidence') {
+    semanticEvidenceRevision += 1
     const dynamic = process.env.FAKE_LSP_DYNAMIC_SEMANTICS === '1'
       ? packageEvidence(documentTexts.get(message.params.uri) ?? '')
       : null
@@ -198,7 +200,9 @@ function handle(message) {
         schemaVersion: 1,
         uri: message.params.uri,
         elements: [{
-          engineId: `fake-package:${message.params.uri}`,
+          engineId: process.env.FAKE_LSP_VOLATILE_ENGINE_IDS === '1'
+            ? `fake-package:${message.params.uri}:${semanticEvidenceRevision}`
+            : `fake-package:${message.params.uri}`,
           metaclass: 'Package',
           name: dynamic?.name ?? process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',
           qualifiedName: dynamic?.name ?? process.env.FAKE_LSP_SEMANTIC_NAME ?? 'Fake',

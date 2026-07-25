@@ -75,7 +75,10 @@ describe('service-backed workbench shell', () => {
     fireEvent.change(editor, { target: { value: source.replace('Controller', 'Controller2') } })
 
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Review source patch' })[0]!)
+    const reviewButton = screen.getAllByRole('button', { name: 'Review source patch' })
+      .find((button) => !button.hasAttribute('disabled'))
+    if (!reviewButton) throw new Error('Source review action is unavailable')
+    fireEvent.click(reviewButton)
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Generate validated patch' }))
 
@@ -95,6 +98,50 @@ describe('service-backed workbench shell', () => {
       'pilot',
       expect.objectContaining({ id: 'view-containment', query: { mode: 'containment', depth: 5, maxResults: 2000 } }),
     ))
+  })
+
+  it('runs assurance activities through the local workbench service', async () => {
+    const gateway = createGateway()
+    vi.mocked(gateway.generateReport).mockResolvedValue({
+      schemaVersion: 1,
+      reportEngineVersion: '1.0.0',
+      reportKind: 'workspace-health',
+      title: 'Workspace Health',
+      provenance: {
+        workspace: { id: 'pilot', name: 'Pilot workspace' },
+        commitSha: 'a'.repeat(40),
+        baseline: null,
+        languageRelease: '2026-05',
+        workbenchVersion: '0.6.0',
+        rulePackVersion: '1.0.0',
+        viewConfiguration: 'reports',
+        generatedAt: '2026-07-25T12:00:00.000Z',
+        unresolvedDiagnostics: 1,
+        exclusions: [],
+      },
+      artifacts: [
+        { format: 'html', path: 'generated/reports/health/health.html', sha256: 'b'.repeat(64) },
+        { format: 'pdf', path: 'generated/reports/health/health.pdf', sha256: 'c'.repeat(64) },
+      ],
+    })
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Interfaces' }))
+    expect(await screen.findByRole('heading', { name: 'Interface assurance' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Interface register/ })).toBeInTheDocument()
+    expect(gateway.evaluateAssurance).toHaveBeenCalledWith('pilot')
+    expect(gateway.gitStatus).toHaveBeenCalledWith('pilot')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }))
+    expect(await screen.findByRole('heading', { name: 'Reports and evidence' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Report type'), { target: { value: 'workspace-health' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate evidence package' }))
+    await waitFor(() => expect(gateway.generateReport).toHaveBeenCalledWith(
+      'pilot',
+      expect.objectContaining({ kind: 'workspace-health' }),
+    ))
+    expect(await screen.findByRole('heading', { name: 'Workspace Health' })).toBeInTheDocument()
+    expect(screen.getByText(/generated\/reports\/health\/health\.pdf/)).toBeInTheDocument()
   })
 })
 
@@ -146,6 +193,28 @@ function createGateway(): WorkbenchGateway & Record<string, ReturnType<typeof vi
     definition: vi.fn(async () => []),
     references: vi.fn(async () => []),
     formatting: vi.fn(async () => []),
+    evaluateAssurance: vi.fn(async () => ({
+      schemaVersion: 1 as const,
+      rulePack: { id: 'sysml-workbench/engineering-assurance', version: '1.0.0' },
+      snapshotSha256: snapshot.snapshotSha256,
+      resultSha256: 'assurance-1',
+      findings: [],
+      requirementCoverage: [],
+      interfaceRegister: [],
+      summary: { critical: 0, major: 0, minor: 0, advisory: 0, requirements: 0, interfaces: 0 },
+      limitations: [],
+    })),
+    gitStatus: vi.fn(async () => ({ repositoryRoot: '/workspace', branch: 'main', head: 'a'.repeat(40), dirty: false, changedFiles: [] })),
+    listBaselines: vi.fn(async () => []),
+    createBaseline: vi.fn(async () => { throw new Error('qualification stub') }),
+    compareBaseline: vi.fn(async () => { throw new Error('qualification stub') }),
+    listReviews: vi.fn(async () => []),
+    createReview: vi.fn(async () => { throw new Error('qualification stub') }),
+    addReviewFinding: vi.fn(async () => { throw new Error('qualification stub') }),
+    dispositionReviewFinding: vi.fn(async () => { throw new Error('qualification stub') }),
+    closeReview: vi.fn(async () => { throw new Error('qualification stub') }),
+    reviewStaleness: vi.fn(async () => ({ reviewId: 'RVW-001', stale: [] })),
+    generateReport: vi.fn(async () => { throw new Error('qualification stub') }),
     proposeCommand: vi.fn(async () => { throw new Error('qualification stub') }),
     applyCommand: vi.fn(async () => { throw new Error('must not apply') }),
   }
