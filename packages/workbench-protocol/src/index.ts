@@ -1,4 +1,4 @@
-export const WORKBENCH_PROTOCOL_VERSION = '0.1.0'
+export const WORKBENCH_PROTOCOL_VERSION = '0.2.0'
 
 export const WORKBENCH_METHODS = {
   initialize: 'workbench/initialize',
@@ -17,6 +17,8 @@ export const WORKBENCH_METHODS = {
   languageFormatting: 'language/formatting',
   languageDocumentChange: 'language/documentChange',
   languageRestart: 'language/restart',
+  semanticSnapshot: 'semantic/snapshot',
+  modelQuery: 'model/query',
 } as const
 
 export type WorkbenchMethod =
@@ -87,6 +89,11 @@ export interface InitializeResult {
   transport: {
     kind: 'stdio' | 'loopback'
     secure: boolean
+  }
+  serviceCapabilities: {
+    normalizedSemanticSnapshot: boolean
+    durableIdentityPersistence: boolean
+    boundedModelQuery: boolean
   }
   capabilities: LanguageCapabilities
   capabilitiesFinal: boolean

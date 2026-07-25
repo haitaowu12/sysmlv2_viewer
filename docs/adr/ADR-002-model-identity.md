@@ -92,3 +92,21 @@ It may intentionally change after delete/recreate unless an owner-approved alias
 ## Consequences
 
 The workbench owns a small non-semantic identity registry. Manual source changes can require reconciliation. This cost is necessary for reliable engineering anchors without polluting canonical source.
+
+## Phase 2 implementation status
+
+The initial schema-1 registry now uses:
+
+- durable id `wb:<workspace-slug>:<sha256(workspace-id, relative-path, qualified-name, kind)>`;
+- current locator `{workspacePath, qualifiedName, kind}`;
+- source-backed declaration fingerprint;
+- explicit `{priorLocator, commandId}` aliases for controlled migration;
+- diffable JSON persistence at `identities/model-identities.json`.
+
+Formatting, line movement, clone portability, duplicate locator rejection, and
+explicit rename/move aliases are tested. The snapshot fails rather than guessing
+when two symbols produce one locator.
+
+Gate P2 remains open. Tombstones/delete-recreate, uncontrolled Git
+reconciliation, registry merge conflicts, deleted-registry recovery, review
+anchor resolution, and command/diff integration are not yet implemented.

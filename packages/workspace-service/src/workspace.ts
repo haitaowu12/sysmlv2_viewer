@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto'
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises'
+import {
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  writeFile,
+} from 'node:fs/promises'
 import { dirname, extname, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parse } from 'yaml'
@@ -15,6 +23,17 @@ import type {
   WorkspaceDocumentSummary,
   WorkspaceStatusResult,
 } from '../../workbench-protocol/src/index.js'
+import {
+  buildSemanticSnapshot,
+  IdentityRegistry,
+  type IdentityRegistryData,
+  type SemanticSnapshot,
+} from '../../semantic-model/src/index.js'
+import {
+  executeModelQuery,
+  type ModelQuery,
+  type ModelQueryResult,
+} from '../../query-engine/src/index.js'
 import type {
   AdapterWorkspace,
   LanguageAdapter,
@@ -47,6 +66,12 @@ interface OpenWorkspace {
   adapterWorkspace: AdapterWorkspace
   status: WorkspaceStatusResult
   diagnostics: LanguageDiagnostic[]
+  identityRegistry: IdentityRegistry
+  identityRegistryPath: string
+  rootPath: string
+  semanticRevision: number
+  semanticSnapshot?: SemanticSnapshot
+  semanticSnapshotPromise?: Promise<SemanticSnapshot>
 }
 
 export interface WorkspaceManagerOptions {
@@ -132,14 +157,18 @@ export class WorkspaceManager {
       documents,
     }
 
-    if (this.workspaces.has(workspaceId)) {
-      await this.options.adapter.closeWorkspace(workspaceId)
-    }
-    for (const openWorkspaceId of this.workspaces.keys()) {
-      if (openWorkspaceId !== workspaceId) {
-        await this.options.adapter.closeWorkspace(openWorkspaceId)
-        this.workspaces.delete(openWorkspaceId)
-      }
+    const identityRegistryPath = resolve(
+      rootPath,
+      'identities/model-identities.json',
+    )
+    const identityRegistry = await loadIdentityRegistry(
+      identityRegistryPath,
+      workspaceId,
+      rootPath,
+    )
+    for (const openWorkspaceId of [...this.workspaces.keys()]) {
+      await this.options.adapter.closeWorkspace(openWorkspaceId)
+      this.workspaces.delete(openWorkspaceId)
     }
     const diagnostics = await this.options.adapter.openWorkspace(adapterWorkspace)
     const status = buildStatus(
@@ -151,6 +180,10 @@ export class WorkspaceManager {
       adapterWorkspace,
       status,
       diagnostics,
+      identityRegistry,
+      identityRegistryPath,
+      rootPath,
+      semanticRevision: 0,
     })
     return status
   }
@@ -321,6 +354,9 @@ export class WorkspaceManager {
       this.options.adapter,
       diagnostics,
     )
+    workspace.semanticRevision += 1
+    workspace.semanticSnapshot = undefined
+    workspace.semanticSnapshotPromise = undefined
     return structuredClone(workspace.status)
   }
 
@@ -339,7 +375,51 @@ export class WorkspaceManager {
       this.options.adapter,
       diagnostics,
     )
+    workspace.semanticRevision += 1
+    workspace.semanticSnapshot = undefined
+    workspace.semanticSnapshotPromise = undefined
     return structuredClone(workspace.status)
+  }
+
+  async semanticSnapshot(workspaceId: string): Promise<SemanticSnapshot> {
+    const workspace = this.requireWorkspace(workspaceId)
+    const health = this.options.adapter.health()
+    if (workspace.semanticSnapshot) {
+      return {
+        ...structuredClone(workspace.semanticSnapshot),
+        freshness: health.state === 'ready' ? 'current' : 'stale',
+      }
+    }
+    if (health.state !== 'ready') {
+      throw new WorkspacePathError(
+        'No complete semantic snapshot exists and the language authority is not ready',
+      )
+    }
+    if (!this.options.adapter.capabilities.documentSymbols) {
+      throw new WorkspacePathError(
+        'The qualified language authority does not provide document symbols',
+      )
+    }
+    const snapshotPromise =
+      workspace.semanticSnapshotPromise ??=
+        this.createSemanticSnapshot(workspace, workspace.semanticRevision)
+    try {
+      return structuredClone(await snapshotPromise)
+    } finally {
+      if (workspace.semanticSnapshotPromise === snapshotPromise) {
+        workspace.semanticSnapshotPromise = undefined
+      }
+    }
+  }
+
+  async modelQuery(
+    workspaceId: string,
+    query: ModelQuery,
+  ): Promise<ModelQueryResult> {
+    return executeModelQuery(
+      await this.semanticSnapshot(workspaceId),
+      query,
+    )
   }
 
   async close(workspaceId: string): Promise<boolean> {
@@ -377,6 +457,54 @@ export class WorkspaceManager {
       throw new WorkspacePathError(`Unknown workspace: ${workspaceId}`)
     }
     return workspace
+  }
+
+  private async createSemanticSnapshot(
+    workspace: OpenWorkspace,
+    semanticRevision: number,
+  ): Promise<SemanticSnapshot> {
+    const symbols = new Map<string, WorkbenchDocumentSymbol[]>()
+    for (const document of workspace.adapterWorkspace.documents) {
+      symbols.set(
+        document.uri,
+        await this.options.adapter.documentSymbols!(document.uri),
+      )
+    }
+    if (workspace.semanticRevision !== semanticRevision) {
+      throw new WorkspacePathError(
+        'Workspace changed while the semantic snapshot was being built',
+      )
+    }
+    const candidateIdentities = new IdentityRegistry(
+      workspace.identityRegistry.serialize(),
+    )
+    const snapshot = buildSemanticSnapshot({
+      status: workspace.status,
+      authority: this.options.adapter.metadata,
+      documents: workspace.adapterWorkspace.documents,
+      symbols,
+      identities: candidateIdentities,
+    })
+    if (workspace.semanticRevision !== semanticRevision) {
+      throw new WorkspacePathError(
+        'Workspace changed while the semantic snapshot was being built',
+      )
+    }
+    if (candidateIdentities.hasChanges()) {
+      await persistIdentityRegistry(
+        workspace.identityRegistryPath,
+        candidateIdentities,
+        workspace.rootPath,
+      )
+    }
+    if (workspace.semanticRevision !== semanticRevision) {
+      throw new WorkspacePathError(
+        'Workspace changed while the semantic snapshot was being committed',
+      )
+    }
+    workspace.identityRegistry = candidateIdentities
+    workspace.semanticSnapshot = snapshot
+    return snapshot
   }
 }
 
@@ -491,6 +619,83 @@ function buildStatus(
     },
     languageCapabilities: { ...adapter.capabilities },
     capabilitiesFinal: adapter.capabilitiesFinal(),
+  }
+}
+
+async function loadIdentityRegistry(
+  path: string,
+  workspaceId: string,
+  rootPath: string,
+): Promise<IdentityRegistry> {
+  await assertNoSymlinkSegments(rootPath, path)
+  try {
+    const value = JSON.parse(await readFile(path, 'utf8')) as IdentityRegistryData
+    if (value.workspaceId !== workspaceId) {
+      throw new WorkspacePathError(
+        `Identity registry belongs to ${value.workspaceId}; expected ${workspaceId}`,
+      )
+    }
+    return new IdentityRegistry(value)
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
+      return IdentityRegistry.empty(workspaceId)
+    }
+    throw error
+  }
+}
+
+async function persistIdentityRegistry(
+  path: string,
+  registry: IdentityRegistry,
+  rootPath: string,
+): Promise<void> {
+  await assertNoSymlinkSegments(rootPath, path)
+  await mkdir(dirname(path), { recursive: true })
+  await assertNoSymlinkSegments(rootPath, path)
+  const temporaryPath = `${path}.tmp-${process.pid}`
+  await writeFile(
+    temporaryPath,
+    `${JSON.stringify(registry.serialize(), null, 2)}\n`,
+    { encoding: 'utf8', mode: 0o600 },
+  )
+  await rename(temporaryPath, path)
+  registry.markPersisted()
+}
+
+async function assertNoSymlinkSegments(
+  rootPath: string,
+  targetPath: string,
+): Promise<void> {
+  if (!isPathWithin(rootPath, targetPath)) {
+    throw new WorkspacePathError('Identity registry path escapes the workspace')
+  }
+  const relativePath = relative(rootPath, targetPath)
+  let current = rootPath
+  for (const segment of relativePath.split(/[\\/]/).filter(Boolean)) {
+    current = resolve(current, segment)
+    try {
+      const metadata = await lstat(current)
+      if (metadata.isSymbolicLink()) {
+        throw new WorkspacePathError(
+          `Symbolic links are not accepted in identity registry paths: ${relative(rootPath, current)}`,
+        )
+      }
+    } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        return
+      }
+      throw error
+    }
   }
 }
 
