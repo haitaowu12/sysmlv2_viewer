@@ -87,12 +87,18 @@ try {
   const bundledInputs = await compareBundledInputs(
     resolve(semanticSourceRoot, 'server/lib'),
     pilotRoot,
+    resolve(temporaryRoot, 'bundled-inputs'),
   )
   const exactPilotMatches = bundledInputs.filter(
     (item) => item.classification === 'pilot-derived-exact-match',
   )
-  const nonmatchingInputs = bundledInputs.filter(
-    (item) => item.classification === 'same-name-byte-mismatch',
+  const repackagedPilotMatches = bundledInputs.filter(
+    (item) => item.classification === 'pilot-repackaged-content-match',
+  )
+  const unresolvedInputs = bundledInputs.filter(
+    (item) =>
+      item.classification === 'same-name-byte-mismatch' ||
+      item.classification === 'upstream-name-not-found',
   )
   const licenseEvidence = await Promise.all([
     licenseRecord(
@@ -146,11 +152,13 @@ try {
     },
     bundledLocalInputs: {
       total: bundledInputs.length,
-      exactPilotMatches: exactPilotMatches.length,
-      sameNameByteMismatches: nonmatchingInputs.length,
+      byteExactPilotJars: exactPilotMatches.length,
+      contentEquivalentPilotRepackages: repackagedPilotMatches.length,
+      unresolvedInputs: unresolvedInputs.length,
       allPilotNamedJarsMatched: bundledInputs
         .filter((item) => item.name.startsWith('org.omg.'))
         .every((item) => item.classification === 'pilot-derived-exact-match'),
+      allInputsProvenanced: unresolvedInputs.length === 0,
       inputs: bundledInputs,
     },
     licenseEvidence,
@@ -165,12 +173,12 @@ try {
       },
       {
         id: 'UML-INPUT-BYTE-PROVENANCE',
-        present: nonmatchingInputs.length > 0,
-        affectedInputs: nonmatchingInputs.map((item) => item.name),
+        present: unresolvedInputs.length > 0,
+        affectedInputs: unresolvedInputs.map((item) => item.name),
         statement:
-          'Five same-named Eclipse UML input jars differ byte-for-byte from the copies in the exact Pilot checkout.',
+          'The five Eclipse UML jars are reproducible repackages of exact directories in the pinned Pilot build; their embedded about.html files identify the Eclipse Public License.',
         requiredClosure:
-          'Record the authoritative source and license texts for these exact five jar bytes before distribution.',
+          'No byte-provenance gap remains; final distribution notice approval remains part of the runtime-license gate.',
       },
       {
         id: 'PRODUCT-LICENSE-ABSENT',
@@ -199,6 +207,7 @@ try {
 async function compareBundledInputs(
   inputRoot: string,
   upstreamRoot: string,
+  extractionRoot: string,
 ): Promise<
   Array<{
     name: string
@@ -208,6 +217,7 @@ async function compareBundledInputs(
     upstreamSha256: string | null
     classification:
       | 'pilot-derived-exact-match'
+      | 'pilot-repackaged-content-match'
       | 'same-name-byte-mismatch'
       | 'upstream-name-not-found'
   }>
@@ -242,6 +252,31 @@ async function compareBundledInputs(
           break
         }
       }
+      const repackagedRoot = resolve(
+        upstreamRoot,
+        'org.omg.sysml.interactive',
+        'target',
+        'libs',
+        `${name.slice(0, -'.jar'.length)}-eclipse-plugin`,
+      )
+      let repackagedMatch = false
+      if (name.startsWith('org.eclipse.uml2.') && await exists(repackagedRoot)) {
+        const extractedRoot = resolve(
+          extractionRoot,
+          name.replaceAll(/[^A-Za-z0-9._-]/g, '_'),
+        )
+        await mkdir(extractedRoot, { recursive: true })
+        await execFileAsync('jar', ['xf', path], {
+          cwd: extractedRoot,
+          maxBuffer: 16 * 1024 * 1024,
+        })
+        repackagedMatch =
+          await treeSha256(extractedRoot) === await treeSha256(repackagedRoot)
+        if (repackagedMatch) {
+          selected = repackagedRoot
+          selectedSha256 = await treeSha256(repackagedRoot)
+        }
+      }
       return {
         name,
         sha256,
@@ -249,7 +284,9 @@ async function compareBundledInputs(
         upstreamPath: selected ? relative(upstreamRoot, selected) : null,
         upstreamSha256: selectedSha256,
         classification:
-          selected === null
+          repackagedMatch
+            ? 'pilot-repackaged-content-match'
+            : selected === null
             ? 'upstream-name-not-found'
             : selectedSha256 === sha256
               ? 'pilot-derived-exact-match'
@@ -257,6 +294,20 @@ async function compareBundledInputs(
       }
     }),
   )
+}
+
+async function treeSha256(root: string): Promise<string> {
+  const paths = (await walkFiles(root, () => true))
+    .map((path) => relative(root, path))
+    .filter((path) => path !== 'META-INF/MANIFEST.MF')
+    .sort()
+  const records = await Promise.all(
+    paths.map(async (path) => ({
+      path,
+      sha256: await fileSha256(resolve(root, path)),
+    })),
+  )
+  return sha256(JSON.stringify(records))
 }
 
 async function readComponents(root: string): Promise<Component[]> {

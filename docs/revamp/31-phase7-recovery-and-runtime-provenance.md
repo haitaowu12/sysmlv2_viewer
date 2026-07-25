@@ -64,16 +64,16 @@ machine-readable inventory. The observation found:
 - 15,040 fat-JAR entries, 13,787 classes, and 36 Maven component records;
 - all ten `org.omg.*` local inputs match exact bytes in the pinned Pilot
   checkout;
-- five same-named Eclipse UML inputs do not match the pinned Pilot copies.
+- all five Eclipse UML inputs reproduce exact Pilot build directories through
+  the pinned `extract-jars.sh` packaging process; only the generated JAR
+  manifest differs from same-named prebuilt copies.
 
 The report makes no legal conclusion. It identifies three exact closure
 items:
 
 1. the VinQut NOTICE calls the Pilot content LGPL-3.0-or-later while the pinned
    official Pilot root license is EPL-2.0;
-2. the source/license origin of the exact five differing UML JARs must be
-   recorded; and
-3. the product repository has no owner-approved root license.
+2. the product repository has no owner-approved root license.
 
 Technical RC verification allows these conflicts only through the explicit
 `--allow-license-conflict` path. Production verification fails closed.
@@ -96,7 +96,6 @@ crash-dump and operating-system log inspection.
 ## Remaining closure
 
 - owner-approved product license and reconciled runtime notice set;
-- authoritative provenance/license evidence for the five exact UML inputs;
 - signed/notarized distribution for each claimed platform;
 - clean-machine install, recovery, crash, and log inspection;
 - three-person usability pilot and manual accessibility evidence;

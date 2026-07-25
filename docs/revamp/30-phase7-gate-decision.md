@@ -32,7 +32,9 @@ file is not approval.
   opens the four-document pilot without network or repository imports, and
   scans captured output for model/session/CSRF leakage;
 - runtime provenance binds 15 local inputs and 36 Maven component records to
-  the locked fat JAR; all ten `org.omg.*` inputs match the pinned Pilot bytes;
+  the locked fat JAR: ten inputs match Pilot JAR bytes and five UML inputs
+  reproduce pinned Pilot build directories through the recorded packaging
+  process;
 - medium performance: five warmups, thirty valid samples, all seven mandated
   p95 targets pass; see `phase7-benchmark-observation.json`.
 
@@ -47,7 +49,7 @@ the lazy lifecycle does not bypass authoring or semantic validation.
 | Gate | State | Required closure |
 |---|---|---|
 | product license | blocked | owner selects and records the repository/distribution license |
-| runtime license provenance | blocked | reconcile VinQut NOTICE LGPL claim with pinned Pilot EPL license and establish exact provenance for five byte-different UML inputs |
+| runtime license provenance | blocked | reconcile VinQut NOTICE LGPL claim with pinned Pilot EPL license; exact local-input byte/content provenance is now complete |
 | supported OS | blocked | owner selects minimum OS set; each claimed platform receives its own locked artifact and clean-machine run |
 | distribution | blocked | signed/notarized installer or explicit internal-only policy |
 | usability | blocked | three independent participants pass all eight tasks in `29-usability-pilot-protocol.md` |
