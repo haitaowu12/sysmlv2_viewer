@@ -20,6 +20,8 @@ import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
 import type {
   CommandEnvelope,
   CommandProposal,
+  ApplyCommandApproval,
+  AppliedCommandReceipt,
 } from '../../command-engine/src/index.js'
 
 export interface WorkbenchTransport {
@@ -193,6 +195,12 @@ export class WorkbenchClient {
 
   proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal> {
     return this.transport.request(WORKBENCH_METHODS.commandPropose, envelope)
+  }
+
+  applyCommand(
+    approval: ApplyCommandApproval,
+  ): Promise<AppliedCommandReceipt> {
+    return this.transport.request(WORKBENCH_METHODS.commandApply, approval)
   }
 
   async close(): Promise<void> {

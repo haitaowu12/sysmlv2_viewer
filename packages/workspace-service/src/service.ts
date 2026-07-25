@@ -14,6 +14,7 @@ import {
 import type { LanguageAdapter } from '../../language-adapter/src/index.js'
 import type { ModelQuery } from '../../query-engine/src/index.js'
 import type { CommandEnvelope } from '../../command-engine/src/index.js'
+import type { ApplyCommandApproval } from '../../command-engine/src/index.js'
 import { WorkspaceManager } from './workspace.js'
 
 export interface WorkbenchServiceOptions {
@@ -225,6 +226,13 @@ export class WorkbenchService {
             request.id,
             await this.workspaces.proposeCommand(
               requireRecord(request.params) as unknown as CommandEnvelope,
+            ),
+          )
+        case WORKBENCH_METHODS.commandApply:
+          return success(
+            request.id,
+            await this.workspaces.applyCommand(
+              requireRecord(request.params) as unknown as ApplyCommandApproval,
             ),
           )
         default:

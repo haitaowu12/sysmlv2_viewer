@@ -13,6 +13,7 @@ import {
   compareSemanticSnapshots,
   type SemanticDiff,
 } from '../../semantic-diff/src/index.js'
+import type { WorkspaceTransactionReceipt } from './file-transaction.js'
 
 export const COMMAND_KINDS = [
   'create-element',
@@ -138,6 +139,35 @@ export interface CommandValidationEvidence {
   afterSnapshot: SemanticSnapshot
   diagnosticsBefore: LanguageDiagnostic[]
   diagnosticsAfter: LanguageDiagnostic[]
+}
+
+export interface ApplyCommandApproval {
+  workspaceId: string
+  proposalId: string
+  approvalId: string
+  approvedBy: {
+    kind: 'user'
+    id: string
+  }
+}
+
+export interface AppliedCommandReceipt {
+  schemaVersion: 1
+  state: 'applied'
+  proposalId: string
+  commandId: string
+  approval: {
+    approvalId: string
+    approvedBy: { kind: 'user'; id: string }
+  }
+  transaction: WorkspaceTransactionReceipt
+  appliedSnapshotSha256: string
+  appliedAt: string
+  undo: {
+    baseSnapshotSha256: string
+    baseDocuments: Record<string, string>
+    edits: WorkbenchWorkspaceEdit
+  }
 }
 
 export interface PlanCommandInput {
@@ -469,3 +499,5 @@ function stableJson(value: unknown): string {
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex')
 }
+
+export * from './file-transaction.js'

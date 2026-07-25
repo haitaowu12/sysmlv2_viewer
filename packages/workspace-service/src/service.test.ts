@@ -472,6 +472,52 @@ describe('WorkbenchService', () => {
       },
     })
     expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)
+    if (!('result' in proposal)) throw new Error('Command proposal failed')
+    const proposalResult = proposal.result as {
+      proposalId: string
+      edits: { changes: Record<string, unknown> }
+    }
+    const changedUri = Object.keys(proposalResult.edits.changes)[0]!
+    const changedPath = fileURLToPath(changedUri)
+    const changedBefore = await readFile(changedPath, 'utf8')
+    const applied = await service.handle({
+      jsonrpc: '2.0',
+      id: 64,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: proposalResult.proposalId,
+        approvalId: 'APPROVAL-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(applied).toMatchObject({
+      result: {
+        state: 'applied',
+        proposalId: proposalResult.proposalId,
+        approval: {
+          approvalId: 'APPROVAL-001',
+          approvedBy: { kind: 'user', id: 'test-engineer' },
+        },
+        transaction: { state: 'FINALIZED' },
+      },
+    })
+    expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 65,
+        method: WORKBENCH_METHODS.commandApply,
+        params: {
+          workspaceId: 'phase1-sample',
+          proposalId: proposalResult.proposalId,
+          approvalId: 'APPROVAL-002',
+          approvedBy: { kind: 'ai', id: 'provider' },
+        },
+      }),
+    ).resolves.toMatchObject({
+      error: { message: expect.stringContaining('human user') },
+    })
     await expect(
       service.handle({
         jsonrpc: '2.0',

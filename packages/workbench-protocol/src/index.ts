@@ -20,6 +20,7 @@ export const WORKBENCH_METHODS = {
   semanticSnapshot: 'semantic/snapshot',
   modelQuery: 'model/query',
   commandPropose: 'command/propose',
+  commandApply: 'command/apply',
 } as const
 
 export type WorkbenchMethod =
