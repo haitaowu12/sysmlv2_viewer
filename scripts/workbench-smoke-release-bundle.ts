@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { basename, resolve } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { basename, dirname, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 interface ReadyEvent {
@@ -12,6 +12,9 @@ interface ReadyEvent {
 const bundleRoot = resolve(requiredValue('--bundle'))
 const workspaceFile = resolve(requiredValue('--workspace-file'))
 const modelMarker = requiredValue('--model-marker')
+const outputPath = valueAfter('--output')
+  ? resolve(valueAfter('--output')!)
+  : null
 const workspaceRoot = resolve(workspaceFile, '..')
 const manifest = JSON.parse(
   await readFile(
@@ -113,25 +116,24 @@ try {
   ) {
     throw new Error('Release service logs exposed model content or session credentials')
   }
-  process.stdout.write(
-    `${JSON.stringify(
-      {
-        schemaVersion: 1,
-        outcome: 'passed',
-        bundle: basename(bundleRoot),
-        sourceCommit: manifest.release.sourceCommit,
-        languageAuthority:
-          initialize.result.languageAuthority.adapterId,
-        workspaceId: opened.result.workspaceId,
-        documentCount: opened.result.documents.length,
-        staticCsp: true,
-        offlineRuntime: true,
-        logSafety,
-      },
-      null,
-      2,
-    )}\n`,
-  )
+  const report = {
+    schemaVersion: 1,
+    outcome: 'passed',
+    bundle: basename(bundleRoot),
+    sourceCommit: manifest.release.sourceCommit,
+    languageAuthority:
+      initialize.result.languageAuthority.adapterId,
+    workspaceId: opened.result.workspaceId,
+    documentCount: opened.result.documents.length,
+    staticCsp: true,
+    offlineRuntime: true,
+    logSafety,
+  }
+  if (outputPath) {
+    await mkdir(dirname(outputPath), { recursive: true })
+    await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+  }
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 } finally {
   child.kill('SIGTERM')
   await Promise.race([
@@ -197,8 +199,15 @@ async function rpc(
 }
 
 function requiredValue(flag: string): string {
+  const value = valueAfter(flag)
+  if (!value) throw new Error(`${flag} requires a value`)
+  return value
+}
+
+function valueAfter(flag: string): string | undefined {
   const index = process.argv.indexOf(flag)
-  const value = index >= 0 ? process.argv[index + 1] : undefined
+  if (index < 0) return undefined
+  const value = process.argv[index + 1]
   if (!value) throw new Error(`${flag} requires a value`)
   return value
 }

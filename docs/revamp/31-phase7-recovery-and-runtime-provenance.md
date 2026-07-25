@@ -88,6 +88,8 @@ It requires absence of:
 - the issued CSRF token.
 
 The result and captured byte count are emitted with the copied-bundle evidence.
+The machine-readable record is
+`generated/release/evidence/phase7-copied-bundle-smoke.json`.
 This is a bounded runtime-output check, not a substitute for clean-machine
 crash-dump and operating-system log inspection.
 
