@@ -75,7 +75,12 @@ export class HybridLanguageAdapter implements LanguageAdapter {
     workspace: AdapterWorkspace,
   ): Promise<LanguageDiagnostic[]> {
     try {
-      const diagnostics = await this.semantic.openWorkspace(workspace)
+      const [diagnostics] = await Promise.all([
+        this.semantic.openWorkspace(workspace),
+        this.authoring.prepareWorkspace
+          ? this.authoring.prepareWorkspace(structuredClone(workspace))
+          : Promise.resolve(),
+      ])
       this.authoringWorkspace = structuredClone(workspace)
       this.authoringWorkspaceOpened = false
       this.authoringOpening = undefined

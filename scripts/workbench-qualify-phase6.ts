@@ -107,7 +107,9 @@ try {
       ) ||
       proposal.approval.approved
     ) {
-      throw new Error('Grounded AI proposal is incomplete or unvalidated')
+      throw new Error(
+        `Grounded AI proposal is incomplete or unvalidated: ${JSON.stringify(proposal)}`,
+      )
     }
     assertCanonicalUnchanged(
       sourceBefore,

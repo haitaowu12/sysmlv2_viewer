@@ -128,9 +128,7 @@ export class LspProcessAdapter implements LanguageAdapter {
     this.healthState = { state: 'ready' }
   }
 
-  async openWorkspace(
-    workspace: AdapterWorkspace,
-  ): Promise<LanguageDiagnostic[]> {
+  async prepareWorkspace(workspace: AdapterWorkspace): Promise<void> {
     if (this.negotiated && !this.process) {
       await this.restartProcess()
     } else {
@@ -139,9 +137,6 @@ export class LspProcessAdapter implements LanguageAdapter {
     if (this.negotiated && this.initializedRootUri !== workspace.rootUri) {
       await this.restartProcess()
     }
-    this.activeWorkspace = workspace
-    this.diagnostics.clear()
-    this.lastDiagnosticAt = 0
     if (!this.negotiated) {
       const initializeResult = await this.request('initialize', {
       processId: process.pid,
@@ -242,6 +237,15 @@ export class LspProcessAdapter implements LanguageAdapter {
       this.initializedRootUri = workspace.rootUri
       this.notify('initialized', {})
     }
+  }
+
+  async openWorkspace(
+    workspace: AdapterWorkspace,
+  ): Promise<LanguageDiagnostic[]> {
+    await this.prepareWorkspace(workspace)
+    this.activeWorkspace = workspace
+    this.diagnostics.clear()
+    this.lastDiagnosticAt = 0
     for (const document of workspace.documents) {
       this.notify('textDocument/didOpen', {
         textDocument: {
