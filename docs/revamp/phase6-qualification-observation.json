@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T22:14:40.964Z",
+  "gate": "P6",
+  "result": "pass",
+  "runtimeLock": {
+    "schemaVersion": 1,
+    "outcome": "HYBRID GO",
+    "adapterVersion": "0.2.0",
+    "referenceRelease": {
+      "name": "2026-05",
+      "commit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+    },
+    "semantic": {
+      "candidateId": "vinqut",
+      "commit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+      "artifactEnvironment": "SYSML_WORKBENCH_SEMANTIC_ARTIFACT",
+      "artifactSha256": "8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160",
+      "launchMode": "java-jar",
+      "semanticEvidenceExtension": {
+        "method": "sysml/semanticEvidence",
+        "patchSha256": "364da283242e02ec8f68dabf45af646c532db3453b7dcfccf85c3e2d00178e45",
+        "modelSourceSha256": "16a6ade27f3518651f5d5e16d07355d44bc76314090a2a9110d9514713ec097a",
+        "serviceSourceSha256": "c63dd0e09dc1595764d9069807d002b8af9391dfcf2fe802082c747358722d94"
+      }
+    },
+    "authoring": {
+      "candidateId": "spec42",
+      "commit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+      "artifactEnvironment": "SYSML_WORKBENCH_AUTHORING_ARTIFACT",
+      "artifactSha256": "22911d70f7f41251e257aef3ae4a3a402e77063d2271ed394a114834d7ee362e",
+      "launchMode": "executable"
+    },
+    "officialLibraryIndexSha256": "d010a8644265b8aadab103f1cc9024bb143b34d825ea2139e11590ee337cd8fe"
+  },
+  "fixture": {
+    "id": "phase5-infrastructure-pilot",
+    "documents": 4,
+    "elements": 38
+  },
+  "policy": {
+    "defaultProviderId": "qualification-grounded-provider",
+    "networkProvidersEnabled": false,
+    "provider": {
+      "id": "qualification-grounded-provider",
+      "displayName": "Qualification grounded provider",
+      "model": "mock-contract-1",
+      "networkAccess": false,
+      "enabled": true
+    },
+    "toolNames": [
+      "search_elements",
+      "get_element",
+      "get_relationships",
+      "get_requirements",
+      "get_verification",
+      "get_interfaces",
+      "get_diagnostics",
+      "run_model_query",
+      "compare_baselines",
+      "propose_commands",
+      "validate_commands",
+      "apply_approved_commands"
+    ]
+  },
+  "hallucinationRejection": {
+    "operationId": "AI-P6-HALLUCINATION-001",
+    "state": "rejected",
+    "reasons": [
+      "Provider cited unknown model identities: wb:hallucinated:does-not-exist"
+    ],
+    "canonicalSourceUnchanged": true,
+    "auditSha256": "7ddebdc4169c0650e2e16ae743d75e1b17ff45d536de214fe96f243a87ec2c6a"
+  },
+  "proposal": {
+    "operationId": "AI-P6-RENAME-001",
+    "stateBeforeApproval": "proposed",
+    "citedElementIds": [
+      "wb:phase5-infrastructure-pilot:36639eb15144734fca51e1c66cff4d38"
+    ],
+    "assumptions": [
+      "The cited control-centre definition is the intended review target."
+    ],
+    "commandKinds": [
+      "rename-element"
+    ],
+    "affectedElementIds": [
+      "wb:phase5-infrastructure-pilot:36639eb15144734fca51e1c66cff4d38"
+    ],
+    "validationState": [
+      "validated"
+    ],
+    "semanticChanges": [
+      "element-renamed",
+      "element-content-changed",
+      "element-content-changed",
+      "element-content-changed",
+      "element-content-changed"
+    ],
+    "diagnosticsBefore": 0,
+    "diagnosticsAfter": 0,
+    "toolCalls": [
+      {
+        "sequence": 1,
+        "name": "get_element",
+        "inputSha256": "271bf471ee65de41d95950697267f79dda271390629c1c04c76b22eca0507852",
+        "outcome": "success",
+        "resultSha256": "dd04f43c0bc238e5b22e3c95b3d0154dff8dbbd1c6335573aad9217542f80564"
+      },
+      {
+        "sequence": 2,
+        "name": "get_relationships",
+        "inputSha256": "e253093fb401ac233680eeddf8be916e235c5258faf4e621f6bd8ed20fb5222a",
+        "outcome": "success",
+        "resultSha256": "a761b4405cf60da3f0949dbae63b7146a9c9652ed2ce5867d8bb2022b7f0c701"
+      },
+      {
+        "sequence": 3,
+        "name": "validate_commands",
+        "inputSha256": "2ebab4cc22f42658ef9d45523407d73f01ef74c730c8aab51b03302b5e683773",
+        "outcome": "success",
+        "resultSha256": "4b57496787f6eb2cbf96f42adf4c46b5ea203ad4ccd18079fea1d6056c30efc9"
+      }
+    ],
+    "canonicalSourceUnchangedBeforeApproval": true,
+    "nonUserApprovalRejected": true
+  },
+  "approval": {
+    "operationId": "AI-P6-RENAME-001",
+    "state": "applied",
+    "approvalId": "APPROVE-AI-P6-RENAME-001",
+    "approvedBy": "phase6-qualification-engineer",
+    "receipts": [
+      {
+        "proposalId": "proposal:276cc0e0e9f8225c25fcaaaa3ab313a6",
+        "transactionState": "FINALIZED",
+        "snapshotSha256": "4ecd788909b5e0cd3c82ccbee9e14d883b5bf14b07cf30184a8a552453505294"
+      }
+    ],
+    "identityPreserved": true,
+    "renamedQualifiedName": "InfrastructureLibrary::AIReviewedControlCentre",
+    "restartSafe": true,
+    "auditPath": ".sysml-workbench/audit/ai/AI-P6-RENAME-001.json",
+    "auditSha256": "0b9f935633bc18851ea9972402a50951980d21248ecd8b1591d3f192f61185ae"
+  },
+  "auditRecords": [
+    {
+      "operationId": "AI-P6-HALLUCINATION-001",
+      "state": "rejected",
+      "recordSha256": "7ddebdc4169c0650e2e16ae743d75e1b17ff45d536de214fe96f243a87ec2c6a"
+    },
+    {
+      "operationId": "AI-P6-RENAME-001",
+      "state": "applied",
+      "recordSha256": "0b9f935633bc18851ea9972402a50951980d21248ecd8b1591d3f192f61185ae"
+    }
+  ],
+  "legacyWholeDocumentMutation": {
+    "implementationDeleted": true,
+    "endpoints": [
+      "/api/ai/generate-model",
+      "/api/ai/edit-model"
+    ],
+    "response": "410 Gone"
+  }
+}

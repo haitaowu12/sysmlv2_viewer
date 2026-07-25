@@ -1,4 +1,4 @@
-export const WORKBENCH_PROTOCOL_VERSION = '0.6.0'
+export const WORKBENCH_PROTOCOL_VERSION = '0.7.0'
 
 export const WORKBENCH_METHODS = {
   initialize: 'workbench/initialize',
@@ -34,6 +34,10 @@ export const WORKBENCH_METHODS = {
   reviewClose: 'review/close',
   reviewStaleness: 'review/staleness',
   reportGenerate: 'report/generate',
+  aiStatus: 'ai/status',
+  aiRequest: 'ai/request',
+  aiListAudit: 'ai/listAudit',
+  aiApply: 'ai/apply',
   commandPropose: 'command/propose',
   commandProposeUndo: 'command/proposeUndo',
   commandProposeRedo: 'command/proposeRedo',
@@ -119,6 +123,7 @@ export interface InitializeResult {
     gitBaselines: boolean
     modelAnchoredReviews: boolean
     reproducibleReports: boolean
+    controlledAi: boolean
   }
   capabilities: LanguageCapabilities
   capabilitiesFinal: boolean

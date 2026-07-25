@@ -4,6 +4,7 @@ import type { editor as MonacoEditor, Position as MonacoPosition } from 'monaco-
 import {
   Activity,
   BetweenHorizontalStart,
+  Bot,
   Boxes,
   ChevronRight,
   ClipboardCheck,
@@ -28,8 +29,9 @@ import { CommandReviewPanel } from '../components/CommandReviewPanel.js'
 import { NativeCommandEditor } from '../components/NativeCommandEditor.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
 import { AssuranceSurface, type AssuranceActivity } from './AssuranceSurface.js'
+import { ControlledAiSurface } from './ControlledAiSurface.js'
 
-type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'settings'
+type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'assistant' | 'settings'
 type SurfaceId = 'source' | 'diagram' | 'matrix'
 type BottomPanelId = 'problems' | 'output' | 'query' | 'changes'
 
@@ -43,6 +45,7 @@ const ACTIVITIES: Array<{ id: ActivityId; label: string; icon: ComponentType<{ s
   { id: 'reviews', label: 'Reviews', icon: ListChecks },
   { id: 'changes', label: 'Changes', icon: GitCompareArrows },
   { id: 'reports', label: 'Reports', icon: FileCode2 },
+  { id: 'assistant', label: 'Assistant', icon: Bot },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
@@ -273,6 +276,19 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
             <span className="surface-context">{EXPLORER_MODES.find((item) => item.id === mode)?.label}</span>
           </div>
           <div className="surface-content">
+            {activity === 'assistant' && (
+              <ControlledAiSurface
+                gateway={gateway}
+                workspaceId={workspaceId}
+                userId={userId}
+                selected={selected}
+                onSelectId={(identity) => {
+                  const element = workspace.snapshot.elements.find((candidate) => candidate.id === identity)
+                  if (element) selectElement(element)
+                }}
+                onApplied={refreshWorkspace}
+              />
+            )}
             {isAssuranceActivity(activity) && (
               <AssuranceSurface
                 activity={activity}
@@ -286,14 +302,14 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                 }}
               />
             )}
-            {!isAssuranceActivity(activity) && surface === 'source' && document && (
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && document && (
               <SourceSurface gateway={gateway} workspace={workspace} document={document} userId={userId} onApplied={refreshWorkspace} />
             )}
-            {!isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
-            {!isAssuranceActivity(activity) && surface === 'diagram' && (
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'diagram' && (
               <DiagramSurface snapshot={workspace.snapshot} result={queryResult} selectedId={selectedId} onSelect={selectElement} />
             )}
-            {!isAssuranceActivity(activity) && surface === 'matrix' && (
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'matrix' && (
               <MatrixSurface snapshot={workspace.snapshot} result={queryResult} onSelect={selectElement} />
             )}
           </div>

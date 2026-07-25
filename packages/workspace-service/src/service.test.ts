@@ -16,6 +16,7 @@ import {
   WORKBENCH_METHODS,
   WORKBENCH_PROTOCOL_VERSION,
 } from '../../workbench-protocol/src/index.js'
+import type { AiProvider } from '../../ai-orchestrator/src/index.js'
 import { WorkbenchService } from './service.js'
 
 const sampleRoot = resolve(
@@ -630,6 +631,131 @@ describe('WorkbenchService', () => {
     })
   })
 
+  it('keeps grounded AI edits proposal-only until a distinct user approval', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-ai-service-'))
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter(
+        { FAKE_LSP_DYNAMIC_SEMANTICS: '1' },
+        'qualified',
+      ),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 60,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+    const snapshotResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 61,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in snapshotResponse)) throw new Error('Snapshot failed')
+    const snapshot = snapshotResponse.result as {
+      elements: Array<{
+        id: string
+        name: string
+        source: { uri: string }
+      }>
+    }
+    const target = snapshot.elements.find(
+      (element) => element.name === 'Vehicle',
+    ) ?? snapshot.elements[0]!
+    const sourcePath = fileURLToPath(target.source.uri)
+    const before = await readFile(sourcePath, 'utf8')
+
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 62,
+      method: WORKBENCH_METHODS.aiStatus,
+    })).resolves.toMatchObject({
+      result: {
+        defaultProviderId: 'local-deterministic',
+        networkProvidersEnabled: false,
+        providers: [{ networkAccess: false, enabled: true }],
+      },
+    })
+    const proposedResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 63,
+      method: WORKBENCH_METHODS.aiRequest,
+      params: {
+        workspaceId: 'phase1-sample',
+        input: {
+          schemaVersion: 1,
+          operationId: 'AI-SERVICE-001',
+          workspaceId: 'phase1-sample',
+          userRequest: `rename ${target.id} to AiRenamedVehicle`,
+          requestedBy: 'engineer',
+          at: '2026-07-25T22:20:00.000Z',
+        },
+      },
+    })
+    if (!('result' in proposedResponse)) {
+      throw new Error(JSON.stringify(proposedResponse))
+    }
+    expect(proposedResponse.result).toMatchObject({
+      state: 'proposed',
+      citations: [{ id: target.id }],
+      validation: { accepted: true },
+      approval: { required: true, approved: false },
+      proposals: [{ validation: { state: 'validated' } }],
+    })
+    expect(await readFile(sourcePath, 'utf8')).toBe(before)
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 64,
+      method: WORKBENCH_METHODS.aiListAudit,
+      params: { workspaceId: 'phase1-sample' },
+    })).resolves.toMatchObject({
+      result: [{ operationId: 'AI-SERVICE-001', state: 'proposed' }],
+    })
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 641,
+      method: WORKBENCH_METHODS.workspaceClose,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    await service.handle({
+      jsonrpc: '2.0',
+      id: 642,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: { workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml') },
+    })
+
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 65,
+      method: WORKBENCH_METHODS.aiApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        approval: {
+          schemaVersion: 1,
+          operationId: 'AI-SERVICE-001',
+          workspaceId: 'phase1-sample',
+          approvalId: 'APPROVE-AI-SERVICE-001',
+          approvedBy: { kind: 'user', id: 'engineer' },
+          at: '2026-07-25T22:21:00.000Z',
+        },
+      },
+    })).resolves.toMatchObject({
+      result: {
+        state: 'applied',
+        approval: {
+          approved: true,
+          approvedBy: 'engineer',
+        },
+        receipts: [{ state: 'applied' }],
+      },
+    })
+    expect(await readFile(sourcePath, 'utf8')).toContain('AiRenamedVehicle')
+  })
+
   it('returns a proposal-only typed rename without changing canonical source', async () => {
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), 'sysml-workbench-command-proposal-'),
@@ -1124,11 +1250,13 @@ describe('WorkbenchService', () => {
 function createService(
   adapter: LanguageAdapter = new PreservationControlAdapter(),
   allowedRoots = [sampleRoot],
+  aiProviders?: AiProvider[],
 ): WorkbenchService {
   const service = new WorkbenchService({
     adapter,
     allowedRoots,
     transport: { kind: 'stdio', secure: true },
+    aiProviders,
   })
   services.push(service)
   return service

@@ -1,10 +1,9 @@
 # Language and Workbench Capability Matrix
 
-Profile version: `sysml-2.0-kerml-1.0/workbench-5-candidate`
+Profile version: `sysml-2.0-kerml-1.0/workbench-6-candidate`
 Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
-Gate P5 rule: only bounded capabilities backed by mandatory tests and exact
-locked-runtime evidence are claimed; controlled AI and release targets remain
-planned.
+Gate P6 rule: only bounded capabilities backed by mandatory tests and exact
+locked-runtime evidence are claimed; release targets remain planned.
 
 ## Status vocabulary
 
@@ -105,7 +104,7 @@ planned.
 | model-anchored reviews | supported P5 | diffable JSON, frozen baseline/scope, stable anchors, transitions, history, staleness | REVIEW-001 |
 | Git semantic diff | supported P5 | branch/status/baseline manifests plus stable-identity semantic comparison | DIFF-001 |
 | deterministic reports | supported P5 | sanitized HTML, byte-stable PDF, CSV registers, hashed provenance manifests | REPORT-DET-001 |
-| constrained AI | whole-document mutation | P6 | AI-SAFE-001 |
+| constrained AI | supported P6 profile | twelve narrow tools, stable citations, validated one-command proposals, user-only apply, tamper-evident audit, network disabled | AI-SAFE-001 |
 | public web evaluation | static app | bounded A profile P4/P7 | DEPLOY-A-001 |
 | browser + local companion | unsupported | production B profile P4/P7 | DEPLOY-B-001 |
 | packaged offline desktop | static page | production C profile P7 | INSTALL-001 |

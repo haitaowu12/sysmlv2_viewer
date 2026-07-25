@@ -18,6 +18,11 @@ import type {
   CommandHistoryRequest,
 } from '../../command-engine/src/index.js'
 import type { ApplyCommandApproval } from '../../command-engine/src/index.js'
+import type {
+  AiApplyApproval,
+  AiAssistantRequest,
+  AiProvider,
+} from '../../ai-orchestrator/src/index.js'
 import { WorkspaceManager } from './workspace.js'
 import type {
   AddReviewFindingInput,
@@ -32,6 +37,8 @@ export interface WorkbenchServiceOptions {
   allowedRoots: string[]
   transport: InitializeResult['transport']
   serviceVersion?: string
+  aiProviders?: AiProvider[]
+  allowNetworkAi?: boolean
 }
 
 export class WorkbenchService {
@@ -43,6 +50,8 @@ export class WorkbenchService {
       allowedRoots: options.allowedRoots,
       adapter: options.adapter,
       workbenchVersion: options.serviceVersion,
+      aiProviders: options.aiProviders,
+      allowNetworkAi: options.allowNetworkAi,
     })
   }
 
@@ -379,6 +388,37 @@ export class WorkbenchService {
             ),
           )
         }
+        case WORKBENCH_METHODS.aiStatus:
+          return success(request.id, this.workspaces.aiStatus())
+        case WORKBENCH_METHODS.aiRequest: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.requestAi(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.input, 'input') as unknown as AiAssistantRequest,
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.aiListAudit: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.listAiAudit(
+              requireString(params.workspaceId, 'workspaceId'),
+            ),
+          )
+        }
+        case WORKBENCH_METHODS.aiApply: {
+          const params = requireRecord(request.params)
+          return success(
+            request.id,
+            await this.workspaces.applyAi(
+              requireString(params.workspaceId, 'workspaceId'),
+              requireRecord(params.approval, 'approval') as unknown as AiApplyApproval,
+            ),
+          )
+        }
         case WORKBENCH_METHODS.commandPropose:
           return success(
             request.id,
@@ -461,6 +501,7 @@ export class WorkbenchService {
         gitBaselines: true,
         modelAnchoredReviews: true,
         reproducibleReports: true,
+        controlledAi: true,
       },
       capabilities: this.options.adapter.capabilities,
       capabilitiesFinal: this.options.adapter.capabilitiesFinal(),

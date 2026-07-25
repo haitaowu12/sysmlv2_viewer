@@ -6,7 +6,7 @@ backed by a locked, qualified language-engine runtime.
 
 ## Current implemented state
 
-Gates P1-P5 provide:
+Gates P1-P6 provide:
 
 - multi-file workspace loading and configured libraries;
 - locked VinQut/Pilot semantic authority plus non-authoritative Spec42
@@ -69,20 +69,35 @@ Phase 5 adds the qualified engineering-assurance workflow:
   approved source-backed interface edit, a completed review cycle, and
   generated evidence.
 
+Phase 6 adds the controlled-assistant boundary:
+
+- twelve narrow semantic/model tools and no raw repository access;
+- stable-identity citation validation and rejection of invented references;
+- typed command proposals with source edits, diagnostics, affected identities,
+  semantic diff, and no provider-side apply;
+- a separate user-only approval operation that safely revalidates after
+  workspace restart;
+- tamper-evident, diffable local AI audit records;
+- offline deterministic search/rename fallback with provider networking
+  disabled;
+- an Assistant patch-review surface with explicit network state;
+- removal of the legacy whole-document AI implementation and `410 Gone`
+  retirement responses.
+
 The old Vite viewer is isolated behind `?legacy=1` and remains the explicit
 read-only GitHub Pages compatibility demo. Its parser, fixed diagram tabs,
 Draw.io round trip, and browser store are not authoritative architecture.
 
 Not yet implemented as production workbench claims: complete notation-specific
-graphical mutation, controlled AI, desktop packaging, or release-candidate
-hardening. Gates P4 and P5 passed the integrated eight-task pilot. Gate P7
-remains mandatory before production release.
+graphical mutation, external AI-provider adapters, desktop packaging, or
+release-candidate hardening. Gates P4-P6 passed their integrated qualifications.
+Gate P7 remains mandatory before production release.
 
 ## Development
 
 ```bash
 npm install
-npm run verify:phase5
+npm run verify:phase6
 ```
 
 Run the service without a configured engine in preservation-control mode:
@@ -100,6 +115,7 @@ npm run qualify:phase2
 npm run qualify:phase3
 npm run qualify:phase4
 npm run qualify:phase5
+npm run qualify:phase6
 npm run benchmark:workbench -- \
   --candidate qualified-hybrid --profile medium --repetitions 1
 ```
@@ -113,6 +129,8 @@ npm run benchmark:workbench -- \
 - Phase 3 gate candidate: `docs/revamp/21-phase3-gate-decision.md`;
 - Phase 4 component status: `docs/revamp/23-phase4-product-shell-status.md`;
 - Phase 5 gate decision: `docs/revamp/25-phase5-gate-decision.md`;
+- Phase 6 safety contract: `docs/architecture/controlled-ai.md`;
+- Phase 6 gate decision: `docs/revamp/27-phase6-gate-decision.md`;
 - exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
 - exact Phase 3 command observation:
   `docs/revamp/phase3-qualification-observation.json`;
@@ -120,6 +138,8 @@ npm run benchmark:workbench -- \
   `docs/revamp/phase4-qualification-observation.json`;
 - integrated Phase 5 observation:
   `docs/revamp/phase5-qualification-observation.json`;
+- controlled Phase 6 observation:
+  `docs/revamp/phase6-qualification-observation.json`;
 - medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
 - mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
 
