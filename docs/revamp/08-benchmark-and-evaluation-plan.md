@@ -1,160 +1,97 @@
 # Benchmark and Evaluation Plan
 
-Purpose: qualify architecture choices before product claims.
+Purpose: qualify engines, service/protocol/transports, and later product workflows before claims.
 
 ## Workspaces
 
 | Tier | Files | Elements | Use |
 |---|---:|---:|---|
-| small | 10 | 1,000 | CI smoke and edit latency |
-| medium | 100 | 10,000 | primary engineering laptop acceptance |
-| large | 500 | 50,000 | scale characterization and resource limits |
+| small | 10 | 1,000 | CI smoke, candidate operations, edit latency |
+| medium | 100 | 10,000 | primary laptop acceptance |
+| large | 500 | 50,000 | scale/resource/degraded-state characterization |
 
-Each tier is generated from deterministic seeds plus reviewed hand-authored edge fixtures. Generated volume cannot replace realistic semantic density.
+Deterministic generated volume is supplemented by reviewed engineering fixtures containing imports/aliases/cycles, official libraries/units, definitions/usages, structures/interfaces/flows, requirements/verification, bounded behaviors, unresolved/ambiguous cases, metadata/comments/Unicode/unknown ranges, two baselines, views, reviews, and evidence.
 
-## Scenario composition
+## P1 candidate qualification
 
-Every benchmark contains:
+Run the identical operation manifest against every viable candidate through the adapter harness. Capture raw evidence before normalization.
 
-- nested packages and multiple source roots;
-- explicit/imported/aliased names;
-- standard-library types/units;
-- parts, ports, interfaces, connections, and flows;
-- requirements, satisfy, verify, and verification cases;
-- actions/states at bounded density;
-- cross-file references and cycles;
-- unresolved/ambiguous negative cases;
-- comments, metadata, Unicode, and unknown preserved ranges;
-- two Git baselines with rename, move, type/value/relationship changes;
-- saved diagram/matrix queries;
-- review findings/evidence manifests.
+| Group | Measures |
+|---|---|
+| correctness | parse/recovery; diagnostics; owners/names/types/relationships; library provenance; Pilot/spec agreement |
+| preservation | spans, comments, docs, metadata, Unicode, line endings, formatting, unknown syntax, edit boundaries |
+| LSP | completion/hover/definition/references/rename/tokens/symbols/formatting/actions |
+| operations | cold/warm startup, first content, incremental p50/p95, memory, cancellation, crash/restart/cache |
+| distribution | clean build/install, artifact hash/size/SBOM/notices, macOS/Windows, stdio/loopback, offline |
 
-## Target thresholds
+Discrepancies are classified against formal specifications/resolutions, official release artifacts, and matching Pilot as described in `14-engine-comparative-qualification-plan.md`. No candidate output is silently declared correct by majority.
 
-Measured on an identified normal engineering laptop:
+## Targets
 
 | Measure | Target |
 |---|---:|
-| warm reopen, medium | < 3 s |
-| first useful explorer content, medium | < 5 s |
-| ordinary incremental diagnostics | < 500 ms p95 |
-| go-to-definition | < 300 ms p95 |
-| neighbourhood diagram, <500 elements | < 2 s |
-| matrix filter/update, 10,000 rows | < 500 ms p95 |
-| medium semantic baseline diff | < 10 s |
-| UI main-thread long tasks | no >100 ms recurring blockage during index/report |
+| warm reopen, medium | <3 s |
+| first useful explorer content, medium | <5 s |
+| ordinary incremental diagnostics | <500 ms p95 |
+| go-to-definition | <300 ms p95 |
+| neighbourhood generation under 500 elements | <2 s |
+| 10,000-row matrix update | <500 ms p95 |
+| medium semantic diff | <10 s |
+| UI long tasks | no recurring >100 ms block during index/report |
 
-## Measurement protocol
+P1 measures language/service targets. Later phases measure projections, matrices, diff, report, and UI separately so transport/render time is not attributed to the engine.
 
-- fixed CPU/memory/OS/tool versions recorded;
-- network disabled;
-- cold and warm cache runs separated;
-- 5 warm-up operations, then at least 30 measured interactive operations;
-- median, p95, max, allocation/RSS, and cancellation latency reported;
-- raw JSON committed under `generated/benchmarks/` only when deterministic and size-bounded;
-- regression threshold: >10% and statistically credible requires explanation/approval;
-- engine, adapter schema, library hash, workspace commit, and benchmark seed included.
+## Protocol
 
-## Benchmarks
+- identify hardware, OS, power mode, commit, candidate/adapter/protocol/reference/library pins;
+- disable external network except the explicitly tested transport;
+- separate cold library, cold workspace, and warm workspace;
+- five warm-ups and at least 30 interactive samples;
+- report median, p95, max, RSS/peak memory, CPU, output size, and cancellation;
+- commit bounded raw JSON plus exact operation/seed/config;
+- explain statistically credible regressions over 10%;
+- never redefine a missed target; owner exceptions identify impact, mitigation, owner, and expiry.
 
-BENCH-01 cold install/first library materialization.
-BENCH-02 cold workspace open.
+## Benchmark catalog
+
+BENCH-01 clean build/install/library materialization.
+BENCH-02 cold workspace open and progressive status.
 BENCH-03 warm reopen.
-BENCH-04 first partial explorer snapshot.
-BENCH-05 single-file ordinary edit diagnostics.
-BENCH-06 cross-file rename preview/validation.
-BENCH-07 definition/references/workspace symbol.
-BENCH-08 neighbourhood projection/layout/render.
-BENCH-09 10k-row matrix filter/group/sort.
-BENCH-10 baseline checkout/load/semantic comparison.
-BENCH-11 report generation/cancellation.
-BENCH-12 rule-pack evaluation.
-BENCH-13 sidecar crash/restart and cache recovery.
-BENCH-14 large-workspace limit/degraded-state behavior.
+BENCH-04 first partial semantic/explorer data.
+BENCH-05 ordinary edit diagnostics.
+BENCH-06 cross-file definition/references/rename preview.
+BENCH-07 symbols/completion/hover/tokens/format.
+BENCH-08 snapshot creation/serialization/invalidation.
+BENCH-09 forced timeout/crash/restart/corrupt cache.
+BENCH-10 stdio versus loopback overhead/backpressure/reconnect.
+BENCH-11 neighbourhood projection/layout/render.
+BENCH-12 10k-row matrix filter/group/sort.
+BENCH-13 baseline load/semantic comparison.
+BENCH-14 rules/report generation/cancellation.
+BENCH-15 large-workspace resource/degraded-state behavior.
 
-## Differential language evaluation
+## Preservation and identity
 
-For eligible fixtures compare Spec42 and the official Pilot:
+Property/mutation tests place edits around comments, unknown constructs, metadata, Unicode, CRLF/LF, malformed recovery, nested expressions, and multiple files. Untouched ranges remain byte-identical unless formatting is explicit; unsafe overlap rejects.
 
-- parse/recovery result;
-- diagnostic code/category/location/severity;
-- qualified names/owners;
-- definition/usage/type bindings;
-- standard-library provenance;
-- relationship endpoints;
-- workspace symbol counts;
-- command edit validation.
+Identity/diff goldens include formatting, ordinary edit, command rename, same/cross-file move, file rename, type/multiplicity/value/documentation, relationships, layout-only, and review-only. ADR-002 continuity and semantic categories must hold.
 
-Discrepancies are triaged:
+## Transport/deployment security evaluation
 
-1. workbench adapter defect;
-2. Spec42 defect;
-3. Pilot defect;
-4. allowed/unspecified implementation variance;
-5. unsupported capability-profile item.
+- stdio framing, invalid schema, timeout, cancellation, idempotency;
+- loopback-only bind, IPv4/IPv6, Host/Origin allowlist, pairing, expiry/revocation;
+- malicious origin, DNS rebinding, CSRF/CSWSH, replay, oversized message, rate/connection exhaustion;
+- path traversal/symlink/watcher abuse and workspace-handle authorization;
+- Tauri capability scope and no semantic dependency;
+- hosted test profile role/tenant isolation before Profile D;
+- secrets/log/model-content inspection, CSP/report sanitization, egress indicator.
 
-No discrepancy is silently normalized away.
+## Usability/accessibility
 
-## Source preservation evaluation
+At least three engineers not implementing the feature, including a keyboard-heavy user, perform the eight tasks in `13-ui-ux-pattern-review.md`. Include a non-modeler reviewer for web-only tasks. Record time, errors, backtracks, assistance, confidence, and repairs.
 
-Property/mutation tests generate edits around:
+Gate P4 requires successful rerun without developer intervention and closure of critical accessibility/usability failures.
 
-- comments and documentation;
-- unknown constructs;
-- metadata;
-- Unicode identifiers;
-- CRLF/LF and indentation;
-- malformed/recovered syntax;
-- nested braces and expression boundaries.
+## Report schema
 
-Pass: untouched ranges remain byte-identical unless formatting is the explicit command. Unsafe overlap rejects the command.
-
-## Identity and semantic diff evaluation
-
-Golden scenarios:
-
-- formatting-only;
-- ordinary value/doc edit;
-- typed-command rename;
-- typed-command move within file;
-- move across files;
-- file rename;
-- type/multiplicity/value changes;
-- relationship create/delete;
-- layout-only;
-- review-only.
-
-Pass: stable identities and aliases behave per ADR-002; rename/move are not reported as delete/create when performed through commands.
-
-## Usability pilot
-
-Participants: at least three engineers not implementing the tested feature; include one keyboard-heavy user. Record completion time, errors, assistance, confidence, and repair actions.
-
-Tasks:
-
-1. open sample workspace;
-2. find unresolved reference;
-3. navigate requirement to satisfying element;
-4. identify unverified requirement;
-5. add interface and inspect source edits;
-6. compare baselines;
-7. record and close finding;
-8. export interface report.
-
-Phase 4 gate: all primary tasks complete without developer intervention; critical failures fixed and rerun.
-
-## Security/accessibility evaluation
-
-- path traversal/symlink/watcher abuse;
-- malformed IPC/provider/report input;
-- CSP and navigation enforcement;
-- secrets/log/model-content inspection;
-- keyboard-only primary workflows;
-- screen-reader names/relationships;
-- focus order and restoration;
-- contrast, scalable text, reduced motion;
-- diagram alternative table/tree.
-
-## Reporting
-
-Every benchmark report includes hardware, OS, commit, engine/library pins, config, sample size, cache state, raw-data link, failures, and mitigation. A missed target remains a failed acceptance item until owner accepts a documented exception; success is not redefined.
+Every evaluation report includes workspace/source commit, reference release, candidate/selected engine, adapter/protocol/service/UI/rule versions, deployment profile/transport, hardware/OS, cache state, sample size, raw evidence, exclusions, discrepancies, failures, and mitigation.

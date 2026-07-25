@@ -5,7 +5,7 @@ Phase 0 status: proposed architecture candidate awaiting Gate P0 owner approval;
 
 ## Mission
 
-Provide a local-first engineering workbench for opening, authoring, understanding, reviewing, comparing, and evidencing real multi-file SysML v2 projects.
+Provide a web-native, local-first engineering workbench for opening, authoring, understanding, reviewing, comparing, and evidencing real multi-file SysML v2 projects. The same client operates against a local companion, an offline desktop package, or a future hosted service.
 
 ## Primary users
 
@@ -15,6 +15,8 @@ Provide a local-first engineering workbench for opening, authoring, understandin
 - review chairs recording findings against stable model elements;
 - configuration managers comparing source-controlled baselines;
 - tool administrators deploying private/offline engineering environments.
+- chief engineers and assurance leads governing baselines, findings, and evidence;
+- project managers and stakeholders consuming approved views, comparisons, reports, and dispositions without installing modeling software.
 
 ## Product invariants
 
@@ -30,6 +32,9 @@ Provide a local-first engineering workbench for opening, authoring, understandin
 10. Provider AI is optional, explicit, minimized, and indicated.
 11. AI proposes commands/patches; deterministic validation and approval remain mandatory.
 12. Supported language profile entries link to mandatory tests.
+13. Official OMG specifications/releases, not any third-party engine, are the semantic reference.
+14. Deployment choices do not fork the semantic or command core.
+15. Every visual mark identifies reference, conventional, or analytical provenance.
 
 ## Core jobs
 
@@ -47,6 +52,15 @@ An engineer can:
 10. generate deterministic evidence packages;
 11. request grounded AI analysis or a reviewable proposal.
 
+A non-modeler can, through an authorized browser session:
+
+1. open published/scoped views and reports;
+2. navigate properties and trace relationships;
+3. compare two published baselines;
+4. comment or record an assigned finding;
+5. respond to and approve/reject an invited disposition;
+6. download a reproducible evidence package.
+
 ## Information architecture
 
 ```text
@@ -63,7 +77,7 @@ Activity rail
 └── Settings
 ```
 
-Primary regions: left navigation, central editor/view, right properties/relationships/review, bottom problems/output/query/changes. Fixed diagram tabs are not the product model.
+Primary regions: left navigation, central editor/view, right properties/relationships/review, bottom problems/output/query/changes. Fixed diagram tabs are not the product model. The shell is one shared web application behind the Workbench Client SDK; Tauri may package it but owns no semantic logic.
 
 ## First production pilot
 
@@ -140,6 +154,17 @@ HTML/PDF reports have deterministic content and a machine-readable manifest. Gen
 - credentials stay in OS keystore or privileged local service;
 - static demo contains only packaged samples.
 
+Browser + local companion adds explicit pairing, loopback-only binding, trusted-origin allowlists, short-lived credentials, server-issued workspace/file capability handles, CSRF/WebSocket protections, expiry/revocation, and deny-by-default egress.
+
+## Deployment contract
+
+- public web evaluation: packaged samples and bounded real workflows;
+- browser + local companion: first-class local production authoring/review;
+- Tauri desktop: same product, fully offline packaging;
+- managed hosted: future authenticated deployment of the same protocol/service contracts.
+
+Local installation is required only for arbitrary local folders/Git/engine execution, offline report toolchains, local keystore/provider access, or private evidence files.
+
 ## Non-goals through Phase 5
 
 - real-time multi-user collaboration;
@@ -156,4 +181,4 @@ README and marketing must report only completed phase gates. Build/test success,
 
 ## Gate P0 owner approval
 
-Approve or change the ten decisions in `03-architecture-options.md`. Approval authorizes Phase 1 only. It does not approve production claims or merge later phases.
+Approve or change the ten decisions in `16-owner-decision-packet.md`. Approval authorizes the revised Phase 1, **Engine Qualification and Workbench Service Foundation**, only. It does not select a runtime engine, approve production claims, or merge later phases.

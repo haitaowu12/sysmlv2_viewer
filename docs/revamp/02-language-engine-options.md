@@ -1,183 +1,82 @@
 # Language Engine Options
 
-Status: recommended by proposed ADR-001; awaiting Gate P0 owner approval and Phase 1 qualification
-Language profile: SysML 2.0 / KerML 1.0, official release `2026-04`
+Status: candidate set approved for qualification by proposed ADR-001; no runtime selected.
 
-## Recommendation
+## Decision frame
 
-Select Option D: hybrid evidence architecture with one runtime authority.
+The engine is an implementation component. It does not define SysML/KerML meaning. Every option sits behind the same product-owned Language Service Adapter and must yield normalized observations without leaking native AST types.
 
-- Interactive authority: Spec42 `v0.46.0` at commit `a3f066ee4095a0eb8b37545ffd4846d42804658a`.
-- Authority boundary: workbench-owned LSP plus semantic-snapshot adapter.
-- Independent oracle: official Release/Pilot `2026-04`.
-- Legacy parser: compare-only/import compatibility for a bounded migration; never silent fallback.
-- Engine failure behavior: explicit degraded/read-only semantic mode. Source text remains accessible. No alternate authority is invented.
-- Contingency: qualify a Java 21 wrapper around the official Pilot using the same adapter if Spec42 fails mandatory coverage or performance gates.
+## Options
 
-## Evaluation
-
-| Criterion | A: existing LSP | B: official Pilot | C: custom parser | D: recommended hybrid |
+| Option | Composition | Strength | Principal liability | Phase 0 disposition |
 |---|---|---|---|---|
-| practical language coverage | strongest reusable candidate, but partial | strongest provenance | current subset only | Spec42 interactive + Pilot differential evidence |
-| license | Spec42 MIT; bundled libraries separate | EPL-2.0 | project-controlled, but repo unlicensed | compatible pending notices/legal review |
-| local packaging | small native binaries | Java/Eclipse/Tycho heavy | easiest | native sidecar first; Pilot isolated |
-| standard libraries | bundled/configurable | official | not resolved authoritatively | pinned official lock |
-| LSP editing | implemented | Eclipse services, no officially supported standalone LSP found | absent | implemented behind adapter |
-| semantic snapshot | host API exists | EMF model/logic | shallow AST | normalized workbench snapshot |
-| source edits | LSP `WorkspaceEdit` | possible through Xtext | templates/regex | engine edit + command transaction |
-| performance evidence | incomplete at target scale | incomplete | only small examples | qualification benchmarks required |
-| maintenance | pre-1.0 churn | upstream complexity | unbounded language reimplementation | adapter contains churn |
-| conformance evidence | project matrix says partial | reference implementation | optional fixtures | mandatory differential corpus |
+| A reusable independent engine/LSP | Spec42 or daltskin | local packaging, editor/CI tooling, active implementation | independent semantic fidelity and pre-1.0 volatility | qualify both exact pins |
+| B official Pilot service | exact official Pilot/Xtext/EMF wrapped locally | closest executable lineage to official release | packaging/startup/memory/API coupling | qualify exact-pin wrapper |
+| C continue custom parser | current hand-written parser | controlled code and existing subset | no credible KerML/multi-file/full preservation path; high maintenance | negative control only |
+| D hybrid official components | product service uses selected official parser/resolver/adapters plus product normalization | may retain fidelity while reducing full Pilot host assumptions | split-brain risk and component upgrade burden | architecture spike and qualify if authority map is unambiguous |
+| E wrapper comparison | VinQut architecture rebuilt against exact Pilot | proves standalone LSP feasibility | current bundle/version/license/performance uncertainty | qualify as wrapper/reference path |
 
-## Option A — reuse an existing language server
+There is no “recommended hybrid runtime” in Phase 0. “Hybrid” describes a possible qualification outcome, not permission for silent fallback.
 
-### Spec42
+## Required adapter
 
-Best available reusable candidate. It exposes editor services and a protocol-neutral immutable workspace snapshot. Its release assets cover the first target operating systems.
-
-Risks:
-
-- `v0.46.0` is same-day, pre-1.0 software;
-- parser and semantic API versions may change rapidly;
-- project documentation contains version drift;
-- official-corpus differential CI had an observed invocation defect;
-- incremental snapshot assembly and target-scale performance are not proven.
-
-Control: exact pin, schema handshake, fixture qualification, benchmark gate, SBOM, checksum verification, and no floating update.
-
-### VoidAliot
-
-Strong observed product baseline. Legally unsuitable for embedding or adaptation. Rejected.
-
-### SysIDE
-
-Legacy is archived and stale. Current implementation is license-controlled. Rejected absent a commercial decision.
-
-### ANTLR community LSP
-
-`daltskin/sysml-v2-lsp@0.24.0` is active, MIT, TypeScript/ANTLR, and exposes broad LSP and benchmark surfaces. Its grammar is pinned to `2026-01`, it owns a separate semantic-analysis implementation, and no compiler-grade host snapshot API was established. Retain as a differential data point; do not substitute it without the same corpus/performance qualification and an ADR update.
-
-### Official Pilot community wrapper
-
-`VinQut/sysmlv2-lsp` demonstrates that a Java 21 fat-JAR LSP around the Pilot is feasible. The current published server reports 45–60 second library indexing and bundled license/version facts that do not match the selected 2026-04 pin. Use its architecture as evidence for the defined fallback, not its binary as the selected authority.
-
-## Option B — embed official Pilot/compiler components
-
-Advantages:
-
-- official provenance;
-- generated metamodel and broad semantic logic;
-- official standard libraries and validation behavior;
-- current work is reducing Eclipse coupling.
-
-Costs:
-
-- Java/Eclipse/Xtext/EMF/Tycho packaging;
-- no officially supported standalone LSP distribution located; a community wrapper proves feasibility but not acceptance;
-- complex startup, memory, upgrade, and cross-platform integration;
-- target latency unproven;
-- 2026-05 code is entangled with 2.1 Beta behavior.
-
-Decision: oracle and defined fallback, not first interactive authority.
-
-## Option C — continue custom parser development
-
-To make the current parser authoritative the project would need to own:
-
-- full KerML/SysML grammar evolution;
-- multi-file namespace/import semantics;
-- standard-library/KPAR loading;
-- type and relationship resolution;
-- semantic tokens and all language navigation;
-- safe formatting and source preservation;
-- compiler-grade edit calculation;
-- error recovery and incremental indexing;
-- continuous differential conformance.
-
-This is a language implementation program, not a product-support task. Current AST coupling across store, views, and bridge increases cost. Rejected.
-
-## Option D — hybrid
-
-“Hybrid” does not mean two runtime authorities.
-
-```mermaid
-flowchart LR
-  UI --> Adapter[Workbench language adapter]
-  Adapter --> LSP[Spec42 LSP]
-  Adapter --> Host[Spec42 host/snapshot API]
-  Host --> Snapshot[Normalized semantic snapshot]
-  Corpus[Official 2026-04 corpus] --> Qualification[Differential qualification]
-  Pilot[Official 2026-04 Pilot] --> Qualification
-  LSP --> Qualification
-  Legacy[Current parser] -. compare-only migration .-> Qualification
+```text
+LanguageServiceAdapter
+  initialize(referenceRelease, libraryLock, capabilityRequest)
+  openWorkspace(config, sourceHandles)
+  applyDocumentChanges(versionedEdits)
+  diagnostics(scope)
+  symbols(scope)
+  definition(position)
+  references(identity)
+  completion(position)
+  hover(position)
+  semanticTokens(document)
+  rename(identity, newName) -> proposed edits
+  snapshot(scope) -> NormalizedSemanticSnapshot
+  format(scope) -> proposed edits
+  health()
+  closeWorkspace()
 ```
 
-The adapter owns:
+The adapter response includes engine/adapter/reference pins, capability status, source provenance, freshness, partial/opaque markers, timing, and deterministic error codes.
 
-- version/schema negotiation;
-- workspace URI normalization;
-- library locks;
-- diagnostic normalization without erasing original codes;
-- semantic DTOs;
-- timeout/cancellation/resource limits;
-- deterministic snapshot metadata;
-- fail-closed behavior;
-- upgrade compatibility tests.
+## Mandatory comparative criteria
 
-## Version strategy
-
-```yaml
-languageProfile: sysml-2.0-kerml-1.0
-officialRelease:
-  tag: 2026-04
-  commit: 9baca5908ca28b53da085de69336fde48420ea8f
-pilotOracle:
-  tag: 2026-04
-  commit: 20897e3122f2c2f8b29389745f0caaaeb7c6e21a
-interactiveEngine:
-  name: spec42
-  version: 0.46.0
-  commit: a3f066ee4095a0eb8b37545ffd4846d42804658a
-adapterSchema: 1
-```
-
-The `2026-05` 2.1 Beta corpus becomes an `advanced/experimental` profile only after an explicit ADR update.
-
-## Failure modes and fallback
-
-| Failure | Required behavior |
+| Group | Criteria |
 |---|---|
-| sidecar absent or checksum mismatch | block semantic workspace open; explain remediation |
-| incompatible adapter/schema | block indexing; never reinterpret through legacy parser |
-| crash/timeout/resource limit | preserve source; enter explicit degraded state; offer restart |
-| library lock/cache mismatch | rebuild from pinned source or block |
-| unsupported syntax | preserve text; mark opaque/unsupported; fail unsafe commands |
-| engine/Pilot diagnostic disagreement | record and triage; capability remains partial until resolved |
-| performance gate failure | optimize/contain, then run official Pilot sidecar comparison |
+| reference | specification/release supported, KerML coverage, SysML coverage, official corpus agreement |
+| packages | standard-library loading, KPAR, imports, aliases, visibility, cycles |
+| semantics | definitions/usages, typing, specialization, redefinition, subsetting, multiplicity, feature chains |
+| source | exact spans, formatting, comments, metadata, Unicode, unknown-syntax preservation |
+| editing | incremental update, diagnostics, rename, references, completion, hover, semantic tokens, formatting, command/edit generation |
+| snapshot | relationship/type/ownership fidelity, derived values, provenance, stable normalization |
+| operations | startup, p50/p95 latency, memory, 1k/10k/50k, cancellation, timeout, crash/restart, cache recovery |
+| distribution | license, redistribution, SBOM, macOS/Windows, stdio/loopback packaging, offline |
+| sustainability | maintenance health, release cadence, upgrade volatility, test depth, security response |
 
-## Mandatory Phase 1 acceptance suite
+`14-engine-comparative-qualification-plan.md` defines fixtures, scoring, gates, and discrepancy resolution.
 
-1. Build or verify Spec42 from the exact pin and record checksums/SBOM.
-2. Run mandatory repository fixtures plus licensed official `2026-04` fixtures.
-3. Run the same eligible fixtures through the official Pilot.
-4. Compare parse status, diagnostic location/code, definitions, references, qualified names, and library bindings.
-5. Prove multi-file imports, aliases, visibility, cycles, and clean restart.
-6. Exercise all required LSP methods through the adapter.
-7. Prove a rename returns bounded workspace edits and validates in an overlay.
-8. Preserve comments, metadata, Unicode names, unknown constructs, and malformed recovery ranges.
-9. Validate semantic snapshot source spans, ownership, definitions/usages, relationships, unresolved facts, engine/library versions, and hashes.
-10. Run small/medium/large benchmarks from `08-benchmark-and-evaluation-plan.md`.
-11. Inject crash, timeout, corrupt library, incompatible schema, and missing binary.
-12. Prohibit legacy parser output from driving authoritative UI behavior.
+## Runtime outcomes
 
-## Deletion trigger
+- **GO:** one engine passes the required production profile.
+- **GO WITH CONDITIONS:** one engine passes a bounded profile; unsupported constructs are preserved/opaque and claims are constrained.
+- **NO-GO:** no engine satisfies semantic, preservation, operational, and distribution gates.
+- **HYBRID GO:** responsibilities are split only with an explicit operation→authority table and no automatic fallback.
 
-Delete the current parser/store/view semantic dependencies when:
+## Migration
 
-- mandatory retained profile fixtures pass through the new adapter;
-- native projections consume the normalized snapshot;
-- unsupported-range protection is implemented;
-- two consecutive pinned-corpus qualification runs are reproducible;
-- valuable legacy imports have a tested converter or explicit retirement record.
+1. Implement adapter schemas and harness without committing the product to a candidate.
+2. Run the same official/mandatory fixtures and operations.
+3. Seal raw and normalized evidence.
+4. Select outcome and amend ADR-001.
+5. Integrate selected runtime into the independent Workbench Service.
+6. Remove legacy parser authority and any losing-candidate product coupling.
 
-Target: parser-authority deletion in Phase 2, not indefinite compatibility.
+## Failure behavior
+
+- candidate crash/timeout never promotes legacy output to current truth;
+- unsupported/unknown syntax remains source-preserved and commands fail closed;
+- version/hash mismatch blocks workspace semantic open;
+- stale snapshot is explicitly marked and cannot validate apply;
+- disagreement creates an evidence record rather than an invented consensus.

@@ -8,7 +8,7 @@ Principle: migration protects valuable user source and evidence, not obsolete ar
 |---|---|---|---|---|---|
 | `.sysml`/`.kerml` source | retain | canonical engineering content | exact | low | open through workspace loader |
 | Monaco integration | refactor | strong text UX | high with LSP | medium | replace custom provider wiring |
-| React UI/components | selective refactor | accelerates shell | medium | medium | move behind typed protocol |
+| React UI/components | selective refactor | shared web product surface | high behind SDK | medium | move behind typed protocol |
 | React Flow nodes | provisional retain | useful canvas interactions | medium | medium | diagram DTO/command adapter |
 | SVG/PNG export | refactor | stakeholder output | high | medium | deterministic report manifest |
 | examples | selective retain | onboarding/fixtures | uncertain syntax | low | validate against selected profile |
@@ -21,14 +21,17 @@ Principle: migration protects valuable user source and evidence, not obsolete ar
 | browser-only file state | delete | simple demo | low | data-loss risk | project format |
 | fixed tab routes/IDs | delete | familiarity only | low | medium | no compatibility promise |
 | Draw.io round trip | delete | stakeholder markup | conflicts | high | export/attachment only |
-| GitHub Pages production | delete role | public demo | incompatible | low | optional read-only demo |
+| GitHub Pages production authority | delete role | public reach only | incompatible | low | Profile A evaluation may use static hosting |
 
 ## Migration sequence
 
-### Phase 1
+### Phase 1 — Engine Qualification and Workbench Service Foundation
 
-- introduce workspace and language adapter beside the current app;
-- make new language service authoritative for a sample workspace;
+- introduce product-owned adapter, candidate harness, protocol, Client SDK, and independent service beside the current app;
+- run identical evidence against candidates; do not select by integration convenience;
+- provide stdio and authenticated loopback transports;
+- end with GO/GO WITH CONDITIONS/NO-GO/HYBRID GO and amend ADR-001;
+- only then make the selected runtime authoritative for a bounded sample workspace;
 - legacy UI remains read-only for non-migrated projections;
 - add source-preservation guards;
 - no parser feature expansion.
@@ -78,7 +81,7 @@ Extraction policy:
 
 1. rebase/examine after P0 approval;
 2. extract fixture provenance, oracle process controls, output guards, and deterministic qualification reports;
-3. reject parser-authority expansion and any tool that bypasses the selected adapter;
+3. reject parser-authority expansion and any tool that bypasses the candidate-independent adapter;
 4. port tests before implementation;
 5. preserve branch history as evidence; do not force-push or silently merge.
 
@@ -111,21 +114,24 @@ A component can be deleted when:
 
 | ID | Risk | P/I | Control | Accountable role | Introduce / close | Evidence |
 |---|---|---|---|---|---|---|
-| R1 | Spec42 pre-1.0 churn | H/H | exact pin, adapter schema, upgrade suite | language lead | P1 / before P1 gate | ENG-UPGRADE-001 |
+| R1 | runtime candidates drift/pre-1.0 churn | H/H | exact pins, common adapter/harness, upgrade suite | language lead | P1 / before selection | ENG-UPGRADE-001 |
 | R2 | incomplete language semantics | H/H | capability profile + Pilot differential fixtures | language lead | P1 / before each profile claim | LANG-DIFF-001 |
-| R3 | target-scale latency misses | M/H | benchmark before UX migration; Pilot fallback spike | performance lead | P1 / before P1 gate or owner exception | PERF-P1-001 |
+| R3 | no candidate meets fidelity/performance together | M/H | weighted differential qualification; conditional/hybrid only with unambiguous authority | architecture lead | P1 / selection gate | PERF-P1-001 |
 | R4 | dual authority persists | M/C | compare-only flag and deletion trigger | architecture lead | P1 / before P2 gate | ARCH-AUTH-001 |
 | R5 | unknown syntax damaged | M/C | opaque ranges and fail-closed commands | command-engine lead | P1 / before first P3 write | CMD-OPAQUE-001 |
 | R6 | identity breaks review anchors | M/C | identity property tests and alias receipts | semantic-core lead | P2 / before P2 gate | ID-STABLE-001 |
-| R7 | desktop IPC/path/sidecar escape | M/C | scoped IPC, app-mediated files, sandbox and escape tests | security lead | P1 / before first P1 workspace open | SEC-LOCAL-001 |
+| R7 | local service/IPC/path escape | M/C | capability handles, path allowlists, sandbox and escape tests | security lead | P1 / before first workspace open | SEC-LOCAL-001 |
 | R8 | Draw.io reintroduces authority/egress | M/H | local export default; isolated consented remote markup only | product + security leads | P4 / before P4 integration | SEC-DRAWIO-001 |
 | R9 | license/notices block distribution | M/H | root license, SBOM, EPL source/notices review | release manager | P1 / source use before P1; distribution before P7 | LIC-001 |
 | R10 | CI corpus remains optional | M/H | repository-managed mandatory fixtures | quality lead | P1 / before P1 gate | CI-FIXTURE-001 |
 | R11 | reports vary by environment | M/H | deterministic renderer/golden manifests | report lead | P5 / before P5 gate | REPORT-DET-001 |
 | R12 | AI leaks or mutates source | M/C | disabled default, narrow tools, consent, approval transaction | AI privacy lead | P6 / before first provider action | AI-SAFE-001 |
 | R13 | local branch conflicts with revamp | M/M | evidence-only extraction after ADR approval | repository maintainer | P1 / before extracted merge | MIG-BRANCH-001 |
-| R14 | Tauri WebView differences | M/M | macOS/Windows shell spike and E2E matrix | desktop lead | P1 / before shell commitment at P1 gate | SHELL-E2E-001 |
+| R14 | browser/local companion hijack or DNS rebinding | M/C | loopback-only, pairing, origin/Host allowlist, short-lived tokens, CSRF/WS tests | security lead | P1 / before loopback acceptance | SEC-LOOPBACK-001 |
 | R15 | scope expands before gate | H/H | phase branches/draft PRs and gate checklist | product owner | all / every phase gate | GATE-CHECK-<phase> |
+| R16 | protocol/deployment contracts fork | M/C | generated schemas and cross-transport conformance suite | architecture lead | P1 / every transport release | PROTOCOL-001 |
+| R17 | Tauri becomes semantic dependency | M/H | service executable and UI contract tests without Tauri | architecture lead | P1 / P4 | ARCH-SHELL-001 |
+| R18 | hosted persistence creates shadow model | M/C | ADR-005 logical artifacts and adapter equivalence | data/security leads | before Profile D | PERSIST-EQUIV-001 |
 
 No critical residual risk is silently accepted. A residual risk needs a dated owner disposition with evidence, scope, expiry/review date, and affected acceptance criteria. Controls close before the capability enters; P7 re-verifies them rather than deferring first closure.
 

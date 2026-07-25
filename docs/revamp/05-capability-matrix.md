@@ -1,7 +1,7 @@
 # Language and Workbench Capability Matrix
 
 Profile version: `sysml-2.0-kerml-1.0/workbench-0`
-Official corpus pin: `2026-04`
+Official corpus pin: `2026-05` / `de1070ae8e79c21532b8004fc663d47b35d0e9fa`
 Phase 0 rule: all target states remain **planned** until mandatory tests exist
 
 ## Status vocabulary
@@ -19,11 +19,11 @@ Phase 0 rule: all target states remain **planned** until mandatory tests exist
 | Capability | Baseline | Phase target | Mandatory evidence id |
 |---|---|---|---|
 | package/namespace parsing | partial | supported | LANG-PKG-001 |
-| multi-file source roots | unsupported | supported P1 | WS-LOAD-001 |
-| imports and visibility | parsed only | supported P1 | LANG-IMPORT-001 |
-| aliases/qualified names | partial | supported P1 | LANG-NAME-001 |
-| recursive/cyclic dependency handling | unsupported | supported P1 | LANG-CYCLE-001 |
-| standard-library/KPAR resolution | optional/unresolved | supported P1 | LANG-LIB-001 |
+| multi-file source roots | unsupported | qualified P1, supported after engine decision | WS-LOAD-001 |
+| imports and visibility | parsed only | qualified P1 | LANG-IMPORT-001 |
+| aliases/qualified names | partial | qualified P1 | LANG-NAME-001 |
+| recursive/cyclic dependency handling | unsupported | qualified P1 | LANG-CYCLE-001 |
+| standard-library/KPAR resolution | optional/unresolved | qualified P1 | LANG-LIB-001 |
 | definitions and usages | partial | supported P2 profile | LANG-DU-001 |
 | typing/specialization/redefinition | partial | partial then supported by profile | LANG-TYPE-001 |
 | parts/ports/connections/flows/interfaces | partial | supported structural/interface profile | LANG-IF-001 |
@@ -42,23 +42,27 @@ Phase 0 rule: all target states remain **planned** until mandatory tests exist
 
 | Feature | Baseline | Target gate | Test id |
 |---|---|---|---|
-| syntax diagnostics | partial local parser | P1 | LSP-DIAG-001 |
-| semantic diagnostics | shallow | P1 profile | LSP-DIAG-002 |
-| semantic tokens | lexical only | P1 | LSP-TOKEN-001 |
-| completion/snippets | snippets | P1 | LSP-COMP-001 |
-| hover | unsupported | P1 | LSP-HOVER-001 |
-| definition/peek | unsupported | P1 | LSP-DEF-001 |
-| references | unsupported | P1 | LSP-REF-001 |
-| rename | direct/local string edits | P1/P2 identity | LSP-RENAME-001 |
-| document/workspace symbols | containment tree only | P1 | LSP-SYMBOL-001 |
-| formatting | unsupported | P1 | LSP-FMT-001 |
-| quick fixes/code actions | unsupported | P1 | LSP-ACTION-001 |
+| syntax diagnostics | partial local parser | qualify P1 | LSP-DIAG-001 |
+| semantic diagnostics | shallow | qualify P1 profile | LSP-DIAG-002 |
+| semantic tokens | lexical only | qualify P1 | LSP-TOKEN-001 |
+| completion/snippets | snippets | qualify P1 | LSP-COMP-001 |
+| hover | unsupported | qualify P1 | LSP-HOVER-001 |
+| definition/peek | unsupported | qualify P1 | LSP-DEF-001 |
+| references | unsupported | qualify P1 | LSP-REF-001 |
+| rename | direct/local string edits | qualify P1; identity P2 | LSP-RENAME-001 |
+| document/workspace symbols | containment tree only | qualify P1 | LSP-SYMBOL-001 |
+| formatting | unsupported | qualify P1 | LSP-FMT-001 |
+| quick fixes/code actions | unsupported | qualify P1 | LSP-ACTION-001 |
 
 ## Workbench capabilities
 
 | Area | Baseline | Target phase | Evidence |
 |---|---|---|---|
-| workspace lifecycle/reopen | unsupported | P1 | E2E-WS-001 |
+| candidate-independent service/adapter | unsupported | P1 | SERVICE-ADAPTER-001 |
+| Workbench Protocol/Client SDK | unsupported | P1 | PROTOCOL-001 |
+| stdio service transport | unsupported | P1 | TRANSPORT-STDIO-001 |
+| authenticated loopback transport | unsupported | P1 | TRANSPORT-LOOPBACK-001 |
+| workspace lifecycle/reopen | unsupported | P1 qualification foundation | E2E-WS-001 |
 | normalized semantic snapshot | dual shallow models | P2 | SEM-SNAP-001 |
 | stable identity | line/name/path hash | P2 | ID-STABLE-001 |
 | model query API | unsupported | P2 | QUERY-001 |
@@ -73,7 +77,10 @@ Phase 0 rule: all target states remain **planned** until mandatory tests exist
 | Git semantic diff | unsupported | P5 | DIFF-001 |
 | deterministic reports | SVG/PNG only | P5 | REPORT-DET-001 |
 | constrained AI | whole-document mutation | P6 | AI-SAFE-001 |
-| packaged offline install | static page | P7 | INSTALL-001 |
+| public web evaluation | static app | bounded A profile P4/P7 | DEPLOY-A-001 |
+| browser + local companion | unsupported | production B profile P4/P7 | DEPLOY-B-001 |
+| packaged offline desktop | static page | production C profile P7 | INSTALL-001 |
+| managed hosted | unsupported | future D profile | DEPLOY-D-001 |
 
 ## Fixture pack contract
 
@@ -104,5 +111,5 @@ Each capability entry becomes `supported` only when:
 1. its test id is mandatory in clean CI;
 2. expected diagnostics/snapshots/edits are golden-reviewed;
 3. unsupported neighboring syntax is documented;
-4. the exact engine/library/profile version is recorded;
+4. the exact engine/adapter/protocol/library/profile version is recorded;
 5. a failure cannot silently route to the legacy parser.

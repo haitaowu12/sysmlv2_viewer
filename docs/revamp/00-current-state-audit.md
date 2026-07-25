@@ -158,7 +158,7 @@ flowchart LR
 
 The embed is hosted at `https://embed.diagrams.net`. During the baseline capture the browser reported a 404 for the embed notification endpoint. Arbitrary Draw.io labels/styles can be interpreted back into model semantics. `applyAllPatches` can force queued patches through. This creates preservation, identity, and authority risks.
 
-Decision input: retain presentation export/markup capability only. Remove bidirectional semantic editing unless a later owner decision reverses ADR-003 and a preservation proof exists.
+Decision input: retain presentation export/markup capability only. Remove bidirectional semantic editing unless a later owner decision explicitly reverses the migration plan and a preservation proof exists.
 
 ## AI path
 
@@ -310,4 +310,4 @@ That branch is not merged into this audit. Useful validation and fixture assets 
 
 ## Audit conclusion
 
-Retain the editor and selected rendering/UI primitives. Replace the semantic center, workspace lifecycle, mutation model, persistence, deployment role, and AI contract. The target begins with a pinned language authority and a workbench-owned protocol boundary, not with new UI.
+Retain the editor and selected rendering/UI primitives. Replace the semantic center, workspace lifecycle, mutation model, persistence, deployment role, and AI contract. The target begins with official semantic references, comparative runtime qualification, and a workbench-owned service/protocol boundary—not with a preselected engine or new UI.

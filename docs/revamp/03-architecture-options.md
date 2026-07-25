@@ -1,200 +1,100 @@
-# Architecture Options and Selection
+# Architecture Options and Decision Package
 
-Status: proposed for Gate P0 owner approval
+## Recommended target
 
-## Recommended architecture
+A web-native, transport-neutral client/service product:
 
-Desktop-first Tauri 2 workbench with a shared React UI, a least-privilege Rust application service, and a pinned Spec42 language sidecar. The workbench builds a small wrapper around the pinned host crate and exposes standard LSP plus versioned `workbench/*` JSON-RPC methods over local stdio; it opens no network port. Keep an optional read-only static web demo. Do not retain browser or GitHub Pages as the production authority surface.
+- shared React/Monaco web application;
+- generated Workbench Client SDK;
+- versioned Workbench Protocol;
+- independently executable Workbench Service;
+- product-owned language adapter, normalized semantics, identity, command, query/projection, review, diff, rule, report, AI, and audit services;
+- local filesystem/Git and future hosted persistence adapters;
+- deployment profiles for public web evaluation, browser + local companion, Tauri desktop, and future managed hosting.
 
 ```mermaid
 flowchart TB
-  subgraph Shell[Tauri desktop shell]
-    UI[React workbench UI]
-    IPC[typed, allowlisted IPC]
-    App[workbench application service]
-    FS[workspace/filesystem + Git adapter]
-    Persist[project persistence]
-  end
-  subgraph Services[Local services]
-    Lang[Spec42 language sidecar + adapter]
-    Query[query + projection]
-    Cmd[command transactions]
-    Rules[rule engine]
-    Diff[semantic diff]
-    Reviews[review service]
-    Reports[report engine]
-    AI[AI orchestrator]
-  end
-  Source[SysML/KerML source + libraries + Git]
-
-  UI --> IPC --> App
-  App --> Lang
-  App --> Query
-  App --> Cmd
-  App --> Rules
-  App --> Diff
-  App --> Reviews
-  App --> Reports
-  App --> AI
-  App --> FS
-  App --> Persist
-  FS --> Source
-  FS -->|versioned document snapshots| Lang
-  Cmd --> FS
+  UI["Shared web application"] --> SDK["Workbench Client SDK"]
+  SDK --> WP["Workbench Protocol"]
+  WP --> ST["stdio / desktop IPC"]
+  WP --> LP["loopback HTTPS/WSS"]
+  WP --> RM["remote HTTPS/WSS"]
+  ST --> S["Independent Workbench Service"]
+  LP --> S
+  RM --> S
+  S --> LA["Language Service Adapter"]
+  LA --> E["Qualified runtime engine"]
+  S --> SM["Normalized semantics + identity"]
+  S --> APP["commands / queries / projections / reviews / diff / rules / reports / AI / audit"]
+  S --> FS["local workspace + Git"]
+  S -.future.-> HP["hosted repository/object/database adapters"]
 ```
 
-## Shell evaluation
+## Alternatives assessed
 
-| Option | Fit | Main cost | Decision |
+| Option | Benefits | Blocking concern | Decision |
 |---|---|---|---|
-| VS Code extension first | excellent text/LSP; weak ownership of assurance IA, review/report lifecycle, and packaged product | workbench experience constrained by extension APIs | reject as primary; possible later companion |
-| Electron | mature cross-platform Node/filesystem/process model | larger runtime and broad privilege surface; strict sandbox/IPC discipline required | fallback if Tauri WebView incompatibility blocks essential UX |
-| Tauri 2 | native packaging, Rust alignment, explicit capability scopes, bundled sidecars, smaller distribution | OS WebView variance and Rust skill/CI requirements | recommended |
-| local web + daemon | portable UI and service separation | browser permissions, daemon discovery/auth, larger exposed network surface | useful development/test mode, not primary |
-| browser-only | simple hosting | cannot satisfy filesystem, Git, sidecar, keystore, offline, or large-workspace needs safely | reject |
-| hybrid monorepo | shared services/UI across desktop and demo | requires explicit feature/authority boundaries | recommended product structure |
+| browser-only static app | zero install, easy evaluation | no safe arbitrary local files/Git/processes; browser-local authority risk | retain only Profile A |
+| VS Code-first extension | excellent language/text/Git host | engineering review/product UX constrained by editor extension contract; non-modelers underserved | optional future client, not product center |
+| Tauri-centered desktop | offline/filesystem/process/keystore packaging | couples UI/services to shell; weak browser/hosted evolution | reject center; retain Profile C host |
+| Electron-centered desktop | mature Node/process ecosystem | same center coupling plus larger privilege/runtime surface | contingency packaging only |
+| browser + local companion | browser usability with local authority/processes | pairing/origin/loopback security is nontrivial | first-class Profile B |
+| independent service + multiple clients/transports | one semantic core, headless testing, deployment evolution | protocol/versioning/authorization responsibility | selected |
 
-Tauri’s official documentation supports [platform-specific bundled sidecars](https://v2.tauri.app/develop/sidecar/) and [allowlisted window/WebView capabilities](https://v2.tauri.app/security/capabilities/). The security model still requires a project threat model, path scopes, validated IPC schemas, restrictive CSP, and no arbitrary shell bridge. Electron remains a fallback only; its own [security guidance](https://www.electronjs.org/docs/latest/tutorial/security) emphasizes sandboxing, context isolation, CSP, current releases, and sender validation.
+## Service responsibility boundary
 
-## Process boundaries
+The Workbench Service owns:
+
+- workspace configuration, source/library discovery, Git/baseline state;
+- candidate-independent language adapter lifecycle;
+- normalized semantic snapshots and freshness;
+- stable identities and alias receipts;
+- typed command proposal/validation/apply/undo;
+- queries/projections;
+- rules, reviews, semantic diff, reports/evidence;
+- AI tool mediation and audit;
+- authorization and deployment-capability enforcement.
+
+React owns presentation, interaction state, accessibility, and optimistic display only. It does not parse SysML, calculate semantic patches, resolve references, or persist authoritative reviews.
+
+## Protocol boundary
+
+LSP remains the editor-intelligence protocol between appropriate client/service components. Workbench operations use product schemas over JSON-RPC 2.0 for bidirectional transports and bounded HTTPS artifact endpoints. Initialize negotiates versions/capabilities; all apply operations are stale-base-checked and idempotency-protected. See ADR-006.
+
+## Source-edit sequence
 
 ```mermaid
 sequenceDiagram
-  participant UI as Unprivileged WebView
-  participant App as Tauri application service
-  participant Lang as Language sidecar
-  participant Disk as Workspace/Git
-
-  UI->>App: typed request with workspace/session id
-  App->>App: authorize capability + validate schema/path
-  App->>Disk: canonicalize and read approved files
-  App->>Lang: versioned protocol request + document snapshots
-  Lang-->>App: immutable snapshot/diagnostics/edits
-  App-->>UI: bounded DTO
+  participant U as User/AI proposal
+  participant UI as Shared web UI
+  participant S as Workbench Service
+  participant A as Language Adapter
+  U->>UI: modeling intent
+  UI->>S: propose typed command
+  S->>A: validate base snapshot and calculate safe edits
+  A-->>S: edits, spans, diagnostics, opaque ranges
+  S-->>UI: patch + semantic diff + affected identities
+  U->>UI: explicit approval
+  UI->>S: apply exact proposal/idempotency key
+  S->>S: transactional file write + journal
+  S->>A: re-index changed documents
+  S-->>UI: receipt, diagnostics, snapshot version, undo
 ```
 
-- UI receives no raw filesystem, process, shell, Git, credential, or provider access.
-- Application service owns path canonicalization, symlink policy, watching, Git operations, snapshots, and transactions.
-- Language sidecar receives versioned document/library content through the application-mediated provider. It receives no workspace credentials, write access, or arbitrary path API.
-- The sidecar runs with network denied, a private working directory, bounded CPU/memory/time, and an OS process sandbox where the target platform provides one. Phase 1 adversarial tests attempt path, symlink, process, and network escape.
-- AI provider adapter receives only explicitly approved, minimized context.
-- A future shared deployment adds authentication and tenant isolation; it is not achieved by exposing the local daemon.
+No diagram or AI component writes source directly.
 
-## Responsibility boundaries
-
-| Package/service | Owns | Must not own |
-|---|---|---|
-| language-client | LSP/host protocol, engine lifecycle, normalized snapshot | reviews, commands, UI state |
-| semantic-model | immutable normalized DTOs, source provenance | parsing |
-| workspace-service | config, source roots, libraries, watching, index lifecycle | React state |
-| command-engine | typed commands, overlay validation, edits, conflict/undo receipt | direct UI rendering |
-| query-engine | deterministic model queries | hidden edits |
-| projection-engine | query-to-view DTOs | language parsing |
-| diagram-engine | canvas interaction and notation adapters | source string writes |
-| rule-engine | versioned deterministic findings | AI-only findings |
-| semantic-diff | identity-aware baseline comparison | line diff as semantic truth |
-| review-service | model-anchored review artifacts and lifecycle | canonical model semantics |
-| report-engine | deterministic render + manifest | unversioned external content |
-| ai-orchestrator | narrow tools, proposals, approval/audit | direct canonical writes |
-| shared-ui | accessible UI components | workspace authority |
-
-## Target dependency graph
-
-```mermaid
-flowchart LR
-  Desktop --> SharedUI
-  Demo --> SharedUI
-  SharedUI --> Protocol
-  Protocol --> Workspace
-  Workspace --> LanguageClient
-  Workspace --> SemanticModel
-  Command --> LanguageClient
-  Command --> SemanticDiff
-  Query --> SemanticModel
-  Projection --> Query
-  Diagram --> Projection
-  Rules --> Query
-  Reviews --> SemanticModel
-  Reports --> Query
-  Reports --> Rules
-  Reports --> Reviews
-  AI --> Query
-  AI --> Command
-```
-
-Dependency rule: arrows point toward lower-level contracts. UI packages cannot depend on engine-native AST types.
-
-## Projection architecture
-
-A projection is reproducible from:
-
-- semantic snapshot id and source hashes;
-- versioned query;
-- notation profile;
-- filters;
-- versioned layout;
-- review annotation layer.
-
-```yaml
-schemaVersion: 1
-id: propulsion-interface-review
-name: Propulsion Interface Review
-query:
-  roots: [Vehicle::Propulsion]
-  relationships: [containment, typing, connection, flow]
-  depth: 3
-filters:
-  includeKinds: [PartUsage, PortUsage, ConnectionUsage, InterfaceUsage]
-notation: interconnection
-layout: layouts/propulsion-interface-review.json
-annotations: reviews/propulsion-interface-review.json
-```
-
-Diagrams and matrices consume the same projection DTO. React Flow may render initial native diagrams but cannot reconstruct semantics.
-
-## Data ownership
-
-| Data | Authority | Format |
-|---|---|---|
-| model semantics | SysML/KerML source at pinned libraries | text/KPAR inputs |
-| Git baseline | repository commit/tag | Git |
-| project configuration | workspace file | YAML |
-| identities/saved views/rules/reviews | project artifacts | YAML/JSON |
-| layouts | project artifacts | JSON |
-| evidence manifests | project artifacts | JSON/YAML |
-| generated reports | reproducible output | HTML/PDF + manifest |
-| indexes/caches | disposable local state | `.sysml-workbench/` |
-| provider credentials | OS keystore/server process | never project files |
-
-## Draw.io target role
-
-Recommended pending Gate P0: export/markup-only.
-
-- no arbitrary XML-to-SysML semantic import;
-- no bidirectional authoritative synchronization;
-- exported diagram includes snapshot/view manifest;
-- returned markup may be attached as evidence or manually translated into review findings;
-- local file export is the default;
-- any retained remote diagrams.net markup runs in a separate no-IPC WebView with explicit payload/egress consent and is excluded from local-only mode.
-
-Removal remains preferable if an offline isolated export path cannot be maintained without high synchronization/security cost.
-
-## Development and deployment modes
-
-1. Desktop production: Tauri installer, bundled engine/library, local project.
-2. Local development: Vite UI plus authenticated loopback service; same typed protocol.
-3. Static web demo: read-only, sample snapshots only, no local workspace or provider AI.
-4. Future shared service: deferred ADR with authentication, authorization, storage, and collaboration threat model.
-
-## Proposed monorepo
+## Target logical packages
 
 ```text
 apps/
+  workbench-web/
   workbench-desktop/
-  workbench-web-demo/
+  workbench-local-companion/
+  workbench-service/
 packages/
-  application-protocol/
-  language-client/
+  workbench-client-sdk/
+  workbench-protocol/
+  language-adapter/
   semantic-model/
   workspace-service/
   command-engine/
@@ -208,46 +108,48 @@ packages/
   ai-orchestrator/
   shared-ui/
 fixtures/
-  language/
-  workspaces/
-  baselines/
 docs/
-  adr/
-  architecture/
-  product/
-  revamp/
-  security/
-  user/
 ```
 
-Phase 1 should introduce only the packages needed for language/workspace acceptance. Avoid empty-package scaffolding.
+Exact folders wait until P1 proves build/runtime constraints; responsibility boundaries do not.
 
-## Architecture acceptance at P0
+## Deployment profiles
 
-Owner can answer:
+| Profile | Practical function | Authority |
+|---|---|---|
+| A public web evaluation | sample navigation/query/report/baseline comparison | packaged sample only |
+| B browser + local companion | full local authoring/review with paired service | local source/Git |
+| C Tauri desktop | fully offline packaged B-equivalent | local source/Git |
+| D managed hosted | future distributed authoring/review | hosted workspace/repository |
 
-- Language authority: pinned Spec42 behind adapter, official Pilot/corpus oracle.
-- Multi-file resolution: language service loads configured roots/libraries and returns one immutable workspace snapshot.
-- Canonical data: source plus versioned project artifacts; no semantic shadow database.
-- Diagram changes: typed command → proposed workspace edits → overlay validation → semantic diff → approval/apply.
-- Stable identity: explicit id, otherwise durable workbench key plus semantic locator/fingerprint and alias ledger.
-- Unsupported syntax: preserve source and fail edits that cannot prove safe boundaries.
-- Retain/delete: editor/UI primitives retained; semantic core/direct patches/Draw.io round-trip replaced.
-- Shell: Tauri desktop-first, optional read-only demo.
+The same UI and protocol operate in all profiles. Capability negotiation, not separate semantic code, determines available actions.
 
-## Owner decision list
+## Product-owned versus replaceable
 
-Recommended defaults remain Gate P0 approval items:
+| Product-owned | Replaceable/qualified |
+|---|---|
+| Workbench Protocol/Client SDK | runtime language engine |
+| normalized semantic DTOs | diagram layout implementation |
+| stable identity/alias receipts | desktop packaging host |
+| typed commands/source receipts | local/hosted persistence adapter |
+| query/projection schemas | report renderer implementation |
+| reviews/diff/rules/reports/audit contracts | optional AI provider |
 
-1. Name: **SysML Engineering Workbench**.
-2. Shell: Tauri desktop-first hybrid.
-3. Public web demo: keep read-only.
-4. Draw.io: export/markup only.
-5. Collaboration: defer beyond Git/review artifacts.
-6. First production pilot: OMC4 interface assurance.
-7. Pilot content: organizational-boundary communication/interface model.
-8. External AI: disabled by default; explicit per-provider enablement and egress approval.
-9. OS: macOS arm64/x64 and Windows x64 first.
-10. Distribution: signed/notarized packaged installer when release gates pass.
+## Owner decisions
 
-Changing language authority, source canonicality, or mutation approval requires a new ADR. Other decisions may be adjusted before their implementation phase.
+Recommended:
+
+1. working name `SysML Engineering Workbench`;
+2. Profiles B and C production, A public evaluation, D future;
+3. Draw.io export/markup-only;
+4. real-time collaboration deferred to Git/review artifacts;
+5. OMC4 interface assurance first pilot;
+6. provider AI disabled by default;
+7. macOS/Windows first;
+8. signed local-companion and desktop packages at P7;
+9. official `2026-05` Phase 1 qualification baseline;
+10. runtime engine selected only at the Phase 1 gate.
+
+## Acceptance
+
+Revised P0 passes when the owner can answer the 15 questions in `16-owner-decision-packet.md`, approves/changes the ten consequential choices, and authorizes only the bounded P1 qualification/service scope.
