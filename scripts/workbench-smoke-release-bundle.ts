@@ -11,6 +11,7 @@ interface ReadyEvent {
 
 const bundleRoot = resolve(requiredValue('--bundle'))
 const workspaceFile = resolve(requiredValue('--workspace-file'))
+const modelMarker = requiredValue('--model-marker')
 const workspaceRoot = resolve(workspaceFile, '..')
 const manifest = JSON.parse(
   await readFile(
@@ -97,6 +98,21 @@ try {
   ) {
     throw new Error(`Release workspace smoke failed: ${JSON.stringify(opened)}`)
   }
+  await delay(100)
+  const capturedLogs = `${stdout}\n${stderr}`
+  const logSafety = {
+    modelMarkerAbsent: !capturedLogs.includes(modelMarker),
+    sessionTokenAbsent: !capturedLogs.includes(pairing.token),
+    csrfAbsent: !capturedLogs.includes(pairing.csrf),
+    capturedBytes: Buffer.byteLength(capturedLogs, 'utf8'),
+  }
+  if (
+    !logSafety.modelMarkerAbsent ||
+    !logSafety.sessionTokenAbsent ||
+    !logSafety.csrfAbsent
+  ) {
+    throw new Error('Release service logs exposed model content or session credentials')
+  }
   process.stdout.write(
     `${JSON.stringify(
       {
@@ -110,6 +126,7 @@ try {
         documentCount: opened.result.documents.length,
         staticCsp: true,
         offlineRuntime: true,
+        logSafety,
       },
       null,
       2,

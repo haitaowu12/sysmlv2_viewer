@@ -20,7 +20,12 @@
 - [ ] every claimed OS has clean-machine install/open/edit/report/recovery
   evidence;
 - [ ] public artifacts are signed/notarized and verification is documented;
-- [ ] backup/restore and incomplete-command recovery are exercised;
+- [x] automated project backup/restore and hard-exit incomplete-command
+  recovery are exercised with `npm run qualify:recovery`;
+- [ ] signed-install clean-machine recovery and OS crash/log inspection pass
+  on every claimed platform;
+- [ ] runtime byte provenance conflicts emitted by
+  `npm run release:runtime-provenance` are closed by owner/legal review;
 - [ ] crash/log inspection confirms model content and credentials are absent.
 
 ## Product evidence

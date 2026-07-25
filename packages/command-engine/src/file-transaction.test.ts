@@ -12,6 +12,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   commitWorkspaceTransaction,
+  pruneWorkspaceTransactions,
   recoverWorkspaceTransactions,
   WorkspaceTransactionError,
 } from './file-transaction.js'
@@ -216,6 +217,85 @@ describe('durable workspace file transaction', () => {
       { transactionId: 'later-command', state: 'FINALIZED' },
     ])
     expect(await readFile(first, 'utf8')).toBe('package Latest;\n')
+  })
+
+  it('prunes only finalized history after an explicit retention dry run', async () => {
+    const root = await workspace()
+    const first = resolve(root, 'model/first.sysml')
+    await commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'finalized-one',
+      files: [
+        change(first, 'model/first.sysml', 'package First;\n', 'package One;\n'),
+      ],
+    })
+    await commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'finalized-two',
+      files: [
+        change(first, 'model/first.sysml', 'package One;\n', 'package Two;\n'),
+      ],
+    })
+    await expect(commitWorkspaceTransaction({
+      rootPath: root,
+      transactionId: 'prepared-protected',
+      files: [
+        change(first, 'model/first.sysml', 'package Two;\n', 'package Three;\n'),
+      ],
+      faultInjector(stage) {
+        if (stage === 'after-prepare') throw new Error('simulated hard stop')
+      },
+    })).rejects.toThrow('simulated hard stop')
+
+    const dryRun = await pruneWorkspaceTransactions(root, { retainLatest: 1 })
+    expect(dryRun.dryRun).toBe(true)
+    expect(dryRun.candidates).toHaveLength(1)
+    expect(dryRun.deleted).toEqual([])
+    expect(dryRun.retained).toHaveLength(1)
+    expect(dryRun.protected).toEqual([
+      { transactionId: 'prepared-protected', state: 'PREPARED' },
+    ])
+    await expect(
+      readFile(
+        resolve(
+          root,
+          '.sysml-workbench/transactions',
+          dryRun.candidates[0]!,
+          'journal.json',
+        ),
+        'utf8',
+      ),
+    ).resolves.toContain('"FINALIZED"')
+
+    const applied = await pruneWorkspaceTransactions(root, {
+      retainLatest: 1,
+      dryRun: false,
+    })
+    expect(applied).toEqual({
+      ...dryRun,
+      dryRun: false,
+      deleted: dryRun.candidates,
+    })
+    await expect(
+      readFile(
+        resolve(
+          root,
+          '.sysml-workbench/transactions',
+          applied.deleted[0]!,
+          'journal.json',
+        ),
+        'utf8',
+      ),
+    ).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(
+      readFile(
+        resolve(
+          root,
+          '.sysml-workbench/transactions/prepared-protected/journal.json',
+        ),
+        'utf8',
+      ),
+    ).resolves.toContain('"PREPARED"')
   })
 })
 

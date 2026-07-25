@@ -77,10 +77,7 @@ describe('service-backed workbench shell', () => {
     fireEvent.change(editor, { target: { value: source.replace('Controller', 'Controller2') } })
 
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
-    const reviewButton = screen.getAllByRole('button', { name: 'Review source patch' })
-      .find((button) => !button.hasAttribute('disabled'))
-    if (!reviewButton) throw new Error('Source review action is unavailable')
-    fireEvent.click(reviewButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Review source patch' }))
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Generate validated patch' }))
 

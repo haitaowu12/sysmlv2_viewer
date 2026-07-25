@@ -60,6 +60,31 @@ await runNpm([
 ])
 await runNpm([
   'run',
+  'qualify:recovery',
+  '--',
+  '--output',
+  resolve(evidenceRoot, 'phase7-recovery.json'),
+])
+await runNpm([
+  'run',
+  'release:runtime-provenance',
+  '--',
+  '--semantic-artifact',
+  process.env.SYSML_WORKBENCH_SEMANTIC_ARTIFACT!,
+  '--authoring-artifact',
+  process.env.SYSML_WORKBENCH_AUTHORING_ARTIFACT!,
+  '--semantic-source-root',
+  process.env.SYSML_WORKBENCH_SEMANTIC_LICENSE_ROOT!,
+  '--pilot-license',
+  process.env.SYSML_WORKBENCH_PILOT_LICENSE!,
+  '--library-root',
+  process.env.SYSML_WORKBENCH_LIBRARY_ROOT!,
+  '--output',
+  resolve(evidenceRoot, 'phase7-runtime-provenance.json'),
+  ...(allowOwnerBlockers ? ['--allow-license-conflict'] : []),
+])
+await runNpm([
+  'run',
   'release:package',
   '--',
   '--semantic-artifact',
@@ -99,6 +124,8 @@ await runNpm([
     repositoryRoot,
     'fixtures/workspaces/phase5-infrastructure/sysml-workspace.yaml',
   ),
+  '--model-marker',
+  'ControlCentre',
 ])
 
 const { stdout: commitOutput } = await execFileAsync(
@@ -118,6 +145,11 @@ const report = {
   exactRuntimeRegression: 'passed',
   bundleIntegrity: 'passed',
   copiedBundleSmoke: 'passed',
+  recoveryQualification: 'passed',
+  logSafety: 'passed',
+  runtimeProvenance: allowOwnerBlockers
+    ? 'evidenced-conflicts-open'
+    : 'approved',
   ownerBlockersAllowed: allowOwnerBlockers,
   ownerApprovalManifest: allowOwnerBlockers ? 'bypassed-for-technical-rc' : 'approved',
 }
