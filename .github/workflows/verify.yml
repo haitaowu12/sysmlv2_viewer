@@ -28,8 +28,8 @@ jobs:
       - name: Install exact dependencies
         run: npm ci
 
-      - name: Verify Phase 1 foundation
-        run: npm run verify:phase1
+      - name: Verify active workbench phase
+        run: npm run verify:phase3
 
       - name: Confirm candidate qualification fails closed without engines
         shell: bash

@@ -400,6 +400,235 @@ describe('WorkbenchService', () => {
       .not.toBe(semantic.snapshotSha256)
   })
 
+  it('returns a proposal-only typed rename without changing canonical source', async () => {
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), 'sysml-workbench-command-proposal-'),
+    )
+    temporaryDirectories.push(temporaryRoot)
+    await cp(sampleRoot, temporaryRoot, { recursive: true })
+    const service = createService(
+      createFakeLspAdapter(
+        { FAKE_LSP_DYNAMIC_SEMANTICS: '1' },
+        'qualified',
+      ),
+      [temporaryRoot],
+    )
+    await initialize(service)
+    const opened = await service.handle({
+      jsonrpc: '2.0',
+      id: 60,
+      method: WORKBENCH_METHODS.workspaceOpen,
+      params: {
+        workspaceFile: resolve(temporaryRoot, 'sysml-workspace.yaml'),
+      },
+    })
+    if (!('result' in opened)) throw new Error('Workspace open failed')
+    const snapshotResponse = await service.handle({
+      jsonrpc: '2.0',
+      id: 61,
+      method: WORKBENCH_METHODS.semanticSnapshot,
+      params: { workspaceId: 'phase1-sample' },
+    })
+    if (!('result' in snapshotResponse)) throw new Error('Snapshot failed')
+    const snapshot = snapshotResponse.result as {
+      snapshotSha256: string
+      documents: Array<{ uri: string; sha256: string }>
+      elements: Array<{ id: string }>
+    }
+    const sourcePath = resolve(temporaryRoot, 'model/vehicle.sysml')
+    const sourceBefore = await readFile(sourcePath, 'utf8')
+    const proposal = await service.handle({
+      jsonrpc: '2.0',
+      id: 62,
+      method: WORKBENCH_METHODS.commandPropose,
+      params: {
+        schemaVersion: 1,
+        commandId: 'CMD-SERVICE-001',
+        workspaceId: 'phase1-sample',
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: Object.fromEntries(
+          snapshot.documents.map((document) => [document.uri, document.sha256]),
+        ),
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+        command: {
+          kind: 'rename-element',
+          targetId: snapshot.elements[0]!.id,
+          newName: 'RenamedPackage',
+        },
+      },
+    })
+
+    expect(proposal).toMatchObject({
+      result: {
+        state: 'proposed',
+        commandId: 'CMD-SERVICE-001',
+        approval: { required: true, approved: false },
+        validation: { state: 'validated' },
+        semanticDiff: {
+          changes: expect.arrayContaining([
+            expect.objectContaining({ kind: 'element-renamed' }),
+          ]),
+        },
+      },
+    })
+    if ('result' in proposal) {
+      expect(proposal.result).not.toHaveProperty('overlayDocuments')
+      expect(proposal.result).not.toHaveProperty('validatedAfterSnapshot')
+    }
+    expect(await readFile(sourcePath, 'utf8')).toBe(sourceBefore)
+    if (!('result' in proposal)) throw new Error('Command proposal failed')
+    const proposalResult = proposal.result as {
+      proposalId: string
+      edits: { changes: Record<string, unknown> }
+    }
+    const changedUri = Object.keys(proposalResult.edits.changes)[0]!
+    const changedPath = fileURLToPath(changedUri)
+    const changedBefore = await readFile(changedPath, 'utf8')
+    const applied = await service.handle({
+      jsonrpc: '2.0',
+      id: 64,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: proposalResult.proposalId,
+        approvalId: 'APPROVAL-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(applied).toMatchObject({
+      result: {
+        state: 'applied',
+        proposalId: proposalResult.proposalId,
+        approval: {
+          approvalId: 'APPROVAL-001',
+          approvedBy: { kind: 'user', id: 'test-engineer' },
+        },
+        transaction: { state: 'FINALIZED' },
+      },
+    })
+    if (!('result' in applied)) throw new Error('Command apply failed')
+    const transactionId = (applied.result as {
+      transaction: { transactionId: string }
+    }).transaction.transactionId
+    const journal = JSON.parse(await readFile(resolve(
+      temporaryRoot,
+      '.sysml-workbench/transactions',
+      transactionId,
+      'journal.json',
+    ), 'utf8'))
+    expect(journal.metadata.commandAudit).toMatchObject({
+      schemaVersion: 1,
+      recordType: 'command-application',
+      proposal: { proposalId: proposalResult.proposalId },
+      approval: { approvalId: 'APPROVAL-001' },
+    })
+    expect(journal.metadata.commandAudit.proposal).not.toHaveProperty(
+      'overlayDocuments',
+    )
+    expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
+    const undo = await service.handle({
+      jsonrpc: '2.0',
+      id: 66,
+      method: WORKBENCH_METHODS.commandProposeUndo,
+      params: {
+        workspaceId: 'phase1-sample',
+        commandId: 'CMD-UNDO-001',
+        appliedProposalId: proposalResult.proposalId,
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(undo).toMatchObject({
+      result: {
+        validation: { state: 'validated' },
+        envelope: { command: { kind: 'undo-command' } },
+      },
+    })
+    if (!('result' in undo)) throw new Error('Undo proposal failed')
+    const undoProposalId = (undo.result as { proposalId: string }).proposalId
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 67,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: undoProposalId,
+        approvalId: 'APPROVAL-UNDO-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })).resolves.toMatchObject({ result: { state: 'applied' } })
+    expect(await readFile(changedPath, 'utf8')).toBe(changedBefore)
+
+    const redo = await service.handle({
+      jsonrpc: '2.0',
+      id: 68,
+      method: WORKBENCH_METHODS.commandProposeRedo,
+      params: {
+        workspaceId: 'phase1-sample',
+        commandId: 'CMD-REDO-001',
+        appliedProposalId: undoProposalId,
+        requestedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })
+    expect(redo).toMatchObject({
+      result: {
+        validation: { state: 'validated' },
+        envelope: { command: { kind: 'redo-command' } },
+      },
+    })
+    if (!('result' in redo)) throw new Error('Redo proposal failed')
+    await expect(service.handle({
+      jsonrpc: '2.0',
+      id: 69,
+      method: WORKBENCH_METHODS.commandApply,
+      params: {
+        workspaceId: 'phase1-sample',
+        proposalId: (redo.result as { proposalId: string }).proposalId,
+        approvalId: 'APPROVAL-REDO-001',
+        approvedBy: { kind: 'user', id: 'test-engineer' },
+      },
+    })).resolves.toMatchObject({ result: { state: 'applied' } })
+    expect(await readFile(changedPath, 'utf8')).not.toBe(changedBefore)
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 65,
+        method: WORKBENCH_METHODS.commandApply,
+        params: {
+          workspaceId: 'phase1-sample',
+          proposalId: proposalResult.proposalId,
+          approvalId: 'APPROVAL-002',
+          approvedBy: { kind: 'ai', id: 'provider' },
+        },
+      }),
+    ).resolves.toMatchObject({
+      error: { message: expect.stringContaining('human user') },
+    })
+    await expect(
+      service.handle({
+        jsonrpc: '2.0',
+        id: 63,
+        method: WORKBENCH_METHODS.commandPropose,
+        params: {
+          schemaVersion: 1,
+          commandId: 'CMD-SERVICE-001',
+          workspaceId: 'phase1-sample',
+          baseSnapshotSha256: snapshot.snapshotSha256,
+          baseDocuments: Object.fromEntries(
+            snapshot.documents.map((document) => [document.uri, document.sha256]),
+          ),
+          requestedBy: { kind: 'user', id: 'test-engineer' },
+          command: {
+            kind: 'rename-element',
+            targetId: snapshot.elements[0]!.id,
+            newName: 'DifferentName',
+          },
+        },
+      }),
+    ).resolves.toMatchObject({
+      error: { message: expect.stringContaining('commandId conflict') },
+    })
+  })
+
   it('rejects an identity registry path that traverses a workspace symlink', async () => {
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), 'sysml-workbench-identity-link-'),

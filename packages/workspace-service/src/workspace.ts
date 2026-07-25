@@ -17,6 +17,7 @@ import type {
   WorkbenchHover,
   WorkbenchLocation,
   WorkbenchPosition,
+  WorkbenchRange,
   WorkbenchSemanticTokens,
   WorkbenchTextEdit,
   WorkbenchWorkspaceEdit,
@@ -34,6 +35,23 @@ import {
   type ModelQuery,
   type ModelQueryResult,
 } from '../../query-engine/src/index.js'
+import {
+  completeCommandValidation,
+  commitWorkspaceTransaction,
+  planCommand,
+  planExplicitSourceEditCommand,
+  readWorkspaceTransaction,
+  recoverWorkspaceTransactions,
+  toPublicCommandProposal,
+  type ApplyCommandApproval,
+  type AppliedCommandReceipt,
+  type CommandEnvelope,
+  type CommandHistoryRequest,
+  type CommandTransactionAudit,
+  type InternalCommandProposal,
+  type CommandProposal,
+  type WorkspaceTransactionReceipt,
+} from '../../command-engine/src/index.js'
 import type {
   AdapterWorkspace,
   EngineSemanticEvidence,
@@ -74,6 +92,9 @@ interface OpenWorkspace {
   semanticSnapshot?: SemanticSnapshot
   semanticSnapshotPromise?: Promise<SemanticSnapshot>
   queryCache: Map<string, ModelQueryResult>
+  commandProposals: Map<string, InternalCommandProposal>
+  commandLease: boolean
+  appliedCommands: Map<string, AppliedCommandReceipt>
 }
 
 export interface WorkspaceManagerOptions {
@@ -107,6 +128,7 @@ export class WorkspaceManager {
       workspaceFile,
     )
     const rootPath = dirname(authorized.path)
+    await recoverWorkspaceTransactions(rootPath)
     const rawConfig = await readFile(authorized.path, 'utf8')
     const configuration = validateConfiguration(parse(rawConfig))
     const selection = selectConfiguration(configuration)
@@ -187,6 +209,9 @@ export class WorkspaceManager {
       rootPath,
       semanticRevision: 0,
       queryCache: new Map(),
+      commandProposals: new Map(),
+      commandLease: false,
+      appliedCommands: new Map(),
     })
     return status
   }
@@ -326,6 +351,11 @@ export class WorkspaceManager {
     text: string,
   ): Promise<WorkspaceStatusResult> {
     const workspace = this.requireDocument(workspaceId, uri)
+    if (workspace.commandLease) {
+      throw new WorkspacePathError(
+        'Workspace document changes are blocked during command validation',
+      )
+    }
     if (!this.options.adapter.changeDocument) {
       throw new WorkspacePathError('Incremental document changes are not supported')
     }
@@ -361,11 +391,17 @@ export class WorkspaceManager {
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
     workspace.queryCache.clear()
+    workspace.commandProposals.clear()
     return structuredClone(workspace.status)
   }
 
   async restart(workspaceId: string): Promise<WorkspaceStatusResult> {
     const workspace = this.requireWorkspace(workspaceId)
+    if (workspace.commandLease) {
+      throw new WorkspacePathError(
+        'Language restart is blocked during command validation',
+      )
+    }
     if (!this.options.adapter.restartWorkspace) {
       throw new WorkspacePathError('Language engine restart is not supported')
     }
@@ -383,7 +419,357 @@ export class WorkspaceManager {
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
     workspace.queryCache.clear()
+    workspace.commandProposals.clear()
     return structuredClone(workspace.status)
+  }
+
+  async proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal> {
+    const workspace = this.requireWorkspace(envelope.workspaceId)
+    const existing = workspace.commandProposals.get(envelope.commandId)
+    if (existing) {
+      if (JSON.stringify(existing.envelope) !== JSON.stringify(envelope)) {
+        throw new WorkspacePathError(
+          `Command commandId conflict: ${envelope.commandId}`,
+        )
+      }
+      return toPublicCommandProposal(existing)
+    }
+    if (workspace.commandLease) {
+      throw new WorkspacePathError('Another command operation holds the workspace lease')
+    }
+    workspace.commandLease = true
+    try {
+      const snapshot = await this.semanticSnapshot(envelope.workspaceId)
+      const documents = workspace.adapterWorkspace.documents.map((document) => ({
+        uri: document.uri,
+        workspacePath: relative(workspace.rootPath, document.absolutePath)
+          .replaceAll('\\', '/'),
+        text: document.text,
+        sha256: document.sha256,
+        version: document.version,
+      }))
+      const planned = await planCommand({
+        envelope,
+        snapshot,
+        documents,
+        renameProvider: async (target, newName) => {
+          const document = workspace.adapterWorkspace.documents.find(
+            (candidate) => candidate.uri === target.source.uri,
+          )
+          if (!document) {
+            throw new WorkspacePathError(
+              `Command target source is outside the workspace: ${target.id}`,
+            )
+          }
+          return this.rename(
+            envelope.workspaceId,
+            target.source.uri,
+            locateElementName(document.text, target.source.range, target.name),
+            newName,
+          )
+        },
+      })
+      const proposal = await this.validateCommandOverlay(
+        workspace,
+        snapshot,
+        planned,
+      )
+      workspace.commandProposals.set(envelope.commandId, proposal)
+      return toPublicCommandProposal(proposal)
+    } finally {
+      workspace.commandLease = false
+    }
+  }
+
+  async proposeUndo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.proposeHistoryCommand(request, 'undo-command')
+  }
+
+  async proposeRedo(request: CommandHistoryRequest): Promise<CommandProposal> {
+    return this.proposeHistoryCommand(request, 'redo-command')
+  }
+
+  private async proposeHistoryCommand(
+    request: CommandHistoryRequest,
+    kind: 'undo-command' | 'redo-command',
+  ): Promise<CommandProposal> {
+    const workspace = this.requireWorkspace(request.workspaceId)
+    if (
+      !request.commandId ||
+      !request.appliedProposalId ||
+      request.appliedProposalId.length > 512 ||
+      !request.requestedBy?.id
+    ) {
+      throw new WorkspacePathError('Command history request is incomplete')
+    }
+    const existing = workspace.commandProposals.get(request.commandId)
+    if (existing) {
+      const command = existing.envelope.command
+      if (
+        command.kind !== kind ||
+        command.appliedProposalId !== request.appliedProposalId ||
+        JSON.stringify(existing.envelope.requestedBy) !==
+          JSON.stringify(request.requestedBy)
+      ) {
+        throw new WorkspacePathError(
+          `Command commandId conflict: ${request.commandId}`,
+        )
+      }
+      return toPublicCommandProposal(existing)
+    }
+    if (workspace.commandLease) {
+      throw new WorkspacePathError('Another command operation holds the workspace lease')
+    }
+    workspace.commandLease = true
+    try {
+      const transaction = await readWorkspaceTransaction(
+        workspace.rootPath,
+        commandTransactionId(request.appliedProposalId),
+      )
+      const priorAudit = requireCommandAudit(transaction, request.appliedProposalId)
+      if (
+        kind === 'redo-command' &&
+        priorAudit.proposal.envelope.command.kind !== 'undo-command'
+      ) {
+        throw new WorkspacePathError('Redo must target an applied undo proposal')
+      }
+      const snapshot = await this.semanticSnapshot(request.workspaceId)
+      if (snapshot.snapshotSha256 !== priorAudit.expectedSnapshotSha256) {
+        throw new WorkspacePathError(
+          'Command history is stale; undo and redo require the current head',
+        )
+      }
+      const documents = workspace.adapterWorkspace.documents.map((document) => ({
+        uri: document.uri,
+        workspacePath: relative(workspace.rootPath, document.absolutePath)
+          .replaceAll('\\', '/'),
+        text: document.text,
+        sha256: document.sha256,
+        version: document.version,
+      }))
+      const envelope: CommandEnvelope = {
+        schemaVersion: 1,
+        commandId: request.commandId,
+        workspaceId: request.workspaceId,
+        baseSnapshotSha256: snapshot.snapshotSha256,
+        baseDocuments: Object.fromEntries(
+          documents.map((document) => [document.uri, document.sha256]),
+        ),
+        requestedBy: structuredClone(request.requestedBy),
+        command: { kind, appliedProposalId: request.appliedProposalId },
+      }
+      const planned = planExplicitSourceEditCommand({
+        envelope,
+        snapshot,
+        documents,
+        edits: priorAudit.proposal.undo,
+        affectedElementIds: priorAudit.proposal.affectedElementIds,
+      })
+      const proposal = await this.validateCommandOverlay(
+        workspace,
+        snapshot,
+        planned,
+      )
+      workspace.commandProposals.set(request.commandId, proposal)
+      return toPublicCommandProposal(proposal)
+    } finally {
+      workspace.commandLease = false
+    }
+  }
+
+  async applyCommand(
+    approval: ApplyCommandApproval,
+  ): Promise<AppliedCommandReceipt> {
+    const workspace = this.requireWorkspace(approval.workspaceId)
+    if (
+      approval.approvedBy?.kind !== 'user' ||
+      !approval.approvedBy.id ||
+      !approval.approvalId
+    ) {
+      throw new WorkspacePathError(
+        'Command approval must identify an explicit human user',
+      )
+    }
+    const alreadyApplied = workspace.appliedCommands.get(approval.proposalId)
+    if (alreadyApplied) return structuredClone(alreadyApplied)
+    const proposal = [...workspace.commandProposals.values()].find(
+      (candidate) => candidate.proposalId === approval.proposalId,
+    )
+    if (!proposal) {
+      throw new WorkspacePathError(
+        `Unknown or expired command proposal: ${approval.proposalId}`,
+      )
+    }
+    if (proposal.validation.state !== 'validated' || proposal.conflicts.length > 0) {
+      throw new WorkspacePathError(
+        `Command proposal is not valid for apply: ${approval.proposalId}`,
+      )
+    }
+    if (workspace.commandLease) {
+      throw new WorkspacePathError('Another command operation holds the workspace lease')
+    }
+    workspace.commandLease = true
+    try {
+      const currentSnapshot = await this.semanticSnapshot(approval.workspaceId)
+      if (
+        currentSnapshot.snapshotSha256 !==
+        proposal.envelope.baseSnapshotSha256
+      ) {
+        throw new WorkspacePathError('Command proposal base snapshot is stale')
+      }
+      const identities = new IdentityRegistry(workspace.identityRegistry.serialize())
+      const identityChanges = new Map(
+        proposal.semanticDiff?.changes
+          .filter((change) =>
+            (change.kind === 'element-renamed' || change.kind === 'element-moved') &&
+            change.elementId &&
+            change.after &&
+            'qualifiedName' in change.after,
+          )
+          .map((change) => [change.elementId!, change.after!]) ?? [],
+      )
+      for (const [elementId, after] of identityChanges) {
+        if (!('qualifiedName' in after)) continue
+        identities.migrate(
+          elementId,
+          {
+            workspacePath: after.source.workspacePath,
+            qualifiedName: after.qualifiedName,
+            kind: after.kind,
+          },
+          after.fingerprint,
+          proposal.commandId,
+        )
+      }
+      if (!proposal.validatedAfterSnapshot) {
+        throw new WorkspacePathError('Command proposal is missing validated identity state')
+      }
+      identities.beginSnapshot()
+      try {
+        for (const element of proposal.validatedAfterSnapshot.elements) {
+          identities.resolve(
+            {
+              workspacePath: element.source.workspacePath,
+              qualifiedName: element.qualifiedName,
+              kind: element.kind,
+            },
+            element.fingerprint,
+          )
+        }
+        identities.completeSnapshot()
+      } catch (error) {
+        identities.abortSnapshot()
+        throw error
+      }
+      const files = proposal.overlayDocuments
+        .map((overlay) => {
+          const current = workspace.adapterWorkspace.documents.find(
+            (document) => document.uri === overlay.uri,
+          )
+          if (!current || current.text === overlay.text) return null
+          return {
+            absolutePath: current.absolutePath,
+            workspacePath: overlay.workspacePath,
+            beforeSha256: current.sha256,
+            afterSha256: overlay.sha256,
+            beforeText: current.text,
+            afterText: overlay.text,
+          }
+        })
+        .filter((file): file is NonNullable<typeof file> => file !== null)
+      const identityBefore = await readFile(workspace.identityRegistryPath, 'utf8')
+      const identityAfter = `${JSON.stringify(identities.serialize(), null, 2)}\n`
+      if (identityBefore !== identityAfter) {
+        files.push({
+          absolutePath: workspace.identityRegistryPath,
+          workspacePath: relative(
+            workspace.rootPath,
+            workspace.identityRegistryPath,
+          ).replaceAll('\\', '/'),
+          beforeSha256: sha256(Buffer.from(identityBefore)),
+          afterSha256: sha256(Buffer.from(identityAfter)),
+          beforeText: identityBefore,
+          afterText: identityAfter,
+        })
+      }
+      const appliedAt = new Date().toISOString()
+      const audit: CommandTransactionAudit = {
+        schemaVersion: 1,
+        recordType: 'command-application',
+        proposal: toPublicCommandProposal(proposal),
+        approval: structuredClone(approval),
+        expectedSnapshotSha256: proposal.semanticDiff!.afterSnapshotSha256,
+        appliedAt,
+      }
+      const transaction = await commitWorkspaceTransaction({
+        rootPath: workspace.rootPath,
+        transactionId: commandTransactionId(proposal.proposalId),
+        files,
+        metadata: { commandAudit: audit },
+      })
+      workspace.identityRegistry = identities
+      workspace.identityRegistry.markPersisted()
+      let diagnostics = structuredClone(workspace.diagnostics)
+      for (const overlay of proposal.overlayDocuments) {
+        const current = workspace.adapterWorkspace.documents.find(
+          (document) => document.uri === overlay.uri,
+        )
+        if (!current || current.text === overlay.text) continue
+        diagnostics = await this.options.adapter.changeDocument!(
+          overlay.uri,
+          current.version + 1,
+          overlay.text,
+        )
+        current.text = overlay.text
+        current.sha256 = overlay.sha256
+      }
+      workspace.diagnostics = diagnostics
+      workspace.status = buildStatus(
+        workspace.adapterWorkspace,
+        this.options.adapter,
+        diagnostics,
+      )
+      workspace.semanticRevision += 1
+      workspace.semanticSnapshot = undefined
+      workspace.semanticSnapshotPromise = undefined
+      workspace.queryCache.clear()
+      const appliedSnapshot = await this.semanticSnapshot(approval.workspaceId)
+      if (
+        proposal.semanticDiff?.afterSnapshotSha256 !==
+        appliedSnapshot.snapshotSha256
+      ) {
+        throw new WorkspacePathError(
+          'Applied command semantic snapshot differs from validated proposal',
+        )
+      }
+      const receipt: AppliedCommandReceipt = {
+        schemaVersion: 1,
+        state: 'applied',
+        proposalId: proposal.proposalId,
+        commandId: proposal.commandId,
+        approval: {
+          approvalId: approval.approvalId,
+          approvedBy: structuredClone(approval.approvedBy),
+        },
+        transaction,
+        appliedSnapshotSha256: appliedSnapshot.snapshotSha256,
+        appliedAt,
+        undo: {
+          baseSnapshotSha256: appliedSnapshot.snapshotSha256,
+          baseDocuments: Object.fromEntries(
+            appliedSnapshot.documents.map((document) => [
+              document.uri,
+              document.sha256,
+            ]),
+          ),
+          edits: structuredClone(proposal.undo),
+        },
+      }
+      workspace.appliedCommands.set(proposal.proposalId, receipt)
+      return structuredClone(receipt)
+    } finally {
+      workspace.commandLease = false
+    }
   }
 
   async semanticSnapshot(workspaceId: string): Promise<SemanticSnapshot> {
@@ -519,6 +905,127 @@ export class WorkspaceManager {
     workspace.semanticSnapshot = snapshot
     return snapshot
   }
+
+  private async validateCommandOverlay(
+    workspace: OpenWorkspace,
+    beforeSnapshot: SemanticSnapshot,
+    proposal: InternalCommandProposal,
+  ): Promise<InternalCommandProposal> {
+    if (!this.options.adapter.changeDocument) {
+      throw new WorkspacePathError(
+        'Authoritative overlay validation requires incremental document updates',
+      )
+    }
+    const originals = new Map(
+      workspace.adapterWorkspace.documents.map((document) => [
+        document.uri,
+        {
+          text: document.text,
+          sha256: document.sha256,
+          version: document.version,
+        },
+      ]),
+    )
+    const changed = proposal.overlayDocuments.filter((overlay) => {
+      const original = originals.get(overlay.uri)
+      return original && original.text !== overlay.text
+    })
+    let diagnosticsAfter = structuredClone(workspace.diagnostics)
+    try {
+      for (const overlay of changed) {
+        const current = workspace.adapterWorkspace.documents.find(
+          (document) => document.uri === overlay.uri,
+        )!
+        diagnosticsAfter = await this.options.adapter.changeDocument(
+          overlay.uri,
+          current.version + 1,
+          overlay.text,
+        )
+        current.text = overlay.text
+        current.sha256 = overlay.sha256
+      }
+      const overlayWorkspace: AdapterWorkspace = {
+        ...workspace.adapterWorkspace,
+        documents: workspace.adapterWorkspace.documents.map((document) => ({
+          ...document,
+          sha256: sha256(Buffer.from(document.text, 'utf8')),
+        })),
+      }
+      const overlayStatus = buildStatus(
+        overlayWorkspace,
+        this.options.adapter,
+        diagnosticsAfter,
+      )
+      const evidence = new Map<string, EngineSemanticEvidence>()
+      for (const document of overlayWorkspace.documents) {
+        evidence.set(
+          document.uri,
+          await this.options.adapter.semanticEvidence!(document.uri),
+        )
+      }
+      const provisional = buildSemanticSnapshot({
+        status: overlayStatus,
+        authority: this.options.adapter.metadata,
+        documents: overlayWorkspace.documents,
+        evidence,
+        identities: IdentityRegistry.empty(overlayStatus.workspaceId),
+      })
+      const identities = new IdentityRegistry(workspace.identityRegistry.serialize())
+      for (const affectedElementId of proposal.affectedElementIds) {
+        const prior = beforeSnapshot.elements.find(
+          (element) => element.id === affectedElementId,
+        )
+        if (!prior?.provenance.engineId) continue
+        const next = provisional.elements.find(
+          (element) =>
+            element.provenance.engineId === prior.provenance.engineId,
+        )
+        if (!next && proposal.envelope.command.kind === 'rename-element') {
+          throw new WorkspacePathError(
+            `Validated overlay lost the renamed element: ${prior.id}`,
+          )
+        }
+        if (!next) continue
+        identities.migrate(
+          prior.id,
+          {
+            workspacePath: next.source.workspacePath,
+            qualifiedName: next.qualifiedName,
+            kind: next.kind,
+          },
+          next.fingerprint,
+          proposal.commandId,
+        )
+      }
+      const afterSnapshot = buildSemanticSnapshot({
+        status: overlayStatus,
+        authority: this.options.adapter.metadata,
+        documents: overlayWorkspace.documents,
+        evidence,
+        identities,
+      })
+      return completeCommandValidation(proposal, {
+        beforeSnapshot,
+        afterSnapshot,
+        diagnosticsBefore: workspace.diagnostics,
+        diagnosticsAfter,
+      })
+    } finally {
+      for (const overlay of [...changed].reverse()) {
+        const original = originals.get(overlay.uri)!
+        const current = workspace.adapterWorkspace.documents.find(
+          (document) => document.uri === overlay.uri,
+        )!
+        await this.options.adapter.changeDocument(
+          overlay.uri,
+          current.version + 1,
+          original.text,
+        )
+        current.text = original.text
+        current.sha256 = original.sha256
+      }
+    }
+  }
 }
 
 function validateConfiguration(value: unknown): WorkspaceConfiguration {
@@ -560,6 +1067,40 @@ function selectConfiguration(configuration: WorkspaceConfiguration): {
     sourceRoots: selected?.sourceRoots ?? configuration.sourceRoots,
     libraries: selected?.libraries ?? configuration.libraries ?? [],
   }
+}
+
+function locateElementName(
+  text: string,
+  range: WorkbenchRange,
+  name: string,
+): WorkbenchPosition {
+  const lines = text.split('\n')
+  const selected = lines
+    .slice(range.start.line, range.end.line + 1)
+    .map((line, index) => {
+      const absoluteLine = range.start.line + index
+      const start = absoluteLine === range.start.line ? range.start.character : 0
+      const end =
+        absoluteLine === range.end.line ? range.end.character : line.length
+      return { absoluteLine, start, text: line.slice(start, end) }
+    })
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const token = new RegExp(`(^|[^\\p{L}\\p{N}_])(${escaped})(?=$|[^\\p{L}\\p{N}_])`, 'gu')
+  const matches: WorkbenchPosition[] = []
+  for (const line of selected) {
+    for (const match of line.text.matchAll(token)) {
+      matches.push({
+        line: line.absoluteLine,
+        character: line.start + match.index! + match[1]!.length,
+      })
+    }
+  }
+  if (matches.length !== 1) {
+    throw new WorkspacePathError(
+      `Command target name is not uniquely located in its authoritative range: ${name}`,
+    )
+  }
+  return matches[0]!
 }
 
 async function collectModelFiles(
@@ -753,6 +1294,31 @@ async function assertNoSymlinkSegments(
 
 function sha256(value: Buffer): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function commandTransactionId(proposalId: string): string {
+  return `command-${sha256(Buffer.from(proposalId)).slice(0, 32)}`
+}
+
+function requireCommandAudit(
+  transaction: WorkspaceTransactionReceipt | null,
+  proposalId: string,
+): CommandTransactionAudit {
+  const audit = transaction?.metadata?.commandAudit
+  if (
+    transaction?.state !== 'FINALIZED' ||
+    !isRecord(audit) ||
+    audit.schemaVersion !== 1 ||
+    audit.recordType !== 'command-application' ||
+    !isRecord(audit.proposal) ||
+    audit.proposal.proposalId !== proposalId ||
+    typeof audit.expectedSnapshotSha256 !== 'string'
+  ) {
+    throw new WorkspacePathError(
+      `Applied command audit is unavailable or invalid: ${proposalId}`,
+    )
+  }
+  return structuredClone(audit) as unknown as CommandTransactionAudit
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

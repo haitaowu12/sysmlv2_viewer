@@ -52,7 +52,7 @@ PROPOSED
   -> PREPARED       all base hashes verified; overlays validated
   -> COMMITTING     journal + original hashes/backups fsynced
   -> COMMITTED      per-file temp write/fsync/atomic rename complete; directory metadata flushed where supported
-  -> FINALIZED      new snapshot verified; undo receipt retained; recovery journal removed
+  -> FINALIZED      new snapshot verified; journal retained as command audit/history
 
 PREPARED/COMMITTING -> ROLLED_BACK
 COMMITTING with external divergence -> RECOVERY_CONFLICT
@@ -62,6 +62,9 @@ COMMITTING with external divergence -> RECOVERY_CONFLICT
 - External-writer changes before `COMMITTING` cause a stale-base rejection.
 - Each destination is rechecked immediately before replacement.
 - Startup scans durable journals before indexing. It completes a provably safe commit, restores verified backups, or blocks with a recovery packet; it never guesses.
+- Finalized and rolled-back journals are immutable history. Startup recovery
+  acts only on incomplete transactions; later valid commands may supersede the
+  file hashes recorded by older finalized journals.
 - Backups/journals contain project-relative paths and content hashes. Model content retention follows the configured audit/backup policy.
 - Undo is a new transaction against the committed snapshot, not an unguarded file restore.
 - Fault-injection tests interrupt before/after every journal, write, fsync, rename, verification, and cleanup boundary on every target OS.
