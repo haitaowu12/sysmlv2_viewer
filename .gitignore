@@ -9,7 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-workbench
 dist-ssr
+generated/qualification/
 *.local
 
 # Editor directories and files

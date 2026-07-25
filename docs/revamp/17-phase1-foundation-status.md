@@ -1,0 +1,130 @@
+# Phase 1 Foundation Status
+
+- Date: 2026-07-24
+- Phase 0 baseline: `ade6e07fd1cecd615f21d42744dfd56380a42934`
+- Branch: `codex/sysml-workbench-phase1-engine-service`
+- Gate state: **open**
+- Runtime selection: **none**
+- Production claim: **none**
+
+This is the first bounded Phase 1 implementation slice. It establishes an
+independently executable, engine-neutral service and records comparative
+observations. It does not satisfy Gate P1 or amend ADR-001.
+
+## Implemented boundary
+
+```mermaid
+flowchart LR
+  C["Workbench client"] -->|"Workbench Protocol 0.1"| S["Workbench Service"]
+  S --> W["Workspace service"]
+  W --> A["Language Service Adapter"]
+  A --> E1["Spec42 LSP"]
+  A --> E2["daltskin LSP"]
+  A --> E3["Pilot-backed VinQut LSP"]
+  A --> N["Preservation-only control"]
+  W --> F["Authorized source workspace"]
+```
+
+The new packages provide:
+
+- a versioned JSON-RPC protocol and TypeScript Client SDK;
+- initialization and post-index capability negotiation;
+- safe workspace configuration, model-configuration selection, file discovery,
+  limits, hashing, deterministic reopen, and one active engine session;
+- diagnostics, document symbols, definition, references, hover, and completion
+  through normalized DTOs;
+- an LSP stdio process adapter with timeouts, bounded output capture, request
+  handling, diagnostics settling, health, and crash detection;
+- a preservation-only control that reports a blocking diagnostic instead of
+  inventing semantics;
+- standalone NDJSON stdio and authenticated loopback HTTP/WebSocket transports;
+- exact Origin and loopback Host checks, pairing, bearer and CSRF credentials,
+  message limits, and security headers;
+- a pinned candidate manifest and differential qualification runner;
+- a three-file workspace fixture with a cross-file private import and type
+  reference;
+- CI that proves the unconfigured engine lane fails closed.
+
+The existing React application and hand-written parser remain untouched by this
+slice. They are not connected to the new service and do not gain authority.
+
+## Candidate observation
+
+All results use the official 2026-05 release at
+`de1070ae8e79c21532b8004fc663d47b35d0e9fa` and Pilot at
+`fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa`. The fixture source was corrected
+from unsupported shorthand `import` to official `private import` syntax after
+the Pilot-backed candidate diagnosed it.
+
+| Candidate | Exact pin | Valid sample | Definition | References | Hover | Completion | Duration |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Spec42 v0.46.0 | `a3f066ee4095a0eb8b37545ffd4846d42804658a` | 0 diagnostics | cross-file | 2 precise | rich | 41 | 228 ms |
+| daltskin v0.24.0 | `6838e9c775f15fc3a3662ea294f13809a1c21577` | 0 diagnostics | cross-file | 2; range disagreement | advertised but null | 44 | 224 ms |
+| VinQut + Pilot 2026-05 | `373dfb960860c3ac259f56169ddabc06d2847eca` + Pilot pin | 0 diagnostics | cross-file | 16 noisy/duplicate | present | 0 | 4,648 ms |
+| direct Pilot service | Pilot pin | blocked | blocked | blocked | blocked | blocked | not packaged |
+| official hybrid | Pilot pin | unimplemented | — | — | — | — | — |
+| legacy parser control | `638e5aa1cc63ddb3a1c770f36432d6acedfbc541` | control only | — | — | — | — | — |
+
+The normalized evidence is
+`docs/revamp/phase1-qualification-observation.json`. Raw LSP/stdout/stderr
+streams were sealed before normalization and identified by SHA-256; they remain
+local because they contain machine paths and candidate-native output.
+
+Spec42 leads this narrow observation. It is not selected: the observation does
+not cover the official corpus, source preservation, standard libraries/KPAR,
+incremental behavior, rename/formatting edits, normalized semantic snapshots,
+large workspaces, clean restart, cross-platform packaging, or redistribution.
+
+## Packaging and license observations
+
+| Candidate | Reproduction observation | Open release issue |
+|---|---|---|
+| Spec42 | official macOS arm64 v0.46.0 artifact ran locally; downloaded artifact SHA-256 `0ea001a7478b893a0e4dd3fb6b36ec15b9ed17f79d5af14147dc563967bdd751` | clean-machine Windows/macOS package, SBOM, notices |
+| daltskin | exact source pin installed and built with Node 22 | upstream install reported five high dependency findings; product redistribution/SBOM unresolved |
+| VinQut | wrapper rebuilt against exact Pilot pin after including the split model and logic jars; local jar SHA-256 `deb1ce86914c822c5b1865bc4b03e8598b595105e85b19f386e46cf9ab1926d3` | wrapper NOTICE and current official Pilot license evidence disagree; redistribution is blocked pending audit |
+| Pilot | 29 of 30 relevant Maven reactor modules built; unrelated Jupyter dependency download failed | product-owned headless service artifact not yet produced |
+
+New direct product dependencies in this slice are `yaml` and `ws`; development
+dependencies are `tsx` and `@types/ws`. After the non-breaking audit remediation,
+`npm audit --omit=dev` reports zero findings. The full development dependency
+graph still reports eleven high findings in the ESLint 9/typescript-eslint
+toolchain; npm proposes an ESLint 10 breaking upgrade. That toolchain migration
+and the independent license scan remain release gates.
+
+## Verification baseline
+
+`npm run verify:phase1` passed on 2026-07-24:
+
+- ESLint: pass;
+- workbench tests: 5 files, 11 tests;
+- full tests: 22 files passed, 1 skipped; 159 passed, 19 skipped;
+- TypeScript application and workbench builds: pass;
+- Vite production build: pass;
+- production dependency audit: zero findings;
+- compiled service smoke with Spec42: workspace open, zero diagnostics,
+  post-index capabilities final, and document symbols returned.
+
+The crash test forces the child language process to exit with code 17. Service
+health becomes failed, the last indexed workspace becomes stale, disposal does
+not write to the dead process, and no fallback engine activates.
+
+## Gate P1 open work
+
+1. expand mandatory CI fixtures across grammar, imports/aliases/visibility,
+   standard libraries/KPAR, malformed input, metadata, comments, Unicode,
+   unknown syntax, and preservation;
+2. run official-corpus and Pilot differential tests and classify disagreements;
+3. add incremental edit, cancellation, timeout, restart, corrupted-cache, and
+   filesystem-watcher behavior;
+4. expose semantic tokens, rename, formatting, and candidate-independent
+   snapshot observations;
+5. run 1k/10k/50k benchmarks and record p50/p95/memory;
+6. produce clean-machine macOS/Windows artifacts, SBOMs, notices, offline proof,
+   and license/redistribution decisions;
+7. harden loopback WebSocket conformance and complete the local-daemon threat
+   model controls;
+8. select `GO`, `GO WITH CONDITIONS`, `NO-GO`, or `HYBRID GO`, then amend
+   ADR-001 with the exact runtime and supported capability profile.
+
+No Phase 2 semantic model or application-shell work starts from this branch
+until those blocking gates close and the Phase 1 decision is accepted.
