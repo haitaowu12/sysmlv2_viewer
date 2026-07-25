@@ -36,6 +36,7 @@ import {
 } from '../../query-engine/src/index.js'
 import type {
   AdapterWorkspace,
+  EngineSemanticEvidence,
   LanguageAdapter,
   LanguageDiagnostic,
   WorkspaceDocument,
@@ -72,6 +73,7 @@ interface OpenWorkspace {
   semanticRevision: number
   semanticSnapshot?: SemanticSnapshot
   semanticSnapshotPromise?: Promise<SemanticSnapshot>
+  queryCache: Map<string, ModelQueryResult>
 }
 
 export interface WorkspaceManagerOptions {
@@ -184,6 +186,7 @@ export class WorkspaceManager {
       identityRegistryPath,
       rootPath,
       semanticRevision: 0,
+      queryCache: new Map(),
     })
     return status
   }
@@ -357,6 +360,7 @@ export class WorkspaceManager {
     workspace.semanticRevision += 1
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
+    workspace.queryCache.clear()
     return structuredClone(workspace.status)
   }
 
@@ -378,6 +382,7 @@ export class WorkspaceManager {
     workspace.semanticRevision += 1
     workspace.semanticSnapshot = undefined
     workspace.semanticSnapshotPromise = undefined
+    workspace.queryCache.clear()
     return structuredClone(workspace.status)
   }
 
@@ -395,9 +400,9 @@ export class WorkspaceManager {
         'No complete semantic snapshot exists and the language authority is not ready',
       )
     }
-    if (!this.options.adapter.capabilities.documentSymbols) {
+    if (!this.options.adapter.capabilities.semanticEvidence) {
       throw new WorkspacePathError(
-        'The qualified language authority does not provide document symbols',
+        'The qualified language authority does not provide semantic evidence',
       )
     }
     const snapshotPromise =
@@ -416,10 +421,18 @@ export class WorkspaceManager {
     workspaceId: string,
     query: ModelQuery,
   ): Promise<ModelQueryResult> {
-    return executeModelQuery(
-      await this.semanticSnapshot(workspaceId),
-      query,
-    )
+    const workspace = this.requireWorkspace(workspaceId)
+    const snapshot = await this.semanticSnapshot(workspaceId)
+    const key = `${snapshot.snapshotSha256}\u0000${JSON.stringify(query)}`
+    const cached = workspace.queryCache.get(key)
+    if (cached) return structuredClone(cached)
+    const result = executeModelQuery(snapshot, query)
+    if (workspace.queryCache.size >= 128) {
+      const oldest = workspace.queryCache.keys().next().value
+      if (oldest) workspace.queryCache.delete(oldest)
+    }
+    workspace.queryCache.set(key, structuredClone(result))
+    return result
   }
 
   async close(workspaceId: string): Promise<boolean> {
@@ -463,11 +476,11 @@ export class WorkspaceManager {
     workspace: OpenWorkspace,
     semanticRevision: number,
   ): Promise<SemanticSnapshot> {
-    const symbols = new Map<string, WorkbenchDocumentSymbol[]>()
+    const evidence = new Map<string, EngineSemanticEvidence>()
     for (const document of workspace.adapterWorkspace.documents) {
-      symbols.set(
+      evidence.set(
         document.uri,
-        await this.options.adapter.documentSymbols!(document.uri),
+        await this.options.adapter.semanticEvidence!(document.uri),
       )
     }
     if (workspace.semanticRevision !== semanticRevision) {
@@ -482,7 +495,7 @@ export class WorkspaceManager {
       status: workspace.status,
       authority: this.options.adapter.metadata,
       documents: workspace.adapterWorkspace.documents,
-      symbols,
+      evidence,
       identities: candidateIdentities,
     })
     if (workspace.semanticRevision !== semanticRevision) {
@@ -643,7 +656,29 @@ async function loadIdentityRegistry(
       'code' in error &&
       error.code === 'ENOENT'
     ) {
-      return IdentityRegistry.empty(workspaceId)
+      const backupPath = `${path}.bak`
+      await assertNoSymlinkSegments(rootPath, backupPath)
+      try {
+        const backup = JSON.parse(
+          await readFile(backupPath, 'utf8'),
+        ) as IdentityRegistryData
+        if (backup.workspaceId !== workspaceId) {
+          throw new WorkspacePathError(
+            `Identity registry backup belongs to ${backup.workspaceId}; expected ${workspaceId}`,
+          )
+        }
+        return new IdentityRegistry(backup)
+      } catch (backupError) {
+        if (
+          backupError &&
+          typeof backupError === 'object' &&
+          'code' in backupError &&
+          backupError.code === 'ENOENT'
+        ) {
+          return IdentityRegistry.empty(workspaceId)
+        }
+        throw backupError
+      }
     }
     throw error
   }
@@ -657,6 +692,23 @@ async function persistIdentityRegistry(
   await assertNoSymlinkSegments(rootPath, path)
   await mkdir(dirname(path), { recursive: true })
   await assertNoSymlinkSegments(rootPath, path)
+  const backupPath = `${path}.bak`
+  await assertNoSymlinkSegments(rootPath, backupPath)
+  try {
+    const previous = await readFile(path)
+    const backupTemporaryPath = `${backupPath}.tmp-${process.pid}`
+    await writeFile(backupTemporaryPath, previous, { mode: 0o600 })
+    await rename(backupTemporaryPath, backupPath)
+  } catch (error) {
+    if (
+      !error ||
+      typeof error !== 'object' ||
+      !('code' in error) ||
+      error.code !== 'ENOENT'
+    ) {
+      throw error
+    }
+  }
   const temporaryPath = `${path}.tmp-${process.pid}`
   await writeFile(
     temporaryPath,

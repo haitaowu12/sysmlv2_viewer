@@ -95,18 +95,26 @@ The workbench owns a small non-semantic identity registry. Manual source changes
 
 ## Phase 2 implementation status
 
-The initial schema-1 registry now uses:
+The schema-2 registry implements:
 
-- durable id `wb:<workspace-slug>:<sha256(workspace-id, relative-path, qualified-name, kind)>`;
+- durable id `wb:<workspace-slug>:<sha256(workspace-id, relative-path,
+  qualified-name, kind, generation)>`;
 - current locator `{workspacePath, qualifiedName, kind}`;
-- source-backed declaration fingerprint;
-- explicit `{priorLocator, commandId}` aliases for controlled migration;
-- diffable JSON persistence at `identities/model-identities.json`.
+- source-backed structural fingerprint;
+- active/tombstone lifecycle and generation increment on same-locator
+  delete/recreate;
+- explicit command aliases and command-migration receipts;
+- unique-fingerprint uncontrolled-move reconciliation with a persisted receipt;
+- visible failure with candidate ids when reconciliation is ambiguous;
+- anchor states `resolved`, `stale`, and `missing`;
+- schema-1 read migration;
+- atomic `0600` primary persistence plus atomic `.bak` recovery;
+- fail-closed JSON/merge-marker and duplicate active-locator handling.
 
-Formatting, line movement, clone portability, duplicate locator rejection, and
-explicit rename/move aliases are tested. The snapshot fails rather than guessing
-when two symbols produce one locator.
+Formatting, line movement, ordinary content edits, clone portability,
+controlled rename/move, uncontrolled unique file move, collision ambiguity,
+delete/recreate, backup recovery, and merge-conflict behavior are mandatory
+tests. `packages/semantic-diff` classifies one durable id whose name/path moves
+as rename/move and proves it is not delete/create.
 
-Gate P2 remains open. Tombstones/delete-recreate, uncontrolled Git
-reconciliation, registry merge conflicts, deleted-registry recovery, review
-anchor resolution, and command/diff integration are not yet implemented.
+The registry remains anchoring metadata only. It never defines SysML semantics.

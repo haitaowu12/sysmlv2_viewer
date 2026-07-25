@@ -28,6 +28,7 @@ describe('LspProcessAdapter', () => {
       ],
       diagnosticSettleMs: 500,
       requestTimeoutMs: 2_000,
+      semanticEvidenceMethod: 'sysml/semanticEvidence',
     })
     adapters.push(adapter)
     const filePath = resolve(currentDirectory, 'fixture.sysml')
@@ -58,6 +59,7 @@ describe('LspProcessAdapter', () => {
       semanticTokens: true,
       rename: true,
       formatting: true,
+      semanticEvidence: true,
       semanticSnapshot: false,
     })
     expect(diagnostics).toEqual([
@@ -126,6 +128,18 @@ describe('LspProcessAdapter', () => {
     await expect(adapter.formatting(documentUri)).resolves.toEqual([
       expect.objectContaining({ newText: 'package Fake {}\\n' }),
     ])
+    await expect(adapter.semanticEvidence(documentUri)).resolves.toEqual({
+      schemaVersion: 1,
+      uri: documentUri,
+      elements: [
+        expect.objectContaining({
+          engineId: `fake-package:${documentUri}`,
+          metaclass: 'Package',
+          qualifiedName: 'Fake',
+        }),
+      ],
+      relationships: [],
+    })
     await expect(
       adapter.changeDocument(documentUri, 2, 'package Fake {}'),
     ).resolves.toEqual([])

@@ -74,110 +74,140 @@ for (let run = 1; run <= repetitions; run += 1) {
   })
   const memoryBefore = process.memoryUsage().rss
   try {
-  const coldStartedAt = performance.now()
-  const cold = await manager.open(generated.workspaceFile)
-  const coldOpenMs = Math.round(performance.now() - coldStartedAt)
-  const coldDiagnostics = manager.diagnostics(cold.workspaceId)
-  const memoryAfterCold = process.memoryUsage().rss
-  const engineMemoryAfterCold = await languageProcessMemory(adapter)
+    const coldStartedAt = performance.now()
+    const cold = await manager.open(generated.workspaceFile)
+    const coldOpenMs = Math.round(performance.now() - coldStartedAt)
+    const coldDiagnostics = manager.diagnostics(cold.workspaceId)
+    const memoryAfterCold = process.memoryUsage().rss
+    const engineMemoryAfterCold = await languageProcessMemory(adapter)
 
-  await manager.close(cold.workspaceId)
-  const warmStartedAt = performance.now()
-  const warm = await manager.open(generated.workspaceFile)
-  const warmOpenMs = Math.round(performance.now() - warmStartedAt)
-  const memoryAfterWarm = process.memoryUsage().rss
-  const engineMemoryAfterWarm = await languageProcessMemory(adapter)
-  const diagnostics = manager.diagnostics(warm.workspaceId)
-  measuredWorkspaceBytes = warm.documents.reduce(
-    (total, document) => total + document.byteLength,
-    0,
-  )
-  const coldDiagnosticCodes = countDiagnosticCodes(coldDiagnostics)
-  const diagnosticCodes = countDiagnosticCodes(diagnostics)
+    await manager.close(cold.workspaceId)
+    const warmStartedAt = performance.now()
+    const warm = await manager.open(generated.workspaceFile)
+    const warmOpenMs = Math.round(performance.now() - warmStartedAt)
+    const memoryAfterWarm = process.memoryUsage().rss
+    const engineMemoryAfterWarm = await languageProcessMemory(adapter)
+    const diagnostics = manager.diagnostics(warm.workspaceId)
+    let semanticSnapshotMs: number | null = null
+    let explorerQueryMs: number | null = null
+    let semanticElementCount: number | null = null
+    let semanticRelationshipCount: number | null = null
+    let explorerResultCount: number | null = null
+    if (adapter.capabilities.semanticEvidence) {
+      const semanticStartedAt = performance.now()
+      const semanticSnapshot = await manager.semanticSnapshot(warm.workspaceId)
+      semanticSnapshotMs = Math.round(performance.now() - semanticStartedAt)
+      const queryStartedAt = performance.now()
+      const explorerQuery = await manager.modelQuery(warm.workspaceId, {
+        schemaVersion: 1,
+        mode: 'containment',
+        depth: 3,
+        maxResults: 10_000,
+      })
+      explorerQueryMs = Math.round(performance.now() - queryStartedAt)
+      semanticElementCount = semanticSnapshot.elements.length
+      semanticRelationshipCount = semanticSnapshot.relationships.length
+      explorerResultCount = explorerQuery.elements.length
+    }
+    measuredWorkspaceBytes = warm.documents.reduce(
+      (total, document) => total + document.byteLength,
+      0,
+    )
+    const coldDiagnosticCodes = countDiagnosticCodes(coldDiagnostics)
+    const diagnosticCodes = countDiagnosticCodes(diagnostics)
 
-  runs.push({
-    run,
-    coldOpenMs,
-    warmOpenMs,
-    coldDiagnostics: cold.diagnostics,
-    warmDiagnostics: warm.diagnostics,
-    coldDiagnosticCodes,
-    warmDiagnosticCodes: diagnosticCodes,
-    diagnosticsStable:
-      JSON.stringify(cold.diagnostics) === JSON.stringify(warm.diagnostics) &&
-      JSON.stringify(coldDiagnosticCodes) ===
-        JSON.stringify(diagnosticCodes),
-    validWorkspaceClean:
-      cold.diagnostics.errors === 0 &&
-      warm.diagnostics.errors === 0 &&
-      [...coldDiagnostics, ...diagnostics].every((diagnostic) =>
-        expectedGeneratedDiagnosticCodes.has(diagnostic.code),
-      ),
-    deterministicSnapshot:
-      cold.snapshotSha256 === warm.snapshotSha256,
-    clientProcessRssBytes: {
-      before: memoryBefore,
-      afterCold: memoryAfterCold,
-      afterWarm: memoryAfterWarm,
-    },
-    languageProcessRssBytes: {
-      afterCold: engineMemoryAfterCold,
-      afterWarm: engineMemoryAfterWarm,
-    },
-    languageProcess: languageProcessEvidence(adapter),
-    diagnosticSamples: diagnostics.slice(0, 10).map((diagnostic) => ({
-      file: diagnostic.uri.startsWith(warm.rootUri)
-        ? diagnostic.uri.slice(warm.rootUri.length).replace(/^\/+/, '')
-        : diagnostic.uri,
-      severity: diagnostic.severity,
-      code: diagnostic.code,
-      message: diagnostic.message,
-      range: diagnostic.range,
-    })),
-  })
+    runs.push({
+      run,
+      coldOpenMs,
+      warmOpenMs,
+      semanticSnapshotMs,
+      explorerQueryMs,
+      semanticElementCount,
+      semanticRelationshipCount,
+      explorerResultCount,
+      coldDiagnostics: cold.diagnostics,
+      warmDiagnostics: warm.diagnostics,
+      coldDiagnosticCodes,
+      warmDiagnosticCodes: diagnosticCodes,
+      diagnosticsStable:
+        JSON.stringify(cold.diagnostics) === JSON.stringify(warm.diagnostics) &&
+        JSON.stringify(coldDiagnosticCodes) === JSON.stringify(diagnosticCodes),
+      validWorkspaceClean:
+        cold.diagnostics.errors === 0 &&
+        warm.diagnostics.errors === 0 &&
+        [...coldDiagnostics, ...diagnostics].every((diagnostic) =>
+          expectedGeneratedDiagnosticCodes.has(diagnostic.code),
+        ),
+      deterministicSnapshot: cold.snapshotSha256 === warm.snapshotSha256,
+      clientProcessRssBytes: {
+        before: memoryBefore,
+        afterCold: memoryAfterCold,
+        afterWarm: memoryAfterWarm,
+      },
+      languageProcessRssBytes: {
+        afterCold: engineMemoryAfterCold,
+        afterWarm: engineMemoryAfterWarm,
+      },
+      languageProcess: languageProcessEvidence(adapter),
+      diagnosticSamples: diagnostics.slice(0, 10).map((diagnostic) => ({
+        file: diagnostic.uri.startsWith(warm.rootUri)
+          ? diagnostic.uri.slice(warm.rootUri.length).replace(/^\/+/, '')
+          : diagnostic.uri,
+        severity: diagnostic.severity,
+        code: diagnostic.code,
+        message: diagnostic.message,
+        range: diagnostic.range,
+      })),
+    })
   } finally {
     await manager.dispose()
   }
 }
 
 const report = {
-    schemaVersion: 1,
-    recordedAt: new Date().toISOString(),
-    qualificationRelease: candidateManifest.qualificationRelease,
-    candidate:
-      candidateId === 'qualified-hybrid'
-        ? {
-            id: candidateId,
-            version: 'runtime-lock-0.2.0',
-            commit: `${candidateManifest.candidates.find((item) => item.id === 'vinqut')!.commit}+${candidateManifest.candidates.find((item) => item.id === 'spec42')!.commit}`,
-          }
-        : {
-            id: candidate!.id,
-            version: candidate!.version,
-            commit: candidate!.commit,
-          },
-    profile: {
-      name: profileName,
-      files: generated.files,
-      declaredElements: generated.elements,
-      bytes: measuredWorkspaceBytes,
-    },
-    result: {
-      repetitions,
-      distributions: {
-        coldOpenMs: distribution(runs.map((run) => run.coldOpenMs)),
-        warmOpenMs: distribution(runs.map((run) => run.warmOpenMs)),
-      },
-      expectedDiagnosticCodes: [...expectedGeneratedDiagnosticCodes].sort(),
-      allRunsValid: runs.every(
-        (run) =>
-          run.validWorkspaceClean &&
-          run.deterministicSnapshot &&
-          run.diagnosticsStable,
+  schemaVersion: 1,
+  recordedAt: new Date().toISOString(),
+  qualificationRelease: candidateManifest.qualificationRelease,
+  candidate:
+    candidateId === 'qualified-hybrid'
+      ? {
+          id: candidateId,
+          version: 'runtime-lock-0.2.0',
+          commit: `${candidateManifest.candidates.find((item) => item.id === 'vinqut')!.commit}+${candidateManifest.candidates.find((item) => item.id === 'spec42')!.commit}`,
+        }
+      : {
+          id: candidate!.id,
+          version: candidate!.version,
+          commit: candidate!.commit,
+        },
+  profile: {
+    name: profileName,
+    files: generated.files,
+    declaredElements: generated.elements,
+    bytes: measuredWorkspaceBytes,
+  },
+  result: {
+    repetitions,
+    distributions: {
+      coldOpenMs: distribution(runs.map((run) => run.coldOpenMs)),
+      warmOpenMs: distribution(runs.map((run) => run.warmOpenMs)),
+      semanticSnapshotMs: nullableDistribution(
+        runs.map((run) => run.semanticSnapshotMs),
       ),
-      runs,
+      explorerQueryMs: nullableDistribution(
+        runs.map((run) => run.explorerQueryMs),
+      ),
     },
-  }
+    expectedDiagnosticCodes: [...expectedGeneratedDiagnosticCodes].sort(),
+    allRunsValid: runs.every(
+      (run) =>
+        run.validWorkspaceClean &&
+        run.deterministicSnapshot &&
+        run.diagnosticsStable,
+    ),
+    runs,
+  },
+}
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 if (!report.result.allRunsValid) {
@@ -203,21 +233,33 @@ function languageProcessEvidence(adapter: LanguageAdapter): unknown {
     adapter instanceof LspProcessAdapter ||
     adapter instanceof HybridLanguageAdapter
   ) {
-    return adapter.evidence()
+    return sanitizeLanguageProcessEvidence(adapter.evidence())
   }
   return null
+}
+
+function sanitizeLanguageProcessEvidence(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeLanguageProcessEvidence(item))
+  }
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !['command', 'arguments', 'processId'].includes(key))
+      .map(([key, nested]) => [key, sanitizeLanguageProcessEvidence(nested)]),
+  )
 }
 
 async function languageProcessMemory(
   adapter: LanguageAdapter,
 ): Promise<Record<string, number | null>> {
-  const evidence = languageProcessEvidence(adapter)
+  const evidence =
+    adapter instanceof LspProcessAdapter ||
+    adapter instanceof HybridLanguageAdapter
+      ? adapter.evidence()
+      : null
   const result: Record<string, number | null> = {}
-  if (
-    evidence &&
-    typeof evidence === 'object' &&
-    'processId' in evidence
-  ) {
+  if (evidence && typeof evidence === 'object' && 'processId' in evidence) {
     result.engine = await residentBytes(
       typeof evidence.processId === 'number' ? evidence.processId : null,
     )
@@ -226,10 +268,7 @@ async function languageProcessMemory(
     for (const role of ['semantic', 'authoring'] as const) {
       const roleValue = evidenceRecord[role]
       const roleEvidence =
-        roleValue &&
-        typeof roleValue === 'object'
-          ? roleValue
-          : null
+        roleValue && typeof roleValue === 'object' ? roleValue : null
       result[role] = await residentBytes(
         roleEvidence &&
           'processId' in roleEvidence &&
@@ -273,6 +312,16 @@ function distribution(values: number[]): {
   }
 }
 
+function nullableDistribution(values: Array<number | null>): {
+  min: number
+  median: number
+  p95: number
+  max: number
+} | null {
+  const measured = values.filter((value): value is number => value !== null)
+  return measured.length > 0 ? distribution(measured) : null
+}
+
 function percentile(sorted: number[], percentileValue: number): number {
   const index = Math.max(
     0,
@@ -285,12 +334,12 @@ function countDiagnosticCodes(
   diagnostics: Array<{ code: string }>,
 ): Record<string, number> {
   return Object.fromEntries(
-    [...diagnostics.reduce((counts, diagnostic) => {
-      counts.set(diagnostic.code, (counts.get(diagnostic.code) ?? 0) + 1)
-      return counts
-    }, new Map<string, number>())].sort(([left], [right]) =>
-      left.localeCompare(right),
-    ),
+    [
+      ...diagnostics.reduce((counts, diagnostic) => {
+        counts.set(diagnostic.code, (counts.get(diagnostic.code) ?? 0) + 1)
+        return counts
+      }, new Map<string, number>()),
+    ].sort(([left], [right]) => left.localeCompare(right)),
   )
 }
 
@@ -311,7 +360,10 @@ async function generateWorkspace(
     }
     lines.push('}', '')
     await writeFile(
-      resolve(modelRoot, `benchmark-${String(fileIndex).padStart(4, '0')}.sysml`),
+      resolve(
+        modelRoot,
+        `benchmark-${String(fileIndex).padStart(4, '0')}.sysml`,
+      ),
       lines.join('\n'),
       'utf8',
     )

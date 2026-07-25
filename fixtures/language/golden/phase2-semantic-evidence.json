@@ -1,0 +1,5043 @@
+[
+  {
+    "schemaVersion": 1,
+    "uri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+    "elements": [
+      {
+        "engineId": "fb9d403f-3e90-477b-b519-4316660cea4a",
+        "metaclass": "Namespace",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "eb4f0170-c7e2-451a-a64a-46ae1e5d4cbe",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "fb9d403f-3e90-477b-b519-4316660cea4a",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "metaclass": "Package",
+        "name": "Phase2Library",
+        "qualifiedName": "Phase2Library",
+        "ownerEngineId": "eb4f0170-c7e2-451a-a64a-46ae1e5d4cbe",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "f36e17a3-15c4-4bf9-a08c-88c1413a2b4a",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 29
+          }
+        }
+      },
+      {
+        "engineId": "4eb6b834-a813-4d11-a07d-41af4aa34726",
+        "metaclass": "PartDefinition",
+        "name": "ExternalSupport",
+        "qualifiedName": "Phase2Library::ExternalSupport",
+        "ownerEngineId": "f36e17a3-15c4-4bf9-a08c-88c1413a2b4a",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 29
+          }
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "sourceEngineId": "eb4f0170-c7e2-451a-a64a-46ae1e5d4cbe",
+        "targetEngineId": "fb9d403f-3e90-477b-b519-4316660cea4a",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "eb4f0170-c7e2-451a-a64a-46ae1e5d4cbe",
+        "targetEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "targetQualifiedName": "Phase2Library",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "eb4f0170-c7e2-451a-a64a-46ae1e5d4cbe",
+        "targetEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "targetQualifiedName": "Phase2Library",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 2,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f36e17a3-15c4-4bf9-a08c-88c1413a2b4a",
+        "targetEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "targetQualifiedName": "Phase2Library",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f36e17a3-15c4-4bf9-a08c-88c1413a2b4a",
+        "targetEngineId": "4eb6b834-a813-4d11-a07d-41af4aa34726",
+        "targetQualifiedName": "Phase2Library::ExternalSupport",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f36e17a3-15c4-4bf9-a08c-88c1413a2b4a",
+        "targetEngineId": "4eb6b834-a813-4d11-a07d-41af4aa34726",
+        "targetQualifiedName": "Phase2Library::ExternalSupport",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 29
+          }
+        }
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "uri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+    "elements": [
+      {
+        "engineId": "e5602f11-63c1-44b5-be75-20d4ceaf890f",
+        "metaclass": "Namespace",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "cd4fed74-b3ff-4e91-8d3a-65ac4af47fa0",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "e5602f11-63c1-44b5-be75-20d4ceaf890f",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "metaclass": "Package",
+        "name": "Phase2Assurance",
+        "qualifiedName": "Phase2Assurance",
+        "ownerEngineId": "cd4fed74-b3ff-4e91-8d3a-65ac4af47fa0",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "engineId": "6c1afe2f-4217-4232-969f-62e92f52e673",
+        "metaclass": "NamespaceImport",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 36
+          }
+        }
+      },
+      {
+        "engineId": "38eb86ed-5e9a-4874-9f66-fc0ab13323da",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 4
+          },
+          "end": {
+            "line": 3,
+            "character": 21
+          }
+        }
+      },
+      {
+        "engineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "metaclass": "ItemDefinition",
+        "name": "Command",
+        "qualifiedName": "Phase2Assurance::Command",
+        "ownerEngineId": "38eb86ed-5e9a-4874-9f66-fc0ab13323da",
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 4
+          },
+          "end": {
+            "line": 3,
+            "character": 21
+          }
+        }
+      },
+      {
+        "engineId": "5c8d010a-9858-4b03-83ab-026930948bc4",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 4
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "engineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "metaclass": "PortDefinition",
+        "name": "CommandPort",
+        "qualifiedName": "Phase2Assurance::CommandPort",
+        "ownerEngineId": "5c8d010a-9858-4b03-83ab-026930948bc4",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 4
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "engineId": "b28a4a4e-0dff-4c9b-b471-d12ff50d69be",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "engineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "metaclass": "ConjugatedPortDefinition",
+        "name": "~CommandPort",
+        "qualifiedName": "Phase2Assurance::CommandPort::'~CommandPort'",
+        "ownerEngineId": "b28a4a4e-0dff-4c9b-b471-d12ff50d69be",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "engineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "metaclass": "PortConjugation",
+        "ownerEngineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "engineId": "1907407f-e5aa-42cb-a01c-cbf20e73d092",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 5,
+            "character": 4
+          },
+          "end": {
+            "line": 5,
+            "character": 21
+          }
+        }
+      },
+      {
+        "engineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "metaclass": "PartDefinition",
+        "name": "Vehicle",
+        "qualifiedName": "Phase2Assurance::Vehicle",
+        "ownerEngineId": "1907407f-e5aa-42cb-a01c-cbf20e73d092",
+        "range": {
+          "start": {
+            "line": 5,
+            "character": 4
+          },
+          "end": {
+            "line": 5,
+            "character": 21
+          }
+        }
+      },
+      {
+        "engineId": "1cc95ab3-4aa4-4319-aa9f-c322c52287ec",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 4
+          },
+          "end": {
+            "line": 10,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "metaclass": "RequirementUsage",
+        "name": "commandRequirement",
+        "qualifiedName": "Phase2Assurance::commandRequirement",
+        "ownerEngineId": "1cc95ab3-4aa4-4319-aa9f-c322c52287ec",
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 4
+          },
+          "end": {
+            "line": 10,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "41de2ef8-ac5d-4323-90e4-35fc1d92d772",
+        "metaclass": "SubjectMembership",
+        "ownerEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 8
+          },
+          "end": {
+            "line": 8,
+            "character": 34
+          }
+        }
+      },
+      {
+        "engineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "metaclass": "ReferenceUsage",
+        "name": "vehicle",
+        "qualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "ownerEngineId": "41de2ef8-ac5d-4323-90e4-35fc1d92d772",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 8
+          },
+          "end": {
+            "line": 8,
+            "character": 34
+          }
+        }
+      },
+      {
+        "engineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "engineId": "a7af7260-623d-420b-8260-02bb30fcd6e7",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "range": {
+          "start": {
+            "line": 9,
+            "character": 8
+          },
+          "end": {
+            "line": 9,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "e693aa35-03f5-450e-92f6-bcd3f098cfd2",
+        "metaclass": "Documentation",
+        "ownerEngineId": "a7af7260-623d-420b-8260-02bb30fcd6e7",
+        "range": {
+          "start": {
+            "line": 9,
+            "character": 8
+          },
+          "end": {
+            "line": 9,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "70fd2475-ed26-4fcc-889e-de3de4357f0a",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 12,
+            "character": 4
+          },
+          "end": {
+            "line": 18,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "metaclass": "PartUsage",
+        "name": "vehicle",
+        "qualifiedName": "Phase2Assurance::vehicle",
+        "ownerEngineId": "70fd2475-ed26-4fcc-889e-de3de4357f0a",
+        "range": {
+          "start": {
+            "line": 12,
+            "character": 4
+          },
+          "end": {
+            "line": 18,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "range": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "engineId": "493e455c-638c-43a6-8191-04d7fbdc5c30",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "range": {
+          "start": {
+            "line": 13,
+            "character": 8
+          },
+          "end": {
+            "line": 13,
+            "character": 37
+          }
+        }
+      },
+      {
+        "engineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "metaclass": "PortUsage",
+        "name": "commandIn",
+        "qualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "ownerEngineId": "493e455c-638c-43a6-8191-04d7fbdc5c30",
+        "range": {
+          "start": {
+            "line": 13,
+            "character": 8
+          },
+          "end": {
+            "line": 13,
+            "character": 37
+          }
+        }
+      },
+      {
+        "engineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "range": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "engineId": "ccbb8a6e-40e2-4483-b6df-dd6806daee63",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff"
+      },
+      {
+        "engineId": "0f9ccd33-a12f-4b0f-80fd-91ad0402d2cb",
+        "metaclass": "Multiplicity",
+        "ownerEngineId": "ccbb8a6e-40e2-4483-b6df-dd6806daee63"
+      },
+      {
+        "engineId": "45cf2ece-8c4e-4230-8339-e92e191d64fc",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "range": {
+          "start": {
+            "line": 14,
+            "character": 8
+          },
+          "end": {
+            "line": 14,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "metaclass": "PortUsage",
+        "name": "commandOut",
+        "qualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "ownerEngineId": "45cf2ece-8c4e-4230-8339-e92e191d64fc",
+        "range": {
+          "start": {
+            "line": 14,
+            "character": 8
+          },
+          "end": {
+            "line": 14,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "range": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "engineId": "9e55da2d-38da-475d-aa33-8ef42ebc97e2",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a"
+      },
+      {
+        "engineId": "6caa0c3e-b04b-4cc4-b0da-c599656cd1dd",
+        "metaclass": "Multiplicity",
+        "ownerEngineId": "9e55da2d-38da-475d-aa33-8ef42ebc97e2"
+      },
+      {
+        "engineId": "93f5abf8-8cbc-455c-a13f-dc83fc456874",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "engineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "metaclass": "InterfaceUsage",
+        "name": "commandInterface",
+        "qualifiedName": "Phase2Assurance::vehicle::commandInterface",
+        "ownerEngineId": "93f5abf8-8cbc-455c-a13f-dc83fc456874",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "engineId": "f343c9ab-a119-43c3-8ff5-1165b40448bd",
+        "metaclass": "EndFeatureMembership",
+        "ownerEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "metaclass": "PortUsage",
+        "name": "source",
+        "qualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "ownerEngineId": "f343c9ab-a119-43c3-8ff5-1165b40448bd",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "metaclass": "ReferenceSubsetting",
+        "ownerEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "4f323f7d-7667-428a-8962-1dddefaa98bd",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd"
+      },
+      {
+        "engineId": "daf5e94d-2ef7-49d4-9adb-8aa1e97e8f14",
+        "metaclass": "Multiplicity",
+        "ownerEngineId": "4f323f7d-7667-428a-8962-1dddefaa98bd"
+      },
+      {
+        "engineId": "f7bd8a89-5804-4c57-9d61-3385c59e221e",
+        "metaclass": "EndFeatureMembership",
+        "ownerEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "engineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "metaclass": "PortUsage",
+        "name": "target",
+        "qualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "ownerEngineId": "f7bd8a89-5804-4c57-9d61-3385c59e221e",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "engineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "metaclass": "ReferenceSubsetting",
+        "ownerEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "range": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "engineId": "055ae2c5-d528-4523-bf88-5bbe9208f6ff",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1"
+      },
+      {
+        "engineId": "dad61da2-3afe-4edc-a9c2-0dfb0a7f0963",
+        "metaclass": "Multiplicity",
+        "ownerEngineId": "055ae2c5-d528-4523-bf88-5bbe9208f6ff"
+      },
+      {
+        "engineId": "c826ba8f-c93c-4fe0-b232-838928c9df7f",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 8
+          },
+          "end": {
+            "line": 17,
+            "character": 53
+          }
+        }
+      },
+      {
+        "engineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "metaclass": "FlowUsage",
+        "ownerEngineId": "c826ba8f-c93c-4fe0-b232-838928c9df7f",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 8
+          },
+          "end": {
+            "line": 17,
+            "character": 53
+          }
+        }
+      },
+      {
+        "engineId": "ed69afdc-9f3a-4bcf-b4ab-babef1859297",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "engineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "metaclass": "PayloadFeature",
+        "name": "payload",
+        "ownerEngineId": "ed69afdc-9f3a-4bcf-b4ab-babef1859297",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "engineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "engineId": "f608f56b-9614-4471-95f4-b6d72e2e924a",
+        "metaclass": "EndFeatureMembership",
+        "ownerEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "61c80f23-9ffb-4d61-9d85-abb1e7b2f31c",
+        "metaclass": "FlowEnd",
+        "name": "source",
+        "ownerEngineId": "f608f56b-9614-4471-95f4-b6d72e2e924a",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "ea37ad52-e537-4050-9aab-577b493f76bd",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "61c80f23-9ffb-4d61-9d85-abb1e7b2f31c",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "metaclass": "ReferenceUsage",
+        "name": "commandIn",
+        "ownerEngineId": "ea37ad52-e537-4050-9aab-577b493f76bd",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "metaclass": "Redefinition",
+        "ownerEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "ec35e825-209a-4779-8de8-96804d9be3b5",
+        "metaclass": "EndFeatureMembership",
+        "ownerEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "e9e5077d-515d-47c6-be41-0d8f6b2293d1",
+        "metaclass": "FlowEnd",
+        "name": "target",
+        "ownerEngineId": "ec35e825-209a-4779-8de8-96804d9be3b5",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "a83aa974-0c38-404d-9db0-bfbbc1aaba87",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "e9e5077d-515d-47c6-be41-0d8f6b2293d1",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "metaclass": "ReferenceUsage",
+        "name": "commandOut",
+        "ownerEngineId": "a83aa974-0c38-404d-9db0-bfbbc1aaba87",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "metaclass": "Redefinition",
+        "ownerEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "range": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "engineId": "cb5342df-d5f5-438b-91a8-a9e08156889d",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 20,
+            "character": 4
+          },
+          "end": {
+            "line": 23,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "metaclass": "PartUsage",
+        "name": "designContext",
+        "qualifiedName": "Phase2Assurance::designContext",
+        "ownerEngineId": "cb5342df-d5f5-438b-91a8-a9e08156889d",
+        "range": {
+          "start": {
+            "line": 20,
+            "character": 4
+          },
+          "end": {
+            "line": 23,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "b5aef42d-3218-4484-94d4-8f09db94b66c",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "range": {
+          "start": {
+            "line": 21,
+            "character": 8
+          },
+          "end": {
+            "line": 21,
+            "character": 30
+          }
+        }
+      },
+      {
+        "engineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "metaclass": "ReferenceUsage",
+        "name": "design",
+        "qualifiedName": "Phase2Assurance::designContext::design",
+        "ownerEngineId": "b5aef42d-3218-4484-94d4-8f09db94b66c",
+        "range": {
+          "start": {
+            "line": 21,
+            "character": 8
+          },
+          "end": {
+            "line": 21,
+            "character": 30
+          }
+        }
+      },
+      {
+        "engineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "metaclass": "Subsetting",
+        "ownerEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "range": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "engineId": "9be2bc20-283c-4c94-be59-4ff315fd8861",
+        "metaclass": "FeatureMembership",
+        "ownerEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 8
+          },
+          "end": {
+            "line": 22,
+            "character": 45
+          }
+        }
+      },
+      {
+        "engineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "metaclass": "SatisfyRequirementUsage",
+        "ownerEngineId": "9be2bc20-283c-4c94-be59-4ff315fd8861",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 8
+          },
+          "end": {
+            "line": 22,
+            "character": 45
+          }
+        }
+      },
+      {
+        "engineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "metaclass": "ReferenceSubsetting",
+        "ownerEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "engineId": "2e949571-4ea2-4f25-98f4-bac9f54ab584",
+        "metaclass": "SubjectMembership",
+        "ownerEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "engineId": "6e37262f-f224-4e40-bf26-7414e16ed038",
+        "metaclass": "ReferenceUsage",
+        "name": "vehicle",
+        "ownerEngineId": "2e949571-4ea2-4f25-98f4-bac9f54ab584",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "engineId": "f382ae24-6748-4a1a-a2e9-6301173fc546",
+        "metaclass": "FeatureValue",
+        "ownerEngineId": "6e37262f-f224-4e40-bf26-7414e16ed038",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "engineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "metaclass": "FeatureReferenceExpression",
+        "ownerEngineId": "f382ae24-6748-4a1a-a2e9-6301173fc546",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "engineId": "bd0a89ce-b84b-480c-b2cc-e6822f0b3ff4",
+        "metaclass": "Membership",
+        "ownerEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "range": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "engineId": "1c07eaf8-f7b5-4893-8a83-98737fab68b9",
+        "metaclass": "ReturnParameterMembership",
+        "ownerEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315"
+      },
+      {
+        "engineId": "a7980d1c-a44b-42ac-8fba-6ce474c8b2f2",
+        "metaclass": "Feature",
+        "name": "result",
+        "ownerEngineId": "1c07eaf8-f7b5-4893-8a83-98737fab68b9"
+      },
+      {
+        "engineId": "6c445012-87e7-402c-b10d-b7d9d816aa69",
+        "metaclass": "OwningMembership",
+        "ownerEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "range": {
+          "start": {
+            "line": 25,
+            "character": 4
+          },
+          "end": {
+            "line": 30,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "metaclass": "VerificationCaseDefinition",
+        "name": "CommandVerification",
+        "qualifiedName": "Phase2Assurance::CommandVerification",
+        "ownerEngineId": "6c445012-87e7-402c-b10d-b7d9d816aa69",
+        "range": {
+          "start": {
+            "line": 25,
+            "character": 4
+          },
+          "end": {
+            "line": 30,
+            "character": 5
+          }
+        }
+      },
+      {
+        "engineId": "d573650b-9a05-4547-9742-00023d9c7dad",
+        "metaclass": "SubjectMembership",
+        "ownerEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "range": {
+          "start": {
+            "line": 26,
+            "character": 8
+          },
+          "end": {
+            "line": 26,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "metaclass": "ReferenceUsage",
+        "name": "testVehicle",
+        "qualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "ownerEngineId": "d573650b-9a05-4547-9742-00023d9c7dad",
+        "range": {
+          "start": {
+            "line": 26,
+            "character": 8
+          },
+          "end": {
+            "line": 26,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "metaclass": "FeatureTyping",
+        "ownerEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "range": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "engineId": "52b49ad6-4a02-4caf-8e74-c682bd89d507",
+        "metaclass": "ObjectiveMembership",
+        "ownerEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "range": {
+          "start": {
+            "line": 27,
+            "character": 8
+          },
+          "end": {
+            "line": 29,
+            "character": 9
+          }
+        }
+      },
+      {
+        "engineId": "e3f4ecf7-64e6-470c-9e8c-3057ad45ef47",
+        "metaclass": "RequirementUsage",
+        "name": "commandObjective",
+        "qualifiedName": "Phase2Assurance::CommandVerification::commandObjective",
+        "ownerEngineId": "52b49ad6-4a02-4caf-8e74-c682bd89d507",
+        "range": {
+          "start": {
+            "line": 27,
+            "character": 18
+          },
+          "end": {
+            "line": 29,
+            "character": 9
+          }
+        }
+      },
+      {
+        "engineId": "fd7a3d00-9d74-4934-b7f7-7f6c706695a4",
+        "metaclass": "RequirementVerificationMembership",
+        "ownerEngineId": "e3f4ecf7-64e6-470c-9e8c-3057ad45ef47",
+        "range": {
+          "start": {
+            "line": 28,
+            "character": 12
+          },
+          "end": {
+            "line": 28,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "metaclass": "RequirementUsage",
+        "name": "commandRequirement",
+        "qualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "ownerEngineId": "fd7a3d00-9d74-4934-b7f7-7f6c706695a4",
+        "range": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 38
+          }
+        }
+      },
+      {
+        "engineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "metaclass": "ReferenceSubsetting",
+        "ownerEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "range": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "sourceEngineId": "cd4fed74-b3ff-4e91-8d3a-65ac4af47fa0",
+        "targetEngineId": "e5602f11-63c1-44b5-be75-20d4ceaf890f",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "cd4fed74-b3ff-4e91-8d3a-65ac4af47fa0",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "cd4fed74-b3ff-4e91-8d3a-65ac4af47fa0",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "line": 31,
+            "character": 1
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6c1afe2f-4217-4232-969f-62e92f52e673",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6c1afe2f-4217-4232-969f-62e92f52e673",
+        "targetEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "targetQualifiedName": "Phase2Library",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6c1afe2f-4217-4232-969f-62e92f52e673",
+        "targetEngineId": "b1e8d814-da54-43a4-8193-6ccbf03e04b0",
+        "targetQualifiedName": "Phase2Library",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/libraries/support.sysml",
+        "feature": "importedNamespace",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "38eb86ed-5e9a-4874-9f66-fc0ab13323da",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 3,
+            "character": 4
+          },
+          "end": {
+            "line": 3,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "38eb86ed-5e9a-4874-9f66-fc0ab13323da",
+        "targetEngineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "targetQualifiedName": "Phase2Assurance::Command",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 3,
+            "character": 4
+          },
+          "end": {
+            "line": 3,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "38eb86ed-5e9a-4874-9f66-fc0ab13323da",
+        "targetEngineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "targetQualifiedName": "Phase2Assurance::Command",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 3,
+            "character": 4
+          },
+          "end": {
+            "line": 3,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "5c8d010a-9858-4b03-83ab-026930948bc4",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 4
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "5c8d010a-9858-4b03-83ab-026930948bc4",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 4
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "5c8d010a-9858-4b03-83ab-026930948bc4",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 4
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b28a4a4e-0dff-4c9b-b471-d12ff50d69be",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b28a4a4e-0dff-4c9b-b471-d12ff50d69be",
+        "targetEngineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "targetQualifiedName": "Phase2Assurance::CommandPort::'~CommandPort'",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b28a4a4e-0dff-4c9b-b471-d12ff50d69be",
+        "targetEngineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "targetQualifiedName": "Phase2Assurance::CommandPort::'~CommandPort'",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "targetEngineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "targetQualifiedName": "Phase2Assurance::CommandPort::'~CommandPort'",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "targetEngineId": "e271ceab-cabe-4401-9937-e85a077dcdc3",
+        "targetQualifiedName": "Phase2Assurance::CommandPort::'~CommandPort'",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "conjugatedType",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "originalType",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6ab49a52-8e62-4ef6-9415-e8c7c49ec924",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "originalPortDefinition",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 4,
+            "character": 25
+          },
+          "end": {
+            "line": 4,
+            "character": 25
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1907407f-e5aa-42cb-a01c-cbf20e73d092",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 5,
+            "character": 4
+          },
+          "end": {
+            "line": 5,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1907407f-e5aa-42cb-a01c-cbf20e73d092",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 5,
+            "character": 4
+          },
+          "end": {
+            "line": 5,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1907407f-e5aa-42cb-a01c-cbf20e73d092",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 5,
+            "character": 4
+          },
+          "end": {
+            "line": 5,
+            "character": 21
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1cc95ab3-4aa4-4319-aa9f-c322c52287ec",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 7,
+            "character": 4
+          },
+          "end": {
+            "line": 10,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1cc95ab3-4aa4-4319-aa9f-c322c52287ec",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 7,
+            "character": 4
+          },
+          "end": {
+            "line": 10,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1cc95ab3-4aa4-4319-aa9f-c322c52287ec",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 7,
+            "character": 4
+          },
+          "end": {
+            "line": 10,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "41de2ef8-ac5d-4323-90e4-35fc1d92d772",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 8
+          },
+          "end": {
+            "line": 8,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "41de2ef8-ac5d-4323-90e4-35fc1d92d772",
+        "targetEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 8
+          },
+          "end": {
+            "line": 8,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "41de2ef8-ac5d-4323-90e4-35fc1d92d772",
+        "targetEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 8
+          },
+          "end": {
+            "line": 8,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e22eceb5-c82a-490e-bbe8-03948a18d908",
+        "targetEngineId": "e3f48729-77c8-421b-924a-0406c90f6409",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 8,
+            "character": 26
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a7af7260-623d-420b-8260-02bb30fcd6e7",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 9,
+            "character": 8
+          },
+          "end": {
+            "line": 9,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a7af7260-623d-420b-8260-02bb30fcd6e7",
+        "targetEngineId": "e693aa35-03f5-450e-92f6-bcd3f098cfd2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 9,
+            "character": 8
+          },
+          "end": {
+            "line": 9,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a7af7260-623d-420b-8260-02bb30fcd6e7",
+        "targetEngineId": "e693aa35-03f5-450e-92f6-bcd3f098cfd2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 9,
+            "character": 8
+          },
+          "end": {
+            "line": 9,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "70fd2475-ed26-4fcc-889e-de3de4357f0a",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 4
+          },
+          "end": {
+            "line": 18,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "70fd2475-ed26-4fcc-889e-de3de4357f0a",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 4
+          },
+          "end": {
+            "line": 18,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "70fd2475-ed26-4fcc-889e-de3de4357f0a",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 4
+          },
+          "end": {
+            "line": 18,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "de286c02-5b58-424a-aded-8a98a2865fa6",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 12,
+            "character": 19
+          },
+          "end": {
+            "line": 12,
+            "character": 26
+          }
+        }
+      },
+      {
+        "sourceEngineId": "493e455c-638c-43a6-8191-04d7fbdc5c30",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 8
+          },
+          "end": {
+            "line": 13,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "493e455c-638c-43a6-8191-04d7fbdc5c30",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 8
+          },
+          "end": {
+            "line": 13,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "493e455c-638c-43a6-8191-04d7fbdc5c30",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 8
+          },
+          "end": {
+            "line": 13,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a1e0aaf6-62d5-41e0-8b3a-b3a8391ab5df",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 13,
+            "character": 25
+          },
+          "end": {
+            "line": 13,
+            "character": 36
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ccbb8a6e-40e2-4483-b6df-dd6806daee63",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "ccbb8a6e-40e2-4483-b6df-dd6806daee63",
+        "targetEngineId": "0f9ccd33-a12f-4b0f-80fd-91ad0402d2cb",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "ccbb8a6e-40e2-4483-b6df-dd6806daee63",
+        "targetEngineId": "0f9ccd33-a12f-4b0f-80fd-91ad0402d2cb",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "45cf2ece-8c4e-4230-8339-e92e191d64fc",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 8
+          },
+          "end": {
+            "line": 14,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "45cf2ece-8c4e-4230-8339-e92e191d64fc",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 8
+          },
+          "end": {
+            "line": 14,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "45cf2ece-8c4e-4230-8339-e92e191d64fc",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 8
+          },
+          "end": {
+            "line": 14,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "4d4cd25f-d4bc-4a9a-b5d1-901396381e4d",
+        "targetQualifiedName": "Phase2Assurance::CommandPort",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0811a49a-4809-486a-86fb-2fa4298e8fa1",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 14,
+            "character": 26
+          },
+          "end": {
+            "line": 14,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9e55da2d-38da-475d-aa33-8ef42ebc97e2",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "9e55da2d-38da-475d-aa33-8ef42ebc97e2",
+        "targetEngineId": "6caa0c3e-b04b-4cc4-b0da-c599656cd1dd",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "9e55da2d-38da-475d-aa33-8ef42ebc97e2",
+        "targetEngineId": "6caa0c3e-b04b-4cc4-b0da-c599656cd1dd",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "93f5abf8-8cbc-455c-a13f-dc83fc456874",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "sourceEngineId": "93f5abf8-8cbc-455c-a13f-dc83fc456874",
+        "targetEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "sourceEngineId": "93f5abf8-8cbc-455c-a13f-dc83fc456874",
+        "targetEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 8
+          },
+          "end": {
+            "line": 16,
+            "character": 67
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f343c9ab-a119-43c3-8ff5-1165b40448bd",
+        "targetEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f343c9ab-a119-43c3-8ff5-1165b40448bd",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f343c9ab-a119-43c3-8ff5-1165b40448bd",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b12b85eb-fae9-44c2-8913-fb1bb16e2a56",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "referencedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 43
+          },
+          "end": {
+            "line": 16,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4f323f7d-7667-428a-8962-1dddefaa98bd",
+        "targetEngineId": "191cc9c6-5caa-4ad1-856a-eba2f61ca3fd",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::source",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "4f323f7d-7667-428a-8962-1dddefaa98bd",
+        "targetEngineId": "daf5e94d-2ef7-49d4-9adb-8aa1e97e8f14",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "4f323f7d-7667-428a-8962-1dddefaa98bd",
+        "targetEngineId": "daf5e94d-2ef7-49d4-9adb-8aa1e97e8f14",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "f7bd8a89-5804-4c57-9d61-3385c59e221e",
+        "targetEngineId": "2e96335e-e912-4cd6-92b3-a9029f58aaeb",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f7bd8a89-5804-4c57-9d61-3385c59e221e",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f7bd8a89-5804-4c57-9d61-3385c59e221e",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "0fb9f820-81ea-4f2e-b5ae-bb3afb227823",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "referencedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 16,
+            "character": 56
+          },
+          "end": {
+            "line": 16,
+            "character": 66
+          }
+        }
+      },
+      {
+        "sourceEngineId": "055ae2c5-d528-4523-bf88-5bbe9208f6ff",
+        "targetEngineId": "b1979a47-56ad-4e2c-9454-ea9c0abab2c1",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandInterface::target",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "055ae2c5-d528-4523-bf88-5bbe9208f6ff",
+        "targetEngineId": "dad61da2-3afe-4edc-a9c2-0dfb0a7f0963",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "055ae2c5-d528-4523-bf88-5bbe9208f6ff",
+        "targetEngineId": "dad61da2-3afe-4edc-a9c2-0dfb0a7f0963",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "c826ba8f-c93c-4fe0-b232-838928c9df7f",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 8
+          },
+          "end": {
+            "line": 17,
+            "character": 53
+          }
+        }
+      },
+      {
+        "sourceEngineId": "c826ba8f-c93c-4fe0-b232-838928c9df7f",
+        "targetEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 8
+          },
+          "end": {
+            "line": 17,
+            "character": 53
+          }
+        }
+      },
+      {
+        "sourceEngineId": "c826ba8f-c93c-4fe0-b232-838928c9df7f",
+        "targetEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 8
+          },
+          "end": {
+            "line": 17,
+            "character": 53
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ed69afdc-9f3a-4bcf-b4ab-babef1859297",
+        "targetEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ed69afdc-9f3a-4bcf-b4ab-babef1859297",
+        "targetEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ed69afdc-9f3a-4bcf-b4ab-babef1859297",
+        "targetEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "targetQualifiedName": "Phase2Assurance::Command",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "targetQualifiedName": "Phase2Assurance::Command",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "90b79e9d-108d-44d3-bf46-b817f486ef1c",
+        "targetQualifiedName": "Phase2Assurance::Command",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9035dc77-1757-42d2-bbcc-3f138b9fb30e",
+        "targetEngineId": "6ee0250b-0aa8-4aed-9f69-447bb73338b8",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 16
+          },
+          "end": {
+            "line": 17,
+            "character": 23
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f608f56b-9614-4471-95f4-b6d72e2e924a",
+        "targetEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f608f56b-9614-4471-95f4-b6d72e2e924a",
+        "targetEngineId": "61c80f23-9ffb-4d61-9d85-abb1e7b2f31c",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f608f56b-9614-4471-95f4-b6d72e2e924a",
+        "targetEngineId": "61c80f23-9ffb-4d61-9d85-abb1e7b2f31c",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ea37ad52-e537-4050-9aab-577b493f76bd",
+        "targetEngineId": "61c80f23-9ffb-4d61-9d85-abb1e7b2f31c",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ea37ad52-e537-4050-9aab-577b493f76bd",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ea37ad52-e537-4050-9aab-577b493f76bd",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "8badffbe-4f7c-4ce2-b441-b90b7fc5fdff",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandIn",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "redefinedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "4539352e-8c29-4d1d-8aeb-db93ae9fc322",
+        "targetEngineId": "cb3c4416-204f-48ef-aa17-25390a87499d",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "redefiningFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 29
+          },
+          "end": {
+            "line": 17,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ec35e825-209a-4779-8de8-96804d9be3b5",
+        "targetEngineId": "fb5834a6-9e76-4aab-800b-95a5288794e2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ec35e825-209a-4779-8de8-96804d9be3b5",
+        "targetEngineId": "e9e5077d-515d-47c6-be41-0d8f6b2293d1",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "ec35e825-209a-4779-8de8-96804d9be3b5",
+        "targetEngineId": "e9e5077d-515d-47c6-be41-0d8f6b2293d1",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a83aa974-0c38-404d-9db0-bfbbc1aaba87",
+        "targetEngineId": "e9e5077d-515d-47c6-be41-0d8f6b2293d1",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a83aa974-0c38-404d-9db0-bfbbc1aaba87",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a83aa974-0c38-404d-9db0-bfbbc1aaba87",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "2fb628b6-24b0-4f74-9de4-da1d549abc2a",
+        "targetQualifiedName": "Phase2Assurance::vehicle::commandOut",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "redefinedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "e977bea3-1ad9-4bed-93c6-39d4eb786dc4",
+        "targetEngineId": "023e1242-e27e-4d52-b9b2-eb7997e43404",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "redefiningFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 17,
+            "character": 42
+          },
+          "end": {
+            "line": 17,
+            "character": 52
+          }
+        }
+      },
+      {
+        "sourceEngineId": "cb5342df-d5f5-438b-91a8-a9e08156889d",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 20,
+            "character": 4
+          },
+          "end": {
+            "line": 23,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "cb5342df-d5f5-438b-91a8-a9e08156889d",
+        "targetEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "targetQualifiedName": "Phase2Assurance::designContext",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 20,
+            "character": 4
+          },
+          "end": {
+            "line": 23,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "cb5342df-d5f5-438b-91a8-a9e08156889d",
+        "targetEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "targetQualifiedName": "Phase2Assurance::designContext",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 20,
+            "character": 4
+          },
+          "end": {
+            "line": 23,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b5aef42d-3218-4484-94d4-8f09db94b66c",
+        "targetEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "targetQualifiedName": "Phase2Assurance::designContext",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 8
+          },
+          "end": {
+            "line": 21,
+            "character": 30
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b5aef42d-3218-4484-94d4-8f09db94b66c",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 8
+          },
+          "end": {
+            "line": 21,
+            "character": 30
+          }
+        }
+      },
+      {
+        "sourceEngineId": "b5aef42d-3218-4484-94d4-8f09db94b66c",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 8
+          },
+          "end": {
+            "line": 21,
+            "character": 30
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "80795dd8-bf36-439a-97a3-77ea33032537",
+        "targetQualifiedName": "Phase2Assurance::vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2ead7db7-cc50-46ef-a8a8-626667037621",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 21,
+            "character": 22
+          },
+          "end": {
+            "line": 21,
+            "character": 29
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9be2bc20-283c-4c94-be59-4ff315fd8861",
+        "targetEngineId": "41a23235-39e7-4db7-a84c-a4d4b944bfc6",
+        "targetQualifiedName": "Phase2Assurance::designContext",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 8
+          },
+          "end": {
+            "line": 22,
+            "character": 45
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9be2bc20-283c-4c94-be59-4ff315fd8861",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 8
+          },
+          "end": {
+            "line": 22,
+            "character": 45
+          }
+        }
+      },
+      {
+        "sourceEngineId": "9be2bc20-283c-4c94-be59-4ff315fd8861",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 8
+          },
+          "end": {
+            "line": 22,
+            "character": 45
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "a5a4a86c-f5b5-4ae7-8789-75929e545f3a",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "referencedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 16
+          },
+          "end": {
+            "line": 22,
+            "character": 34
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2e949571-4ea2-4f25-98f4-bac9f54ab584",
+        "targetEngineId": "7135966b-cd3b-45f8-91fc-58a6d881ad73",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2e949571-4ea2-4f25-98f4-bac9f54ab584",
+        "targetEngineId": "6e37262f-f224-4e40-bf26-7414e16ed038",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "2e949571-4ea2-4f25-98f4-bac9f54ab584",
+        "targetEngineId": "6e37262f-f224-4e40-bf26-7414e16ed038",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f382ae24-6748-4a1a-a2e9-6301173fc546",
+        "targetEngineId": "6e37262f-f224-4e40-bf26-7414e16ed038",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f382ae24-6748-4a1a-a2e9-6301173fc546",
+        "targetEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f382ae24-6748-4a1a-a2e9-6301173fc546",
+        "targetEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bd0a89ce-b84b-480c-b2cc-e6822f0b3ff4",
+        "targetEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bd0a89ce-b84b-480c-b2cc-e6822f0b3ff4",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bd0a89ce-b84b-480c-b2cc-e6822f0b3ff4",
+        "targetEngineId": "291bdd76-7538-454c-8ce6-a606f8850744",
+        "targetQualifiedName": "Phase2Assurance::designContext::design",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 22,
+            "character": 38
+          },
+          "end": {
+            "line": 22,
+            "character": 44
+          }
+        }
+      },
+      {
+        "sourceEngineId": "1c07eaf8-f7b5-4893-8a83-98737fab68b9",
+        "targetEngineId": "e735c288-7ce5-47e8-9536-bf5f5e727315",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "1c07eaf8-f7b5-4893-8a83-98737fab68b9",
+        "targetEngineId": "a7980d1c-a44b-42ac-8fba-6ce474c8b2f2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "1c07eaf8-f7b5-4893-8a83-98737fab68b9",
+        "targetEngineId": "a7980d1c-a44b-42ac-8fba-6ce474c8b2f2",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true
+      },
+      {
+        "sourceEngineId": "6c445012-87e7-402c-b10d-b7d9d816aa69",
+        "targetEngineId": "91e34144-c79f-444d-86fd-cd36f6c435e7",
+        "targetQualifiedName": "Phase2Assurance",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 25,
+            "character": 4
+          },
+          "end": {
+            "line": 30,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6c445012-87e7-402c-b10d-b7d9d816aa69",
+        "targetEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 25,
+            "character": 4
+          },
+          "end": {
+            "line": 30,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "6c445012-87e7-402c-b10d-b7d9d816aa69",
+        "targetEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 25,
+            "character": 4
+          },
+          "end": {
+            "line": 30,
+            "character": 5
+          }
+        }
+      },
+      {
+        "sourceEngineId": "d573650b-9a05-4547-9742-00023d9c7dad",
+        "targetEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 8
+          },
+          "end": {
+            "line": 26,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "d573650b-9a05-4547-9742-00023d9c7dad",
+        "targetEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 8
+          },
+          "end": {
+            "line": 26,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "d573650b-9a05-4547-9742-00023d9c7dad",
+        "targetEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 8
+          },
+          "end": {
+            "line": 26,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "8329123a-d6c7-4670-84d7-d20b47dcee7b",
+        "targetQualifiedName": "Phase2Assurance::Vehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "type",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "bcf2b9d2-1852-410e-ae7d-78e59359927d",
+        "targetEngineId": "a2f0b670-dfbd-4171-9dfb-b9b89b1aa3d1",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::testVehicle",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "typedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 26,
+            "character": 30
+          },
+          "end": {
+            "line": 26,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "52b49ad6-4a02-4caf-8e74-c682bd89d507",
+        "targetEngineId": "53baa707-8083-4630-89d4-796c5c207423",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 27,
+            "character": 8
+          },
+          "end": {
+            "line": 29,
+            "character": 9
+          }
+        }
+      },
+      {
+        "sourceEngineId": "52b49ad6-4a02-4caf-8e74-c682bd89d507",
+        "targetEngineId": "e3f4ecf7-64e6-470c-9e8c-3057ad45ef47",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 27,
+            "character": 8
+          },
+          "end": {
+            "line": 29,
+            "character": 9
+          }
+        }
+      },
+      {
+        "sourceEngineId": "52b49ad6-4a02-4caf-8e74-c682bd89d507",
+        "targetEngineId": "e3f4ecf7-64e6-470c-9e8c-3057ad45ef47",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 27,
+            "character": 8
+          },
+          "end": {
+            "line": 29,
+            "character": 9
+          }
+        }
+      },
+      {
+        "sourceEngineId": "fd7a3d00-9d74-4934-b7f7-7f6c706695a4",
+        "targetEngineId": "e3f4ecf7-64e6-470c-9e8c-3057ad45ef47",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 12
+          },
+          "end": {
+            "line": 28,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "fd7a3d00-9d74-4934-b7f7-7f6c706695a4",
+        "targetEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 12
+          },
+          "end": {
+            "line": 28,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "fd7a3d00-9d74-4934-b7f7-7f6c706695a4",
+        "targetEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "memberElement",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 12
+          },
+          "end": {
+            "line": 28,
+            "character": 38
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "source",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "target",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "general",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "specific",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "7e2d6cb1-161f-42e4-aabe-10ff9feaa027",
+        "targetQualifiedName": "Phase2Assurance::CommandVerification::commandObjective::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "subsettingFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      },
+      {
+        "sourceEngineId": "f69be01c-d795-47bc-8301-040738df9f74",
+        "targetEngineId": "a45f2379-5fc1-4d36-b0c5-6f965b4d7c54",
+        "targetQualifiedName": "Phase2Assurance::commandRequirement",
+        "targetUri": "file:///private/tmp/sysml-workbench-production/fixtures/workspaces/phase2-semantic/model/assurance.sysml",
+        "feature": "referencedFeature",
+        "derived": false,
+        "resolved": true,
+        "sourceRange": {
+          "start": {
+            "line": 28,
+            "character": 19
+          },
+          "end": {
+            "line": 28,
+            "character": 37
+          }
+        }
+      }
+    ]
+  }
+]

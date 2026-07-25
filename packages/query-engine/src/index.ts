@@ -2,20 +2,46 @@ import type {
   NormalizedElementKind,
   SemanticElement,
   SemanticRelationship,
+  SemanticRelationshipKind,
   SemanticSnapshot,
 } from '../../semantic-model/src/index.js'
-import { NORMALIZED_ELEMENT_KINDS } from '../../semantic-model/src/index.js'
+import {
+  NORMALIZED_ELEMENT_KINDS,
+  SEMANTIC_RELATIONSHIP_KINDS,
+} from '../../semantic-model/src/index.js'
 
 export const MODEL_QUERY_SCHEMA_VERSION = 1
 const MAX_QUERY_ROOTS = 100
 const MAX_QUERY_STRING_LENGTH = 1_024
 const MAX_NAME_FILTER_LENGTH = 256
 const NORMALIZED_KINDS = new Set<string>(NORMALIZED_ELEMENT_KINDS)
+const RELATIONSHIP_KINDS = new Set<string>(SEMANTIC_RELATIONSHIP_KINDS)
+
+export type ModelQueryMode =
+  | 'containment'
+  | 'type-hierarchy'
+  | 'dependency'
+  | 'neighbourhood'
+  | 'requirements'
+  | 'verification'
+  | 'interfaces'
+
+const MODE_RELATIONSHIPS: Readonly<Record<ModelQueryMode, SemanticRelationshipKind[]>> = {
+  containment: ['containment'],
+  'type-hierarchy': ['typing'],
+  dependency: ['dependency'],
+  neighbourhood: [...SEMANTIC_RELATIONSHIP_KINDS],
+  requirements: ['containment', 'satisfaction'],
+  verification: ['containment', 'satisfaction', 'verification'],
+  interfaces: ['containment', 'typing', 'dependency', 'connection', 'flow', 'interface'],
+}
 
 export interface ModelQuery {
   schemaVersion: 1
   roots?: string[]
-  relationships?: Array<'containment'>
+  mode?: ModelQueryMode
+  relationships?: SemanticRelationshipKind[]
+  direction?: 'outbound' | 'inbound' | 'both'
   depth?: number
   filters?: {
     includeKinds?: NormalizedElementKind[]
@@ -42,7 +68,11 @@ export function executeModelQuery(
   validateQuery(query)
   const depth = query.depth ?? 3
   const maxResults = query.maxResults ?? 1_000
-  const relationshipKinds = new Set(query.relationships ?? ['containment'])
+  const mode = query.mode ?? 'containment'
+  const relationshipKinds = new Set(
+    query.relationships ?? MODE_RELATIONSHIPS[mode],
+  )
+  const direction = query.direction ?? (mode === 'containment' ? 'outbound' : 'both')
   const byId = new Map(snapshot.elements.map((element) => [element.id, element]))
   const byQualifiedName = snapshot.elements.reduce(
     (index, element) => {
@@ -73,6 +103,19 @@ export function executeModelQuery(
   for (const relationships of outgoing.values()) {
     relationships.sort((left, right) => left.id.localeCompare(right.id))
   }
+  const incoming = snapshot.relationships.reduce(
+    (index, relationship) => {
+      if (!relationshipKinds.has(relationship.kind)) return index
+      const values = index.get(relationship.targetId) ?? []
+      values.push(relationship)
+      index.set(relationship.targetId, values)
+      return index
+    },
+    new Map<string, SemanticRelationship[]>(),
+  )
+  for (const relationships of incoming.values()) {
+    relationships.sort((left, right) => left.id.localeCompare(right.id))
+  }
 
   const visited = new Set<string>()
   const queue = roots
@@ -83,10 +126,18 @@ export function executeModelQuery(
     if (visited.has(current.id)) continue
     visited.add(current.id)
     if (current.depth >= depth) continue
-    for (const relationship of outgoing.get(current.id) ?? []) {
-      if (!visited.has(relationship.targetId)) {
+    const neighbours = [
+      ...(direction !== 'inbound'
+        ? (outgoing.get(current.id) ?? []).map((relationship) => relationship.targetId)
+        : []),
+      ...(direction !== 'outbound'
+        ? (incoming.get(current.id) ?? []).map((relationship) => relationship.sourceId)
+        : []),
+    ].sort()
+    for (const neighbourId of neighbours) {
+      if (!visited.has(neighbourId)) {
         queue.push({
-          id: relationship.targetId,
+          id: neighbourId,
           depth: current.depth + 1,
         })
       }
@@ -202,14 +253,28 @@ function validateQuery(query: ModelQuery): void {
     throw new Error('Model query maxResults must be an integer from 1 to 10000')
   }
   if (
+    query.mode !== undefined &&
+    !Object.hasOwn(MODE_RELATIONSHIPS, query.mode)
+  ) {
+    throw new Error('Model query mode is unsupported')
+  }
+  if (
+    query.direction !== undefined &&
+    !['outbound', 'inbound', 'both'].includes(query.direction)
+  ) {
+    throw new Error('Model query direction is unsupported')
+  }
+  if (
     query.relationships !== undefined &&
     (!Array.isArray(query.relationships) ||
-      query.relationships.length > 1 ||
+      query.relationships.length > SEMANTIC_RELATIONSHIP_KINDS.length ||
       query.relationships.some(
-        (relationship) => relationship !== 'containment',
+        (relationship) =>
+          typeof relationship !== 'string' ||
+          !RELATIONSHIP_KINDS.has(relationship),
       ))
   ) {
-    throw new Error('Only qualified containment relationships are supported')
+    throw new Error('Model query contains an unsupported relationship kind')
   }
   if (query.filters !== undefined) {
     if (!isRecord(query.filters)) {

@@ -17,9 +17,12 @@ import type {
   LanguageAdapter,
   LanguageAdapterMetadata,
   LanguageDiagnostic,
+  EngineSemanticEvidence,
 } from './index.js'
 
 const MAX_CAPTURE_BYTES = 16 * 1024 * 1024
+const MAX_SEMANTIC_EVIDENCE_ELEMENTS = 100_000
+const MAX_SEMANTIC_EVIDENCE_RELATIONSHIPS = 1_000_000
 
 interface PendingRequest {
   resolve(value: unknown): void
@@ -36,6 +39,7 @@ export interface LspProcessAdapterOptions {
   startupTimeoutMs?: number
   requestTimeoutMs?: number
   diagnosticSettleMs?: number
+  semanticEvidenceMethod?: string
 }
 
 export interface ProcessEvidence {
@@ -230,6 +234,9 @@ export class LspProcessAdapter implements LanguageAdapter {
       },
       })
       this.capabilities = capabilitiesFromInitialize(initializeResult)
+      this.capabilities.semanticEvidence = Boolean(
+        this.options.semanticEvidenceMethod,
+      )
       this.semanticTokenLegend = semanticTokenLegendFromInitialize(initializeResult)
       this.negotiated = true
       this.initializedRootUri = workspace.rootUri
@@ -307,6 +314,18 @@ export class LspProcessAdapter implements LanguageAdapter {
         textDocument: { uri },
         position,
       }),
+    )
+  }
+
+  async semanticEvidence(uri: string): Promise<EngineSemanticEvidence> {
+    this.requireActiveDocument(uri)
+    const method = this.options.semanticEvidenceMethod
+    if (!method) {
+      throw new Error('Semantic evidence endpoint is not configured')
+    }
+    return normalizeSemanticEvidence(
+      await this.request(method, { uri }),
+      uri,
     )
   }
 
@@ -725,6 +744,7 @@ function capabilitiesFromInitialize(value: unknown): LanguageCapabilities {
     semanticTokens: Boolean(capabilities.semanticTokensProvider),
     rename: Boolean(capabilities.renameProvider),
     formatting: Boolean(capabilities.documentFormattingProvider),
+    semanticEvidence: false,
     semanticSnapshot: false,
   }
 }
@@ -776,6 +796,92 @@ function normalizeWorkspaceEdit(value: unknown): WorkbenchWorkspaceEdit {
     }
   }
   return { changes: normalized }
+}
+
+function normalizeSemanticEvidence(
+  value: unknown,
+  expectedUri: string,
+): EngineSemanticEvidence {
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== 1 ||
+    value.uri !== expectedUri ||
+    !Array.isArray(value.elements) ||
+    !Array.isArray(value.relationships)
+  ) {
+    throw new Error('Language engine returned invalid semantic evidence')
+  }
+  if (value.elements.length > MAX_SEMANTIC_EVIDENCE_ELEMENTS) {
+    throw new Error('Language engine semantic evidence exceeds element limit')
+  }
+  if (value.relationships.length > MAX_SEMANTIC_EVIDENCE_RELATIONSHIPS) {
+    throw new Error(
+      'Language engine semantic evidence exceeds relationship limit',
+    )
+  }
+  const elements = value.elements.map((item) => {
+    if (
+      !isRecord(item) ||
+      typeof item.engineId !== 'string' ||
+      item.engineId.length === 0 ||
+      typeof item.metaclass !== 'string' ||
+      item.metaclass.length === 0
+    ) {
+      throw new Error('Language engine returned invalid semantic element evidence')
+    }
+    return {
+      engineId: item.engineId,
+      metaclass: item.metaclass,
+      name: optionalString(item.name),
+      qualifiedName: optionalString(item.qualifiedName),
+      ownerEngineId: optionalString(item.ownerEngineId),
+      range: optionalRange(item.range),
+    }
+  })
+  const relationships = value.relationships.map((item) => {
+    if (
+      !isRecord(item) ||
+      typeof item.sourceEngineId !== 'string' ||
+      item.sourceEngineId.length === 0 ||
+      typeof item.feature !== 'string' ||
+      item.feature.length === 0 ||
+      typeof item.derived !== 'boolean' ||
+      typeof item.resolved !== 'boolean'
+    ) {
+      throw new Error(
+        'Language engine returned invalid semantic relationship evidence',
+      )
+    }
+    return {
+      sourceEngineId: item.sourceEngineId,
+      targetEngineId: optionalString(item.targetEngineId),
+      targetQualifiedName: optionalString(item.targetQualifiedName),
+      targetUri: optionalString(item.targetUri),
+      feature: item.feature,
+      derived: item.derived,
+      resolved: item.resolved,
+      sourceRange: optionalRange(item.sourceRange),
+    }
+  })
+  return {
+    schemaVersion: 1,
+    uri: expectedUri,
+    elements,
+    relationships,
+  }
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function optionalRange(value: unknown): WorkbenchRange | undefined {
+  if (value === undefined || value === null) return undefined
+  const range = normalizeWorkbenchRange(value)
+  if (!range) {
+    throw new Error('Language engine returned an invalid semantic evidence range')
+  }
+  return range
 }
 
 function normalizeTextEdit(value: unknown): WorkbenchTextEdit | undefined {
@@ -977,6 +1083,7 @@ function emptyCapabilities(): LanguageCapabilities {
     semanticTokens: false,
     rename: false,
     formatting: false,
+    semanticEvidence: false,
     semanticSnapshot: false,
   }
 }

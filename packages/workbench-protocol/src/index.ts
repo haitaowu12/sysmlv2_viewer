@@ -61,6 +61,7 @@ export interface LanguageCapabilities {
   semanticTokens: boolean
   rename: boolean
   formatting: boolean
+  semanticEvidence: boolean
   semanticSnapshot: boolean
 }
 

@@ -1,0 +1,7 @@
+schemaVersion: 1
+id: phase2-semantic
+name: Phase 2 semantic relationship fixture
+sourceRoots:
+  - model
+libraries:
+  - libraries
