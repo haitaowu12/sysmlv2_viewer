@@ -28,6 +28,12 @@ import type {
 } from '../../packages/review-service/src/index.js'
 import type { AssuranceEvaluation } from '../../packages/rule-engine/src/index.js'
 import type { ReportBundleManifest, ReportKind } from '../../packages/report-engine/src/index.js'
+import type {
+  AiApplyApproval,
+  AiAssistantRequest,
+  AiOperationRecord,
+  AiOrchestratorStatus,
+} from '../../packages/ai-orchestrator/src/index.js'
 
 export interface WorkbenchGateway {
   readDocument(workspaceId: string, documentUri: string): Promise<WorkspaceDocumentContent>
@@ -89,6 +95,10 @@ export interface WorkbenchGateway {
     viewConfiguration?: string
     exclusions?: string[]
   }): Promise<ReportBundleManifest>
+  aiStatus(): Promise<AiOrchestratorStatus>
+  requestAi(workspaceId: string, input: AiAssistantRequest): Promise<AiOperationRecord>
+  listAiAudit(workspaceId: string): Promise<AiOperationRecord[]>
+  applyAi(workspaceId: string, approval: AiApplyApproval): Promise<AiOperationRecord>
   proposeCommand(envelope: CommandEnvelope): Promise<CommandProposal>
   applyCommand(approval: ApplyCommandApproval): Promise<AppliedCommandReceipt>
 }
