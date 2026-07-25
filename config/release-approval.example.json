@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "pending",
+  "productName": "SysML Engineering Workbench",
+  "version": "0.7.0-rc.1",
+  "qualifiedPlatforms": [],
+  "cleanMachineEvidence": [],
+  "productLicenseApproved": false,
+  "runtimeLicenseReconciled": false,
+  "distributionSigned": false,
+  "manualAccessibilityPassed": false,
+  "recoveryPassed": false,
+  "usabilityParticipants": [],
+  "owner": "",
+  "approvedAt": "",
+  "evidence": []
+}

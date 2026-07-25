@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-25T23:03:30.394Z",
+  "sourceCommit": "9c1d6abc78f29855b8217a99f13081efe07c715c",
+  "rawReportSha256": "3d8e2620f40ab435a742cc704b96e69700ea371e1318e4fa7a5d518c4f2c7240",
+  "machine": {
+    "operatingSystem": "macOS 26.5.2 (25F84)",
+    "processor": "Apple M2 Pro",
+    "memoryBytes": 17179869184,
+    "node": "22.18.0",
+    "java": "OpenJDK 21.0.8"
+  },
+  "runtime": {
+    "semanticCommit": "373dfb960860c3ac259f56169ddabc06d2847eca",
+    "authoringCommit": "a3f066ee4095a0eb8b37545ffd4846d42804658a",
+    "referenceReleaseCommit": "de1070ae8e79c21532b8004fc663d47b35d0e9fa"
+  },
+  "profile": {
+    "name": "medium",
+    "files": 100,
+    "declaredElements": 10000,
+    "bytes": 281190,
+    "warmups": 5,
+    "recordedSamples": 30,
+    "allRunsValid": true
+  },
+  "p95Milliseconds": {
+    "coldOpen": 6385,
+    "warmOpen": 1251,
+    "semanticSnapshot": 3251,
+    "explorerQuery": 265,
+    "firstUsefulExplorer": 4687,
+    "incrementalDiagnostics": 175.89,
+    "definition": 51.54,
+    "authoringFirstCompletion": 2338.39,
+    "authoringWarmCompletion": 988.96,
+    "diagramProjection": 38.46,
+    "matrixUpdate": 5.71,
+    "semanticDiff": 25.88
+  },
+  "targets": [
+    { "metric": "warmOpen", "thresholdMs": 3000, "observedP95": 1251, "status": "pass" },
+    { "metric": "firstUsefulExplorer", "thresholdMs": 5000, "observedP95": 4687, "status": "pass" },
+    { "metric": "incrementalDiagnostics", "thresholdMs": 500, "observedP95": 175.89, "status": "pass" },
+    { "metric": "definition", "thresholdMs": 300, "observedP95": 51.54, "status": "pass" },
+    { "metric": "diagramProjection", "thresholdMs": 2000, "observedP95": 38.46, "status": "pass" },
+    { "metric": "matrixUpdate", "thresholdMs": 500, "observedP95": 5.71, "status": "pass" },
+    { "metric": "semanticDiff", "thresholdMs": 10000, "observedP95": 25.88, "status": "pass" }
+  ],
+  "limitations": [
+    "The campaign ran on one macOS arm64 engineering laptop; each claimed operating system requires its own clean-machine evidence.",
+    "The non-authoritative authoring workspace is intentionally lazy. First completion p95 was 2338.39 ms; warm completion p95 was 988.96 ms. No release threshold was specified for completion, so these are disclosed rather than classified as passes.",
+    "Cold open p95 was 6385 ms. The specified release threshold applies to warm reopen and first useful explorer, not cold indexing."
+  ]
+}

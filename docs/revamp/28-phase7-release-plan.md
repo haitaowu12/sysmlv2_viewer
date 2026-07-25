@@ -1,6 +1,6 @@
 # Phase 7 — Hardening and Release Plan
 
-Status: in progress
+Status: technical candidate complete; Gate P7 blocked on owner/external evidence
 Baseline: `1b49d5c9339e2169955f48b4add49de6367087e7`
 Branch: `codex/sysml-workbench-phase7-release`
 
