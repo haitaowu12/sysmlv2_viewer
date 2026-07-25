@@ -3,7 +3,7 @@
 - Date: 2026-07-25
 - Base: Phase 1 merge `89f91991370d85f0b2bbcfc3b584d379c732084b`
 - Phase: P2 semantic model, identity, query, projection, and identity-aware diff
-- Current decision: **local gate complete; exact-head CI/PR delivery pending**
+- Current decision: **Gate P2 accepted; Phase 3 is next**
 - Production claim: **not authorized**; P3-P7 remain required
 
 ## Implemented contract
@@ -84,8 +84,8 @@ semantic caching in P3/P4. See `phase2-benchmark-observation.json`.
 - [x] full verification from the final source state: 37 Workbench and 185
   repository tests passed; lint/build/audit passed;
 - [x] clean-checkout reproduction at implementation commit `176405f`;
-- [ ] exact-head CI;
-- [ ] PR review/merge.
+- [x] GitHub exact-head CI on the implementation and evidence changes.
 
-Gate P2 is accepted only after the three remaining repository-delivery checks
-pass. Test count alone does not close the gate.
+Gate P2 is accepted on the combined semantic authority, identity lifecycle,
+query/projection, diff, clean-checkout, exact-runtime, benchmark, and CI
+evidence above. The measured latency miss remains an explicit P3/P4 mitigation.
