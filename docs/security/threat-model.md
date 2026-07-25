@@ -1,6 +1,7 @@
 # Threat Model
 
-Status: Phase 0 design model. Closure evidence is required before each affected capability ships.
+Status: P7 closure review. Implemented controls below are tested; open
+distribution and usability gates prevent a public production claim.
 
 ## Assets
 
@@ -45,7 +46,7 @@ Status: Phase 0 design model. Closure evidence is required before each affected 
 | T16 | database becomes shadow model | hosted adapter→semantics | canonical source/artifact schemas, adapter equivalence, immutable manifests | before D |
 | T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
 
-## Phase 1 control status
+## Implemented control status
 
 Implemented and tested:
 
@@ -60,6 +61,19 @@ Implemented and tested:
 - engine-proposed workspace edits rejected when any URI is outside the active
   document set;
 - zero-finding npm audit and deterministic production SBOM/license inventory.
+- same-origin loopback static serving with strict CSP, traversal rejection,
+  immutable asset caching, and whole-bundle preflight hashes;
+- recovery-journaled command writes, base-hash conflicts, opaque-range guards,
+  explicit approval, validated undo/redo, and restart recovery;
+- stable-identity review anchors, baseline binding, semantic change
+  classification, and staleness detection;
+- sanitized deterministic HTML/PDF/CSV reporting;
+- local-only controlled AI, narrow tools, citation rejection, proposal-only
+  commands, user-only approval, audit hashes, traversal rejection, and audit
+  symlink containment;
+- automated structural accessibility checks, visible keyboard focus,
+  focus-contained command palette, reduced motion, and diagram matrix
+  alternative.
 
 Not exposed at P1:
 
@@ -68,13 +82,19 @@ Not exposed at P1:
 - no remote/shared listener, telemetry, automatic update, or external AI egress
   exists in the new service.
 
-Carried gates:
+Open release gates:
 
 - progressive indexing/cancellation beyond individual LSP requests;
 - watcher debounce/quotas and TOCTOU tests when watching is introduced;
-- process sandboxing and large-workspace memory budgets;
+- process sandboxing and large-workspace memory budgets remain residual risk
+  for the internal RC and require disposition before public distribution;
 - Windows packaging/IPC review, signing, and installer threat tests;
-- owner product-license decision and full bundled runtime notices.
+- owner product-license decision and runtime redistribution-license
+  reconciliation;
+- signed/notarized update/distribution channel;
+- clean-machine OS and three-person usability evidence;
+- manual contrast/screen-reader review (automated JSDOM axe cannot measure
+  rendered color contrast).
 | T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
 
 ## Security invariants

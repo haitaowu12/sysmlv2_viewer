@@ -6,6 +6,8 @@ import {
   type ServerResponse,
 } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { readFile, realpath, stat } from 'node:fs/promises'
+import { extname, relative, resolve, sep } from 'node:path'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
 import {
   failure,
@@ -32,6 +34,7 @@ export interface LoopbackServerOptions {
   address?: '127.0.0.1' | '::1'
   port?: number
   allowedOrigins: string[]
+  staticRoot?: string
 }
 
 export interface LoopbackServerHandle {
@@ -54,6 +57,9 @@ export async function createLoopbackServer(
   for (const origin of options.allowedOrigins) {
     validateOrigin(origin)
   }
+  const staticRoot = options.staticRoot
+    ? await realpath(options.staticRoot)
+    : undefined
 
   const pairingCode = randomBytes(12).toString('base64url')
   const pairingExpiresAt = Date.now() + PAIRING_TTL_MS
@@ -62,6 +68,17 @@ export async function createLoopbackServer(
 
   const server = createServer(async (request, response) => {
     applySecurityHeaders(response)
+    if (
+      staticRoot &&
+      (request.method === 'GET' || request.method === 'HEAD')
+    ) {
+      if (!validHost(request)) {
+        respondJson(response, 403, { error: 'Host is not loopback' })
+        return
+      }
+      await serveStatic(request, response, staticRoot)
+      return
+    }
     const origin = request.headers.origin
     if (!origin || !options.allowedOrigins.includes(origin)) {
       respondJson(response, 403, { error: 'Origin is not allowed' })
@@ -331,6 +348,116 @@ function applySecurityHeaders(response: ServerResponse): void {
   response.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
   response.setHeader('X-Content-Type-Options', 'nosniff')
   response.setHeader('Referrer-Policy', 'no-referrer')
+}
+
+async function serveStatic(
+  request: IncomingMessage,
+  response: ServerResponse,
+  staticRoot: string,
+): Promise<void> {
+  let pathname: string
+  try {
+    pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
+    pathname = decodeURIComponent(pathname)
+  } catch {
+    respondJson(response, 400, { error: 'Invalid static asset path' })
+    return
+  }
+  const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1)
+  if (
+    relativePath.length === 0 ||
+    relativePath.includes('\0') ||
+    relativePath.split('/').some((segment) => segment === '..')
+  ) {
+    respondJson(response, 400, { error: 'Invalid static asset path' })
+    return
+  }
+  const candidate = resolve(staticRoot, relativePath)
+  if (!isWithin(staticRoot, candidate)) {
+    respondJson(response, 403, { error: 'Static asset path escapes the UI root' })
+    return
+  }
+  try {
+    const canonical = await realpath(candidate)
+    if (!isWithin(staticRoot, canonical) || !(await stat(canonical)).isFile()) {
+      respondJson(response, 404, { error: 'Static asset not found' })
+      return
+    }
+    const bytes = await readFile(canonical)
+    applyStaticSecurityHeaders(response)
+    response.setHeader(
+      'Cache-Control',
+      relativePath.startsWith('assets/')
+        ? 'public, max-age=31536000, immutable'
+        : 'no-store',
+    )
+    response.setHeader(
+      'Content-Type',
+      contentType(canonical),
+    )
+    response.setHeader('Content-Length', String(bytes.byteLength))
+    response.writeHead(200)
+    response.end(request.method === 'HEAD' ? undefined : bytes)
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
+      respondJson(response, 404, { error: 'Static asset not found' })
+      return
+    }
+    throw error
+  }
+}
+
+function applyStaticSecurityHeaders(response: ServerResponse): void {
+  response.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "base-uri 'none'",
+      "connect-src 'self' ws:",
+      "font-src 'self' data:",
+      "form-action 'none'",
+      "frame-ancestors 'none'",
+      "img-src 'self' data: blob:",
+      "object-src 'none'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "worker-src 'self' blob:",
+    ].join('; '),
+  )
+  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+}
+
+function contentType(path: string): string {
+  switch (extname(path).toLowerCase()) {
+    case '.html':
+      return 'text/html; charset=utf-8'
+    case '.js':
+    case '.mjs':
+      return 'text/javascript; charset=utf-8'
+    case '.css':
+      return 'text/css; charset=utf-8'
+    case '.json':
+      return 'application/json; charset=utf-8'
+    case '.svg':
+      return 'image/svg+xml'
+    case '.png':
+      return 'image/png'
+    case '.woff2':
+      return 'font/woff2'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
+function isWithin(root: string, candidate: string): boolean {
+  const path = relative(root, candidate)
+  return path === '' || (path !== '..' && !path.startsWith(`..${sep}`))
 }
 
 function parseProtocols(header: string | string[] | undefined): string[] {

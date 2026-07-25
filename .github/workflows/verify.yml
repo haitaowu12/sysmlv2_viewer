@@ -1,4 +1,4 @@
-name: Verify workbench foundation
+name: Verify release source
 
 on:
   pull_request:
@@ -28,8 +28,8 @@ jobs:
       - name: Install exact dependencies
         run: npm ci
 
-      - name: Verify active workbench phase
-        run: npm run verify:phase4
+      - name: Verify release source gates
+        run: npm run verify:release:source
 
       - name: Confirm candidate qualification fails closed without engines
         shell: bash
@@ -60,7 +60,7 @@ jobs:
       - name: Upload control qualification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase1-control-qualification
+          name: release-control-qualification
           path: |
             ${{ runner.temp }}/qualification/qualification-report.json
             ${{ runner.temp }}/fixture-qualification/fixture-qualification-report.json

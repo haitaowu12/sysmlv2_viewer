@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "outcome": "blocked",
+  "scope": "release dependency and distribution license policy",
+  "npm": {
+    "componentCount": 42,
+    "allowedExpressions": [
+      "(MIT AND Zlib)",
+      "(MPL-2.0 OR Apache-2.0)",
+      "0BSD",
+      "BSD-3-Clause",
+      "ISC",
+      "MIT"
+    ],
+    "unapprovedFindings": []
+  },
+  "product": {
+    "licenseDeclared": false
+  },
+  "runtime": {
+    "noticesBundledByReleaseAssembler": true,
+    "findings": [
+      {
+        "id": "RUNTIME-LICENSE-001",
+        "severity": "blocking",
+        "status": "open",
+        "statement": "The VinQut fat-JAR NOTICE identifies bundled Pilot software as LGPL-3.0-or-later, while the pinned Pilot checkout declares EPL-2.0. The redistributed class set and corresponding obligations require legal/source provenance reconciliation."
+      }
+    ]
+  },
+  "blockers": [
+    {
+      "id": "PRODUCT-LICENSE-001",
+      "severity": "blocking",
+      "status": "open",
+      "statement": "The repository owner has not declared a product license; public distribution is prohibited."
+    },
+    {
+      "id": "RUNTIME-LICENSE-001",
+      "severity": "blocking",
+      "status": "open",
+      "statement": "The VinQut fat-JAR NOTICE identifies bundled Pilot software as LGPL-3.0-or-later, while the pinned Pilot checkout declares EPL-2.0. The redistributed class set and corresponding obligations require legal/source provenance reconciliation."
+    }
+  ]
+}

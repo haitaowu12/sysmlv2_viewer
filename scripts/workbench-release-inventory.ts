@@ -24,6 +24,10 @@ const repositoryRoot = resolve(import.meta.dirname, '..')
 const outputDirectory = resolve(
   valueAfter('--output') ?? resolve(repositoryRoot, 'docs/revamp'),
 )
+const label = valueAfter('--label') ?? 'phase7'
+if (!/^[a-z0-9-]+$/.test(label)) {
+  throw new Error('--label must contain only lowercase letters, numbers, and dashes')
+}
 await mkdir(outputDirectory, { recursive: true })
 
 const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm'
@@ -78,12 +82,12 @@ const inventory = {
 
 await Promise.all([
   writeFile(
-    resolve(outputDirectory, 'phase1-production-sbom.cdx.json'),
+    resolve(outputDirectory, `${label}-production-sbom.cdx.json`),
     `${JSON.stringify(bom, null, 2)}\n`,
     'utf8',
   ),
   writeFile(
-    resolve(outputDirectory, 'phase1-package-license-inventory.json'),
+    resolve(outputDirectory, `${label}-package-license-inventory.json`),
     `${JSON.stringify(inventory, null, 2)}\n`,
     'utf8',
   ),

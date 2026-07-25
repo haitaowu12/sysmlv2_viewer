@@ -13,6 +13,9 @@ dist-workbench
 dist-ssr
 generated/qualification/
 generated/benchmarks/
+generated/release/
+generated/release-evidence/
+release/
 *.local
 
 # Editor directories and files

@@ -1,7 +1,7 @@
 {
   "name": "sysml-engineering-workbench",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.7.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,6 +24,10 @@
     "qualify:phase6": "tsx scripts/workbench-qualify-phase6.ts",
     "benchmark:workbench": "tsx scripts/workbench-benchmark.ts",
     "release:inventory": "tsx scripts/workbench-release-inventory.ts",
+    "release:license-policy": "tsx scripts/workbench-license-policy.ts",
+    "release:package": "tsx scripts/workbench-package-release.ts",
+    "release:verify-bundle": "tsx scripts/workbench-verify-release-bundle.ts",
+    "release:smoke-bundle": "tsx scripts/workbench-smoke-release-bundle.ts",
     "audit:production": "npm audit --omit=dev",
     "test:release": "vitest run src/test/releaseBaseline.test.ts src/test/upstreamCorpus.test.ts",
     "test:watch": "vitest",
@@ -32,7 +36,10 @@
     "verify:phase3": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
     "verify:phase4": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
     "verify:phase5": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
-    "verify:phase6": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production"
+    "verify:phase6": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production",
+    "verify:release:source": "npm run lint && npm run test:workbench && npm run test && npm run build && npm run audit:production && npm run release:inventory -- --output generated/release-evidence --label phase7 && npm run release:license-policy -- --inventory generated/release-evidence/phase7-package-license-inventory.json --output generated/release-evidence/phase7-license-policy.json --allow-owner-blocker",
+    "verify:release:technical": "npm run verify:release:source && tsx scripts/workbench-verify-release.ts --allow-owner-blockers",
+    "verify:release": "npm run verify:release:source && tsx scripts/workbench-verify-release.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
@@ -56,11 +63,13 @@
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.1",
+    "axe-core": "^4.12.1",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^16.5.0",
     "jsdom": "^29.0.2",
+    "tar": "^7.5.22",
     "tsx": "^4.23.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.65.0",

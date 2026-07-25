@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import Editor, { type Monaco } from '@monaco-editor/react'
 import type { editor as MonacoEditor, Position as MonacoPosition } from 'monaco-editor'
 import {
@@ -80,6 +80,8 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
   const [search, setSearch] = useState('')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [savingView, setSavingView] = useState(false)
+  const paletteDialog = useRef<HTMLElement>(null)
+  const paletteReturnFocus = useRef<HTMLElement | null>(null)
 
   const workspaceId = workspace.status.workspaceId
   const selected = workspace.snapshot.elements.find((element) => element.id === selectedId)
@@ -122,12 +124,27 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
     const handleKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === 'k') {
         event.preventDefault()
-        setPaletteOpen((value) => !value)
+        setPaletteOpen((value) => {
+          if (!value) paletteReturnFocus.current = globalThis.document.activeElement as HTMLElement
+          return !value
+        })
+      } else if (event.key === 'Escape' && paletteOpen) {
+        event.preventDefault()
+        setPaletteOpen(false)
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  }, [paletteOpen])
+
+  useEffect(() => {
+    if (paletteOpen) {
+      paletteDialog.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    } else {
+      paletteReturnFocus.current?.focus()
+      paletteReturnFocus.current = null
+    }
+  }, [paletteOpen])
 
   const selectElement = (element: SemanticElement) => {
     setSelectedId(element.id)
@@ -182,6 +199,30 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
     if (next === 'model') setMode('containment')
   }
 
+  const openPalette = () => {
+    paletteReturnFocus.current = globalThis.document.activeElement as HTMLElement
+    setPaletteOpen(true)
+  }
+
+  const trapPaletteFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab') return
+    const controls = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    )
+    const first = controls[0]
+    const last = controls.at(-1)
+    if (!first || !last) return
+    if (event.shiftKey && globalThis.document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   return (
     <main className="workbench-shell" aria-label="SysML Engineering Workbench">
       <header className="workbench-titlebar">
@@ -193,7 +234,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
         <div className="titlebar-status">
           <span className={`status-dot ${workspace.status.indexState}`} />
           {workspace.status.indexState} · {workspace.status.semanticAuthority}
-          <button type="button" onClick={() => setPaletteOpen(true)}>⌘K</button>
+          <button type="button" aria-label="Open command palette" onClick={openPalette}>⌘K</button>
         </div>
       </header>
 
@@ -360,8 +401,8 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
 
       {paletteOpen && (
         <div className="command-palette-backdrop" role="presentation" onMouseDown={() => setPaletteOpen(false)}>
-          <section className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
-            <h2>Go to activity</h2>
+          <section ref={paletteDialog} className="command-palette" role="dialog" aria-modal="true" aria-labelledby="command-palette-title" onKeyDown={trapPaletteFocus} onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="command-palette-title">Go to activity</h2>
             {ACTIVITIES.map((item) => (
               <button type="button" key={item.id} onClick={() => { selectActivity(item.id); setPaletteOpen(false) }}>{item.label}</button>
             ))}
