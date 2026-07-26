@@ -17,6 +17,7 @@ import {
 } from './loopback.js'
 
 const origin = 'http://127.0.0.1:5173'
+const pagesOrigin = 'https://haitaowu12.github.io'
 const sampleRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../fixtures/workspaces/phase1-sample',
@@ -42,6 +43,134 @@ afterEach(async () => {
 })
 
 describe('authenticated loopback transport', () => {
+  it('permits an exact Pages origin through Private Network Access preflight', async () => {
+    const workspaceFile = resolve(sampleRoot, 'sysml-workspace.yaml')
+    const service = new WorkbenchService({
+      adapter: new PreservationControlAdapter(),
+      allowedRoots: [sampleRoot],
+      transport: { kind: 'loopback', secure: false },
+    })
+    const server = await createLoopbackServer({
+      service,
+      allowedOrigins: [pagesOrigin],
+      bootstrapWorkspaceFile: workspaceFile,
+    })
+    resources.push({ server, service })
+    const base = `http://${server.address}:${server.port}`
+
+    const preflight = await fetch(`${base}/pair`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: pagesOrigin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Private-Network': 'true',
+      },
+    })
+    expect(preflight.status).toBe(204)
+    expect(preflight.headers.get('access-control-allow-origin')).toBe(
+      pagesOrigin,
+    )
+    expect(
+      preflight.headers.get('access-control-allow-private-network'),
+    ).toBe('true')
+    expect(preflight.headers.get('vary')).toContain(
+      'Access-Control-Request-Private-Network',
+    )
+
+    const deniedPreflight = await fetch(`${base}/pair`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://attacker.invalid',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Private-Network': 'true',
+      },
+    })
+    expect(deniedPreflight.status).toBe(403)
+    expect(
+      deniedPreflight.headers.get('access-control-allow-private-network'),
+    ).toBeNull()
+
+    const paired = await fetch(`${base}/pair`, {
+      method: 'POST',
+      headers: {
+        Origin: pagesOrigin,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pairingCode: server.pairingCode }),
+    })
+    expect(paired.status).toBe(200)
+    const credentials = (await paired.json()) as {
+      token: string
+      csrf: string
+      workspaceHandle: string
+    }
+    expect(credentials.workspaceHandle).toMatch(/^workspace_[A-Za-z0-9_-]+$/)
+    expect(JSON.stringify(credentials)).not.toContain(workspaceFile)
+
+    const initialized = await fetch(`${base}/rpc`, {
+      method: 'POST',
+      headers: {
+        Origin: pagesOrigin,
+        Authorization: `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+        'X-Workbench-CSRF': credentials.csrf,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: WORKBENCH_METHODS.initialize,
+        params: {
+          protocolVersion: WORKBENCH_PROTOCOL_VERSION,
+          client: { name: 'pages-test', version: '1' },
+        },
+      }),
+    })
+    expect(initialized.status).toBe(200)
+
+    const rejectedPath = await fetch(`${base}/rpc`, {
+      method: 'POST',
+      headers: {
+        Origin: pagesOrigin,
+        Authorization: `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+        'X-Workbench-CSRF': credentials.csrf,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: WORKBENCH_METHODS.workspaceOpen,
+        params: { workspaceFile },
+      }),
+    })
+    expect(rejectedPath.status).toBe(200)
+    await expect(rejectedPath.json()).resolves.toMatchObject({
+      error: {
+        code: -32010,
+        message: 'Workspace must be opened with the companion-issued handle',
+      },
+    })
+
+    const opened = await fetch(`${base}/rpc`, {
+      method: 'POST',
+      headers: {
+        Origin: pagesOrigin,
+        Authorization: `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+        'X-Workbench-CSRF': credentials.csrf,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 3,
+        method: WORKBENCH_METHODS.workspaceOpen,
+        params: { workspaceFile: credentials.workspaceHandle },
+      }),
+    })
+    expect(opened.status).toBe(200)
+    await expect(opened.json()).resolves.toMatchObject({
+      result: { workspaceId: 'phase1-sample' },
+    })
+  })
+
   it('enforces Origin, pairing, bearer token, and CSRF', async () => {
     const service = new WorkbenchService({
       adapter: new PreservationControlAdapter(),

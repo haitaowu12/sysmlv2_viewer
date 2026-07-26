@@ -31,8 +31,8 @@ Controls: restrictive CSP, no active mixed content, sanitized reports/markdown/S
 Trust boundaries:
 
 ```text
-approved web origin
-  ⇄ authenticated loopback HTTPS/WSS
+exact GitHub Pages origin
+  ⇄ authenticated loopback HTTP/WS + Private Network Access preflight
 local Workbench Service
   ⇄ scoped workspace/file handles
 approved local roots + Git + engine + report tools + keystore
@@ -40,26 +40,29 @@ approved local roots + Git + engine + report tools + keystore
 
 Controls:
 
-- explicit IPv4/IPv6 loopback bind only; the release launcher uses
-  `127.0.0.1:4317` and the service also supports an OS-selected port for
-  embedded hosts;
-- user-confirmed one-time pairing for exact origin/service/capabilities;
+- explicit IPv4 loopback bind only for the Pages launcher, using
+  `127.0.0.1` and an OS-selected port;
+- launcher-selected workspace file beneath a canonical allowed root;
+- one-time pairing restricted to the exact configured Pages origin;
 - exact Host and Origin allowlists; no wildcard or reflected CORS;
+- successful browser Private Network Access preflight for the same origin;
 - short-lived audience/origin/session-bound credentials; expiry, revocation, replay control;
+- pairing data only in a URL fragment that the workbench consumes and scrubs;
 - CSRF protection for state changes and Origin/token validation on WebSocket upgrade;
-- service-issued opaque workspace/file capability handles;
+- service-issued opaque workspace handle; local paths are absent from the
+  launch URL and pairing response;
 - canonical-path, symlink-escape, traversal, watcher, file-size/type, and repository-root validation;
 - payload, connection, rate, job, and memory limits;
 - outbound egress denied by default and surfaced in UI;
 - no source/prompt/token content in logs by default.
 
-TLS is used where practical. If platform/browser constraints require loopback HTTP, credentials are short-lived, never reusable off-session, and the service never binds non-loopback.
+The implemented Pages companion uses loopback HTTP/WS. Credentials are
+short-lived, audience-bound, never reusable off-session, and the service has no
+non-loopback fallback. Remote/shared transport still requires TLS.
 
-The initial release bundle serves immutable UI assets from the same loopback
-origin as JSON-RPC/WebSocket. Static requests still require a valid loopback
-Host and receive CSP, `nosniff`, same-origin resource policy, no-referrer,
-cross-origin opener policy, and a restrictive permissions policy. API calls
-remain unavailable until pairing.
+The Pages host serves the immutable UI assets under a restrictive CSP. It
+receives neither the model nor the local workspace path. The companion serves
+only authenticated API/WebSocket operations after exact-origin pairing.
 
 ## Profile C — Tauri desktop
 

@@ -14,7 +14,13 @@ Support four profiles from one client/service architecture.
 | C Tauri desktop | authors/offline programs | local source/Git through bundled service | signed desktop package | none required |
 | D managed hosted | distributed teams | hosted workspace/repository adapter | browser only | authenticated TLS |
 
-Profile B is a first-class production target. Profile C packages the same web application, Client SDK, protocol, and Workbench Service. Profile D is future scope; its authorization and persistence adapters must not change semantic contracts.
+Profiles A and B use the same modern Pages shell. Without a companion bootstrap
+the shell remains a bounded sample surface (A); after explicit pairing it uses
+local source and service authority (B). Profile B is the recommended
+production-candidate target while native packages lack platform signing.
+Profile C packages the same web application, Client SDK, protocol, and
+Workbench Service. Profile D is future scope; its authorization and persistence
+adapters must not change semantic contracts.
 
 ## Access model
 

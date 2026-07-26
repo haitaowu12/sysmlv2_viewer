@@ -1,4 +1,5 @@
-import { resolve } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
+import { realpath, stat } from 'node:fs/promises'
 import {
   createCandidateAdapter,
   createQualifiedHybridAdapter,
@@ -20,9 +21,27 @@ interface CliOptions {
   qualifiedRuntime: boolean
   runtimeLock: string
   staticRoot?: string
+  bootstrapWorkspaceFile?: string
 }
 
 const options = parseArguments(process.argv.slice(2))
+options.workspaceRoots = await Promise.all(
+  options.workspaceRoots.map((root) => realpath(root)),
+)
+if (options.bootstrapWorkspaceFile) {
+  const workspaceFile = await realpath(options.bootstrapWorkspaceFile)
+  if (!(await stat(workspaceFile)).isFile()) {
+    throw new Error('--workspace-file must identify a regular file')
+  }
+  if (
+    !options.workspaceRoots.some((root) =>
+      isWithinWorkspaceRoot(root, workspaceFile),
+    )
+  ) {
+    throw new Error('--workspace-file must be inside an allowed workspace root')
+  }
+  options.bootstrapWorkspaceFile = workspaceFile
+}
 const adapter: LanguageAdapter = options.qualifiedRuntime
   ? await createQualifiedHybridAdapter(
       options.candidateManifest,
@@ -60,6 +79,7 @@ if (options.transport === 'stdio') {
     port: options.port,
     allowedOrigins: options.origins,
     staticRoot: options.staticRoot,
+    bootstrapWorkspaceFile: options.bootstrapWorkspaceFile,
   })
   process.stderr.write(
     `${JSON.stringify({
@@ -90,6 +110,7 @@ function parseArguments(argumentsList: string[]): CliOptions {
     '../../../config/language-engine-runtime-lock.json',
   )
   let staticRoot: string | undefined
+  let bootstrapWorkspaceFile: string | undefined
   const workspaceRoots: string[] = []
   const origins: string[] = []
 
@@ -126,6 +147,10 @@ function parseArguments(argumentsList: string[]): CliOptions {
       )
     } else if (argument === '--static-root') {
       staticRoot = resolve(requireArgument(argumentsList, ++index, argument))
+    } else if (argument === '--workspace-file') {
+      bootstrapWorkspaceFile = resolve(
+        requireArgument(argumentsList, ++index, argument),
+      )
     } else {
       throw new Error(`Unknown argument: ${argument}`)
     }
@@ -151,7 +176,16 @@ function parseArguments(argumentsList: string[]): CliOptions {
     qualifiedRuntime,
     runtimeLock,
     staticRoot,
+    bootstrapWorkspaceFile,
   }
+}
+
+function isWithinWorkspaceRoot(root: string, path: string): boolean {
+  const relativePath = relative(root, path)
+  return (
+    relativePath === '' ||
+    (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+  )
 }
 
 function requireArgument(

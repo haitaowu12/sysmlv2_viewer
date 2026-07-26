@@ -19,14 +19,22 @@ flowchart TB
 
 ### A — Public web evaluation
 
-Purpose: discover product concepts, navigate packaged samples, run bounded queries, inspect reference views, compare packaged baselines, and export non-sensitive sample reports.
+Purpose: discover product concepts, install/launch the companion, and enter
+the explicit packaged compatibility sample. Expanded sample queries, reference
+views, baseline comparison, and sample reports remain a Profile A backlog item.
 
 Constraints: no arbitrary local folders; no provider AI; no claim of authoritative local editing; sample/source provenance embedded; strict CSP; no persistent sensitive model state.
 
+The deployed GitHub Pages URL loads the modern shared workbench shell in this
+mode when no companion bootstrap is present. `?legacy=1` is a separate
+read-only compatibility sample, not the primary Pages UI.
+
 ### B — Browser + local companion
 
-Supported companion/development profile for low-friction authoring and review.
-The browser UI connects to an independently installed local Workbench Service.
+Supported production-candidate profile for low-friction authoring and review.
+The same GitHub Pages UI elevates from Profile A only after an explicitly
+launched local Workbench Service completes one-time pairing. This is the
+recommended distribution path while native installers are unsigned.
 
 Local-only functions:
 
@@ -39,19 +47,19 @@ Local-only functions:
 
 Security handshake:
 
-1. companion starts on OS-selected loopback port and displays/opens a one-time pairing intent;
-2. user confirms exact web origin, service identity/version, and requested capability set;
-3. companion issues short-lived audience/origin-bound session credentials;
-4. client negotiates protocol/capabilities;
-5. workspace selection occurs in the companion/OS picker or through explicit preconfigured roots;
-6. client receives opaque workspace/file handles, never unrestricted filesystem authority;
+1. companion validates a selected workspace under a canonical allowed root;
+2. companion starts on an OS-selected IPv4 loopback port and opens a one-time pairing intent for the exact Pages origin;
+3. the intent carries the loopback origin and pairing secret in the URL fragment, which is not part of the HTTP request and is scrubbed after consumption;
+4. the browser performs the exact-origin Private Network Access preflight and pairing request;
+5. companion issues short-lived audience/origin-bound session credentials and an opaque workspace handle;
+6. client negotiates protocol/capabilities and opens only that handle;
 7. expiry, origin change, restart, permission elevation, or trust change requires renewal/confirmation.
 
 Required controls: explicit IPv4/IPv6 loopback bind, Host/Origin allowlists, anti-DNS-rebinding tests, CSRF protection, WebSocket Origin and token validation, payload/rate limits, no wildcard CORS, token redaction, no model logs, egress deny-by-default, visible connection/network state.
 
 ### C — Tauri desktop
 
-Initial production profile: signed, fully offline macOS 13+ Apple Silicon
+Optional native profile: signed, fully offline macOS 13+ Apple Silicon
 installation with integrated workspace picker, process lifecycle, updater
 policy, and crash recovery. It embeds the same built UI and starts the same
 loopback Workbench Service with short-lived pairing credentials. Tauri
@@ -109,10 +117,13 @@ Authoritative local-folder editing still requires B or C.
 ## Packaging and distribution decision
 
 - P1 ships development/test service artifacts only, with exact hashes and SBOM;
-- P7 targets a Developer ID signed and Apple-notarized macOS 13+ arm64 Tauri
-  `.app` and DMG; Windows and a separately signed companion package are
-  deferred until independently qualified;
-- the public evaluation site is independently deployable but not the production authority;
+- P7 continues to retain a Developer ID signed and Apple-notarized macOS 13+
+  arm64 Tauri `.app` and DMG as an optional future native channel;
+- Profile B is the recommended near-term delivery path because the portable
+  companion does not require Apple signing and the Pages host never becomes
+  model authority;
+- the public evaluation site is independently deployable but becomes
+  authoritative for a private workspace only through the paired local service;
 - auto-update is opt-in/policy-controlled and verifies signatures; offline programs can use pinned manual packages;
 - managed hosted distribution remains an owner-approved future program.
 
