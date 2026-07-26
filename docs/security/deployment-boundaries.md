@@ -44,10 +44,14 @@ Controls:
   `127.0.0.1` and an OS-selected port;
 - launcher-selected workspace file beneath a canonical allowed root;
 - one-time pairing restricted to the exact configured Pages origin;
+- atomic pairing-code consumption; every replay is rejected before session
+  creation;
 - exact Host and Origin allowlists; no wildcard or reflected CORS;
 - successful browser Private Network Access preflight for the same origin;
 - short-lived audience/origin/session-bound credentials; expiry, revocation, replay control;
 - pairing data only in a URL fragment that the workbench consumes and scrubs;
+- framed contexts render a security notice and cannot consume or submit
+  pairing material;
 - CSRF protection for state changes and Origin/token validation on WebSocket upgrade;
 - service-issued opaque workspace handle; local paths are absent from the
   launch URL and pairing response;

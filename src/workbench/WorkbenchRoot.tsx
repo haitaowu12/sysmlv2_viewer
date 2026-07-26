@@ -10,18 +10,35 @@ import type { LoadedWorkspace } from './gateway.js'
 import { WorkbenchShell } from './WorkbenchShell.js'
 import {
   consumeCompanionBootstrap,
+  isFramedWorkbench,
   type CompanionBootstrap,
 } from './companion-bootstrap.js'
 import './workbench.css'
 
 const LegacyViewer = lazy(() => import('../App.js'))
+const framedWorkbench =
+  typeof window !== 'undefined' && isFramedWorkbench(window)
 const initialCompanionBootstrap: CompanionBootstrap | null =
-  typeof window === 'undefined'
+  typeof window === 'undefined' || framedWorkbench
     ? null
     : consumeCompanionBootstrap(window.location, window.history)
 let automaticCompanionBootstrapStarted = false
 
 export default function WorkbenchRoot() {
+  if (framedWorkbench) {
+    return (
+      <main className="workbench-welcome">
+        <section className="welcome-card" aria-labelledby="framed-title">
+          <p className="eyebrow">SECURITY BOUNDARY</p>
+          <h1 id="framed-title">Open the workbench in a top-level window</h1>
+          <p className="welcome-summary">
+            Embedded frames cannot pair with a local companion or display
+            privileged engineering workflows.
+          </p>
+        </section>
+      </main>
+    )
+  }
   if (
     import.meta.env.VITE_WORKBENCH_DEMO === 'legacy' ||
     new URLSearchParams(window.location.search).get('legacy') === '1'
