@@ -90,16 +90,29 @@ describe('authenticated loopback transport', () => {
       deniedPreflight.headers.get('access-control-allow-private-network'),
     ).toBeNull()
 
-    const paired = await fetch(`${base}/pair`, {
-      method: 'POST',
-      headers: {
-        Origin: pagesOrigin,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ pairingCode: server.pairingCode }),
-    })
-    expect(paired.status).toBe(200)
-    const credentials = (await paired.json()) as {
+    const pairingRequest = () =>
+      fetch(`${base}/pair`, {
+        method: 'POST',
+        headers: {
+          Origin: pagesOrigin,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pairingCode: server.pairingCode }),
+      })
+    const pairingAttempts = await Promise.all([
+      pairingRequest(),
+      pairingRequest(),
+    ])
+    expect(pairingAttempts.map(({ status }) => status).sort()).toEqual([
+      200, 410,
+    ])
+    const paired = pairingAttempts.find(({ status }) => status === 200)
+    const replayedPairing = pairingAttempts.find(
+      ({ status }) => status === 410,
+    )
+    expect(paired).toBeDefined()
+    expect(replayedPairing).toBeDefined()
+    const credentials = (await paired!.json()) as {
       token: string
       csrf: string
       workspaceHandle: string
@@ -107,16 +120,7 @@ describe('authenticated loopback transport', () => {
     expect(credentials.workspaceHandle).toMatch(/^workspace_[A-Za-z0-9_-]+$/)
     expect(JSON.stringify(credentials)).not.toContain(workspaceFile)
 
-    const replayedPairing = await fetch(`${base}/pair`, {
-      method: 'POST',
-      headers: {
-        Origin: pagesOrigin,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ pairingCode: server.pairingCode }),
-    })
-    expect(replayedPairing.status).toBe(410)
-    await expect(replayedPairing.json()).resolves.toEqual({
+    await expect(replayedPairing!.json()).resolves.toEqual({
       error: 'Pairing code already used',
     })
 

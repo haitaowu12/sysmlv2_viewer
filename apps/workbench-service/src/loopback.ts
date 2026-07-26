@@ -152,6 +152,10 @@ export async function createLoopbackServer(
         respondJson(response, 401, { error: 'Invalid pairing code' })
         return
       }
+      if (pairingConsumed) {
+        respondJson(response, 410, { error: 'Pairing code already used' })
+        return
+      }
       pairingConsumed = true
       const token = randomBytes(32).toString('base64url')
       const csrf = randomBytes(24).toString('base64url')
