@@ -143,6 +143,25 @@ describe('service-backed workbench shell', () => {
     expect(screen.getByText(/generated\/reports\/health\/health\.pdf/)).toBeInTheDocument()
   })
 
+  it('keeps interface assurance available when Git is unavailable', async () => {
+    const gateway = createGateway()
+    vi.mocked(gateway.gitStatus).mockRejectedValue(
+      new Error('fatal: not a git repository'),
+    )
+    vi.mocked(gateway.listBaselines).mockRejectedValue(
+      new Error('Git baselines require a repository'),
+    )
+
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Interfaces' }))
+
+    expect(await screen.findByRole('heading', { name: 'Interface assurance' })).toBeInTheDocument()
+    expect(screen.getByText('Git unavailable')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Interface register/ })).toBeInTheDocument()
+    expect(screen.getByText(/Interface and verification assurance remain available/)).toBeInTheDocument()
+  })
+
   it('reviews a grounded AI patch before a separate approval applies it', async () => {
     const gateway = createGateway()
     vi.mocked(gateway.requestAi).mockResolvedValue(aiOperation('proposed'))
