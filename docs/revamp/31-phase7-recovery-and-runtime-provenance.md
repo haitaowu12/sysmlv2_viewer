@@ -1,7 +1,7 @@
 # Phase 7 Recovery and Runtime Provenance
 
-Status: automated technical evidence passed; owner/platform/legal gates remain
-Evidence baseline: `eb31dcfdc90f5e439985a5f23306bb495ce2c4f7`
+Status: automated technical evidence passed; owner/platform gates remain
+Evidence baseline: recorded by the exact-head release manifests
 
 ## Recovery qualification
 
@@ -50,7 +50,7 @@ The journals contain source backups. Projects must set retention according to
 their audit/privacy policy and preserve project/Git audit evidence before
 applying deletion.
 
-## Runtime byte provenance
+## Runtime provenance
 
 `npm run release:runtime-provenance` checks the exact locked runtime and emits a
 machine-readable inventory. The observation found:
@@ -62,21 +62,22 @@ machine-readable inventory. The observation found:
 - official release/library commit
   `de1070ae8e79c21532b8004fc663d47b35d0e9fa`;
 - 15,040 fat-JAR entries, 13,787 classes, and 36 Maven component records;
-- all ten `org.omg.*` local inputs match exact bytes in the pinned Pilot
-  checkout;
+- all ten `org.omg.*` local inputs match normalized archive content from a
+  clean rebuild of the pinned Pilot checkout;
 - all five Eclipse UML inputs reproduce exact Pilot build directories through
   the pinned `extract-jars.sh` packaging process; only the generated JAR
   manifest differs from same-named prebuilt copies.
 
-The report makes no legal conclusion. It identifies three exact closure
-items:
+The normalized comparison excludes only `META-INF/MANIFEST.MF`; the Pilot
+generates an OSGi qualifier and ZIP timestamps at build time. Every other
+archive path and byte must match. This prevents a fresh, semantically identical
+build from being mislabeled as an unresolved input while avoiding a false
+byte-reproducibility claim.
 
-1. the VinQut NOTICE calls the Pilot content LGPL-3.0-or-later while the pinned
-   official Pilot root license is EPL-2.0;
-2. the product repository has no owner-approved root license.
-
-Technical RC verification allows these conflicts only through the explicit
-`--allow-license-conflict` path. Production verification fails closed.
+The report makes no general legal conclusion. For these exact pins, the owner
+selected the official Pilot EPL-2.0 disposition, preserved the original VinQut
+NOTICE, and selected Apache-2.0 for the product. Any pin or artifact change
+reopens that review. Production verification remains fail-closed on drift.
 
 ## Log-safety check
 
@@ -95,7 +96,6 @@ crash-dump and operating-system log inspection.
 
 ## Remaining closure
 
-- owner-approved product license and reconciled runtime notice set;
 - signed/notarized distribution for each claimed platform;
 - clean-machine install, recovery, crash, and log inspection;
 - three-person usability pilot and manual accessibility evidence;

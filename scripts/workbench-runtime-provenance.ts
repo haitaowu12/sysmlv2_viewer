@@ -96,6 +96,9 @@ try {
   const exactPilotMatches = bundledInputs.filter(
     (item) => item.classification === 'pilot-derived-exact-match',
   )
+  const contentEquivalentPilotMatches = bundledInputs.filter(
+    (item) => item.classification === 'pilot-derived-content-match',
+  )
   const repackagedPilotMatches = bundledInputs.filter(
     (item) => item.classification === 'pilot-repackaged-content-match',
   )
@@ -194,11 +197,16 @@ try {
     bundledLocalInputs: {
       total: bundledInputs.length,
       byteExactPilotJars: exactPilotMatches.length,
+      contentEquivalentPilotJars: contentEquivalentPilotMatches.length,
       contentEquivalentPilotRepackages: repackagedPilotMatches.length,
       unresolvedInputs: unresolvedInputs.length,
       allPilotNamedJarsMatched: bundledInputs
         .filter((item) => item.name.startsWith('org.omg.'))
-        .every((item) => item.classification === 'pilot-derived-exact-match'),
+        .every(
+          (item) =>
+            item.classification === 'pilot-derived-exact-match' ||
+            item.classification === 'pilot-derived-content-match',
+        ),
       allInputsProvenanced: unresolvedInputs.length === 0,
       inputs: bundledInputs,
     },
@@ -221,7 +229,7 @@ try {
         present: unresolvedInputs.length > 0,
         affectedInputs: unresolvedInputs.map((item) => item.name),
         statement:
-          'The five Eclipse UML jars are reproducible repackages of exact directories in the pinned Pilot build; their embedded about.html files identify the Eclipse Public License.',
+          'Pilot-derived jars are matched by exact bytes or normalized archive content; the five Eclipse UML jars reproduce exact Pilot build directories. Normalization excludes only the generated OSGi manifest, whose build qualifier and ZIP timestamp vary by build.',
         requiredClosure:
           'No byte-provenance gap remains; final distribution notice approval remains part of the runtime-license gate.',
       },
@@ -268,6 +276,7 @@ async function compareBundledInputs(
     upstreamSha256: string | null
     classification:
       | 'pilot-derived-exact-match'
+      | 'pilot-derived-content-match'
       | 'pilot-repackaged-content-match'
       | 'same-name-byte-mismatch'
       | 'upstream-name-not-found'
@@ -291,6 +300,7 @@ async function compareBundledInputs(
       const candidates = upstreamByName.get(name) ?? []
       let selected: string | null = null
       let selectedSha256: string | null = null
+      let contentEquivalentMatch = false
       for (const candidate of candidates.sort()) {
         const candidateSha256 = await fileSha256(candidate)
         if (!selected) {
@@ -302,6 +312,26 @@ async function compareBundledInputs(
           selectedSha256 = candidateSha256
           break
         }
+      }
+      if (selected && selectedSha256 !== sha256) {
+        const inputContentRoot = resolve(
+          extractionRoot,
+          `${name.replaceAll(/[^A-Za-z0-9._-]/g, '_')}-input`,
+        )
+        const candidateContentRoot = resolve(
+          extractionRoot,
+          `${name.replaceAll(/[^A-Za-z0-9._-]/g, '_')}-candidate`,
+        )
+        await Promise.all([
+          extractJar(path, inputContentRoot),
+          extractJar(selected, candidateContentRoot),
+        ])
+        const [inputContentSha256, candidateContentSha256] = await Promise.all([
+          treeSha256(inputContentRoot),
+          treeSha256(candidateContentRoot),
+        ])
+        contentEquivalentMatch = inputContentSha256 === candidateContentSha256
+        if (contentEquivalentMatch) selectedSha256 = candidateContentSha256
       }
       const repackagedRoot = resolve(
         upstreamRoot,
@@ -337,6 +367,8 @@ async function compareBundledInputs(
         classification:
           repackagedMatch
             ? 'pilot-repackaged-content-match'
+            : contentEquivalentMatch
+              ? 'pilot-derived-content-match'
             : selected === null
             ? 'upstream-name-not-found'
             : selectedSha256 === sha256
@@ -345,6 +377,14 @@ async function compareBundledInputs(
       }
     }),
   )
+}
+
+async function extractJar(path: string, outputRoot: string): Promise<void> {
+  await mkdir(outputRoot, { recursive: true })
+  await execFileAsync('jar', ['xf', path], {
+    cwd: outputRoot,
+    maxBuffer: 64 * 1024 * 1024,
+  })
 }
 
 async function treeSha256(root: string): Promise<string> {

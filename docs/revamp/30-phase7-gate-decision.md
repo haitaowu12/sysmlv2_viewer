@@ -13,8 +13,8 @@ actual `config/release-approval.json`; the example file is not approval.
 
 ## Technical evidence
 
-- release-source verification: 20 workbench files/91 tests and 40 passing +
-  1 skipped full files/245 passing + 19 skipped tests;
+- release-source verification: 20 workbench files/92 tests and 40 passing +
+  1 skipped full files/246 passing + 19 skipped tests;
 - TypeScript and production UI/service builds pass;
 - production npm audit: zero vulnerabilities;
 - production npm dependency graph: 45 components, no unapproved npm license
@@ -49,9 +49,10 @@ actual `config/release-approval.json`; the example file is not approval.
   opens the four-document pilot without network or repository imports, and
   scans captured output for model/session/CSRF leakage;
 - runtime provenance binds 15 local inputs and 36 Maven component records to
-  the locked fat JAR: ten inputs match Pilot JAR bytes and five UML inputs
-  reproduce pinned Pilot build directories through the recorded packaging
-  process;
+  the locked fat JAR: ten inputs match normalized Pilot JAR content and five
+  UML inputs reproduce pinned Pilot build directories through the recorded
+  packaging process; generated OSGi qualifiers and archive timestamps are not
+  misrepresented as byte-reproducible;
 - medium performance: five warmups, thirty valid samples, all seven mandated
   p95 targets pass; see `phase7-benchmark-observation.json`.
 
@@ -69,7 +70,7 @@ the lazy lifecycle does not bypass authoring or semantic validation.
 | runtime license provenance | passed for exact pins | owner disposition selects the pinned Pilot EPL-2.0 license and preserves the original VinQut NOTICE |
 | supported OS selection | passed | macOS 13+ arm64 first; Windows is deferred |
 | clean-machine OS evidence | blocked external | install, offline pilot, recovery, and log inspection on a separate supported Mac |
-| distribution implementation | passed technical | self-contained Tauri `.app`; DMG build and exact-head refresh required |
+| distribution implementation | passed technical | self-contained Tauri `.app` and mounted read-only DMG smoke pass; every later source commit requires an exact-head rebuild |
 | distribution trust | blocked external | Developer ID signing, Apple notarization, stapling, and Gatekeeper evidence |
 | usability | blocked | three independent participants pass all eight tasks in `29-usability-pilot-protocol.md` |
 | manual accessibility | blocked | rendered contrast, zoom, screen reader, keyboard, and diagram-alternative evidence |
