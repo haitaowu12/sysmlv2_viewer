@@ -34,6 +34,17 @@ and keeps the service attached to the launcher process. The page immediately
 removes that fragment and receives an opaque workspace handle. The local
 filesystem path is not placed in the URL or pairing response.
 
+On first pairing, Chrome asks whether the exact GitHub Pages origin may
+“look for and connect to any device on your local network.” Allow that
+permission to connect the public HTTPS page to the loopback-only companion.
+The client declares the destination as the `loopback` address space before
+sending the request and stops with recovery guidance if the permission or
+service response does not arrive within 15 seconds. Denying the permission
+does not expose the workspace; relaunch the companion after granting it in the
+site's permissions. See Chrome's
+[Local Network Access documentation](https://developer.chrome.com/blog/local-network-access)
+for the browser permission model.
+
 Keep the launcher terminal open. Closing it stops the companion.
 
 The current non-desktop bundle requires supported Node.js 22 and Java 21 on

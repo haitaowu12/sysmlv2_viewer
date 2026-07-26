@@ -5,7 +5,7 @@
 | Bundle integrity failure | Replace the whole installation. Do not patch individual files. |
 | Pages opens sample mode | Start `start-pages-companion` with a workspace file; the static page cannot open private workspaces by itself. |
 | Pairing rejected | Stop the old companion, launch a new pairing intent, and use it before the short expiry. |
-| Browser blocks local-network access | Allow the browser's local-network permission for the exact GitHub Pages origin, then relaunch the companion. Never expose the companion through a tunnel. |
+| Pairing waits, times out, or browser blocks local access | Allow **Local Network Access** for the exact GitHub Pages origin in the browser's site permissions, then relaunch the companion. In Chrome the prompt says “look for and connect to any device on your local network.” Never expose the companion through a tunnel or LAN bind. |
 | Fragment remains in the address bar | Close the page and stop the companion. A successful bootstrap removes the fragment immediately. |
 | Session expired | Pair again; sessions are intentionally short-lived. |
 | Workspace path rejected | Start the service with the intended project root and remove source-root symlinks. |

@@ -47,7 +47,7 @@ distribution and usability gates prevent a public production claim.
 | T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
 | T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
 | T19 | bundled Node JIT entitlement expands executable-memory surface | desktop host→sidecar | exact signed Node hash, `allow-jit` only, no unsigned-executable-memory entitlement, no remote privileged content, strict CSP, loopback pairing, mounted-DMG runtime smoke | P7 |
-| T20 | public Pages origin, copied bootstrap, or framed UI leaks local path/pairing authority | Pages→loopback | no path in URL/response, atomically consumed fragment secret, immediate fragment scrub, exact-origin PNA/CORS, opaque handle, framed-context refusal | P7/B |
+| T20 | public Pages origin, copied bootstrap, or framed UI leaks local path/pairing authority | Pages→loopback | no path in URL/response, atomically consumed fragment secret, immediate fragment scrub, exact-origin browser Local Network Access permission and CORS, legacy PNA compatibility, opaque handle, framed-context refusal | P7/B |
 
 ## Implemented control status
 
@@ -60,7 +60,9 @@ Implemented and tested:
 - child processes launched without a shell and with bounded request timeouts;
 - LSP cancellation on timeout, visible failed/stale state, and explicit restart;
 - exact loopback Host/Origin, pairing expiry, bearer, CSRF, and security headers;
-- exact Pages-origin Private Network Access preflight, fragment bootstrap
+- explicit browser `loopback` target annotation and actionable Local Network
+  Access permission timeout, exact Pages-origin legacy Private Network Access
+  preflight compatibility, fragment bootstrap
   scrubbing, no workspace path in the launch URL/pairing response, and
   service-issued opaque workspace handles;
 - atomic rejection of pairing-code replay and top-level-window enforcement

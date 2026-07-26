@@ -32,7 +32,7 @@ Trust boundaries:
 
 ```text
 exact GitHub Pages origin
-  ⇄ authenticated loopback HTTP/WS + Private Network Access preflight
+  ⇄ browser Local Network Access permission + authenticated loopback HTTP/WS
 local Workbench Service
   ⇄ scoped workspace/file handles
 approved local roots + Git + engine + report tools + keystore
@@ -47,7 +47,10 @@ Controls:
 - atomic pairing-code consumption; every replay is rejected before session
   creation;
 - exact Host and Origin allowlists; no wildcard or reflected CORS;
-- successful browser Private Network Access preflight for the same origin;
+- explicit browser `loopback` target annotation and origin-scoped Local Network
+  Access permission with a bounded, actionable failure path;
+- successful legacy Private Network Access preflight compatibility for the same
+  origin;
 - short-lived audience/origin/session-bound credentials; expiry, revocation, replay control;
 - pairing data only in a URL fragment that the workbench consumes and scrubs;
 - framed contexts render a security notice and cannot consume or submit

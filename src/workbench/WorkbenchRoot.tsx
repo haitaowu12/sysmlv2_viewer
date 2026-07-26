@@ -181,6 +181,13 @@ function WorkspaceConnection() {
             ? 'Connect this public workbench shell to the qualified companion on your machine. Model content is not sent to GitHub.'
             : 'Open a source-canonical workspace through the qualified local language service. Model content remains on this machine.'}
         </p>
+        {pagesCompanion && (
+          <p className="welcome-summary">
+            When prompted, allow Local Network Access for this GitHub Pages
+            origin. The permission is used only to reach the loopback companion
+            on this machine.
+          </p>
+        )}
         {desktop ? (
           <button
             type="button"

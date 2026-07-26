@@ -419,9 +419,31 @@ export interface LoopbackPairingResult {
   workspaceHandle?: string
 }
 
+export interface LoopbackPairingOptions {
+  /**
+   * Maximum time to wait for the browser's Local Network Access decision and
+   * the loopback service response.
+   */
+  timeoutMs?: number
+  /**
+   * Cancels pairing without converting the cancellation into a permission
+   * failure. The caller remains responsible for presenting cancellation UI.
+   */
+  signal?: AbortSignal
+}
+
+const DEFAULT_LOOPBACK_PAIRING_TIMEOUT_MS = 15_000
+const LOCAL_NETWORK_ACCESS_ERROR =
+  'Workbench pairing could not access the local companion. Allow this site to look for and connect to devices on your local network, then relaunch the companion.'
+
+type LoopbackPairingRequestInit = RequestInit & {
+  targetAddressSpace: 'loopback'
+}
+
 export async function pairLoopbackService(
   serviceOrigin: string,
   pairingCode: string,
+  options: LoopbackPairingOptions = {},
 ): Promise<LoopbackPairingResult> {
   const origin = new URL(serviceOrigin)
   if (
@@ -430,15 +452,62 @@ export async function pairLoopbackService(
   ) {
     throw new Error('Workbench pairing requires an HTTP loopback service origin')
   }
-  const response = await fetch(new URL('/pair', origin), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pairingCode }),
-  })
-  if (!response.ok) {
-    throw new Error(`Workbench pairing failed with HTTP ${response.status}`)
+  const timeoutMs = options.timeoutMs ?? DEFAULT_LOOPBACK_PAIRING_TIMEOUT_MS
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('Workbench pairing timeout must be a positive finite number')
   }
-  return response.json() as Promise<LoopbackPairingResult>
+
+  const controller = new AbortController()
+  let timedOut = false
+  const cancelFromCaller = () => controller.abort(options.signal?.reason)
+  if (options.signal?.aborted) {
+    cancelFromCaller()
+  } else {
+    options.signal?.addEventListener('abort', cancelFromCaller, { once: true })
+  }
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+
+  try {
+    const request: LoopbackPairingRequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pairingCode }),
+      signal: controller.signal,
+      // Chrome Local Network Access uses this Fetch extension to classify the
+      // intended destination before the request is sent.
+      targetAddressSpace: 'loopback',
+    }
+    const response = await fetch(new URL('/pair', origin), request)
+    if (!response.ok) {
+      throw new Error(`Workbench pairing failed with HTTP ${response.status}`)
+    }
+    return response.json() as Promise<LoopbackPairingResult>
+  } catch (error) {
+    if (timedOut) {
+      throw new Error(LOCAL_NETWORK_ACCESS_ERROR, { cause: error })
+    }
+    if (options.signal?.aborted) {
+      if (options.signal.reason instanceof Error) {
+        throw options.signal.reason
+      }
+      throw new DOMException('Workbench pairing was canceled', 'AbortError')
+    }
+    if (isLocalNetworkAccessDenied(error) || error instanceof TypeError) {
+      throw new Error(LOCAL_NETWORK_ACCESS_ERROR, { cause: error })
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+    options.signal?.removeEventListener('abort', cancelFromCaller)
+  }
+}
+
+function isLocalNetworkAccessDenied(error: unknown): boolean {
+  return error instanceof DOMException &&
+    (error.name === 'NotAllowedError' || error.name === 'SecurityError')
 }
 
 export class HttpWorkbenchTransport implements WorkbenchTransport {
