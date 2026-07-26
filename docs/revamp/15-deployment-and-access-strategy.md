@@ -50,12 +50,18 @@ Security handshake:
 1. companion validates a selected workspace under a canonical allowed root;
 2. companion starts on an OS-selected IPv4 loopback port and opens a one-time pairing intent for the exact Pages origin;
 3. the intent carries the loopback origin and pairing secret in the URL fragment, which is not part of the HTTP request and is scrubbed after consumption;
-4. the browser performs the exact-origin Private Network Access preflight and pairing request;
+4. the browser requests origin-scoped Local Network Access permission for an
+   explicitly annotated `loopback` target, then performs the pairing request;
 5. companion issues short-lived audience/origin-bound session credentials and an opaque workspace handle;
 6. client negotiates protocol/capabilities and opens only that handle;
 7. expiry, origin change, restart, permission elevation, or trust change requires renewal/confirmation.
 
-Required controls: explicit IPv4/IPv6 loopback bind, Host/Origin allowlists, anti-DNS-rebinding tests, CSRF protection, WebSocket Origin and token validation, payload/rate limits, no wildcard CORS, token redaction, no model logs, egress deny-by-default, visible connection/network state.
+Required controls: explicit IPv4/IPv6 loopback bind, Host/Origin allowlists,
+browser Local Network Access permission with a bounded actionable timeout,
+legacy Private Network Access preflight compatibility, anti-DNS-rebinding
+tests, CSRF protection, WebSocket Origin and token validation, payload/rate
+limits, no wildcard CORS, token redaction, no model logs, egress deny-by-default,
+visible connection/network state.
 
 ### C — Tauri desktop
 

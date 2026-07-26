@@ -168,7 +168,7 @@ try {
     { workspaceFile: credentials.workspaceHandle },
   )
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     outcome: 'passed',
     pages: {
       origin: page.origin,
@@ -178,7 +178,8 @@ try {
     },
     companion: {
       loopbackOnly: true,
-      privateNetworkPreflight: true,
+      localNetworkAccessPermissionAnnotated: true,
+      legacyPrivateNetworkPreflightCompatibility: true,
       pairingSecretInFragment: true,
       workspacePathAbsentFromUrl: true,
       opaqueWorkspaceHandleReturnedAfterPairing: true,
@@ -235,6 +236,18 @@ async function assertPagesBuild(): Promise<void> {
     )
   ) {
     throw new Error('Pages build does not enforce the framed-context boundary')
+  }
+  if (
+    !javascript.some(
+      (source) =>
+        source.includes('targetAddressSpace') &&
+        source.includes('loopback') &&
+        source.includes('Local Network Access'),
+    )
+  ) {
+    throw new Error(
+      'Pages build does not annotate or explain Local Network Access pairing',
+    )
   }
 }
 

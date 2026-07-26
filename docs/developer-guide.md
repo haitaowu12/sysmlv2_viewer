@@ -53,9 +53,12 @@ The Pages companion contract has an independent deterministic qualification:
 npm run verify:web-companion
 ```
 
-It builds the modern Pages profile and proves exact-origin PNA preflight,
-fragment-only pairing, absence of local paths in the URL/pairing response,
-opaque workspace handles, protocol initialization, and workspace opening.
+It builds the modern Pages profile and proves the explicit browser Local
+Network Access `loopback` target, legacy exact-origin PNA preflight
+compatibility, fragment-only pairing, absence of local paths in the
+URL/pairing response, opaque workspace handles, protocol initialization, and
+workspace opening. Pairing uses a bounded 15-second abort timeout so a missing
+permission decision cannot leave the application waiting indefinitely.
 Launch a qualified source runtime with:
 
 ```sh

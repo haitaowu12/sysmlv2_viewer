@@ -1,0 +1,125 @@
+name: Build unsigned macOS Pages companion
+
+on:
+  workflow_dispatch:
+    inputs:
+      portable_bundle_url:
+        description: HTTPS URL of the exact-head darwin-arm64 portable bundle archive
+        required: true
+        type: string
+      portable_bundle_sha256:
+        description: Expected SHA-256 of the portable bundle archive
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: companion-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-smoke-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Require Apple Silicon qualification host
+        shell: bash
+        run: test "$(uname -m)" = "arm64"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java 21 JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install exact JavaScript dependencies
+        run: npm ci
+
+      - name: Download and verify exact-head portable payload
+        shell: bash
+        env:
+          PORTABLE_BUNDLE_URL: ${{ inputs.portable_bundle_url }}
+          PORTABLE_BUNDLE_SHA256: ${{ inputs.portable_bundle_sha256 }}
+        run: |
+          case "$PORTABLE_BUNDLE_URL" in
+            https://*) ;;
+            *) echo "portable_bundle_url must use HTTPS" >&2; exit 64 ;;
+          esac
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            "$PORTABLE_BUNDLE_URL" \
+            --output "$RUNNER_TEMP/portable-bundle.tar.gz"
+          printf '%s  %s\n' \
+            "$PORTABLE_BUNDLE_SHA256" \
+            "$RUNNER_TEMP/portable-bundle.tar.gz" \
+            | shasum -a 256 --check
+          mkdir "$RUNNER_TEMP/portable"
+          tar -xzf "$RUNNER_TEMP/portable-bundle.tar.gz" \
+            -C "$RUNNER_TEMP/portable"
+          PORTABLE_ROOT=$(find "$RUNNER_TEMP/portable" -mindepth 1 -maxdepth 1 -type d)
+          test "$(printf '%s\n' "$PORTABLE_ROOT" | wc -l | tr -d ' ')" = "1"
+          node "$PORTABLE_ROOT/bin/verify-bundle.mjs"
+          test "$(node -p \
+            "require('$PORTABLE_ROOT/manifests/release-manifest.json').release.sourceCommit")" \
+            = "$GITHUB_SHA"
+          printf 'PORTABLE_ROOT=%s\n' "$PORTABLE_ROOT" >> "$GITHUB_ENV"
+
+      - name: Assemble self-contained unsigned companion
+        shell: bash
+        run: |
+          npm run companion:package -- \
+            --portable-bundle "$PORTABLE_ROOT" \
+            --node-executable "$(command -v node)" \
+            --java-home "$JAVA_HOME" \
+            --output "$RUNNER_TEMP/companion" \
+            > "$RUNNER_TEMP/companion-package-result.json"
+          COMPANION_ROOT=$(find "$RUNNER_TEMP/companion" \
+            -mindepth 1 -maxdepth 1 -type d)
+          test "$(printf '%s\n' "$COMPANION_ROOT" | wc -l | tr -d ' ')" = "1"
+          printf 'COMPANION_ROOT=%s\n' "$COMPANION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Smoke with no system Node or Java resolution
+        shell: bash
+        run: |
+          npm run companion:smoke -- \
+            --bundle "$COMPANION_ROOT" \
+            --workspace-file \
+              "$GITHUB_WORKSPACE/fixtures/workspaces/phase5-infrastructure/sysml-workspace.yaml" \
+            --model-marker InfrastructureOpenIssues \
+            --output "$RUNNER_TEMP/companion-smoke.json"
+
+      - name: Smoke archive after clean extraction
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/extracted-companion"
+          tar -xzf "$RUNNER_TEMP/companion/"*.tar.gz \
+            -C "$RUNNER_TEMP/extracted-companion"
+          EXTRACTED_ROOT=$(find "$RUNNER_TEMP/extracted-companion" \
+            -mindepth 1 -maxdepth 1 -type d)
+          npm run companion:smoke -- \
+            --bundle "$EXTRACTED_ROOT" \
+            --workspace-file \
+              "$GITHUB_WORKSPACE/fixtures/workspaces/phase5-infrastructure/sysml-workspace.yaml" \
+            --model-marker InfrastructureOpenIssues \
+            --output "$RUNNER_TEMP/companion-extracted-smoke.json"
+
+      - name: Upload unsigned candidate and CI evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-pages-companion-darwin-arm64-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/companion/*.tar.gz
+            ${{ runner.temp }}/companion-package-result.json
+            ${{ runner.temp }}/companion-smoke.json
+            ${{ runner.temp }}/companion-extracted-smoke.json
+          if-no-files-found: error
+          retention-days: 14
