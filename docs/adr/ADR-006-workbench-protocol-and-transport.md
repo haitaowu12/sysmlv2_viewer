@@ -47,7 +47,7 @@ health/status
 |---|---|---|
 | stdio | service harness, CLI, desktop child process | inherited process trust, framed messages, no implicit filesystem scope |
 | desktop IPC | optional host integration | capability-scoped bridge; same validated DTOs |
-| loopback HTTP/WS | browser + local companion | loopback-only, exact origin/Host, Private Network Access preflight, pairing, short-lived bearer/session token, CSRF/WS protections, opaque handles |
+| loopback HTTP/WS | browser + local companion | loopback-only, exact origin/Host, browser Local Network Access permission, explicit loopback target annotation, legacy Private Network Access preflight compatibility, pairing, short-lived bearer/session token, CSRF/WS protections, opaque handles |
 | remote HTTPS/WSS | future hosted | TLS, authenticated identity, tenant/workspace authorization, rate/resource limits |
 
 All requests carry a correlation id, workspace/session id where relevant, deadline, and idempotency key for mutating operations. Long work reports progress and supports cancellation. Apply operations require the exact validated proposal/base snapshot.
@@ -56,7 +56,8 @@ The 2026-07-25 Profile B implementation intentionally uses HTTP/WS on an
 ephemeral IPv4 loopback port. Managing a trusted localhost certificate would
 add installation and trust-store complexity without protecting against a local
 machine compromise. The compensating controls are: exact Pages Origin and Host,
-browser Private Network Access preflight, no wildcard CORS, a short-lived
+browser Local Network Access permission, an explicit `loopback` target address
+space, legacy Private Network Access preflight compatibility, no wildcard CORS, a short-lived
 one-time fragment pairing secret, audience-bound session credentials, opaque
 workspace handles, and no non-loopback fallback. A future managed certificate
 mechanism may add TLS without changing the protocol.
@@ -78,4 +79,4 @@ mechanism may add TLS without changing the protocol.
 - fuzzed/invalid messages fail without process compromise;
 - security controls in the deployment profile are enforced before workspace access.
 
-References: [JSON-RPC 2.0](https://www.jsonrpc.org/specification), [LSP](https://microsoft.github.io/language-server-protocol/), [Semantic Versioning](https://semver.org/).
+References: [JSON-RPC 2.0](https://www.jsonrpc.org/specification), [LSP](https://microsoft.github.io/language-server-protocol/), [Semantic Versioning](https://semver.org/), [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access), [WICG Local Network Access explainer](https://github.com/WICG/local-network-access/blob/main/explainer.md).
