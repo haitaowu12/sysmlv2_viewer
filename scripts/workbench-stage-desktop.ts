@@ -124,6 +124,7 @@ const runtimeManifest = {
   },
   java: {
     version: runtimes.java.version,
+    architecture: runtimes.java.architecture,
     modules: runtimes.java.modules,
     sourceReleaseSha256: runtimes.java.sourceReleaseSha256,
   },

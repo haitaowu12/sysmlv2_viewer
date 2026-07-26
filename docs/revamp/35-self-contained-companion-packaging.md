@@ -19,9 +19,9 @@ payload and the same runtime staging logic as the Tauri desktop build.
 | Node runtime | exact Node 22 arm64 input, staged executable SHA-256 |
 | Java runtime | Java 21 JDK input, `jdeps` module derivation, explicit reflective modules, minimized `jlink` image |
 | source preservation | service and language engines are unchanged; the shell never receives direct filesystem authority |
-| self containment | launcher uses absolute bundled Node and Java paths |
+| self containment | launcher uses absolute bundled Node and Java paths and clears inherited runtime-injection variables |
 | isolation proof | smoke child receives a deliberately nonexistent `PATH` |
-| integrity | complete inventory of every bundle file except the self-describing companion manifest |
+| integrity | complete inventory of every bundle file except the self-describing companion manifest; verifier rejects additions, removals, mode changes, links, special files, and byte mutations |
 | provenance | archive and manifest SHA-256, runtime versions, module list, source and payload hashes |
 | pairing | loopback-only service and short-lived, one-time fragment secret |
 | log safety | pilot model marker and session credentials must be absent from captured output |
@@ -30,9 +30,12 @@ payload and the same runtime staging logic as the Tauri desktop build.
 ## CI boundary
 
 The macOS companion workflow is manual because the locked portable language
-runtime is not reconstructed by ordinary source CI. Dispatch requires a
-separately produced HTTPS payload and its expected SHA-256. The workflow rejects
-an archive whose internal source commit differs from the checked-out SHA.
+runtime is not reconstructed by ordinary source CI. A protected
+`companion-release` environment independently supplies the approved source
+SHA, HTTPS payload URL, and payload SHA-256; the dispatch caller cannot replace
+them. The checked-out verifier validates the archive before any archive code
+runs. The workflow rejects an archive whose source commit differs from both the
+approved and checked-out SHA.
 
 The hosted `macos-14` job checks arm64 explicitly, packages the bundle, smokes
 the staged tree under a nonexistent executable search path, extracts the
@@ -41,6 +44,10 @@ short-lived unsigned engineering candidates.
 
 This is hosted-runner qualification evidence, not independent clean-machine
 acceptance and not permission to publish a production release.
+
+The default shell is remote GitHub Pages. The local runtime is network
+independent, but the package does not claim general offline operation until a
+cached or locally served shell is separately qualified.
 
 ## Remaining gates
 

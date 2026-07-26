@@ -458,15 +458,21 @@ export async function pairLoopbackService(
   }
 
   const controller = new AbortController()
-  let timedOut = false
-  const cancelFromCaller = () => controller.abort(options.signal?.reason)
-  if (options.signal?.aborted) {
+  const callerSignal = options.signal
+  let abortSource: 'caller' | 'timeout' | null = null
+  const cancelFromCaller = () => {
+    if (controller.signal.aborted) return
+    abortSource = 'caller'
+    controller.abort(callerSignal?.reason)
+  }
+  if (callerSignal?.aborted) {
     cancelFromCaller()
   } else {
-    options.signal?.addEventListener('abort', cancelFromCaller, { once: true })
+    callerSignal?.addEventListener('abort', cancelFromCaller, { once: true })
   }
   const timeout = setTimeout(() => {
-    timedOut = true
+    if (controller.signal.aborted) return
+    abortSource = 'timeout'
     controller.abort()
   }, timeoutMs)
 
@@ -486,12 +492,12 @@ export async function pairLoopbackService(
     }
     return response.json() as Promise<LoopbackPairingResult>
   } catch (error) {
-    if (timedOut) {
+    if (abortSource === 'timeout') {
       throw new Error(LOCAL_NETWORK_ACCESS_ERROR, { cause: error })
     }
-    if (options.signal?.aborted) {
-      if (options.signal.reason instanceof Error) {
-        throw options.signal.reason
+    if (abortSource === 'caller') {
+      if (callerSignal?.reason instanceof Error) {
+        throw callerSignal.reason
       }
       throw new DOMException('Workbench pairing was canceled', 'AbortError')
     }
@@ -501,7 +507,7 @@ export async function pairLoopbackService(
     throw error
   } finally {
     clearTimeout(timeout)
-    options.signal?.removeEventListener('abort', cancelFromCaller)
+    callerSignal?.removeEventListener('abort', cancelFromCaller)
   }
 }
 

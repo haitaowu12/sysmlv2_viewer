@@ -48,7 +48,10 @@ The command emits:
 
 The technical smoke deliberately gives the companion child
 `PATH=/sysml-workbench-smoke-no-system-runtime`. This proves that startup,
-semantic indexing, and workspace open use the bundled Node and Java paths:
+semantic indexing, and workspace open use the bundled Node and Java paths. It
+also supplies invalid `NODE_OPTIONS`, `NODE_PATH`, `JAVA_TOOL_OPTIONS`,
+`JDK_JAVA_OPTIONS`, and `_JAVA_OPTIONS`; successful startup proves that the
+launcher clears inherited runtime-injection settings before verification:
 
 ```bash
 npm run companion:smoke -- \
@@ -65,12 +68,21 @@ markers or session credentials from captured logs.
 ## Hosted CI
 
 `.github/workflows/companion-release.yml` is a manually dispatched,
-hash-pinned pipeline on `macos-14`. It accepts only an HTTPS URL plus expected
-SHA-256 for an exact-head portable bundle. The workflow:
+hash-pinned pipeline on `macos-14`. It reads three independently governed
+variables from the protected `companion-release` GitHub environment:
+
+- `APPROVED_COMPANION_SOURCE_SHA`;
+- `APPROVED_COMPANION_PORTABLE_URL`;
+- `APPROVED_COMPANION_PORTABLE_SHA256`.
+
+The workflow dispatcher cannot override those values. Configure required
+environment reviewers before enabling the job. The workflow:
 
 1. checks that the hosted runner is arm64;
 2. installs Node 22 and Java 21 build inputs;
-3. verifies the downloaded payload hash, internal inventory, and source SHA;
+3. verifies the approved source SHA and downloaded payload hash before parsing
+   it, then uses the verifier from the checked-out source—not executable code
+   supplied by the archive—to validate the internal inventory;
 4. stages the self-contained runtime;
 5. runs restricted-path smoke on the staged tree;
 6. extracts the archive into a clean directory and repeats smoke;
@@ -80,6 +92,11 @@ Hosted-runner smoke is reproducible CI evidence. It is **not** a substitute for
 human clean-machine acceptance on supported macOS hardware.
 
 ## Distribution boundary
+
+The local runtime itself performs no external fetch. The default browser shell
+is GitHub Pages, so an initial shell load requires network access unless a
+previously cached shell is explicitly demonstrated. The package manifest does
+not claim general offline operation.
 
 The output is unsigned and not notarized. It is an internal technical
 candidate, not a public production installer. A user may encounter macOS

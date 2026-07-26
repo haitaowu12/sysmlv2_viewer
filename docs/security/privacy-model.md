@@ -5,7 +5,9 @@
 - no telemetry;
 - no external AI/provider;
 - no model content in operational logs;
-- no network dependency after the Profile B release bundle is installed;
+- no model/runtime egress from the Profile B companion; the default GitHub
+  Pages shell requires an initial network load unless a cached/local shell is
+  separately qualified;
 - local source and engineering artifacts remain under user/project control;
 - browser storage is disposable UI/session state, never authoritative reviews/model/evidence.
 

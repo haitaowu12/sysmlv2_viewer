@@ -97,6 +97,34 @@ describe('loopback pairing', () => {
 
     await rejection
   })
+
+  it('preserves caller cancellation when fetch rejects after the timeout deadline', async () => {
+    vi.useFakeTimers()
+    const controller = new AbortController()
+    const reason = new Error('Pairing view closed before fetch settled')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: Parameters<typeof fetch>[0], init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => setTimeout(() => reject(init.signal?.reason), 2_000),
+            { once: true },
+          )
+        })) as typeof fetch,
+    )
+    const pairing = pairLoopbackService(
+      'http://127.0.0.1:43117',
+      'pairing-code',
+      { signal: controller.signal, timeoutMs: 1_000 },
+    )
+    const rejection = expect(pairing).rejects.toBe(reason)
+
+    controller.abort(reason)
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    await rejection
+  })
 })
 
 function abortablePendingFetch(): typeof fetch {
