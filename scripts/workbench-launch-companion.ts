@@ -47,6 +47,12 @@ const serviceArguments = [
   serviceEntry,
   '--loopback',
   ...(!preservationControl ? ['--qualified-runtime'] : []),
+  ...(valueAfter('--candidate-manifest')
+    ? ['--candidate-manifest', resolve(valueAfter('--candidate-manifest')!)]
+    : []),
+  ...(valueAfter('--runtime-lock')
+    ? ['--runtime-lock', resolve(valueAfter('--runtime-lock')!)]
+    : []),
   '--workspace-root',
   dirname(workspaceFile),
   '--workspace-file',

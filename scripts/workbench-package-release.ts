@@ -495,6 +495,8 @@ export SYSML_WORKBENCH_SPEC42_COMMAND="$SYSML_WORKBENCH_AUTHORING_ARTIFACT"
 export SYSML_WORKBENCH_SPEC42_ARGUMENTS_JSON=$(node -e 'process.stdout.write(JSON.stringify(["lsp", "--stdlib-path", process.argv[1]]))' "$BUNDLE_ROOT/runtime/libraries/sysml.library")
 exec node "$BUNDLE_ROOT/bin/launch-pages-companion.mjs" \\
   --service-entry "$BUNDLE_ROOT/service/apps/workbench-service/src/main.js" \\
+  --candidate-manifest "$BUNDLE_ROOT/config/language-engine-candidates.json" \\
+  --runtime-lock "$BUNDLE_ROOT/config/language-engine-runtime-lock.json" \\
   --workspace-file "$WORKSPACE_FILE" \\
   --pages-url "$PAGES_URL"
 `
@@ -519,7 +521,7 @@ set "SYSML_WORKBENCH_VINQUT_COMMAND=%JAVA_COMMAND%"
 set "SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON=["-jar","%BUNDLE_JSON_ROOT%/runtime/semantic/sysmlv2-lsp-server.jar"]"
 set "SYSML_WORKBENCH_SPEC42_COMMAND=%SYSML_WORKBENCH_AUTHORING_ARTIFACT%"
 set "SYSML_WORKBENCH_SPEC42_ARGUMENTS_JSON=["lsp","--stdlib-path","%BUNDLE_JSON_ROOT%/runtime/libraries/sysml.library"]"
-node "%BUNDLE_ROOT%\\bin\\launch-pages-companion.mjs" --service-entry "%BUNDLE_ROOT%\\service\\apps\\workbench-service\\src\\main.js" --workspace-file "%~1" --pages-url "%PAGES_URL%"
+node "%BUNDLE_ROOT%\\bin\\launch-pages-companion.mjs" --service-entry "%BUNDLE_ROOT%\\service\\apps\\workbench-service\\src\\main.js" --candidate-manifest "%BUNDLE_ROOT%\\config\\language-engine-candidates.json" --runtime-lock "%BUNDLE_ROOT%\\config\\language-engine-runtime-lock.json" --workspace-file "%~1" --pages-url "%PAGES_URL%"
 `
 }
 
