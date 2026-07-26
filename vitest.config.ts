@@ -10,6 +10,7 @@ export default defineConfig({
       'server/**/*.{test,spec}.js',
       'packages/**/*.{test,spec}.{ts,tsx}',
       'apps/**/*.{test,spec}.{ts,tsx}',
+      'scripts/**/*.{test,spec}.ts',
     ],
   },
 })

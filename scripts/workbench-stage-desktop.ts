@@ -1,25 +1,19 @@
 import { execFile } from 'node:child_process'
 import {
-  chmod,
-  copyFile,
   cp,
-  lstat,
   mkdir,
-  readdir,
   readFile,
-  realpath,
   rm,
-  unlink,
   writeFile,
 } from 'node:fs/promises'
-import { basename, dirname, relative, resolve } from 'node:path'
+import { basename, relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import {
   canonicalJson,
   inventoryFiles,
   normalizePath,
-  sha256File,
 } from './workbench-release-support.js'
+import { stageSelfContainedRuntimes } from './workbench-stage-runtimes.js'
 
 interface PortableManifest {
   product: { name: string; version: string }
@@ -75,28 +69,6 @@ if (
   )
 }
 
-await Promise.all([
-  assertRegularFile(nodeExecutable, 'Node executable'),
-  assertRegularFile(resolve(javaHome, 'bin/java'), 'Java executable'),
-  assertRegularFile(resolve(javaHome, 'bin/jdeps'), 'jdeps executable'),
-  assertRegularFile(resolve(javaHome, 'bin/jlink'), 'jlink executable'),
-  assertRegularFile(resolve(javaHome, 'release'), 'Java release metadata'),
-  assertRegularFile(resolve(dirname(nodeExecutable), '../LICENSE'), 'Node license'),
-])
-
-const [{ stdout: nodeVersionOutput }, { stdout: nodeFileOutput }] =
-  await Promise.all([
-    execFileAsync(nodeExecutable, ['--version']),
-    execFileAsync('file', [nodeExecutable]),
-  ])
-const nodeVersion = nodeVersionOutput.trim()
-if (!/^v22\./.test(nodeVersion)) {
-  throw new Error(`Desktop runtime requires exact Node 22 input; received ${nodeVersion}`)
-}
-if (!/\barm64\b/.test(nodeFileOutput)) {
-  throw new Error('Desktop Node runtime is not an Apple Silicon executable')
-}
-
 await execFileAsync(nodeExecutable, [
   resolve(portableBundle, 'bin/verify-bundle.mjs'),
 ])
@@ -104,35 +76,6 @@ const semanticArtifact = resolve(
   portableBundle,
   'runtime/semantic/sysmlv2-lsp-server.jar',
 )
-const { stdout: modulesOutput } = await execFileAsync(
-  resolve(javaHome, 'bin/jdeps'),
-  [
-    '--multi-release',
-    '21',
-    '--ignore-missing-deps',
-    '--print-module-deps',
-    semanticArtifact,
-  ],
-  { maxBuffer: 16 * 1024 * 1024 },
-)
-const staticallyDetectedModules = modulesOutput.trim()
-if (!staticallyDetectedModules.includes('java.base')) {
-  throw new Error('jdeps did not return a valid Java module set')
-}
-// The Pilot/Xtext runtime loads XML, locale, HTTP, charset, and crypto
-// providers reflectively. jdeps cannot see those edges in the fat JAR.
-const javaModules = [
-  ...new Set([
-    ...staticallyDetectedModules.split(','),
-    'java.net.http',
-    'java.prefs',
-    'java.xml',
-    'jdk.charsets',
-    'jdk.crypto.ec',
-    'jdk.localedata',
-    'jdk.zipfs',
-  ]),
-].sort()
 
 await Promise.all([
   rm(generatedRoot, { recursive: true, force: true }),
@@ -145,43 +88,23 @@ await Promise.all([
 ])
 await Promise.all([
   cp(portableBundle, stagedBundle, { recursive: true }),
-  copyFile(nodeExecutable, sidecarPath),
-  copyFile(
-    resolve(dirname(nodeExecutable), '../LICENSE'),
-    resolve(stagedLicenses, 'node-MIT-and-third-party.txt'),
-  ),
 ])
-await chmod(sidecarPath, 0o755)
+const runtimes = await stageSelfContainedRuntimes({
+  stagingRoot: desktopRoot,
+  nodeExecutable,
+  javaHome,
+  semanticArtifact,
+  stagedNodeExecutable: sidecarPath,
+  stagedJavaRoot: stagedJava,
+  stagedNodeLicense: resolve(
+    stagedLicenses,
+    'node-MIT-and-third-party.txt',
+  ),
+  expectedNodeArchitecture: 'arm64',
+})
 
-await execFileAsync(
-  resolve(javaHome, 'bin/jlink'),
-  [
-    '--module-path',
-    resolve(javaHome, 'jmods'),
-    '--add-modules',
-    javaModules.join(','),
-    '--output',
-    stagedJava,
-    '--strip-debug',
-    '--no-header-files',
-    '--no-man-pages',
-    '--compress=2',
-  ],
-  { maxBuffer: 16 * 1024 * 1024 },
-)
-await materializeInternalLinks(stagedJava, stagedJava)
-await makeTreeOwnerWritable(stagedJava)
-const { stderr: stagedJavaVersionOutput } = await execFileAsync(
-  resolve(stagedJava, 'bin/java'),
-  ['-version'],
-)
-if (!/\b21(?:\.|\b)/.test(stagedJavaVersionOutput)) {
-  throw new Error('Generated desktop Java runtime is not Java 21')
-}
-
-const [nodeSha256, portableFiles, javaFiles, licenseFiles] =
+const [portableFiles, javaFiles, licenseFiles] =
   await Promise.all([
-    sha256File(sidecarPath),
     inventoryFiles(stagedBundle),
     inventoryFiles(stagedJava),
     inventoryFiles(stagedLicenses),
@@ -194,15 +117,16 @@ const runtimeManifest = {
   minimumMacOS: '13.0',
   networkRequiredAfterInstall: false,
   node: {
-    version: nodeVersion,
+    version: runtimes.node.version,
     source: 'explicit build input',
     executable: `binaries/${basename(sidecarPath)}`,
-    sha256: nodeSha256,
+    sha256: runtimes.node.executableSha256,
   },
   java: {
-    version: stagedJavaVersionOutput.trim().split('\n')[0],
-    modules: javaModules,
-    sourceReleaseSha256: await sha256File(resolve(javaHome, 'release')),
+    version: runtimes.java.version,
+    architecture: runtimes.java.architecture,
+    modules: runtimes.java.modules,
+    sourceReleaseSha256: runtimes.java.sourceReleaseSha256,
   },
   portableBundle: {
     path: normalizePath(relative(repositoryRoot, portableBundle)),
@@ -224,50 +148,6 @@ await writeFile(
   'utf8',
 )
 process.stdout.write(`${JSON.stringify(runtimeManifest, null, 2)}\n`)
-
-async function assertRegularFile(path: string, label: string): Promise<void> {
-  const details = await lstat(path)
-  if (!details.isFile() || details.isSymbolicLink()) {
-    throw new Error(`${label} must be a regular file: ${path}`)
-  }
-}
-
-async function materializeInternalLinks(
-  root: string,
-  directory: string,
-): Promise<void> {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = resolve(directory, entry.name)
-    if (entry.isDirectory()) {
-      await materializeInternalLinks(root, path)
-      continue
-    }
-    if (!entry.isSymbolicLink()) continue
-    const target = await realpath(path)
-    assertWithin(root, target)
-    const targetDetails = await lstat(target)
-    if (!targetDetails.isFile()) {
-      throw new Error(`Java runtime link does not target a file: ${path}`)
-    }
-    await unlink(path)
-    await copyFile(target, path)
-  }
-}
-
-async function makeTreeOwnerWritable(directory: string): Promise<void> {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = resolve(directory, entry.name)
-    if (entry.isDirectory()) {
-      await makeTreeOwnerWritable(path)
-      continue
-    }
-    const details = await lstat(path)
-    if (!details.isFile()) {
-      throw new Error(`Generated Java runtime contains a special file: ${path}`)
-    }
-    await chmod(path, details.mode | 0o200)
-  }
-}
 
 function assertWithin(root: string, path: string): void {
   const relation = relative(root, path)

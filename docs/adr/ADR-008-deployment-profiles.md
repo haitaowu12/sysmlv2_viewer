@@ -34,6 +34,9 @@ Authorization is server-enforced per workspace capability. UI hiding is not acce
 ## Local companion controls
 
 - bind only to explicit IPv4/IPv6 loopback addresses and an ephemeral port;
+- request the browser's Local Network Access permission with an explicit
+  `loopback` target address space and fail with a bounded, actionable timeout
+  when permission is denied or unavailable;
 - explicit one-time pairing initiated from the companion; no ambient discovery;
 - exact trusted-origin allowlist, no wildcard/reflected origins;
 - short-lived, audience-bound tokens held in memory where practical;
@@ -52,4 +55,4 @@ Authorization is server-enforced per workspace capability. UI hiding is not acce
 - B rejects DNS rebinding/non-loopback, malicious origin, token replay/expiry, path traversal, and unauthorized egress;
 - reports identify deployment/service/engine versions without including secrets.
 
-References: [RFC 8252 loopback considerations](https://datatracker.ietf.org/doc/html/rfc8252), [RFC 6455 origin considerations](https://www.rfc-editor.org/info/rfc6455/), [OWASP WebSocket Security](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html), [Tauri capabilities](https://v2.tauri.app/security/capabilities/).
+References: [RFC 8252 loopback considerations](https://datatracker.ietf.org/doc/html/rfc8252), [RFC 6455 origin considerations](https://www.rfc-editor.org/info/rfc6455/), [OWASP WebSocket Security](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html), [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access), [Tauri capabilities](https://v2.tauri.app/security/capabilities/).

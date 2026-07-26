@@ -32,8 +32,8 @@ successful pairing. The legacy viewer is isolated behind `?legacy=1`.
 3. Launcher opens the exact Pages URL with only the loopback origin and a
    short-lived pairing code in the URL fragment.
 4. The modern shell consumes and scrubs the fragment.
-5. Browser completes an exact-origin Private Network Access preflight and
-   one-time pairing.
+5. Browser requests exact-origin Local Network Access permission for the
+   explicitly annotated loopback target and completes one-time pairing.
 6. Service returns short-lived credentials and an opaque workspace handle.
 7. UI negotiates the Workbench Protocol and opens the selected workspace by
    handle. No local path is exposed to the page.
@@ -61,7 +61,8 @@ Compensating controls are:
 
 - exact allowed Pages origin and validated Host;
 - no wildcard/reflected CORS;
-- browser Private Network Access preflight;
+- browser Local Network Access permission with an explicit `loopback` target;
+- legacy Private Network Access preflight compatibility;
 - one-time short-expiry pairing code;
 - atomic consumption: every replay is rejected even before expiry;
 - bootstrap secret in the fragment, followed by immediate scrubbing;
@@ -84,7 +85,8 @@ amendment.
 - Pages base path and CSP are correct;
 - the launcher targets the configured Pages URL;
 - neither launch URL nor pairing response exposes the workspace path;
-- loopback-only service and exact-origin PNA preflight pass;
+- loopback-only service, Local Network Access target annotation, and legacy
+  exact-origin PNA preflight compatibility pass;
 - pairing returns an opaque workspace handle;
 - pairing replay is rejected;
 - framed browsing contexts cannot enter pairing or privileged workflows;
@@ -137,10 +139,27 @@ accepted base, and the Pages deployment workflow succeeds on `main`.
 Before calling Profile B a supported public release:
 
 - publish and verify the portable companion bundle for each claimed OS;
-- complete clean-machine browser/PNA tests on those OS/browser combinations;
+- complete clean-machine browser Local Network Access tests on those
+  OS/browser combinations;
 - reconcile/dispose runtime distribution and license blockers;
 - complete the three-person usability pilot and manual accessibility review;
 - publish checksums, notices, recovery instructions, and a support policy.
 
 Apple Developer ID signing and notarization remain relevant only to the
 optional native macOS channel; they do not block this web-companion path.
+
+## Browser Local Network Access
+
+Current Chrome uses a permission prompt for public-site requests to loopback
+and local-network targets. The companion client marks the pairing fetch with
+`targetAddressSpace: 'loopback'`, applies a 15-second abort timeout, and gives
+explicit permission-recovery guidance rather than waiting indefinitely.
+Permission is scoped to the exact Pages origin. The service retains its
+`Access-Control-Allow-Private-Network` response for compatibility with
+browsers that still implement the earlier Private Network Access preflight,
+but that preflight is not the primary current Chrome control.
+
+References:
+
+- [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access)
+- [WICG Local Network Access explainer](https://github.com/WICG/local-network-access/blob/main/explainer.md)

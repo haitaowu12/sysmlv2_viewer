@@ -106,7 +106,7 @@ locked-runtime evidence are claimed; release targets remain planned.
 | deterministic reports | supported P5 | sanitized HTML, byte-stable PDF, CSV registers, hashed provenance manifests | REPORT-DET-001 |
 | constrained AI | supported P6 profile | twelve narrow tools, stable citations, validated one-command proposals, user-only apply, tamper-evident audit, network disabled | AI-SAFE-001 |
 | public web/bootstrap surface | modern Pages shell | companion setup plus linked read-only sample; legacy viewer isolated behind `?legacy=1` | DEPLOY-A-001 |
-| browser + local companion | production candidate | exact-origin Pages pairing, PNA preflight, short-lived fragment secret, opaque workspace handle, deterministic exact-runtime portable bundle | DEPLOY-B-001 |
+| browser + local companion | production candidate | exact-origin Pages pairing, browser Local Network Access permission, legacy PNA preflight compatibility, short-lived fragment secret, opaque workspace handle, deterministic self-contained runtime bundle | DEPLOY-B-001 |
 | packaged offline desktop | unsupported | native signed shell/installer not qualified | INSTALL-001 |
 | managed hosted | unsupported | future D profile | DEPLOY-D-001 |
 
