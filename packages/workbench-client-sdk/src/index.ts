@@ -416,6 +416,7 @@ export interface LoopbackPairingResult {
   token: string
   csrf: string
   expiresAt: string
+  workspaceHandle?: string
 }
 
 export async function pairLoopbackService(

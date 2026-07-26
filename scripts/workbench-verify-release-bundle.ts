@@ -74,6 +74,9 @@ if (libraryFiles.length !== manifest.runtime.officialLibrary.fileCount) {
 await Promise.all([
   stat(resolve(bundleRoot, 'bin/start-workbench.sh')),
   stat(resolve(bundleRoot, 'bin/start-workbench.cmd')),
+  stat(resolve(bundleRoot, 'bin/start-pages-companion.sh')),
+  stat(resolve(bundleRoot, 'bin/start-pages-companion.cmd')),
+  stat(resolve(bundleRoot, 'bin/launch-pages-companion.mjs')),
   stat(resolve(bundleRoot, 'app/index.html')),
   stat(resolve(bundleRoot, 'service/apps/workbench-service/src/main.js')),
 ])

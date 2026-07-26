@@ -3,7 +3,10 @@
 | Symptom | Action |
 |---|---|
 | Bundle integrity failure | Replace the whole installation. Do not patch individual files. |
-| Pairing rejected | Reload the loopback page and use the newest code within two minutes. |
+| Pages opens sample mode | Start `start-pages-companion` with a workspace file; the static page cannot open private workspaces by itself. |
+| Pairing rejected | Stop the old companion, launch a new pairing intent, and use it before the short expiry. |
+| Browser blocks local-network access | Allow the browser's local-network permission for the exact GitHub Pages origin, then relaunch the companion. Never expose the companion through a tunnel. |
+| Fragment remains in the address bar | Close the page and stop the companion. A successful bootstrap removes the fragment immediately. |
 | Session expired | Pair again; sessions are intentionally short-lived. |
 | Workspace path rejected | Start the service with the intended project root and remove source-root symlinks. |
 | Runtime hash mismatch | Use the exact locked engine binaries; do not override the lock. |
