@@ -5,6 +5,26 @@
 - Decision owner: product owner
 - Phase 1 update required: yes, after comparative qualification
 
+## Recovery amendment
+
+P4/P5 invalidation does not erase the Phase 1 comparative evidence, but it
+changes the product requirement for the recovery slice:
+
+- one language process must be sufficient for semantic open, diagnostics,
+  navigation, source-backed semantic evidence, incremental change, and restart;
+- VinQut rebuilt against the pinned official Pilot is the required-runtime
+  candidate for R1/R2 requalification;
+- Spec42 may remain optional, non-authoritative assistance;
+- loss or absence of Spec42 must not close the semantic workspace;
+- Spec42 rename and formatting proposals remain disabled until they pass
+  source-preservation and differential tests;
+- the current `HYBRID GO` runtime lock remains historical and unchanged until
+  the single-required-runtime profile has exact qualification evidence.
+
+This amendment does not make VinQut normative. Official specifications,
+release artifacts, libraries, and adopted resolutions remain the language
+authority.
+
 ## Context
 
 The workbench needs deterministic SysML v2/KerML semantics, language intelligence, source spans, preservation-safe edits, multi-file resolution, standard libraries, and a stable semantic snapshot. No inspected implementation is entitled to define the language merely because it is convenient to embed.

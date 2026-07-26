@@ -1,150 +1,162 @@
 # Deployment and Access Strategy
 
-## One product, four profiles
+Status: amended for recovery; production profile selection deferred
+
+Active authorities:
+
+- `docs/adr/ADR-003-client-service-and-deployment-architecture.md`
+- `docs/adr/ADR-008-deployment-profiles.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
+
+## One service architecture, staged clients
 
 ```mermaid
 flowchart TB
-  UI["Shared web application + Client SDK"]
-  UI --> A["A. Public web evaluation"]
-  UI --> B["B. Browser + local companion"]
-  UI --> C["C. Tauri desktop"]
-  UI --> D["D. Managed hosted"]
-  B --> S1["Local Workbench Service"]
-  C --> S2["Bundled Workbench Service"]
-  D --> S3["Hosted Workbench Service"]
-  S1 --> P["Same Workbench Protocol and semantic contracts"]
-  S2 --> P
-  S3 --> P
+  VSC["A. VS Code local authoring — recovery target"] --> SDK["Workbench Client SDK"]
+  WEB["B. Public web recovery evaluation"] --> SDK
+  REVIEW["C. Future browser scoped review"] --> SDK
+  HOSTS["D. Future Tauri/managed hosts"] --> SDK
+  SDK --> P["Workbench Protocol"]
+  P --> S["Workbench Service"]
+  S --> L["Required language authority"]
+  S --> W["workspace / command / query / assurance / evidence"]
 ```
 
-### A — Public web evaluation
+The service, protocol, identity, command, assurance, and evidence contracts are
+shared. No client host contains a second semantic implementation or writes
+source outside the typed-command boundary.
 
-Purpose: discover product concepts, install/launch the companion, and enter
-the explicit packaged compatibility sample. Expanded sample queries, reference
-views, baseline comparison, and sample reports remain a Profile A backlog item.
+## A — VS Code local authoring
 
-Constraints: no arbitrary local folders; no provider AI; no claim of authoritative local editing; sample/source provenance embedded; strict CSP; no persistent sensitive model state.
+Recovery target for source-canonical engineering work.
 
-The deployed GitHub Pages URL loads the modern shared workbench shell in this
-mode when no companion bootstrap is present. `?legacy=1` is a separate
-read-only compatibility sample, not the primary Pages UI.
+Use native VS Code capabilities for:
 
-### B — Browser + local companion
+- folder/workspace opening;
+- Explorer and Search;
+- SysML/KerML text editing;
+- diagnostics and Problems;
+- SCM/diff when Git is configured;
+- commands, settings, progress, cancellation, and workspace trust.
 
-Supported production-candidate profile for low-friction authoring and review.
-The same GitHub Pages UI elevates from Profile A only after an explicitly
-launched local Workbench Service completes one-time pairing. This is the
-recommended distribution path while native installers are unsigned.
+Use webviews only for notation-specific projections, assurance views, and
+source-patch review. A packaged VSIX must pass Recovery Gates R2-R6 before this
+profile receives a production claim.
 
-Local-only functions:
+Git is optional. Non-Git workspaces retain source, language, query,
+Interconnection, interface, and verification capabilities; baseline and
+commit-specific operations are unavailable.
 
-- open/watch arbitrary approved folders;
-- use local Git and commits;
-- run qualified local language engines/libraries;
-- generate reports through local binaries;
-- use OS keystore and optionally approved local AI;
-- access private evidence files through scoped handles.
+## B — Public web recovery evaluation
 
-Security handshake:
+Purpose: inspect recovery concepts, pair with a technical local companion, and
+open packaged or explicitly selected evaluation workspaces.
 
-1. companion validates a selected workspace under a canonical allowed root;
-2. companion starts on an OS-selected IPv4 loopback port and opens a one-time pairing intent for the exact Pages origin;
-3. the intent carries the loopback origin and pairing secret in the URL fragment, which is not part of the HTTP request and is scrubbed after consumption;
-4. the browser requests origin-scoped Local Network Access permission for an
-   explicitly annotated `loopback` target, then performs the pairing request;
-5. companion issues short-lived audience/origin-bound session credentials and an opaque workspace handle;
-6. client negotiates protocol/capabilities and opens only that handle;
-7. expiry, origin change, restart, permission elevation, or trust change requires renewal/confirmation.
+Constraints:
 
-Required controls: explicit IPv4/IPv6 loopback bind, Host/Origin allowlists,
-browser Local Network Access permission with a bounded actionable timeout,
-legacy Private Network Access preflight compatibility, anti-DNS-rebinding
-tests, CSRF protection, WebSocket Origin and token validation, payload/rate
-limits, no wildcard CORS, token redaction, no model logs, egress deny-by-default,
-visible connection/network state.
+- no production-authoring claim;
+- Pages source authoring is disabled until self-hosted editor assets/workers and
+  CSP behavior pass exact-artifact qualification;
+- the element map and inventory are diagnostic projections, not SysML notation
+  or engineering matrices;
+- no arbitrary filesystem authority in public JavaScript;
+- strict CSP, no persistent sensitive model state, and no provider AI.
 
-### C — Tauri desktop
+`?legacy=1` remains a read-only rendering/regression reference. Its parser and
+browser store are not authoritative.
 
-Optional native profile: signed, fully offline macOS 13+ Apple Silicon
-installation with integrated workspace picker, process lifecycle, updater
-policy, and crash recovery. It embeds the same built UI and starts the same
-loopback Workbench Service with short-lived pairing credentials. Tauri
-capabilities grant only dialog, sidecar, and typed application commands. No
-semantic logic is implemented in Tauri handlers.
+## C — Future browser scoped review
 
-### D — Managed hosted
+Potential profile for non-modelers after R6. Authorized users may receive
+published/scoped views and reports, relationship navigation, assigned findings,
+dispositions, baseline comparisons, and evidence downloads through the same
+protocol.
 
-Future profile for authenticated distributed work. It uses remote HTTPS/WSS, tenant/workspace authorization, immutable repository/baseline services, object evidence storage, job execution, audit retention, and optional collaboration. The service implements the same application contracts; persistence/identity adapters may change only behind ADR-005 boundaries.
+This profile requires authentication, authorization, source/baseline scope,
+and its own exact-artifact/practitioner evidence. It does not become source
+authority.
 
-No hosted implementation begins before local semantic/command/report contracts pass their gates.
+## D — Future packaging and hosted profiles
+
+### Tauri desktop
+
+Deferred packaging host for the same client/service contracts. It may provide
+an offline installer, workspace picker, process lifecycle, keystore, and OS
+integration. Tauri handlers contain no semantic or source-writing logic.
+
+### Managed hosted
+
+Deferred authenticated deployment using repository, object, and database
+adapters behind the same protocol and identity contracts. No hosted
+implementation begins before the local recovery vertical slice passes.
+
+## Local companion security controls
+
+The retained companion technical boundary requires:
+
+1. a canonical selected workspace under an allowed root;
+2. explicit IPv4/IPv6 loopback bind and OS-selected port;
+3. one-time, short-lived pairing intent for an exact trusted origin;
+4. fragment bootstrap scrubbing;
+5. browser Local Network Access annotation and bounded recovery;
+6. origin/audience-bound credentials and opaque workspace handles;
+7. Host/Origin allowlists, CSRF/WebSocket validation, no wildcard CORS;
+8. token/model-log redaction, payload/rate limits, and deny-by-default egress;
+9. expiry, restart, origin change, and permission elevation requiring renewed
+   confirmation.
+
+These controls prove a security boundary. They do not prove a usable product.
 
 ## User and permission matrix
 
 | Capability | Author | Engineer/reviewer | Chief/assurance | PM/stakeholder |
 |---|---:|---:|---:|---:|
-| navigate approved workspace/views | yes | yes | yes | yes |
+| navigate authorized source/views | yes | yes | yes | scoped |
 | inspect source/semantics | yes | policy | policy | optional |
-| edit text/propose commands | yes | policy | no by default | no |
-| apply source mutation | yes, protected | policy, protected | no by default | no |
+| propose text/graphical commands | yes | policy | no by default | no |
+| approve source mutation | protected | policy, protected | no by default | no |
 | run queries/rules | yes | yes | yes | published/bounded |
-| create/respond to findings | yes | yes | yes | invited comments |
-| freeze review scope | policy | chair only | yes | no |
-| approve/reject dispositions | no self-approval by default | assigned | yes | invited decision |
-| compare baselines | yes | yes | yes | published baselines |
-| generate reports | yes | yes | yes | download approved |
-| configure providers/egress | administrator only | no | no | no |
+| create/respond to findings | yes | yes | yes | invited |
+| freeze review scope | policy | chair | yes | no |
+| approve/reject dispositions | no self-approval by default | assigned | yes | invited |
+| compare Git baselines | when Git configured | when authorized | yes | published |
+| generate reports | yes | yes | yes | approved download |
+| configure providers/egress | administrator | no | no | no |
 
-The Workbench Service enforces roles and workspace capabilities. Client controls are explanatory only.
-
-## Availability to non-modelers
-
-Without local installation, authorized hosted/public users must be able to:
-
-- open published/scoped views and reports;
-- navigate identity-backed relationships and properties;
-- inspect diagnostics/quality findings at the shared baseline;
-- compare two published baselines;
-- comment or create a permitted finding;
-- respond to and approve/reject an assigned disposition;
-- download a reproducible evidence/report package.
-
-Authoritative local-folder editing still requires B or C.
+The Workbench Service enforces capabilities. Client hiding is explanatory, not
+access control.
 
 ## Secret, network, and privacy boundaries
 
-- credentials live in companion/desktop OS keystore or hosted secret manager, never web storage/source;
-- external provider use is disabled by default, provider-specific, per-action visible, and auditable;
-- the UI always displays `offline`, `local-only`, or named external connection state;
-- no telemetry by default;
-- logs contain ids/status/timing, not source text, prompts, evidence contents, tokens, or personal details by default;
-- audit retention is configurable and separable from operational logs;
-- remote/shared deployment requires authentication before workspace enumeration.
+- credentials remain in the extension/local service keystore or future hosted
+  secret manager, never source or browser storage;
+- external providers are disabled by default and remain frozen through R6;
+- UI reports actual offline/local/external state;
+- telemetry is off by default;
+- operational logs exclude source, prompts, evidence contents, tokens, and
+  personal details by default;
+- remote/shared profiles require authentication before workspace enumeration.
 
-## Packaging and distribution decision
+## Packaging and distribution posture
 
-- P1 ships development/test service artifacts only, with exact hashes and SBOM;
-- P7 continues to retain a Developer ID signed and Apple-notarized macOS 13+
-  arm64 Tauri `.app` and DMG as an optional future native channel;
-- Profile B is the recommended near-term delivery path because the portable
-  companion does not require Apple signing and the Pages host never becomes
-  model authority;
-- the public evaluation site is independently deployable but becomes
-  authoritative for a private workspace only through the paired local service;
-- auto-update is opt-in/policy-controlled and verifies signatures; offline programs can use pinned manual packages;
-- managed hosted distribution remains an owner-approved future program.
+- source CI may build and test technical artifacts;
+- the unsigned companion remains an internal technical candidate;
+- public binary distribution, signing/notarization, Windows qualification,
+  updater work, and support claims are frozen until R6;
+- Pages deployment is a recovery/evaluation surface, not a release channel;
+- no artifact name, version, landing page, or documentation may imply product
+  release readiness.
 
 ## Verification
 
-Deployment conformance runs the same service contract suite on all implemented transports plus:
+Each implemented profile requires its own:
 
-- clean install/uninstall/recovery;
-- offline C workflow;
-- B pairing/revocation/restart/origin change;
-- malicious web origin, DNS rebinding, token replay, CSRF/CSWSH, path traversal, symlink escape;
-- privilege/role matrix;
-- provider egress and network indicator;
-- report sanitization/CSP;
-- large workspace responsiveness and job cancellation;
-- version mismatch and protocol downgrade rejection.
+- component evidence;
+- service/transport evidence;
+- exact delivered-artifact UI evidence;
+- practitioner evidence where the profile serves people.
 
-See ADR-003, ADR-006, ADR-008 and `docs/security/*`.
+The recovery profile must also prove non-Git degradation, offline/local
+boundaries, malicious-origin and token controls, path/symlink rejection,
+capability negotiation, source-preserving mutation, saved-layout restart, and
+version mismatch failure.

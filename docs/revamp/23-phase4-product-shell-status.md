@@ -1,67 +1,82 @@
 # Phase 4 Product Shell Status
 
-Status: Gate P4 passed through the integrated Phase 5 pilot
-Branch: `codex/sysml-workbench-phase4-product-shell`
-Draft PR: #6
+Status: **invalidated as a product gate**
 
-## Delivered
+Historical implementation head: `8a69813`
 
-- The service-backed SysML Engineering Workbench is the primary local route.
-- The former viewer is isolated behind `?legacy=1` and is the explicit
-  read-only GitHub Pages compatibility profile.
-- The shell implements the activity rail, model explorer, source, diagram,
-  matrix, inspector, Problems, saved views, command palette, and local-service
-  connection experience.
-- Explorer modes use bounded workspace-service queries for containment, type,
-  dependencies, neighbourhood, requirements, verification, and interfaces.
-- Monaco completion, hover, definition, references, and formatting delegate to
-  the language authority. Monaco does not parse SysML for application state.
-- Text edits remain drafts until they become a `replace-document` typed
-  command, pass authoritative validation, show source edits and semantic diff,
-  and receive explicit human approval.
-- Saved view definitions and stable-identity layout positions are written as
-  bounded workspace-owned JSON. Browser storage is not authoritative.
-- Native command edits refresh the semantic workspace after apply.
+Historical branch: `codex/sysml-workbench-phase4-product-shell`
 
-## Evidence
+Invalidation authority:
 
-- `npm run test:workbench`: 18 files, 73 tests passed.
-- `npm test`: 38 files and 227 tests passed; 19 optional upstream-corpus tests
-  skipped because the optional corpus was not configured.
-- `npm run build`: TypeScript, service distribution, and Vite production build
-  passed.
-- `npm audit --omit=dev`: zero production vulnerabilities.
-- `npm run qualify:phase4`: qualified locked engines, copied fixture, seven
-  projection modes, source read, durable view save/list, source-draft proposal,
-  no write before approval, finalized apply, semantic identity cross-navigation,
-  and byte-exact undo all passed.
-- Browser pairing and workspace opening were exercised against the qualified
-  loopback service. Rendered evidence is stored under `output/playwright/`.
-- Machine-readable evidence:
-  `docs/revamp/phase4-qualification-observation.json` and
-  `docs/revamp/phase5-qualification-observation.json`.
+- `docs/revamp/36-failed-attempt-postmortem.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
+
+## What remains valid
+
+The Phase 4 implementation and qualification established useful
+`service-integration` evidence:
+
+- the Workbench Service can open a configured multi-file workspace;
+- bounded model queries execute over the normalized semantic snapshot;
+- source documents can be read;
+- saved view definitions can be persisted and listed;
+- a `replace-document` command can be proposed without changing canonical
+  source;
+- authoritative validation, explicit approval, apply, semantic refresh, and
+  byte-exact undo can complete;
+- stable identity can link an approved source change to a semantic projection.
+
+These results support the retained service, command, and identity foundation.
+
+## What is not proved
+
+The evidence does not prove that the delivered application provides a usable
+product shell.
+
+`workbench-qualify-phase4.ts` drives `WorkspaceManager` directly. It does not
+operate:
+
+- the exact built UI;
+- Monaco and its workers under the delivered CSP;
+- the activity rail as a user;
+- source/model cross-navigation through browser interaction;
+- the element map or notation-specific diagrams;
+- saved layout restoration;
+- graphical editing;
+- keyboard and screen-reader workflows;
+- an independent practitioner task.
+
+The historical script also hashed pre-existing screenshots rather than
+capturing them during the qualifying run.
 
 ## Gate disposition
 
-Gate P4 passes. The integrated locked-runtime pilot exercises all eight
-mandated tasks through the workbench service and product surfaces:
+P4 is invalidated as a product gate.
 
-1. open the realistic four-document infrastructure workspace;
-2. locate an unresolved reference while preserving canonical source;
-3. navigate from a requirement into the semantic model;
-4. identify four unverified requirements;
-5. add an interface through a typed command with no pre-approval write;
-6. compare two Git baselines semantically;
-7. close a stable-identity-anchored review finding with no stale anchor;
-8. export a deterministic HTML/PDF/CSV interface register.
+The script is retained and renamed in active commands as the
+**service product-shell foundation qualifier**. Its output must state:
 
-The exact qualified implementation head is `8a69813`. The semantic authority
-artifact SHA-256 is
-`8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160`.
-The pilot result is machine-recorded as `pass`.
+```json
+{
+  "evidenceLayer": "service-integration",
+  "result": "service-integration-pass",
+  "productGate": {
+    "id": "P4",
+    "state": "invalidated"
+  }
+}
+```
 
-## Next slice
+No service/component result may be relabelled as UI, usability, practitioner,
+or product-pass evidence.
 
-Gate P5 closure and controlled-AI Gate P6. The project remains a release
-candidate under construction; Gate P7 packaging, security, accessibility, and
-clean-machine evidence are still required before any production claim.
+## Recovery path
+
+P4 is replaced by Recovery Gates R0-R3:
+
+- R0: truthful status and exact-artifact safety floor;
+- R1: accepted pilot and reference answers;
+- R2: packaged source-authoring extension;
+- R3: notation-specific Interconnection View.
+
+The product shell remains pre-alpha until those gates pass.

@@ -1,63 +1,100 @@
-# Self-contained Pages companion packaging status
+# Self-contained Pages Companion Packaging Status
 
-## Decision
+Status: internal technical packaging evidence; release work frozen during
+recovery
 
-Use the GitHub Pages application as an unprivileged shell and ship a separate
-local companion archive for private filesystem, language-service, persistence,
-Git, and reporting responsibilities. This path continues engineering delivery
-without treating Apple Developer ID availability as an architecture decision.
+Active authorities:
 
-The first packaging slice is `darwin-arm64` only. It reuses the locked release
-payload and the same runtime staging logic as the Tauri desktop build.
+- `docs/revamp/36-failed-attempt-postmortem.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
+
+## Corrected decision
+
+Retain the self-contained companion packaging and integrity controls as
+technical foundation work. Do not treat the companion archive or GitHub Pages
+shell as a supported product distribution path before Recovery Gate R6.
+
+The current packaging slice is `darwin-arm64`. It stages the locked portable
+payload with bundled Node 22 and a minimized Java 21 runtime. The output is an
+unsigned internal technical candidate only.
 
 ## Implemented technical controls
 
 | Control | Evidence mechanism |
 |---|---|
-| exact source | portable manifest source commit must equal `git HEAD` |
-| locked payload | portable verifier plus semantic, authoring, and library hashes copied into companion manifest |
-| Node runtime | exact Node 22 arm64 input, staged executable SHA-256 |
-| Java runtime | Java 21 JDK input, `jdeps` module derivation, explicit reflective modules, minimized `jlink` image |
-| source preservation | service and language engines are unchanged; the shell never receives direct filesystem authority |
-| self containment | launcher uses absolute bundled Node and Java paths and clears inherited runtime-injection variables |
-| isolation proof | smoke child receives a deliberately nonexistent `PATH` |
-| integrity | complete inventory of every bundle file except the self-describing companion manifest; verifier rejects additions, removals, mode changes, links, special files, and byte mutations |
-| provenance | archive and manifest SHA-256, runtime versions, module list, source and payload hashes |
-| pairing | loopback-only service and short-lived, one-time fragment secret |
-| log safety | pilot model marker and session credentials must be absent from captured output |
-| claim boundary | unsigned, not notarized, Windows false, human clean-machine acceptance false |
+| exact source | portable manifest source commit must equal the assembly checkout |
+| clean portable provenance | packaging preflight requires `release.sourceDirty=false` |
+| locked payload | checked-out verifier plus semantic and authoring artifact hashes |
+| official library | exact locked path, file count, and recomputed canonical inventory tree SHA-256 |
+| Node runtime | exact Node 22 arm64 input and staged executable SHA-256 |
+| Java runtime | Java 21 JDK input, derived modules, minimized `jlink` image, and inventory hash |
+| source preservation | local service owns files and engines; Pages receives no filesystem authority |
+| self containment | absolute bundled runtime paths and inherited runtime-injection variables cleared |
+| isolation proof | smoke child receives a nonexistent system executable search path |
+| integrity | complete inventory; additions, removals, bytes, modes, links, and special files rejected |
+| provenance | archive/manifest hashes, runtime versions, module list, source and payload hashes |
+| pairing | loopback-only service and short-lived one-time fragment secret |
+| log safety | pilot marker and session credentials absent from captured output |
+| claim boundary | unsigned, not notarized, Windows unqualified, clean-machine/practitioner acceptance false |
 
-## CI boundary
+## Fail-closed packaging entrypoint
 
-The macOS companion workflow is manual because the locked portable language
-runtime is not reconstructed by ordinary source CI. A protected
-`companion-release` environment independently supplies the approved source
-SHA, HTTPS payload URL, and payload SHA-256; the dispatch caller cannot replace
-them. The checked-out verifier validates the archive before any archive code
-runs. The workflow rejects an archive whose source commit differs from both the
-approved and checked-out SHA.
+The supported command is:
 
-The hosted `macos-14` job checks arm64 explicitly, packages the bundle, smokes
-the staged tree under a nonexistent executable search path, extracts the
-archive into a clean directory, and repeats the smoke. Its artifacts are
-short-lived unsigned engineering candidates.
+```bash
+npm run companion:package -- \
+  --portable-bundle <path> \
+  --node-executable <path> \
+  --java-home <path> \
+  --output <path>
+```
 
-This is hosted-runner qualification evidence, not independent clean-machine
-acceptance and not permission to publish a production release.
+It runs the portable preflight before importing the implementation module.
+Direct execution of `workbench-package-companion.ts` or its compiled JavaScript
+is rejected, so `--allow-dirty` cannot bypass portable-input provenance and
+library-tree verification.
 
-The default shell is remote GitHub Pages. The local runtime is network
-independent, but the package does not claim general offline operation until a
-cached or locally served shell is separately qualified.
+## Hosted CI boundary
 
-## Remaining gates
+The manual macOS workflow uses a protected `companion-release` environment for
+approved source SHA, private HTTPS payload URL, and payload SHA-256. The
+dispatch caller cannot override them. The checked-out source verifies the
+archive before any archive-supplied code executes.
 
-- perform and record human clean-machine acceptance on supported Apple Silicon
-  macOS;
-- decide an owner-approved distribution route for unsigned quarantined
-  archives;
-- obtain Developer ID and notarization evidence before claiming a conventional
-  public macOS installer;
-- lock and qualify the complete Windows semantic engine, Java runtime,
-  launcher, security boundary, and smoke path before adding Windows;
-- keep the Tauri installer lane paused until signing credentials exist or the
-  owner explicitly resumes its technical-candidate work.
+The hosted Apple Silicon job may assemble and smoke a short-lived internal
+candidate. This is hosted-runner technical evidence, not:
+
+- independent clean-machine acceptance;
+- a real-browser product test;
+- practitioner usability evidence;
+- permission to publish a release.
+
+The remote Pages shell requires an initial network load unless a cached or
+locally served shell is separately qualified. No general offline product claim
+is made.
+
+## Frozen release work
+
+Do not perform or claim the following before R6:
+
+- public archive or installer distribution;
+- Developer ID signing or notarization;
+- updater or support-channel work;
+- Windows runtime/launcher qualification;
+- Pages production authoring;
+- Tauri production packaging;
+- production or release-candidate product readiness.
+
+Security and correctness fixes to the packaging code remain permitted. Issue
+#10 remains open.
+
+## Conditions to resume distribution work
+
+1. the VS Code-first source/notation/edit vertical slice passes R2-R5;
+2. three practitioners complete and rerun R6 against the repaired exact
+   artifact;
+3. product/runtime license disposition remains accepted;
+4. each claimed OS receives a locked artifact and clean-machine record;
+5. the owner selects distribution, signing, support, and versioning policy;
+6. the final approval manifest binds the exact source, runtime, artifact, and
+   evidence hashes.

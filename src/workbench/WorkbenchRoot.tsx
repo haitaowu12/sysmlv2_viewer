@@ -172,21 +172,28 @@ function WorkspaceConnection() {
       <section className="welcome-card" aria-labelledby="welcome-title">
         <p className="eyebrow">
           {pagesCompanion
-            ? 'GITHUB PAGES · LOCAL COMPANION'
+            ? 'RECOVERY EVALUATION · LOCAL COMPANION'
             : 'LOCAL ENGINEERING ENVIRONMENT'}
         </p>
         <h1 id="welcome-title">SysML Engineering Workbench</h1>
         <p className="welcome-summary">
           {pagesCompanion
-            ? 'Connect this public workbench shell to the qualified companion on your machine. Model content is not sent to GitHub.'
+            ? 'Connect this pre-alpha recovery shell to the local companion. Model content is not sent to GitHub.'
             : 'Open a source-canonical workspace through the qualified local language service. Model content remains on this machine.'}
         </p>
         {pagesCompanion && (
-          <p className="welcome-summary">
-            When prompted, allow Local Network Access for this GitHub Pages
-            origin. The permission is used only to reach the loopback companion
-            on this machine.
-          </p>
+          <>
+            <p role="status" className="error-banner">
+              Recovery boundary: Pages source authoring and notation-specific
+              diagrams are not qualified. The connected shell exposes bounded
+              semantic navigation and assurance evaluation only.
+            </p>
+            <p className="welcome-summary">
+              When prompted, allow Local Network Access for this GitHub Pages
+              origin. The permission is used only to reach the loopback
+              companion on this machine.
+            </p>
+          </>
         )}
         {desktop ? (
           <button
@@ -231,8 +238,8 @@ function WorkspaceConnection() {
         )}
         {error && <p role="alert" className="error-banner">{error}</p>}
         <p className="compatibility-link">
-          {pagesCompanion ? 'No companion installed? ' : 'Need the retired single-file workflow? '}
-          <a href="?legacy=1">Explore the read-only compatibility sample</a>.
+          {pagesCompanion ? 'Need the retained rendering reference? ' : 'Need the retired single-file workflow? '}
+          <a href="?legacy=1">Open the read-only compatibility viewer</a>.
         </p>
       </section>
     </main>

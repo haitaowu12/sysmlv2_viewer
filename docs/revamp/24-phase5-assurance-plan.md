@@ -1,17 +1,30 @@
 # Phase 5 — Engineering Assurance Plan
 
-Status: completed; Gate P5 passed
-Stack base: `codex/sysml-workbench-phase4-product-shell` at `7ac19e6`
-Branch: `codex/sysml-workbench-phase5-assurance`
+Status: historical implementation plan; **P5 product-gate result invalidated**
 
-## Objective
+Historical stack base: `codex/sysml-workbench-phase4-product-shell` at `7ac19e6`
 
-Turn the qualified product shell into an engineering review workbench. Add
-deterministic requirement, verification, and interface assurance; Git-backed
-semantic baselines; stable-identity review records; and reproducible evidence
-reports. Complete the integrated usability pilot required by Gates P4 and P5.
+Historical branch: `codex/sysml-workbench-phase5-assurance`
 
-## Responsibility boundaries
+Active disposition:
+
+- `docs/revamp/25-phase5-gate-decision.md`
+- `docs/revamp/36-failed-attempt-postmortem.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
+
+## Historical objective
+
+The phase intended to turn the service-backed shell into an engineering review
+workbench by adding deterministic requirement, verification, and interface
+assurance; Git-backed semantic baselines; stable-identity review records; and
+reproducible evidence reports.
+
+The underlying service packages were implemented. The claimed integrated
+usability result was later invalidated because the qualification script invoked
+`WorkspaceManager` directly rather than operating the delivered application or
+recording independent practitioner tasks.
+
+## Retained responsibility boundaries
 
 ### Rule engine
 
@@ -23,12 +36,15 @@ reports. Complete the integrated usability pilot required by Gates P4 and P5.
 
 ### Baseline service
 
-- Read-only Git status, branch, HEAD, and changed-file inventory.
+- Read-only Git status, branch, HEAD, and changed-file inventory when Git is
+  configured.
 - Workspace-owned baseline manifests containing commit, runtime/rule versions,
   semantic snapshot, diagnostics, and creation audit.
 - Semantic compare using stable identities and the semantic-diff engine.
 - Explicit distinction between semantic, layout-only, review-only, and source
   file changes.
+- Git is optional in recovery: non-Git workspaces retain interface and
+  verification assurance while baseline operations are unavailable.
 
 ### Review service
 
@@ -41,12 +57,13 @@ reports. Complete the integrated usability pilot required by Gates P4 and P5.
 ### Report engine
 
 - Deterministic HTML, PDF, and CSV artifacts.
-- Workspace, commit, baseline, language/runtime, workbench, rule pack, view,
-  generation timestamp, diagnostics, and exclusions in every manifest.
+- Workspace, source state, commit/baseline when available, language/runtime,
+  workbench, rule pack, view, generation timestamp, diagnostics, and exclusions
+  in manifests.
 - Requirement coverage, verification readiness, interface register/quality,
   semantic change impact, review findings/closure, and baseline manifest.
 
-## Delivery order
+## Historical delivery order
 
 1. Assurance rule engine and golden tests.
 2. Baseline and review repositories with traversal, corruption, transition,
@@ -57,16 +74,41 @@ reports. Complete the integrated usability pilot required by Gates P4 and P5.
 6. Infrastructure pilot workspace with two baselines and one review cycle.
 7. Automated and browser-based eight-task usability pilot.
 
-## Acceptance result
+Items 1-6 produced reusable technical foundations. Item 7 did not produce the
+required browser or practitioner evidence.
 
-The exact locked-runtime pilot passed all required P4/P5 operations from a
-clean copied workspace: workspace opening, diagnostic navigation, requirement
-navigation, unverified-requirement identification, approved interface edit,
-semantic baseline comparison, review finding closure, and interface report
-export. The qualified implementation head is `8a69813`; evidence is in
-`phase5-qualification-observation.json`.
+## Corrected evidence classification
 
-The outcome is deliberately bounded. Rules report only semantics present in
-the normalized snapshot; unavailable units, protocol, timing, safety, and
-security attributes are not invented. Direct traceability is evaluated; broad
-SysML conformance is not claimed.
+The historical locked-runtime run demonstrated `service-integration` behavior:
+
+- workspace open;
+- unresolved-reference diagnostics;
+- requirements and interface queries;
+- typed interface and requirement changes;
+- semantic baseline comparison;
+- review finding lifecycle;
+- deterministic report generation.
+
+It did not prove diagnostic navigation, graphical interface editing, review
+interaction, or export through the product UI. The historical observation is
+retained, but active commands classify the run as:
+
+```json
+{
+  "evidenceLayer": "service-integration",
+  "result": "service-integration-pass",
+  "productGate": {
+    "id": "P5",
+    "state": "invalidated"
+  }
+}
+```
+
+## Recovery disposition
+
+- Preserve and requalify the rule, baseline, review, and report packages.
+- Keep Interfaces and Verification available without Git.
+- Defer broad review/baseline/report product work until the recovery
+  Interconnection View and three graphical edits pass.
+- Require exact-artifact UI and independent practitioner evidence under R3-R6.
+- Do not cite this plan as an active P5 product pass.

@@ -37,38 +37,75 @@ export function AssuranceSurface({
   const [reportKind, setReportKind] = useState<ReportKind>('interface-register')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [gitError, setGitError] = useState('')
+  const [baselineError, setBaselineError] = useState('')
+  const [reviewError, setReviewError] = useState('')
 
   const refresh = async () => {
-    const [nextAssurance, nextGit, nextBaselines, nextReviews] = await Promise.all([
-      gateway.evaluateAssurance(workspaceId),
-      gateway.gitStatus(workspaceId),
-      gateway.listBaselines(workspaceId),
-      gateway.listReviews(workspaceId),
-    ])
-    setAssurance(nextAssurance)
-    setGitStatus(nextGit)
-    setBaselines(nextBaselines)
-    setReviews(nextReviews)
-    if (nextBaselines[0] && !baselines.some((item) => item.id === baselineId)) {
-      setBaselineId(nextBaselines[0].id)
+    const [assuranceResult, gitResult, baselinesResult, reviewsResult] =
+      await Promise.allSettled([
+        gateway.evaluateAssurance(workspaceId),
+        gateway.gitStatus(workspaceId),
+        gateway.listBaselines(workspaceId),
+        gateway.listReviews(workspaceId),
+      ])
+    if (assuranceResult.status === 'rejected') {
+      throw assuranceResult.reason
+    }
+    setAssurance(assuranceResult.value)
+    applyGitResult(gitResult, setGitStatus, setGitError)
+    applyListResult(
+      baselinesResult,
+      setBaselines,
+      setBaselineError,
+      'Git baselines are unavailable for this workspace.',
+    )
+    applyListResult(
+      reviewsResult,
+      setReviews,
+      setReviewError,
+      'Model reviews are unavailable for this workspace.',
+    )
+    if (baselinesResult.status === 'fulfilled' && baselinesResult.value[0]) {
+      const nextBaselines = baselinesResult.value
+      setBaselineId((current) =>
+        nextBaselines.some((item) => item.id === current)
+          ? current
+          : nextBaselines[0]!.id)
     }
   }
 
   useEffect(() => {
     let active = true
     setError('')
-    void Promise.all([
+    void Promise.allSettled([
       gateway.evaluateAssurance(workspaceId),
       gateway.gitStatus(workspaceId),
       gateway.listBaselines(workspaceId),
       gateway.listReviews(workspaceId),
-    ]).then(([nextAssurance, nextGit, nextBaselines, nextReviews]) => {
+    ]).then(([assuranceResult, gitResult, baselinesResult, reviewsResult]) => {
       if (!active) return
-      setAssurance(nextAssurance)
-      setGitStatus(nextGit)
-      setBaselines(nextBaselines)
-      setReviews(nextReviews)
-      if (nextBaselines[0]) setBaselineId(nextBaselines[0].id)
+      if (assuranceResult.status === 'rejected') {
+        setError(message(assuranceResult.reason))
+        return
+      }
+      setAssurance(assuranceResult.value)
+      applyGitResult(gitResult, setGitStatus, setGitError)
+      applyListResult(
+        baselinesResult,
+        setBaselines,
+        setBaselineError,
+        'Git baselines are unavailable for this workspace.',
+      )
+      applyListResult(
+        reviewsResult,
+        setReviews,
+        setReviewError,
+        'Model reviews are unavailable for this workspace.',
+      )
+      if (baselinesResult.status === 'fulfilled' && baselinesResult.value[0]) {
+        setBaselineId(baselinesResult.value[0].id)
+      }
     }).catch((cause: unknown) => {
       if (active) setError(message(cause))
     })
@@ -87,7 +124,7 @@ export function AssuranceSurface({
     }
   }
 
-  if (!assurance || !gitStatus) {
+  if (!assurance) {
     return <div className="assurance-surface"><p>{error || 'Loading engineering assurance data…'}</p></div>
   }
 
@@ -99,12 +136,33 @@ export function AssuranceSurface({
           <h2>{title(activity)}</h2>
         </div>
         <div className="assurance-badges">
-          <span>{gitStatus.branch}</span>
-          <span className={gitStatus.dirty ? 'warning' : 'ready'}>{gitStatus.dirty ? 'working tree changed' : 'clean baseline'}</span>
+          {gitStatus ? (
+            <>
+              <span>{gitStatus.branch}</span>
+              <span className={gitStatus.dirty ? 'warning' : 'ready'}>
+                {gitStatus.dirty ? 'working tree changed' : 'clean baseline'}
+              </span>
+            </>
+          ) : (
+            <span className="warning" title={gitError || undefined}>Git unavailable</span>
+          )}
           <span>{assurance.findings.length} rule findings</span>
         </div>
       </header>
       {error && <p role="alert" className="error-banner">{error}</p>}
+      {!gitStatus && (
+        <p role="status" className="assurance-note">
+          Git is unavailable. Interface and verification assurance remain
+          available; baseline and commit-specific controls are disabled.
+          {gitError ? ` ${gitError}` : ''}
+        </p>
+      )}
+      {baselineError && activity !== 'interfaces' && activity !== 'verification' && (
+        <p role="status" className="assurance-note">{baselineError}</p>
+      )}
+      {reviewError && activity === 'reviews' && (
+        <p role="status" className="assurance-note">{reviewError}</p>
+      )}
 
       {activity === 'interfaces' && (
         <>
@@ -167,18 +225,18 @@ export function AssuranceSurface({
         <>
           <section className="assurance-controls" aria-label="Baseline controls">
             <label>Baseline id<input value={baselineId} onChange={(event) => setBaselineId(event.target.value)} /></label>
-            <button type="button" disabled={busy || gitStatus.dirty} onClick={() => void execute(async () => {
+            <button type="button" disabled={busy || !gitStatus || gitStatus.dirty} onClick={() => void execute(async () => {
               await gateway.createBaseline(workspaceId, { id: baselineId, actor: userId, at: new Date().toISOString() })
               await refresh()
             })}>Create clean baseline</button>
-            <button type="button" disabled={busy || baselines.length === 0} onClick={() => void execute(async () => {
+            <button type="button" disabled={busy || !gitStatus || baselines.length === 0} onClick={() => void execute(async () => {
               setComparison(await gateway.compareBaseline(workspaceId, baselineId))
             })}>Compare semantic baseline</button>
           </section>
           <AssuranceTable
             caption="Git working tree"
             columns={['Status', 'Path', 'Category']}
-            rows={gitStatus.changedFiles.map((file) => ({ values: [file.status, file.path, file.category] }))}
+            rows={(gitStatus?.changedFiles ?? []).map((file) => ({ values: [file.status, file.path, file.category] }))}
           />
           <AssuranceTable
             caption="Saved baselines"
@@ -203,7 +261,7 @@ export function AssuranceSurface({
         <>
           <section className="assurance-controls" aria-label="Review controls">
             <label>Review id<input value={reviewId} onChange={(event) => setReviewId(event.target.value.toUpperCase())} /></label>
-            <button type="button" disabled={busy} onClick={() => void execute(async () => {
+            <button type="button" disabled={busy || !gitStatus} onClick={() => void execute(async () => {
               await gateway.createReview(workspaceId, {
                 id: reviewId,
                 title: 'Engineering assurance review',
@@ -351,6 +409,35 @@ function title(activity: AssuranceActivity): string {
     changes: 'Baselines and semantic change',
     reports: 'Reports and evidence',
   }[activity]
+}
+
+function applyGitResult(
+  result: PromiseSettledResult<GitWorkspaceStatus>,
+  setGitStatus: (value: GitWorkspaceStatus | null) => void,
+  setGitError: (value: string) => void,
+): void {
+  if (result.status === 'fulfilled') {
+    setGitStatus(result.value)
+    setGitError('')
+    return
+  }
+  setGitStatus(null)
+  setGitError(message(result.reason))
+}
+
+function applyListResult<T>(
+  result: PromiseSettledResult<T[]>,
+  setValue: (value: T[]) => void,
+  setError: (value: string) => void,
+  fallback: string,
+): void {
+  if (result.status === 'fulfilled') {
+    setValue(result.value)
+    setError('')
+    return
+  }
+  setValue([])
+  setError(`${fallback} ${message(result.reason)}`)
 }
 
 function message(cause: unknown): string {

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { readFile, readdir, realpath, stat, writeFile, mkdir } from 'node:fs/promises'
+import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import {
   WORKBENCH_METHODS,
@@ -127,6 +127,7 @@ try {
   if (JSON.stringify(credentials).includes(workspaceFile)) {
     throw new Error('Paired companion exposed the workspace path to the client')
   }
+
   const replayedPairing = await fetch(new URL('/pair', serviceOrigin), {
     method: 'POST',
     headers: {
@@ -147,6 +148,7 @@ try {
     protocolVersion: WORKBENCH_PROTOCOL_VERSION,
     client: { name: 'pages-companion-qualification', version: '1' },
   })
+
   await expectRpcFailure(
     serviceOrigin,
     page.origin,
@@ -156,6 +158,7 @@ try {
     { workspaceFile },
     -32010,
   )
+
   const workspace = await rpc<{
     workspaceId: string
     documentCount: number
@@ -167,14 +170,25 @@ try {
     WORKBENCH_METHODS.workspaceOpen,
     { workspaceFile: credentials.workspaceHandle },
   )
+
   const report = {
-    schemaVersion: 2,
-    outcome: 'passed',
+    schemaVersion: 3,
+    outcome: 'service-integration-pass',
+    evidenceLayer: 'service-integration',
+    productGate: {
+      id: 'R0-exact-artifact-ui',
+      state: 'open',
+      reason:
+        'This qualifier validates built assets and companion transport through direct HTTP/RPC calls; it does not operate a browser UI.',
+    },
     pages: {
       origin: page.origin,
       pathname: page.pathname,
-      modernWorkbenchShell: true,
+      recoveryShellAssetsPresent: true,
       cspAllowsExactLoopback: true,
+      uiExercised: false,
+      exactArtifactBrowserEvidence: false,
+      practitionerEvidence: false,
     },
     companion: {
       loopbackOnly: true,
@@ -194,6 +208,14 @@ try {
       workspaceId: workspace.workspaceId,
       documentCount: workspace.documentCount,
     },
+    deferredToExactArtifactQualification: [
+      'real browser pairing through the delivered UI',
+      'non-Git Interfaces and Verification interaction',
+      'Pages Source-tab absence',
+      'element-map and inventory warning visibility',
+      'console, page-error, and failed-request capture',
+      'screenshots captured during the exact run',
+    ],
   }
   await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
@@ -219,6 +241,7 @@ async function assertPagesBuild(): Promise<void> {
   if (!index.includes('http://127.0.0.1:*')) {
     throw new Error('Pages build CSP does not allow the loopback companion')
   }
+
   const assets = await readdir(resolve(repositoryRoot, 'dist/assets'))
   const javascript = await Promise.all(
     assets
@@ -227,8 +250,22 @@ async function assertPagesBuild(): Promise<void> {
         readFile(resolve(repositoryRoot, 'dist/assets', name), 'utf8'),
       ),
   )
-  if (!javascript.some((source) => source.includes('GITHUB PAGES · LOCAL COMPANION'))) {
-    throw new Error('Pages build does not contain the modern companion shell')
+
+  if (
+    !javascript.some((source) =>
+      source.includes('RECOVERY EVALUATION · LOCAL COMPANION'),
+    )
+  ) {
+    throw new Error('Pages build does not contain the recovery companion shell')
+  }
+  if (
+    !javascript.some((source) =>
+      source.includes(
+        'Recovery boundary: Pages source authoring and notation-specific diagrams are not qualified.',
+      ),
+    )
+  ) {
+    throw new Error('Pages build does not expose the recovery capability boundary')
   }
   if (
     !javascript.some((source) =>
@@ -249,24 +286,40 @@ async function assertPagesBuild(): Promise<void> {
       'Pages build does not annotate or explain Local Network Access pairing',
     )
   }
+  if (
+    !javascript.some((source) =>
+      source.includes(
+        'Recovery diagnostic only. Relationships are counted, not drawn. This is not a SysML notation view.',
+      ),
+    )
+  ) {
+    throw new Error('Pages build does not label the element map truthfully')
+  }
+  if (
+    !javascript.some((source) =>
+      source.includes('Element inventory only. This is not a requirements, interface,'),
+    )
+  ) {
+    throw new Error('Pages build does not label the element inventory truthfully')
+  }
 }
 
 async function readLaunchUrl(
-  companion: ReturnType<typeof spawn>,
+  companionProcess: ReturnType<typeof spawn>,
 ): Promise<string> {
   return new Promise((resolveUrl, reject) => {
     let stdout = ''
     const timeout = setTimeout(() => {
       reject(new Error('Timed out waiting for the companion launch URL'))
     }, 30_000)
-    companion.stdout?.on('data', (chunk: Buffer) => {
+    companionProcess.stdout?.on('data', (chunk: Buffer) => {
       stdout += chunk.toString('utf8')
       const match = stdout.match(/^Open: (.+)$/m)
       if (!match?.[1]) return
       clearTimeout(timeout)
       resolveUrl(match[1].trim())
     })
-    companion.once('exit', (code) => {
+    companionProcess.once('exit', (code) => {
       clearTimeout(timeout)
       reject(
         new Error(
@@ -274,7 +327,7 @@ async function readLaunchUrl(
         ),
       )
     })
-    companion.once('error', reject)
+    companionProcess.once('error', reject)
   })
 }
 
