@@ -1,58 +1,108 @@
 # ADR-008: Deployment Profiles
 
-- Status: accepted at Gate P0
-- Date: 2026-07-24
+- Status: amended for recovery
+- Original date: 2026-07-24
+- Recovery amendment: 2026-07-25
 
 ## Decision
 
-Support four profiles from one client/service architecture.
+Support staged clients over one Workbench Service, Client SDK, Protocol,
+identity model, command boundary, and evidence architecture.
 
-| Profile | Users | Authority | Required installation | Network |
+| Profile | Current disposition | Authority | Installation | Network |
 |---|---|---|---|---|
-| A public web evaluation | evaluators/stakeholders | packaged samples only | none | web host only |
-| B browser + local companion | authors, engineers, reviewers | local source/Git through paired service | Workbench Service | UI origin plus loopback |
-| C Tauri desktop | authors/offline programs | local source/Git through bundled service | signed desktop package | none required |
-| D managed hosted | distributed teams | hosted workspace/repository adapter | browser only | authenticated TLS |
+| A VS Code local authoring | recovery target | local source through Workbench Service | packaged VSIX plus required local service/runtime | no required external network after install |
+| B public web recovery evaluation | implemented, unqualified product surface | packaged sample or paired local service with reduced capability set | browser; optional technical companion | web origin plus loopback when paired |
+| C browser scoped review | future | authorized published/scoped workspace service | browser | authenticated TLS |
+| D Tauri/managed hosts | deferred | same service contracts through local or hosted adapters | future package or browser | profile-specific |
 
-Profiles A and B use the same modern Pages shell. Without a companion bootstrap
-the shell remains a bounded sample surface (A); after explicit pairing it uses
-local source and service authority (B). Profile B is the recommended
-production-candidate target while native packages lack platform signing.
-Profile C packages the same web application, Client SDK, protocol, and
-Workbench Service. Profile D is future scope; its authorization and persistence
-adapters must not change semantic contracts.
+No deployment profile receives a production claim until its exact delivered
+artifact and required practitioner workflow pass the recovery gates.
+
+## Profile A — VS Code local authoring
+
+The recovery authoring host uses native VS Code Explorer, editor, Search,
+Problems, SCM/diff, settings, commands, progress, cancellation, and workspace
+trust. Webviews are limited to notation-specific projections, assurance, and
+source-patch review.
+
+The extension and webviews do not contain semantic or source-writing authority.
+All source mutation uses the Workbench Protocol typed-command and explicit user
+approval boundary.
+
+Git is optional. Its absence disables baseline/commit-specific operations but
+must not remove source, language, query, diagram, interface, or verification
+capabilities.
+
+## Profile B — Public web recovery evaluation
+
+The Pages shell is a pre-alpha evaluation client:
+
+- no production-authoring claim;
+- no arbitrary local filesystem authority;
+- source authoring withheld until exact-artifact CSP/offline qualification;
+- current element map and inventory labelled as diagnostic, not notation;
+- local source and engines remain behind explicit loopback pairing and opaque
+  handles;
+- the retained viewer remains a read-only rendering reference.
+
+The companion security boundary remains useful technical evidence. Direct
+HTTP/RPC qualification is service evidence, not browser UI evidence.
+
+## Profile C — Browser scoped review
+
+Future authorized review/published-view profile for non-modelers. It may expose
+bounded views, reports, findings, dispositions, and approved baseline
+comparisons. Authentication, authorization, tenant/workspace scope, and a
+separate practitioner gate are mandatory.
+
+## Profile D — Future packaging and hosting
+
+Tauri may package the same service/client contracts for offline OS integration.
+Managed hosting may provide authenticated repository, object, database, and job
+adapters. Neither path may fork semantic DTOs, identity, commands, validation,
+or evidence rules.
 
 ## Access model
 
-- **authors**: source edits, commands, local workspace/Git operations;
-- **engineers/reviewers**: navigate, query, comment, create/dispose findings, compare;
-- **chief/assurance**: freeze scopes, approve dispositions, generate/review evidence;
-- **PM/stakeholder**: read approved views/reports, comment where invited, compare published baselines.
+- **authors:** source editing, typed proposals, authorized local workspace
+  operations;
+- **engineers/reviewers:** navigation, query, assurance, assigned findings and
+  comparison where configured;
+- **chief/assurance:** frozen scopes, dispositions, evidence governance;
+- **PM/stakeholders:** published/scoped views, reports, comments, assigned
+  decisions.
 
-Authorization is server-enforced per workspace capability. UI hiding is not access control.
+Authorization is server-enforced per workspace capability. UI hiding is not
+access control.
 
 ## Local companion controls
 
-- bind only to explicit IPv4/IPv6 loopback addresses and an ephemeral port;
-- request the browser's Local Network Access permission with an explicit
-  `loopback` target address space and fail with a bounded, actionable timeout
-  when permission is denied or unavailable;
-- explicit one-time pairing initiated from the companion; no ambient discovery;
-- exact trusted-origin allowlist, no wildcard/reflected origins;
-- short-lived, audience-bound tokens held in memory where practical;
-- CSRF protection for state-changing HTTPS and Origin/CSRF validation for WebSocket upgrade;
-- service-issued opaque workspace/file capability handles instead of arbitrary browser paths;
-- session expiry, revocation, reconnect confirmation, rate/payload limits;
-- TLS where practical; when loopback HTTP is unavoidable, no long-lived secret and no non-loopback fallback;
-- outbound network disabled by default and visible per provider/action.
+- explicit IPv4/IPv6 loopback bind and ephemeral port;
+- exact trusted-origin allowlist, no wildcard/reflected CORS;
+- Local Network Access `loopback` annotation with bounded recovery;
+- one-time pairing initiated by the companion, no ambient discovery;
+- short-lived origin/audience-bound credentials;
+- CSRF and WebSocket Origin/token validation;
+- opaque workspace/file capability handles, not browser paths;
+- expiry, revocation, restart confirmation, rate/payload limits;
+- deny-by-default egress and visible network state;
+- no model content or credentials in operational logs.
 
 ## Acceptance
 
-- deployment-profile conformance suite proves method and permission matrices;
-- authoring workflows pass in B and C;
-- offline clean-machine workflow passes in C;
-- non-modeler review workflow passes without local install in A for samples and D when implemented;
-- B rejects DNS rebinding/non-loopback, malicious origin, token replay/expiry, path traversal, and unauthorized egress;
-- reports identify deployment/service/engine versions without including secrets.
+- service/transport contract suites pass without changing semantic DTOs;
+- the packaged VSIX passes R2-R6 on the frozen pilot;
+- a non-Git workspace retains all non-baseline capabilities;
+- Profile B rejects DNS rebinding, non-loopback binding, malicious origins,
+  token replay/expiry, path traversal, and unauthorized egress;
+- Profile B additionally passes a real-browser exact-artifact gate before any
+  browser workflow claim;
+- reports identify available source/baseline, service, runtime, projection,
+  query, and rule versions without including secrets;
+- Tauri/hosted profiles remain unclaimed until independently qualified.
 
-References: [RFC 8252 loopback considerations](https://datatracker.ietf.org/doc/html/rfc8252), [RFC 6455 origin considerations](https://www.rfc-editor.org/info/rfc6455/), [OWASP WebSocket Security](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html), [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access), [Tauri capabilities](https://v2.tauri.app/security/capabilities/).
+References: ADR-003, ADR-006,
+`docs/revamp/37-recovery-acceptance-contract.md`, RFC 8252 loopback
+considerations, RFC 6455 origin considerations, OWASP WebSocket Security,
+Chrome Local Network Access, and Tauri capabilities.
