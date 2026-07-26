@@ -26,7 +26,6 @@ import type { SemanticElement, SemanticSnapshot } from '../../packages/semantic-
 import type { CommandEnvelope } from '../../packages/command-engine/src/index.js'
 import type { SavedWorkbenchView, WorkspaceDocumentContent } from '../../packages/workbench-protocol/src/index.js'
 import { CommandReviewPanel } from '../components/CommandReviewPanel.js'
-import { NativeCommandEditor } from '../components/NativeCommandEditor.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
 import { AssuranceSurface, type AssuranceActivity } from './AssuranceSurface.js'
 import { ControlledAiSurface } from './ControlledAiSurface.js'
@@ -38,7 +37,7 @@ type BottomPanelId = 'problems' | 'output' | 'query' | 'changes'
 const ACTIVITIES: Array<{ id: ActivityId; label: string; icon: ComponentType<{ size?: number }> }> = [
   { id: 'explorer', label: 'Explorer', icon: Boxes },
   { id: 'model', label: 'Model', icon: LayoutDashboard },
-  { id: 'diagrams', label: 'Diagrams', icon: Network },
+  { id: 'diagrams', label: 'Element map', icon: Network },
   { id: 'traceability', label: 'Traceability', icon: BetweenHorizontalStart },
   { id: 'interfaces', label: 'Interfaces', icon: ShieldCheck },
   { id: 'verification', label: 'Verification', icon: ClipboardCheck },
@@ -82,6 +81,11 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
   const [savingView, setSavingView] = useState(false)
   const paletteDialog = useRef<HTMLElement>(null)
   const paletteReturnFocus = useRef<HTMLElement | null>(null)
+  const sourceAuthoringAvailable =
+    import.meta.env.VITE_WORKBENCH_PROFILE !== 'pages-companion'
+  const availableSurfaces: SurfaceId[] = sourceAuthoringAvailable
+    ? ['source', 'diagram', 'matrix']
+    : ['diagram', 'matrix']
 
   const workspaceId = workspace.status.workspaceId
   const selected = workspace.snapshot.elements.find((element) => element.id === selectedId)
@@ -178,7 +182,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
         id: `view-${mode}`,
         name: `${EXPLORER_MODES.find((item) => item.id === mode)?.label ?? mode} review`,
         query: { mode, depth: 5, maxResults: 2_000 },
-        notation: surface === 'matrix' ? 'table' : surface === 'diagram' ? notationForMode(mode) : 'model-structure',
+        notation: surface === 'matrix' ? 'table' : 'model-structure',
         layout: { positions: defaultPositions(filteredElements) },
         updatedAt: new Date().toISOString(),
       })
@@ -233,7 +237,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
         </div>
         <div className="titlebar-status">
           <span className={`status-dot ${workspace.status.indexState}`} />
-          {workspace.status.indexState} · {workspace.status.semanticAuthority}
+          recovery pre-alpha · {workspace.status.indexState} · {workspace.status.semanticAuthority}
           <button type="button" aria-label="Open command palette" onClick={openPalette}>⌘K</button>
         </div>
       </header>
@@ -308,10 +312,10 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
 
         <section className="workbench-centre">
           <div className="surface-tabs" role="tablist" aria-label="Workbench surfaces">
-            {(['source', 'diagram', 'matrix'] as SurfaceId[]).map((item) => (
+            {availableSurfaces.map((item) => (
               <button key={item} type="button" role="tab" aria-selected={surface === item} onClick={() => setSurface(item)}>
                 {item === 'source' ? <FileCode2 size={15} /> : item === 'diagram' ? <Network size={15} /> : <TableProperties size={15} />}
-                {item}
+                {item === 'diagram' ? 'element map' : item === 'matrix' ? 'inventory' : 'source'}
               </button>
             ))}
             <span className="surface-context">{EXPLORER_MODES.find((item) => item.id === mode)?.label}</span>
@@ -343,10 +347,16 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                 }}
               />
             )}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && document && (
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && sourceAuthoringAvailable && document && (
               <SourceSurface gateway={gateway} workspace={workspace} document={document} userId={userId} onApplied={refreshWorkspace} />
             )}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && sourceAuthoringAvailable && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
+            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && !sourceAuthoringAvailable && (
+              <EmptySurface
+                title="Source authoring unavailable in the Pages recovery profile"
+                detail="Source will return only after self-hosted Monaco assets and workers pass exact-artifact CSP and offline qualification."
+              />
+            )}
             {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'diagram' && (
               <DiagramSurface snapshot={workspace.snapshot} result={queryResult} selectedId={selectedId} onSelect={selectElement} />
             )}
@@ -376,7 +386,12 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                 <dt>Qualified name</dt><dd>{selected.qualifiedName}</dd>
                 <dt>Kind</dt><dd><span className="kind-pill">{selected.kind}</span></dd>
                 <dt>Owner</dt><dd>{ownerName(selected, workspace.snapshot)}</dd>
-                <dt>Source</dt><dd><button type="button" onClick={() => { setSelectedUri(selected.source.uri); setSurface('source') }}>{selected.source.workspacePath}:{selected.source.range.start.line + 1}</button></dd>
+                <dt>Source</dt><dd><button
+                  type="button"
+                  disabled={!sourceAuthoringAvailable}
+                  title={sourceAuthoringAvailable ? 'Open source' : 'Source authoring is disabled in the Pages recovery profile'}
+                  onClick={() => { setSelectedUri(selected.source.uri); setSurface('source') }}
+                >{selected.source.workspacePath}:{selected.source.range.start.line + 1}</button></dd>
                 <dt>Diagnostics</dt><dd>{workspace.diagnostics.filter((item) => item.uri === selected.source.uri).length}</dd>
                 <dt>Relationships</dt><dd>{relationshipsFor(selected.id, workspace.snapshot).length}</dd>
               </dl>
@@ -393,7 +408,13 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                   </button>
                 ))}
               </section>
-              <NativeCommandEditor gateway={gateway} snapshot={workspace.snapshot} userId={userId} onApplied={() => void refreshWorkspace()} />
+              <section className="assurance-note" aria-label="Graphical editing status">
+                <h3>Graphical editing</h3>
+                <p>
+                  Disabled during recovery. The typed-command foundation remains
+                  service-tested, but no practitioner graphical editor is qualified.
+                </p>
+              </section>
             </>
           ) : <EmptySurface title="Nothing selected" detail="Choose an element in a semantic projection." />}
         </aside>
@@ -482,7 +503,11 @@ function DiagramSurface({ snapshot, result, selectedId, onSelect }: {
   const elements = (result?.elements ?? snapshot.elements).slice(0, 120)
   const relationships = result?.relationships ?? snapshot.relationships
   return (
-    <div className="semantic-diagram" aria-label="Semantic diagram">
+    <div className="semantic-diagram" aria-label="Semantic element map">
+      <p role="status" className="assurance-note">
+        Recovery diagnostic only. Relationships are counted, not drawn. This is
+        not a SysML notation view.
+      </p>
       <div className="diagram-grid" />
       {elements.map((element, index) => (
         <button
@@ -512,6 +537,10 @@ function MatrixSurface({ snapshot, result, onSelect }: {
   const byId = new Map(snapshot.elements.map((element) => [element.id, element]))
   return (
     <div className="matrix-surface">
+      <p role="status" className="assurance-note">
+        Element inventory only. This is not a requirements, interface,
+        allocation, or verification matrix.
+      </p>
       <div className="matrix-toolbar"><strong>{elements.length} elements</strong><span>{relationships.length} relationships</span><button type="button" onClick={() => exportMatrixCsv(elements, relationships, snapshot)}>Export CSV</button></div>
       <table>
         <thead><tr><th>Element</th><th>Kind</th><th>Owner</th><th>Outbound</th><th>Inbound</th><th>Source</th></tr></thead>
@@ -713,13 +742,6 @@ function shortId(id: string): string { return id.length > 18 ? `${id.slice(0, 8)
 function ownerName(element: SemanticElement, snapshot: SemanticSnapshot): string { return element.ownerId ? snapshot.elements.find((item) => item.id === element.ownerId)?.qualifiedName ?? 'Unresolved owner' : 'Workspace root' }
 function relationshipsFor(id: string, snapshot: SemanticSnapshot) { return snapshot.relationships.filter((item) => item.sourceId === id || item.targetId === id) }
 function elementName(id: string, snapshot: SemanticSnapshot): string { return snapshot.elements.find((item) => item.id === id)?.name ?? 'Unresolved element' }
-
-function notationForMode(mode: ModelQueryMode): SavedWorkbenchView['notation'] {
-  if (mode === 'interfaces') return 'interconnection'
-  if (mode === 'requirements') return 'traceability'
-  if (mode === 'verification') return 'verification-context'
-  return 'model-structure'
-}
 
 function defaultPositions(elements: SemanticElement[]): Record<string, { x: number; y: number }> {
   return Object.fromEntries(elements.slice(0, 500).map((element, index) => [element.id, { x: (index % 4) * 220, y: Math.floor(index / 4) * 112 }]))
