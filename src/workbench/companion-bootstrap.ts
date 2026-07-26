@@ -3,6 +3,12 @@ export interface CompanionBootstrap {
   pairingCode: string
 }
 
+export function isFramedWorkbench(
+  context: { self: unknown; top: unknown },
+): boolean {
+  return context.top !== context.self
+}
+
 export function consumeCompanionBootstrap(
   location: Location,
   history: History,

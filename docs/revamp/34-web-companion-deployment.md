@@ -63,11 +63,14 @@ Compensating controls are:
 - no wildcard/reflected CORS;
 - browser Private Network Access preflight;
 - one-time short-expiry pairing code;
+- atomic consumption: every replay is rejected even before expiry;
 - bootstrap secret in the fragment, followed by immediate scrubbing;
 - short-lived audience/origin-bound bearer and CSRF credentials;
 - opaque workspace handle instead of a browser-provided path;
 - canonical path/root/symlink validation in the service;
 - strict Pages CSP and no provider/network egress by default.
+- top-level-window enforcement: framed contexts render only a security notice
+  and never consume or submit pairing material.
 
 Remote or shared deployment is a different profile and still requires TLS,
 authentication, authorization, tenant isolation, and its own threat-model
@@ -83,6 +86,8 @@ amendment.
 - neither launch URL nor pairing response exposes the workspace path;
 - loopback-only service and exact-origin PNA preflight pass;
 - pairing returns an opaque workspace handle;
+- pairing replay is rejected;
+- framed browsing contexts cannot enter pairing or privileged workflows;
 - Workbench Protocol initialization succeeds;
 - the selected multi-file pilot workspace opens through the handle.
 

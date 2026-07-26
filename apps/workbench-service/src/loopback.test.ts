@@ -107,6 +107,19 @@ describe('authenticated loopback transport', () => {
     expect(credentials.workspaceHandle).toMatch(/^workspace_[A-Za-z0-9_-]+$/)
     expect(JSON.stringify(credentials)).not.toContain(workspaceFile)
 
+    const replayedPairing = await fetch(`${base}/pair`, {
+      method: 'POST',
+      headers: {
+        Origin: pagesOrigin,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pairingCode: server.pairingCode }),
+    })
+    expect(replayedPairing.status).toBe(410)
+    await expect(replayedPairing.json()).resolves.toEqual({
+      error: 'Pairing code already used',
+    })
+
     const initialized = await fetch(`${base}/rpc`, {
       method: 'POST',
       headers: {

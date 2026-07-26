@@ -127,6 +127,17 @@ try {
   if (JSON.stringify(credentials).includes(workspaceFile)) {
     throw new Error('Paired companion exposed the workspace path to the client')
   }
+  const replayedPairing = await fetch(new URL('/pair', serviceOrigin), {
+    method: 'POST',
+    headers: {
+      Origin: page.origin,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ pairingCode }),
+  })
+  if (replayedPairing.status !== 410) {
+    throw new Error('Companion pairing secret was reusable')
+  }
 
   const initialize = await rpc<{
     protocolVersion: string
@@ -172,6 +183,8 @@ try {
       workspacePathAbsentFromUrl: true,
       opaqueWorkspaceHandleReturnedAfterPairing: true,
       directWorkspacePathRejected: true,
+      pairingReplayRejected: true,
+      framedContextRefused: true,
     },
     protocol: {
       version: initialize.protocolVersion,
@@ -215,6 +228,13 @@ async function assertPagesBuild(): Promise<void> {
   )
   if (!javascript.some((source) => source.includes('GITHUB PAGES · LOCAL COMPANION'))) {
     throw new Error('Pages build does not contain the modern companion shell')
+  }
+  if (
+    !javascript.some((source) =>
+      source.includes('Embedded frames cannot pair with a local companion'),
+    )
+  ) {
+    throw new Error('Pages build does not enforce the framed-context boundary')
   }
 }
 

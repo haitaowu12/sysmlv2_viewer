@@ -1,4 +1,4 @@
-name: Deploy read-only compatibility demo to GitHub Pages
+name: Deploy SysML Engineering Workbench to GitHub Pages
 
 on:
   push:

@@ -69,6 +69,7 @@ export async function createLoopbackServer(
     ? `workspace_${randomBytes(24).toString('base64url')}`
     : undefined
   const pairingExpiresAt = Date.now() + PAIRING_TTL_MS
+  let pairingConsumed = false
   const sessions = new Map<string, Session>()
   const sockets = new Set<WebSocket>()
   const handleRequest = async (request: JsonRpcRequest) => {
@@ -137,6 +138,10 @@ export async function createLoopbackServer(
     }
 
     if (request.url === '/pair') {
+      if (pairingConsumed) {
+        respondJson(response, 410, { error: 'Pairing code already used' })
+        return
+      }
       if (Date.now() >= pairingExpiresAt) {
         respondJson(response, 410, { error: 'Pairing code expired' })
         return
@@ -147,6 +152,7 @@ export async function createLoopbackServer(
         respondJson(response, 401, { error: 'Invalid pairing code' })
         return
       }
+      pairingConsumed = true
       const token = randomBytes(32).toString('base64url')
       const csrf = randomBytes(24).toString('base64url')
       const key = hash(token).toString('hex')

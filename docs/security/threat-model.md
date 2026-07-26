@@ -47,7 +47,7 @@ distribution and usability gates prevent a public production claim.
 | T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
 | T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
 | T19 | bundled Node JIT entitlement expands executable-memory surface | desktop host→sidecar | exact signed Node hash, `allow-jit` only, no unsigned-executable-memory entitlement, no remote privileged content, strict CSP, loopback pairing, mounted-DMG runtime smoke | P7 |
-| T20 | public Pages origin or copied bootstrap leaks local path/pairing authority | Pages→loopback | no path in URL/response, fragment-only one-time secret, immediate fragment scrub, exact-origin PNA/CORS, opaque handle, short expiry | P7/B |
+| T20 | public Pages origin, copied bootstrap, or framed UI leaks local path/pairing authority | Pages→loopback | no path in URL/response, atomically consumed fragment secret, immediate fragment scrub, exact-origin PNA/CORS, opaque handle, framed-context refusal | P7/B |
 
 ## Implemented control status
 
@@ -63,6 +63,8 @@ Implemented and tested:
 - exact Pages-origin Private Network Access preflight, fragment bootstrap
   scrubbing, no workspace path in the launch URL/pairing response, and
   service-issued opaque workspace handles;
+- atomic rejection of pairing-code replay and top-level-window enforcement
+  before any pairing attempt;
 - locked runtime artifact SHA-256 verification before qualified startup;
 - engine-proposed workspace edits rejected when any URI is outside the active
   document set;

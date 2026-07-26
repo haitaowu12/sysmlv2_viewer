@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { consumeCompanionBootstrap } from '../workbench/companion-bootstrap.js'
+import {
+  consumeCompanionBootstrap,
+  isFramedWorkbench,
+} from '../workbench/companion-bootstrap.js'
 
 afterEach(() => {
   window.history.replaceState(null, '', '/')
 })
 
 describe('Pages companion bootstrap', () => {
+  it('distinguishes top-level and framed browsing contexts', () => {
+    const topLevel = {}
+    const frame = {}
+
+    expect(isFramedWorkbench({ self: topLevel, top: topLevel })).toBe(false)
+    expect(isFramedWorkbench({ self: frame, top: topLevel })).toBe(true)
+  })
+
   it('accepts a loopback service and scrubs the pairing fragment', () => {
     window.history.replaceState(
       null,
