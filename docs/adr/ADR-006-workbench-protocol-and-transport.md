@@ -2,6 +2,7 @@
 
 - Status: accepted at Gate P0
 - Date: 2026-07-24
+- Amended: 2026-07-25
 
 ## Decision
 
@@ -46,10 +47,19 @@ health/status
 |---|---|---|
 | stdio | service harness, CLI, desktop child process | inherited process trust, framed messages, no implicit filesystem scope |
 | desktop IPC | optional host integration | capability-scoped bridge; same validated DTOs |
-| loopback HTTPS/WSS | browser + local companion | loopback-only, pairing, origin allowlist, short-lived bearer/session token, CSRF/WS protections |
+| loopback HTTP/WS | browser + local companion | loopback-only, exact origin/Host, Private Network Access preflight, pairing, short-lived bearer/session token, CSRF/WS protections, opaque handles |
 | remote HTTPS/WSS | future hosted | TLS, authenticated identity, tenant/workspace authorization, rate/resource limits |
 
 All requests carry a correlation id, workspace/session id where relevant, deadline, and idempotency key for mutating operations. Long work reports progress and supports cancellation. Apply operations require the exact validated proposal/base snapshot.
+
+The 2026-07-25 Profile B implementation intentionally uses HTTP/WS on an
+ephemeral IPv4 loopback port. Managing a trusted localhost certificate would
+add installation and trust-store complexity without protecting against a local
+machine compromise. The compensating controls are: exact Pages Origin and Host,
+browser Private Network Access preflight, no wildcard CORS, a short-lived
+one-time fragment pairing secret, audience-bound session credentials, opaque
+workspace handles, and no non-loopback fallback. A future managed certificate
+mechanism may add TLS without changing the protocol.
 
 ## Prohibited coupling
 

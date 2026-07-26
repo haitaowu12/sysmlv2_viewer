@@ -105,8 +105,8 @@ locked-runtime evidence are claimed; release targets remain planned.
 | Git semantic diff | supported P5 | branch/status/baseline manifests plus stable-identity semantic comparison | DIFF-001 |
 | deterministic reports | supported P5 | sanitized HTML, byte-stable PDF, CSV registers, hashed provenance manifests | REPORT-DET-001 |
 | constrained AI | supported P6 profile | twelve narrow tools, stable citations, validated one-command proposals, user-only apply, tamper-evident audit, network disabled | AI-SAFE-001 |
-| public web evaluation | static app | bounded A profile P4/P7 | DEPLOY-A-001 |
-| browser + local companion | internal RC supported | authenticated same-origin loopback, deterministic exact-runtime macOS arm64 bundle; public gate blocked | DEPLOY-B-001 |
+| public web/bootstrap surface | modern Pages shell | companion setup plus linked read-only sample; legacy viewer isolated behind `?legacy=1` | DEPLOY-A-001 |
+| browser + local companion | production candidate | exact-origin Pages pairing, PNA preflight, short-lived fragment secret, opaque workspace handle, deterministic exact-runtime portable bundle | DEPLOY-B-001 |
 | packaged offline desktop | unsupported | native signed shell/installer not qualified | INSTALL-001 |
 | managed hosted | unsupported | future D profile | DEPLOY-D-001 |
 

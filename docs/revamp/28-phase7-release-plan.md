@@ -1,7 +1,7 @@
 # Phase 7 — Hardening and Release Plan
 
-Status: self-contained desktop technical candidate implemented; Gate P7
-blocked on signing and independent external evidence
+Status: web-companion delivery path implemented; Gate P7 blocked on portable
+distribution, license disposition, and independent external evidence
 Baseline: exact source commit recorded by each generated release manifest
 Branch: `codex/sysml-workbench-phase7-release`
 
@@ -16,10 +16,15 @@ Production release remains blocked until every mandatory machine and owner gate
 is evidenced. This plan does not redefine a missing signed/platform/human
 qualification as success.
 
-## Selected distribution profile
+## Selected distribution profile — amended 2026-07-25
 
-Profile C, a Tauri desktop host over the shared Workbench protocol, is the
-first production architecture. The initial supported target is Apple Silicon
+Profile B, the modern GitHub Pages shell plus a portable local companion, is
+the recommended first production-candidate architecture. It does not require
+Apple Developer ID signing. The Pages host contains UI assets only; the
+companion contains the service, locked runtime, local authorization, and model
+authority. See `docs/revamp/34-web-companion-deployment.md`.
+
+Profile C remains an implemented Tauri technical candidate for Apple Silicon
 on macOS 13 or later. The application contains:
 
 - the built Workbench UI;
@@ -33,15 +38,15 @@ on macOS 13 or later. The application contains:
 - license notices, npm/Rust inventories, release manifest, hashes, and
   recovery guidance.
 
-The installed application must function without network access and without
+The optional installed application must function without network access and without
 repository-relative or system Node/Java dependencies. Profile B remains a
-supported companion/development architecture and future distribution option;
-it is not the first public production channel.
+supported product architecture and is now the first delivery focus.
 
 The desktop host contains no semantic authority. A Developer ID signed and
 Apple-notarized `.app` and DMG are required for the public production channel.
 An ad-hoc-signed application qualifies only as a technical/internal candidate.
-Windows is deferred and must not be claimed by this release.
+This requirement blocks only Profile C, not Profile B. Portable companion
+qualification is independently required for every claimed OS.
 
 ## Workstreams
 

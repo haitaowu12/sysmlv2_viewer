@@ -47,6 +47,22 @@ vulnerability audit, deterministic SBOM generation, and dependency-license
 policy. It allows recorded owner/legal release blockers but no unapproved npm
 license or vulnerability.
 
+The Pages companion contract has an independent deterministic qualification:
+
+```sh
+npm run verify:web-companion
+```
+
+It builds the modern Pages profile and proves exact-origin PNA preflight,
+fragment-only pairing, absence of local paths in the URL/pairing response,
+opaque workspace handles, protocol initialization, and workspace opening.
+Launch a qualified source runtime with:
+
+```sh
+npm run workbench:companion -- \
+  --workspace-file /absolute/path/to/sysml-workspace.yaml
+```
+
 Exact-runtime technical qualification additionally requires:
 
 ```sh

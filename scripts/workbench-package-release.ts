@@ -173,6 +173,13 @@ await Promise.all([
     resolve(bundleRoot, 'service/packages'),
     { recursive: true },
   ),
+  cp(
+    resolve(
+      repositoryRoot,
+      'dist-workbench/scripts/workbench-launch-companion.js',
+    ),
+    resolve(bundleRoot, 'bin/launch-pages-companion.mjs'),
+  ),
   cp(candidateManifestPath, resolve(bundleRoot, 'config/language-engine-candidates.json')),
   cp(runtimeLockPath, resolve(bundleRoot, 'config/language-engine-runtime-lock.json')),
   cp(
@@ -274,6 +281,16 @@ await Promise.all([
     'utf8',
   ),
   writeFile(
+    resolve(bundleRoot, 'bin/start-pages-companion.sh'),
+    unixPagesCompanionLauncher(basename(authoringArtifact)),
+    'utf8',
+  ),
+  writeFile(
+    resolve(bundleRoot, 'bin/start-pages-companion.cmd'),
+    windowsPagesCompanionLauncher(basename(authoringArtifact)),
+    'utf8',
+  ),
+  writeFile(
     resolve(bundleRoot, 'bin/verify-bundle.mjs'),
     embeddedVerifier(),
     'utf8',
@@ -281,6 +298,7 @@ await Promise.all([
 ])
 await Promise.all([
   chmod(resolve(bundleRoot, 'bin/start-workbench.sh'), 0o755),
+  chmod(resolve(bundleRoot, 'bin/start-pages-companion.sh'), 0o755),
   chmod(resolve(bundleRoot, `runtime/authoring/${basename(authoringArtifact)}`), 0o755),
 ])
 
@@ -458,6 +476,55 @@ node "%BUNDLE_ROOT%\\service\\apps\\workbench-service\\src\\main.js" --loopback 
 `
 }
 
+function unixPagesCompanionLauncher(authoringName: string): string {
+  return `#!/bin/sh
+set -eu
+BUNDLE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+WORKSPACE_FILE=\${1:-}
+PAGES_URL=\${2:-https://haitaowu12.github.io/sysmlv2_viewer/}
+if [ -z "$WORKSPACE_FILE" ]; then
+  echo "Usage: $0 /absolute/path/to/sysml-workspace.yaml [pages-url]" >&2
+  exit 64
+fi
+node "$BUNDLE_ROOT/bin/verify-bundle.mjs"
+export SYSML_WORKBENCH_SEMANTIC_ARTIFACT="$BUNDLE_ROOT/runtime/semantic/sysmlv2-lsp-server.jar"
+export SYSML_WORKBENCH_AUTHORING_ARTIFACT="$BUNDLE_ROOT/runtime/authoring/${authoringName}"
+export SYSML_WORKBENCH_VINQUT_COMMAND="\${JAVA_COMMAND:-java}"
+export SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON=$(node -e 'process.stdout.write(JSON.stringify(["-jar", process.argv[1]]))' "$SYSML_WORKBENCH_SEMANTIC_ARTIFACT")
+export SYSML_WORKBENCH_SPEC42_COMMAND="$SYSML_WORKBENCH_AUTHORING_ARTIFACT"
+export SYSML_WORKBENCH_SPEC42_ARGUMENTS_JSON=$(node -e 'process.stdout.write(JSON.stringify(["lsp", "--stdlib-path", process.argv[1]]))' "$BUNDLE_ROOT/runtime/libraries/sysml.library")
+exec node "$BUNDLE_ROOT/bin/launch-pages-companion.mjs" \\
+  --service-entry "$BUNDLE_ROOT/service/apps/workbench-service/src/main.js" \\
+  --candidate-manifest "$BUNDLE_ROOT/config/language-engine-candidates.json" \\
+  --runtime-lock "$BUNDLE_ROOT/config/language-engine-runtime-lock.json" \\
+  --workspace-file "$WORKSPACE_FILE" \\
+  --pages-url "$PAGES_URL"
+`
+}
+
+function windowsPagesCompanionLauncher(authoringName: string): string {
+  return `@echo off
+setlocal
+set "BUNDLE_ROOT=%~dp0.."
+if "%~1"=="" (
+  echo Usage: %~nx0 C:\\absolute\\path\\to\\sysml-workspace.yaml [pages-url] 1>&2
+  exit /b 64
+)
+set "PAGES_URL=%~2"
+if "%PAGES_URL%"=="" set "PAGES_URL=https://haitaowu12.github.io/sysmlv2_viewer/"
+node "%BUNDLE_ROOT%\\bin\\verify-bundle.mjs" || exit /b 1
+set "BUNDLE_JSON_ROOT=%BUNDLE_ROOT:\\=/%"
+set "SYSML_WORKBENCH_SEMANTIC_ARTIFACT=%BUNDLE_ROOT%\\runtime\\semantic\\sysmlv2-lsp-server.jar"
+set "SYSML_WORKBENCH_AUTHORING_ARTIFACT=%BUNDLE_ROOT%\\runtime\\authoring\\${authoringName}"
+if "%JAVA_COMMAND%"=="" set "JAVA_COMMAND=java"
+set "SYSML_WORKBENCH_VINQUT_COMMAND=%JAVA_COMMAND%"
+set "SYSML_WORKBENCH_VINQUT_ARGUMENTS_JSON=["-jar","%BUNDLE_JSON_ROOT%/runtime/semantic/sysmlv2-lsp-server.jar"]"
+set "SYSML_WORKBENCH_SPEC42_COMMAND=%SYSML_WORKBENCH_AUTHORING_ARTIFACT%"
+set "SYSML_WORKBENCH_SPEC42_ARGUMENTS_JSON=["lsp","--stdlib-path","%BUNDLE_JSON_ROOT%/runtime/libraries/sysml.library"]"
+node "%BUNDLE_ROOT%\\bin\\launch-pages-companion.mjs" --service-entry "%BUNDLE_ROOT%\\service\\apps\\workbench-service\\src\\main.js" --candidate-manifest "%BUNDLE_ROOT%\\config\\language-engine-candidates.json" --runtime-lock "%BUNDLE_ROOT%\\config\\language-engine-runtime-lock.json" --workspace-file "%~1" --pages-url "%PAGES_URL%"
+`
+}
+
 function embeddedVerifier(): string {
   return `import { createHash } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
@@ -506,6 +573,16 @@ Open <http://127.0.0.1:4317>, enter the one-time pairing code printed by the
 service, then select the workspace file. The launcher verifies every bundled
 file before startup. Do not edit files inside this bundle; model source and
 review/evidence state belong in the selected workspace.
+
+To use the GitHub Pages workbench shell instead:
+
+\`\`\`sh
+./bin/start-pages-companion.sh /absolute/path/to/workspace/sysml-workspace.yaml
+\`\`\`
+
+The companion opens the exact Pages origin with a two-minute pairing secret in
+the URL fragment. The workbench removes that fragment before opening the
+workspace. Model content remains on the local machine.
 
 This artifact is not signed or notarized. It is not approved for public
 production distribution.
