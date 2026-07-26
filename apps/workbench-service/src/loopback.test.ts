@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
 import { PreservationControlAdapter } from '../../../packages/language-adapter/src/index.js'
@@ -23,6 +25,7 @@ const resources: Array<{
   server: LoopbackServerHandle
   service: WorkbenchService
 }> = []
+const temporaryDirectories: string[] = []
 
 afterEach(async () => {
   await Promise.all(
@@ -30,6 +33,11 @@ afterEach(async () => {
       await server.close()
       await service.dispose()
     }),
+  )
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) =>
+      rm(directory, { recursive: true, force: true }),
+    ),
   )
 })
 
@@ -129,7 +137,53 @@ describe('authenticated loopback transport', () => {
     })
     socket.close()
   })
+
+  it('serves a local UI with strict CSP and rejects traversal', async () => {
+    const staticRoot = await mkdtemp(joinPath('sysml-workbench-static-'))
+    temporaryDirectories.push(staticRoot)
+    await mkdir(resolve(staticRoot, 'assets'))
+    await writeFile(
+      resolve(staticRoot, 'index.html'),
+      '<!doctype html><script type="module" src="/assets/app.js"></script>',
+    )
+    await writeFile(resolve(staticRoot, 'assets/app.js'), 'export const ready = true')
+    const service = new WorkbenchService({
+      adapter: new PreservationControlAdapter(),
+      allowedRoots: [sampleRoot],
+      transport: { kind: 'loopback', secure: false },
+    })
+    const server = await createLoopbackServer({
+      service,
+      allowedOrigins: [origin],
+      staticRoot,
+    })
+    resources.push({ server, service })
+    const base = `http://${server.address}:${server.port}`
+
+    const index = await fetch(`${base}/`)
+    expect(index.status).toBe(200)
+    expect(await index.text()).toContain('/assets/app.js')
+    expect(index.headers.get('content-security-policy')).toContain(
+      "script-src 'self'",
+    )
+    expect(index.headers.get('content-security-policy')).not.toContain(
+      "'unsafe-eval'",
+    )
+    expect(index.headers.get('cache-control')).toBe('no-store')
+
+    const asset = await fetch(`${base}/assets/app.js`)
+    expect(asset.status).toBe(200)
+    expect(asset.headers.get('cache-control')).toContain('immutable')
+    expect(asset.headers.get('content-type')).toContain('text/javascript')
+
+    const traversal = await fetch(`${base}/%2e%2e%2Foutside.txt`)
+    expect(traversal.status).toBe(400)
+  })
 })
+
+function joinPath(prefix: string): string {
+  return resolve(tmpdir(), prefix)
+}
 
 function connectWebSocket(url: string, token: string): Promise<WebSocket> {
   return new Promise((resolveSocket, rejectSocket) => {

@@ -7,6 +7,7 @@ import {
   readdir,
   realpath,
   rename,
+  rm,
   stat,
 } from 'node:fs/promises'
 import { basename, dirname, relative, resolve } from 'node:path'
@@ -56,6 +57,22 @@ export interface CommitWorkspaceTransactionInput {
 export interface WorkspaceTransactionRecovery {
   transactionId: string
   state: 'FINALIZED' | 'ROLLED_BACK'
+}
+
+export interface PruneWorkspaceTransactionsInput {
+  retainLatest: number
+  dryRun?: boolean
+}
+
+export interface WorkspaceTransactionPruneResult {
+  dryRun: boolean
+  retained: string[]
+  candidates: string[]
+  deleted: string[]
+  protected: Array<{
+    transactionId: string
+    state: Exclude<WorkspaceTransactionState, 'FINALIZED' | 'ROLLED_BACK'>
+  }>
 }
 
 export class WorkspaceTransactionError extends Error {
@@ -269,6 +286,105 @@ export async function readWorkspaceTransaction(
   }
   validateJournal(rootPath, transactionRoot, receipt)
   return structuredClone(receipt)
+}
+
+export async function pruneWorkspaceTransactions(
+  workspaceRoot: string,
+  input: PruneWorkspaceTransactionsInput,
+): Promise<WorkspaceTransactionPruneResult> {
+  if (
+    !Number.isSafeInteger(input.retainLatest) ||
+    input.retainLatest < 0 ||
+    input.retainLatest > 100_000
+  ) {
+    throw new WorkspaceTransactionError(
+      'Transaction retention must be an integer from 0 to 100000',
+    )
+  }
+  const rootPath = await realpath(workspaceRoot)
+  const transactionsRoot = resolve(
+    rootPath,
+    '.sysml-workbench',
+    'transactions',
+  )
+  let entries
+  try {
+    entries = await readdir(transactionsRoot, { withFileTypes: true })
+  } catch (error) {
+    if (isMissing(error)) {
+      return {
+        dryRun: input.dryRun ?? true,
+        retained: [],
+        candidates: [],
+        deleted: [],
+        protected: [],
+      }
+    }
+    throw error
+  }
+
+  const eligible: Array<{
+    transactionId: string
+    transactionRoot: string
+    modifiedAt: number
+  }> = []
+  const protectedTransactions: WorkspaceTransactionPruneResult['protected'] = []
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      throw new WorkspaceTransactionError(
+        `Transaction directory is unsafe: ${entry.name}`,
+      )
+    }
+    validateTransactionId(entry.name)
+    const transactionRoot = resolve(transactionsRoot, entry.name)
+    const receipt = await readExistingJournal(resolve(transactionRoot, 'journal.json'))
+    if (!receipt || receipt.transactionId !== entry.name) {
+      throw new WorkspaceTransactionError(
+        `Transaction journal is missing or mismatched: ${entry.name}`,
+      )
+    }
+    validateJournal(rootPath, transactionRoot, receipt)
+    if (receipt.state === 'FINALIZED' || receipt.state === 'ROLLED_BACK') {
+      eligible.push({
+        transactionId: receipt.transactionId,
+        transactionRoot,
+        modifiedAt: (await lstat(resolve(transactionRoot, 'journal.json'))).mtimeMs,
+      })
+    } else {
+      protectedTransactions.push({
+        transactionId: receipt.transactionId,
+        state: receipt.state,
+      })
+    }
+  }
+
+  eligible.sort(
+    (left, right) =>
+      right.modifiedAt - left.modifiedAt ||
+      right.transactionId.localeCompare(left.transactionId),
+  )
+  const retained = eligible
+    .slice(0, input.retainLatest)
+    .map((item) => item.transactionId)
+    .sort()
+  const candidates = eligible.slice(input.retainLatest)
+  const dryRun = input.dryRun ?? true
+  if (!dryRun) {
+    for (const candidate of candidates) {
+      await rm(candidate.transactionRoot, { recursive: true, force: false })
+    }
+    await syncDirectory(transactionsRoot)
+  }
+  const candidateIds = candidates.map((item) => item.transactionId).sort()
+  return {
+    dryRun,
+    retained,
+    candidates: candidateIds,
+    deleted: dryRun ? [] : candidateIds,
+    protected: protectedTransactions.sort((left, right) =>
+      left.transactionId.localeCompare(right.transactionId),
+    ),
+  }
 }
 
 async function recoverTransaction(

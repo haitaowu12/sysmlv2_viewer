@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { aiApiPlugin } from './server/vite-plugin.js'
 
 export default defineConfig({
-  base: '/sysmlv2_viewer/',
+  base: process.env.VITE_BASE_PATH ?? './',
   plugins: [react(), aiApiPlugin()],
   build: {
     rollupOptions: {

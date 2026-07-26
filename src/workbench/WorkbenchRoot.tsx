@@ -1,4 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
+import { invoke, isTauri } from '@tauri-apps/api/core'
+import { open } from '@tauri-apps/plugin-dialog'
 import {
   HttpWorkbenchTransport,
   WorkbenchClient,
@@ -25,6 +27,7 @@ export default function WorkbenchRoot() {
 }
 
 function WorkspaceConnection() {
+  const desktop = isTauri()
   const [serviceOrigin, setServiceOrigin] = useState('http://127.0.0.1:4317')
   const [pairingCode, setPairingCode] = useState('')
   const [workspaceFile, setWorkspaceFile] = useState('')
@@ -35,18 +38,22 @@ function WorkspaceConnection() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const connect = async () => {
+  const connect = async (
+    origin = serviceOrigin,
+    code = pairingCode,
+    workspace = workspaceFile,
+  ) => {
     setBusy(true)
     setError('')
     try {
-      const credentials = await pairLoopbackService(serviceOrigin, pairingCode)
+      const credentials = await pairLoopbackService(origin, code)
       const client = new WorkbenchClient(new HttpWorkbenchTransport({
-        endpoint: new URL('/rpc', serviceOrigin).href,
+        endpoint: new URL('/rpc', origin).href,
         token: credentials.token,
         csrf: credentials.csrf,
       }))
       await client.initialize({ name: 'workbench-product-shell', version: '0.1.0' })
-      const status = await client.openWorkspace(workspaceFile)
+      const status = await client.openWorkspace(workspace)
       const [snapshot, diagnostics, views] = await Promise.all([
         client.semanticSnapshot(status.workspaceId),
         client.diagnostics(status.workspaceId),
@@ -55,6 +62,38 @@ function WorkspaceConnection() {
       setSession({ client, workspace: { status, snapshot, diagnostics, views } })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Workspace connection failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const chooseDesktopWorkspace = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const selection = await open({
+        multiple: false,
+        directory: false,
+        title: 'Open SysML Engineering Workspace',
+        filters: [{ name: 'SysML workspace', extensions: ['yaml'] }],
+      })
+      if (typeof selection !== 'string') return
+      const bootstrap = await invoke<{
+        serviceOrigin: string
+        pairingCode: string
+        pairingExpiresAt: string
+        workspaceFile: string
+      }>('start_desktop_service', { workspaceFile: selection })
+      setServiceOrigin(bootstrap.serviceOrigin)
+      setPairingCode(bootstrap.pairingCode)
+      setWorkspaceFile(bootstrap.workspaceFile)
+      await connect(
+        bootstrap.serviceOrigin,
+        bootstrap.pairingCode,
+        bootstrap.workspaceFile,
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(false)
     }
@@ -79,34 +118,47 @@ function WorkspaceConnection() {
           Open a source-canonical workspace through the qualified local language service.
           Model content remains on this machine.
         </p>
-        <label>
-          Local service
-          <input value={serviceOrigin} onChange={(event) => setServiceOrigin(event.target.value)} />
-        </label>
-        <label>
-          One-time pairing code
-          <input
-            value={pairingCode}
-            onChange={(event) => setPairingCode(event.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        <label>
-          Workspace file
-          <input
-            value={workspaceFile}
-            onChange={(event) => setWorkspaceFile(event.target.value)}
-            placeholder="/project/sysml-workspace.yaml"
-          />
-        </label>
-        <button
-          type="button"
-          className="primary-action"
-          disabled={busy || !pairingCode || !workspaceFile}
-          onClick={() => void connect()}
-        >
-          {busy ? 'Opening workspace…' : 'Open workspace'}
-        </button>
+        {desktop ? (
+          <button
+            type="button"
+            className="primary-action"
+            disabled={busy}
+            onClick={() => void chooseDesktopWorkspace()}
+          >
+            {busy ? 'Opening workspace…' : 'Choose workspace…'}
+          </button>
+        ) : (
+          <>
+            <label>
+              Local service
+              <input value={serviceOrigin} onChange={(event) => setServiceOrigin(event.target.value)} />
+            </label>
+            <label>
+              One-time pairing code
+              <input
+                value={pairingCode}
+                onChange={(event) => setPairingCode(event.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label>
+              Workspace file
+              <input
+                value={workspaceFile}
+                onChange={(event) => setWorkspaceFile(event.target.value)}
+                placeholder="/project/sysml-workspace.yaml"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-action"
+              disabled={busy || !pairingCode || !workspaceFile}
+              onClick={() => void connect()}
+            >
+              {busy ? 'Opening workspace…' : 'Open workspace'}
+            </button>
+          </>
+        )}
         {error && <p role="alert" className="error-banner">{error}</p>}
         <p className="compatibility-link">
           Need the retired single-file workflow? <a href="?legacy=1">Open compatibility viewer</a>.
