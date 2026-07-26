@@ -4,11 +4,12 @@ import {
   cp,
   mkdir,
   readFile,
+  realpath,
   rm,
   unlink,
   writeFile,
 } from 'node:fs/promises'
-import { basename, relative, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { create as createTar } from 'tar'
 import {
@@ -17,28 +18,46 @@ import {
   sha256File,
 } from './workbench-release-support.js'
 import { stageSelfContainedRuntimes } from './workbench-stage-runtimes.js'
+import {
+  embeddedCompanionVerifier,
+  validateCompanionPackageIdentity,
+} from './workbench-companion-support.js'
 
 interface PortableManifest {
   product: { name: string; version: string }
   release: {
+    classification: string
     platform: string
     sourceCommit: string
     sourceDirty: boolean
   }
   runtime: {
-    semantic: { sha256: string }
+    semantic: { artifactPath: string; sha256: string }
     authoring: { artifactPath: string; sha256: string }
-    officialLibrary: { commit: string; treeSha256: string }
+    officialLibrary: {
+      path: string
+      commit: string
+      treeSha256: string
+      fileCount: number
+    }
   }
+  files: Array<{ path: string; bytes: number; mode: string; sha256: string }>
+}
+
+interface PackageJson {
+  name: string
+  version: string
 }
 
 const execFileAsync = promisify(execFile)
 const repositoryRoot = resolve(import.meta.dirname, '..')
-const portableBundle = resolve(requiredValue('--portable-bundle'))
+const portableBundle = await realpath(
+  resolve(requiredValue('--portable-bundle')),
+)
 const nodeExecutable = resolve(requiredValue('--node-executable'))
 const javaHome = resolve(requiredValue('--java-home'))
-const outputRoot = resolve(
-  valueAfter('--output') ?? resolve(repositoryRoot, 'release'),
+const outputRoot = await canonicalizeOutputRoot(
+  resolve(valueAfter('--output') ?? resolve(repositoryRoot, 'release')),
 )
 const platform = valueAfter('--platform') ?? 'darwin-arm64'
 const allowDirty = process.argv.includes('--allow-dirty')
@@ -55,6 +74,17 @@ const portableManifestPath = resolve(
 const portableManifest = JSON.parse(
   await readFile(portableManifestPath, 'utf8'),
 ) as PortableManifest
+const packageJson = JSON.parse(
+  await readFile(resolve(repositoryRoot, 'package.json'), 'utf8'),
+) as PackageJson
+const packageIdentity = validateCompanionPackageIdentity({
+  productName: portableManifest.product.name,
+  portableVersion: portableManifest.product.version,
+  packageName: packageJson.name,
+  packageVersion: packageJson.version,
+  authoringArtifactPath: portableManifest.runtime.authoring.artifactPath,
+})
+const authoringArtifactPath = packageIdentity.authoringArtifactPath
 const [
   { stdout: headOutput },
   { stdout: sourceTimeOutput },
@@ -85,17 +115,24 @@ if (
 if (portableManifest.release.sourceDirty && !allowDirty) {
   throw new Error('A dirty-source portable bundle cannot qualify')
 }
-await execFileAsync(nodeExecutable, [
-  resolve(portableBundle, 'bin/verify-bundle.mjs'),
-])
+await verifyPortableBundle(portableBundle, portableManifest)
 
 const bundleName =
-  `sysml-engineering-workbench-${portableManifest.product.version}` +
+  `sysml-engineering-workbench-${packageIdentity.version}` +
   `-pages-companion-${platform}`
 const bundleRoot = resolve(outputRoot, bundleName)
 const archivePath = resolve(outputRoot, `${bundleName}.tar.gz`)
-if (outputRoot === repositoryRoot || bundleRoot === repositoryRoot) {
+if (
+  outputRoot === repositoryRoot ||
+  dirname(outputRoot) === outputRoot ||
+  bundleRoot === repositoryRoot
+) {
   throw new Error('Companion output must not be the repository root')
+}
+assertWithin(outputRoot, bundleRoot)
+assertWithin(outputRoot, archivePath)
+if (pathsOverlap(portableBundle, bundleRoot)) {
+  throw new Error('Portable input and companion output must not overlap')
 }
 
 await Promise.all([
@@ -125,6 +162,14 @@ const semanticArtifact = resolve(
   bundleRoot,
   'runtime/semantic/sysmlv2-lsp-server.jar',
 )
+const authoringArtifact = resolve(bundleRoot, authoringArtifactPath)
+const { stdout: authoringFileOutput } = await execFileAsync(
+  'file',
+  [authoringArtifact],
+)
+if (!/\barm64\b/.test(authoringFileOutput)) {
+  throw new Error('Companion authoring runtime is not Apple Silicon arm64')
+}
 const runtimes = await stageSelfContainedRuntimes({
   stagingRoot: bundleRoot,
   nodeExecutable,
@@ -139,9 +184,7 @@ const runtimes = await stageSelfContainedRuntimes({
 await Promise.all([
   writeFile(
     resolve(bundleRoot, 'bin/start-pages-companion.sh'),
-    companionLauncher(
-      basename(portableManifest.runtime.authoring.artifactPath),
-    ),
+    companionLauncher(basename(authoringArtifactPath)),
     'utf8',
   ),
   writeFile(
@@ -151,7 +194,7 @@ await Promise.all([
   ),
   writeFile(
     resolve(bundleRoot, 'README.md'),
-    companionReadme(portableManifest.product.version),
+    companionReadme(packageIdentity.version),
     'utf8',
   ),
 ])
@@ -176,6 +219,7 @@ const companionManifest = {
     portableManifestSha256: await sha256File(portableManifestPath),
     semanticArtifactSha256: portableManifest.runtime.semantic.sha256,
     authoringArtifactSha256: portableManifest.runtime.authoring.sha256,
+    authoringArchitecture: 'arm64',
     officialLibraryCommit:
       portableManifest.runtime.officialLibrary.commit,
     officialLibraryTreeSha256:
@@ -190,6 +234,7 @@ const companionManifest = {
     },
     java: {
       version: runtimes.java.version,
+      architecture: runtimes.java.architecture,
       executable: 'runtime/java/bin/java',
       modules: runtimes.java.modules,
       sourceReleaseSha256: runtimes.java.sourceReleaseSha256,
@@ -199,7 +244,8 @@ const companionManifest = {
   },
   distribution: {
     selfContained: true,
-    networkRequiredAfterInstall: false,
+    networkRequiredAfterInstall: true,
+    localRuntimeNetworkRequired: false,
     signed: false,
     notarized: false,
     launcher: 'bin/start-pages-companion.sh',
@@ -250,6 +296,9 @@ process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
 function companionLauncher(authoringName: string): string {
   return `#!/bin/sh
 set -eu
+# Do not let inherited runtime injection settings execute code before the
+# bundle verifier or alter either qualified language engine.
+unset NODE_OPTIONS NODE_PATH JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS _JAVA_OPTIONS
 BUNDLE_ROOT=$(CDPATH= cd -- "\${0%/*}/.." && pwd)
 WORKSPACE_FILE=\${1:-}
 PAGES_URL=\${2:-https://haitaowu12.github.io/sysmlv2_viewer/}
@@ -285,33 +334,6 @@ exec "$NODE" "$BUNDLE_ROOT/bin/launch-pages-companion.mjs" \\
 `
 }
 
-function embeddedCompanionVerifier(): string {
-  return `import { createHash } from 'node:crypto'
-import { readFile, stat } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const manifest = JSON.parse(await readFile(resolve(root, 'manifests/companion-manifest.json'), 'utf8'))
-for (const file of manifest.files) {
-  const path = resolve(root, file.path)
-  const details = await stat(path)
-  const hash = createHash('sha256').update(await readFile(path)).digest('hex')
-  if (details.size !== file.bytes || hash !== file.sha256) {
-    throw new Error(\`Companion integrity check failed: \${file.path}\`)
-  }
-}
-const runningNodeHash = createHash('sha256').update(await readFile(process.execPath)).digest('hex')
-if (runningNodeHash !== manifest.runtimes.node.executableSha256) {
-  throw new Error('Companion must be launched with its bundled Node runtime')
-}
-if (!process.versions.node.startsWith('22.')) {
-  throw new Error('Companion bundled Node runtime must be major version 22')
-}
-process.stdout.write(\`Verified \${manifest.files.length} companion files for \${manifest.product.name} \${manifest.product.version}.\\n\`)
-`
-}
-
 function companionReadme(version: string): string {
   return `# SysML Engineering Workbench Pages Companion ${version}
 
@@ -331,7 +353,10 @@ Run:
 
 The launcher verifies the complete file inventory before starting, binds the
 service to loopback, and opens the GitHub Pages shell with a short-lived
-one-time pairing secret in the URL fragment. Source files remain local.
+one-time pairing secret in the URL fragment. It clears inherited Node/Java
+runtime-injection settings before starting. Source files remain local.
+The local runtime does not make external requests, but the default GitHub Pages
+shell requires network access on its initial load.
 
 The archive is unsigned and not notarized. macOS may quarantine downloaded
 executables. This artifact is CI-qualified engineering evidence, not an
@@ -364,5 +389,83 @@ function ignoreMissing(error: unknown): void {
     )
   ) {
     throw error
+  }
+}
+
+function assertWithin(root: string, path: string): void {
+  const relation = relative(root, path)
+  if (
+    !relation ||
+    relation.startsWith('..') ||
+    resolve(root, relation) !== path
+  ) {
+    throw new Error(`Companion path escapes its output root: ${path}`)
+  }
+}
+
+function pathsOverlap(left: string, right: string): boolean {
+  return left === right || isWithin(left, right) || isWithin(right, left)
+}
+
+function isWithin(root: string, path: string): boolean {
+  const relation = relative(root, path)
+  return (
+    relation.length > 0 &&
+    !relation.startsWith('..') &&
+    resolve(root, relation) === path
+  )
+}
+
+async function canonicalizeOutputRoot(requested: string): Promise<string> {
+  try {
+    return await realpath(requested)
+  } catch (error) {
+    if (
+      !(
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      )
+    ) {
+      throw error
+    }
+    const parent = await realpath(dirname(requested))
+    return resolve(parent, basename(requested))
+  }
+}
+
+async function verifyPortableBundle(
+  root: string,
+  manifest: PortableManifest,
+): Promise<void> {
+  if (
+    manifest.release.classification !==
+      'internal-unsigned-release-candidate' ||
+    manifest.runtime.semantic.artifactPath !==
+      'runtime/semantic/sysmlv2-lsp-server.jar' ||
+    manifest.runtime.officialLibrary.path !==
+      'runtime/libraries/sysml.library'
+  ) {
+    throw new Error('Portable bundle manifest contract is invalid')
+  }
+  const actualFiles = await inventoryFiles(
+    root,
+    new Set(['manifests/release-manifest.json']),
+  )
+  if (JSON.stringify(actualFiles) !== JSON.stringify(manifest.files)) {
+    throw new Error('Portable bundle file inventory differs from its manifest')
+  }
+  const [semanticSha256, authoringSha256, libraryFiles] = await Promise.all([
+    sha256File(resolve(root, manifest.runtime.semantic.artifactPath)),
+    sha256File(resolve(root, manifest.runtime.authoring.artifactPath)),
+    inventoryFiles(resolve(root, manifest.runtime.officialLibrary.path)),
+  ])
+  if (
+    semanticSha256 !== manifest.runtime.semantic.sha256 ||
+    authoringSha256 !== manifest.runtime.authoring.sha256 ||
+    libraryFiles.length !== manifest.runtime.officialLibrary.fileCount
+  ) {
+    throw new Error('Portable bundle runtime payload differs from its manifest')
   }
 }

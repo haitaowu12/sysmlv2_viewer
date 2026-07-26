@@ -26,6 +26,7 @@ export interface StagedRuntimeResult {
   }
   java: {
     version: string
+    architecture: 'arm64'
     modules: string[]
     sourceReleaseSha256: string
     fileCount: number
@@ -78,10 +79,12 @@ export async function stageSelfContainedRuntimes(
   const [
     { stdout: nodeVersionOutput },
     { stdout: nodeFileOutput },
+    { stdout: javaFileOutput },
     { stderr: javaVersionOutput },
   ] = await Promise.all([
     execFileAsync(nodeExecutable, ['--version']),
     execFileAsync('file', [nodeExecutable]),
+    execFileAsync('file', [resolve(javaHome, 'bin/java')]),
     execFileAsync(resolve(javaHome, 'bin/java'), ['-version']),
   ])
   const nodeVersion = nodeVersionOutput.trim()
@@ -96,6 +99,9 @@ export async function stageSelfContainedRuntimes(
   }
   if (!/\b21(?:\.|\b)/.test(javaVersionOutput)) {
     throw new Error('Self-contained runtime requires a Java 21 JDK')
+  }
+  if (!/\barm64\b/.test(javaFileOutput)) {
+    throw new Error('Self-contained runtime requires an Apple Silicon Java executable')
   }
 
   const { stdout: modulesOutput } = await execFileAsync(
@@ -180,6 +186,7 @@ export async function stageSelfContainedRuntimes(
       version:
         stagedJavaVersionOutput.trim().split('\n')[0] ??
         'unknown Java 21 runtime',
+      architecture: 'arm64',
       modules: javaModules,
       sourceReleaseSha256: await sha256File(resolve(javaHome, 'release')),
       fileCount: javaFiles.length,

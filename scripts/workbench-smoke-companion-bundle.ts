@@ -12,12 +12,15 @@ interface CompanionManifest {
     sourceCommit: string
     sourceDirty: boolean
   }
+  payload: { authoringArchitecture: string }
   runtimes: {
     node: { executable: string; executableSha256: string; version: string }
-    java: { executable: string; version: string }
+    java: { executable: string; version: string; architecture: string }
   }
   distribution: {
     selfContained: boolean
+    networkRequiredAfterInstall: boolean
+    localRuntimeNetworkRequired: boolean
     signed: boolean
     notarized: boolean
     windowsQualified: boolean
@@ -52,6 +55,8 @@ if (manifest.release.sourceDirty && !process.argv.includes('--allow-dirty')) {
 }
 if (
   !manifest.distribution.selfContained ||
+  !manifest.distribution.networkRequiredAfterInstall ||
+  manifest.distribution.localRuntimeNetworkRequired ||
   manifest.distribution.signed ||
   manifest.distribution.notarized ||
   manifest.distribution.windowsQualified
@@ -84,9 +89,11 @@ if (
 }
 if (
   !javaVersionOutput.includes('21') ||
-  !manifest.runtimes.java.version.includes('21')
+  !manifest.runtimes.java.version.includes('21') ||
+  manifest.runtimes.java.architecture !== 'arm64' ||
+  manifest.payload.authoringArchitecture !== 'arm64'
 ) {
-  throw new Error('Bundled Java runtime is not Java 21')
+  throw new Error('Bundled Java/authoring runtime architecture is not qualified')
 }
 
 const launcher = resolve(bundleRoot, 'bin/start-pages-companion.sh')
@@ -102,6 +109,12 @@ const child = spawn(
       PATH: '/sysml-workbench-smoke-no-system-runtime',
       TMPDIR: process.env.TMPDIR ?? '/tmp',
       LANG: process.env.LANG ?? 'en_US.UTF-8',
+      NODE_OPTIONS:
+        '--require=/sysml-workbench-smoke-missing-preload.cjs',
+      NODE_PATH: '/sysml-workbench-smoke-missing-node-path',
+      JAVA_TOOL_OPTIONS: '-XX:SysMLWorkbenchSmokeInvalidOption',
+      JDK_JAVA_OPTIONS: '--sysml-workbench-smoke-invalid-option',
+      _JAVA_OPTIONS: '-XX:SysMLWorkbenchSmokeInvalidOption',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   },
@@ -216,10 +229,15 @@ try {
       bundledNode: nodeVersionOutput.trim(),
       bundledNodeSha256: nodeSha256,
       bundledJava: manifest.runtimes.java.version,
+      bundledJavaArchitecture: manifest.runtimes.java.architecture,
+      bundledAuthoringArchitecture:
+        manifest.payload.authoringArchitecture,
       noSystemNodeOrJavaResolution: true,
+      inheritedRuntimeInjectionCleared: true,
     },
     loopbackPairing: true,
-    offlineRuntimePayload: true,
+    localRuntimeNetworkRequired: false,
+    browserShellNetworkQualified: false,
     selfContained: true,
     signed: false,
     notarized: false,
