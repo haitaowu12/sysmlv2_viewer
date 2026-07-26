@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -111,16 +110,17 @@ try {
     const sourceAfterUndo = await readFile(resolve(fixtureRoot, 'model/assurance.sysml'), 'utf8')
     if (sourceAfterUndo !== sourceBefore) throw new Error('Source edit undo was not byte exact')
 
-    const screenshots = await Promise.all([
-      screenshotEvidence('output/playwright/phase4-workspace-open.png'),
-      screenshotEvidence('output/playwright/phase4-workbench-shell.png'),
-    ])
     const report = {
       schemaVersion: 1,
       recordedAt: new Date().toISOString(),
-      gate: 'P4',
-      result: 'component-pass',
-      gateStatus: 'pending-integrated-usability-pilot',
+      gate: 'P4-SERVICE-PRODUCT-SHELL-FOUNDATION',
+      evidenceLayer: 'service-integration',
+      result: 'service-integration-pass',
+      productGate: {
+        id: 'P4',
+        state: 'invalidated',
+        reason: 'This qualifier bypasses the delivered UI and cannot prove product or usability acceptance.',
+      },
       fixture: { id: status.workspaceId, documents: status.documentCount },
       shell: {
         primaryRoute: 'service-backed-workbench',
@@ -128,7 +128,9 @@ try {
         activities: ['Explorer', 'Model', 'Diagrams', 'Traceability', 'Interfaces', 'Verification', 'Reviews', 'Changes', 'Reports', 'Settings'],
         surfaces: ['source', 'diagram', 'matrix', 'properties', 'problems'],
         languageFeatures: ['completion', 'hover', 'definition', 'references', 'formatting'],
-        screenshots,
+        uiExercised: false,
+        exactArtifactExercised: false,
+        practitionerEvidence: false,
       },
       projections: queryEvidence,
       savedView: { id: savedView.id, listedAfterSave: true, layoutIdentities: Object.keys(savedView.layout?.positions ?? {}).length },
@@ -145,7 +147,12 @@ try {
       },
       undo: { proposalId: undo.proposalId, transactionState: undone.transaction.state, byteExactRestore: true },
       diagnostics: manager.diagnostics(status.workspaceId),
-      deferredToP5: ['Git baseline comparison', 'model-anchored review lifecycle', 'interface evidence report'],
+      deferredToRecovery: [
+        'exact-artifact UI qualification',
+        'native source-authoring qualification',
+        'notation-specific Interconnection View',
+        'practitioner workflow evidence',
+      ],
     }
     await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
@@ -154,12 +161,6 @@ try {
   }
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true })
-}
-
-async function screenshotEvidence(relativePath: string) {
-  const absolutePath = resolve(repositoryRoot, relativePath)
-  const bytes = await readFile(absolutePath)
-  return { path: relativePath, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.byteLength }
 }
 
 function valueAfter(name: string): string | undefined {
