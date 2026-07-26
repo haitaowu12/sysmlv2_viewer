@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
@@ -40,6 +40,7 @@ jobs:
         run: npm run build
         env:
           VITE_WORKBENCH_DEMO: legacy
+          VITE_BASE_PATH: /sysmlv2_viewer/
 
       - name: Production dependency audit
         run: npm audit --omit=dev

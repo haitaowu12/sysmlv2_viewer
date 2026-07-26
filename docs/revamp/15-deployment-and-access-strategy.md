@@ -25,7 +25,8 @@ Constraints: no arbitrary local folders; no provider AI; no claim of authoritati
 
 ### B — Browser + local companion
 
-First-class production profile for low-friction authoring and review. The browser UI connects to an independently installed local Workbench Service.
+Supported companion/development profile for low-friction authoring and review.
+The browser UI connects to an independently installed local Workbench Service.
 
 Local-only functions:
 
@@ -50,7 +51,12 @@ Required controls: explicit IPv4/IPv6 loopback bind, Host/Origin allowlists, ant
 
 ### C — Tauri desktop
 
-Purpose: signed, fully offline installation with integrated folder picker, process lifecycle, keystore, updater policy, and crash recovery. It embeds the same built UI and starts the same Workbench Service through stdio/desktop IPC. Tauri capabilities grant minimal commands/windows. No semantic logic is implemented in Tauri handlers.
+Initial production profile: signed, fully offline macOS 13+ Apple Silicon
+installation with integrated workspace picker, process lifecycle, updater
+policy, and crash recovery. It embeds the same built UI and starts the same
+loopback Workbench Service with short-lived pairing credentials. Tauri
+capabilities grant only dialog, sidecar, and typed application commands. No
+semantic logic is implemented in Tauri handlers.
 
 ### D — Managed hosted
 
@@ -103,7 +109,9 @@ Authoritative local-folder editing still requires B or C.
 ## Packaging and distribution decision
 
 - P1 ships development/test service artifacts only, with exact hashes and SBOM;
-- P7 targets signed macOS and Windows desktop installers plus a signed local-companion package;
+- P7 targets a Developer ID signed and Apple-notarized macOS 13+ arm64 Tauri
+  `.app` and DMG; Windows and a separately signed companion package are
+  deferred until independently qualified;
 - the public evaluation site is independently deployable but not the production authority;
 - auto-update is opt-in/policy-controlled and verifies signatures; offline programs can use pinned manual packages;
 - managed hosted distribution remains an owner-approved future program.

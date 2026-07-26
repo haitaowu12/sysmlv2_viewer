@@ -84,20 +84,36 @@ Phase 6 adds the controlled-assistant boundary:
 - removal of the legacy whole-document AI implementation and `410 Gone`
   retirement responses.
 
+Phase 7 technical work now adds:
+
+- same-origin static UI delivery from the authenticated loopback service with
+  strict CSP, Host checking, traversal rejection, and immutable asset caching;
+- deterministic exact-runtime bundle assembly, embedded whole-bundle
+  verification, complete runtime/npm notices, and a copied-bundle offline
+  smoke;
+- release-source and fail-closed production verification commands;
+- automated serious/critical accessibility checks, command-palette focus
+  containment, reduced-motion and visible-focus behavior;
+- refreshed performance instrumentation with warmups, p95 distributions, and
+  all mandated medium-workspace targets;
+- current workspace, installation, recovery, migration, architecture,
+  security, troubleshooting, and release documentation.
+
 The old Vite viewer is isolated behind `?legacy=1` and remains the explicit
 read-only GitHub Pages compatibility demo. Its parser, fixed diagram tabs,
 Draw.io round trip, and browser store are not authoritative architecture.
 
-Not yet implemented as production workbench claims: complete notation-specific
-graphical mutation, external AI-provider adapters, desktop packaging, or
-release-candidate hardening. Gates P4-P6 passed their integrated qualifications.
-Gate P7 remains mandatory before production release.
+Not yet approved as production claims: complete notation-specific graphical
+mutation, external AI-provider adapters, signed desktop installers, Windows
+qualification, or remote collaboration. P7 public release remains blocked by
+product/runtime license reconciliation, signed/notarized distribution,
+clean-machine evidence for every claimed OS, and three-user usability evidence.
 
 ## Development
 
 ```bash
-npm install
-npm run verify:phase6
+npm ci
+npm run verify:release:source
 ```
 
 Run the service without a configured engine in preservation-control mode:
@@ -154,4 +170,6 @@ loopback transport, and keeps source local. Provider-backed AI is not part of
 the authority path and cannot mutate canonical source. Phase 3 commands require
 an explicit, validated human approval transaction.
 
-The project is not yet a production release. Gate P7 remains required.
+The project is not yet a public production release. The portable macOS arm64
+artifact is an unsigned internal release candidate only; the open P7 gates
+above remain mandatory.

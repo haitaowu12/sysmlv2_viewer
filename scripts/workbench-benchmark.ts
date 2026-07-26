@@ -10,6 +10,8 @@ import {
   type LanguageAdapter,
   readCandidateManifest,
 } from '../packages/language-adapter/src/index.js'
+import { buildExplorerProjection } from '../packages/projection-engine/src/index.js'
+import { compareSemanticSnapshots } from '../packages/semantic-diff/src/index.js'
 import { WorkspaceManager } from '../packages/workspace-service/src/workspace.js'
 
 const profiles = {
@@ -24,6 +26,26 @@ const expectedGeneratedDiagnosticCodes = new Set([
 
 type ProfileName = keyof typeof profiles
 
+interface BenchmarkRun {
+  run: number
+  coldOpenMs: number
+  warmOpenMs: number
+  semanticSnapshotMs: number | null
+  explorerQueryMs: number | null
+  firstUsefulExplorerMs: number | null
+  diagramProjectionMs: number | null
+  matrixUpdateMs: number | null
+  semanticDiffMs: number | null
+  definitionMs: number | null
+  incrementalDiagnosticsMs: number | null
+  authoringFirstCompletionMs: number | null
+  authoringWarmCompletionMs: number | null
+  validWorkspaceClean: boolean
+  deterministicSnapshot: boolean
+  diagnosticsStable: boolean
+  [key: string]: unknown
+}
+
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const profileName = (valueAfter('--profile') ?? 'small') as ProfileName
 if (!(profileName in profiles)) {
@@ -32,8 +54,12 @@ if (!(profileName in profiles)) {
 const candidateId = valueAfter('--candidate')
 if (!candidateId) throw new Error('--candidate is required')
 const repetitions = Number.parseInt(valueAfter('--repetitions') ?? '1', 10)
-if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 20) {
-  throw new Error('--repetitions must be an integer from 1 to 20')
+if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 40) {
+  throw new Error('--repetitions must be an integer from 1 to 40')
+}
+const warmups = Number.parseInt(valueAfter('--warmups') ?? '0', 10)
+if (!Number.isInteger(warmups) || warmups < 0 || warmups > 10) {
+  throw new Error('--warmups must be an integer from 0 to 10')
 }
 const outputRoot = resolve(
   valueAfter('--output') ??
@@ -62,9 +88,9 @@ const generated = await generateWorkspace(
   profileName,
   profiles[profileName],
 )
-const runs = []
+const runs: BenchmarkRun[] = []
 let measuredWorkspaceBytes = 0
-for (let run = 1; run <= repetitions; run += 1) {
+for (let run = 1; run <= repetitions + warmups; run += 1) {
   const adapter = await createBenchmarkAdapter()
   const manager = new WorkspaceManager({
     allowedRoots: [outputRoot],
@@ -93,7 +119,18 @@ for (let run = 1; run <= repetitions; run += 1) {
     let semanticElementCount: number | null = null
     let semanticRelationshipCount: number | null = null
     let explorerResultCount: number | null = null
-    if (adapter.capabilities.semanticEvidence) {
+    let firstUsefulExplorerMs: number | null = null
+    let diagramProjectionMs: number | null = null
+    let matrixUpdateMs: number | null = null
+    let semanticDiffMs: number | null = null
+    let definitionMs: number | null = null
+    let incrementalDiagnosticsMs: number | null = null
+    let authoringFirstCompletionMs: number | null = null
+    let authoringWarmCompletionMs: number | null = null
+    if (
+      candidateId === 'qualified-hybrid' &&
+      adapter.capabilities.semanticEvidence
+    ) {
       const semanticStartedAt = performance.now()
       const semanticSnapshot = await manager.semanticSnapshot(warm.workspaceId)
       semanticSnapshotMs = Math.round(performance.now() - semanticStartedAt)
@@ -108,6 +145,85 @@ for (let run = 1; run <= repetitions; run += 1) {
       semanticElementCount = semanticSnapshot.elements.length
       semanticRelationshipCount = semanticSnapshot.relationships.length
       explorerResultCount = explorerQuery.elements.length
+      firstUsefulExplorerMs =
+        warmOpenMs + semanticSnapshotMs + explorerQueryMs
+
+      const diagramStartedAt = performance.now()
+      buildExplorerProjection(semanticSnapshot, {
+        mode: 'containment',
+        depth: 3,
+        maxResults: 500,
+      })
+      diagramProjectionMs = preciseDuration(diagramStartedAt)
+
+      const matrixStartedAt = performance.now()
+      semanticSnapshot.elements
+        .filter((element) =>
+          `${element.name} ${element.qualifiedName} ${element.kind}`
+            .toLocaleLowerCase()
+            .includes('element_5'),
+        )
+        .sort((left, right) => left.qualifiedName.localeCompare(right.qualifiedName))
+      matrixUpdateMs = preciseDuration(matrixStartedAt)
+
+      const afterSnapshot = structuredClone(semanticSnapshot)
+      const changed = afterSnapshot.elements.at(-1)
+      if (changed) {
+        changed.name = `${changed.name}_changed`
+        changed.qualifiedName = `${changed.qualifiedName}_changed`
+        changed.fingerprint = `${changed.fingerprint}-changed`
+        afterSnapshot.snapshotSha256 = 'changed-benchmark-snapshot'
+      }
+      const diffStartedAt = performance.now()
+      compareSemanticSnapshots(semanticSnapshot, afterSnapshot)
+      semanticDiffMs = preciseDuration(diffStartedAt)
+    }
+    const primaryDocument = warm.documents[0]
+    if (primaryDocument && adapter.capabilities.definitions) {
+      const definitionStartedAt = performance.now()
+      await manager.definition(warm.workspaceId, primaryDocument.uri, {
+        line: 1,
+        character: 15,
+      })
+      definitionMs = preciseDuration(definitionStartedAt)
+    }
+    if (primaryDocument && adapter.changeDocument) {
+      const document = manager.readDocument(
+        warm.workspaceId,
+        primaryDocument.uri,
+      )
+      const changedText = document.text.replace(
+        'part def',
+        'doc /* incremental benchmark */ part def',
+      )
+      const diagnosticsStartedAt = performance.now()
+      await manager.changeDocument(
+        warm.workspaceId,
+        primaryDocument.uri,
+        document.version + 1,
+        changedText,
+      )
+      incrementalDiagnosticsMs = preciseDuration(diagnosticsStartedAt)
+      await manager.changeDocument(
+        warm.workspaceId,
+        primaryDocument.uri,
+        document.version + 2,
+        document.text,
+      )
+    }
+    if (primaryDocument && adapter.capabilities.completion) {
+      const firstCompletionStartedAt = performance.now()
+      await manager.completion(warm.workspaceId, primaryDocument.uri, {
+        line: 1,
+        character: 15,
+      })
+      authoringFirstCompletionMs = preciseDuration(firstCompletionStartedAt)
+      const warmCompletionStartedAt = performance.now()
+      await manager.completion(warm.workspaceId, primaryDocument.uri, {
+        line: 1,
+        character: 15,
+      })
+      authoringWarmCompletionMs = preciseDuration(warmCompletionStartedAt)
     }
     measuredWorkspaceBytes = warm.documents.reduce(
       (total, document) => total + document.byteLength,
@@ -116,12 +232,20 @@ for (let run = 1; run <= repetitions; run += 1) {
     const coldDiagnosticCodes = countDiagnosticCodes(coldDiagnostics)
     const diagnosticCodes = countDiagnosticCodes(diagnostics)
 
-    runs.push({
-      run,
+    const measurement = {
+      run: run - warmups,
       coldOpenMs,
       warmOpenMs,
       semanticSnapshotMs,
       explorerQueryMs,
+      firstUsefulExplorerMs,
+      diagramProjectionMs,
+      matrixUpdateMs,
+      semanticDiffMs,
+      definitionMs,
+      incrementalDiagnosticsMs,
+      authoringFirstCompletionMs,
+      authoringWarmCompletionMs,
       semanticElementCount,
       semanticRelationshipCount,
       explorerResultCount,
@@ -158,7 +282,8 @@ for (let run = 1; run <= repetitions; run += 1) {
         message: diagnostic.message,
         range: diagnostic.range,
       })),
-    })
+    }
+    if (run > warmups) runs.push(measurement)
   } finally {
     await manager.dispose()
   }
@@ -187,6 +312,7 @@ const report = {
     bytes: measuredWorkspaceBytes,
   },
   result: {
+    warmups,
     repetitions,
     distributions: {
       coldOpenMs: distribution(runs.map((run) => run.coldOpenMs)),
@@ -197,7 +323,32 @@ const report = {
       explorerQueryMs: nullableDistribution(
         runs.map((run) => run.explorerQueryMs),
       ),
+      firstUsefulExplorerMs: nullableDistribution(
+        runs.map((run) => run.firstUsefulExplorerMs),
+      ),
+      incrementalDiagnosticsMs: nullableDistribution(
+        runs.map((run) => run.incrementalDiagnosticsMs),
+      ),
+      definitionMs: nullableDistribution(
+        runs.map((run) => run.definitionMs),
+      ),
+      authoringFirstCompletionMs: nullableDistribution(
+        runs.map((run) => run.authoringFirstCompletionMs),
+      ),
+      authoringWarmCompletionMs: nullableDistribution(
+        runs.map((run) => run.authoringWarmCompletionMs),
+      ),
+      diagramProjectionMs: nullableDistribution(
+        runs.map((run) => run.diagramProjectionMs),
+      ),
+      matrixUpdateMs: nullableDistribution(
+        runs.map((run) => run.matrixUpdateMs),
+      ),
+      semanticDiffMs: nullableDistribution(
+        runs.map((run) => run.semanticDiffMs),
+      ),
     },
+    targets: performanceTargets(runs, profileName),
     expectedDiagnosticCodes: [...expectedGeneratedDiagnosticCodes].sort(),
     allRunsValid: runs.every(
       (run) =>
@@ -320,6 +471,87 @@ function nullableDistribution(values: Array<number | null>): {
 } | null {
   const measured = values.filter((value): value is number => value !== null)
   return measured.length > 0 ? distribution(measured) : null
+}
+
+function preciseDuration(startedAt: number): number {
+  return Math.round((performance.now() - startedAt) * 100) / 100
+}
+
+function performanceTargets(
+  measuredRuns: typeof runs,
+  profile: ProfileName,
+): Array<{
+  metric: string
+  thresholdMs: number
+  observedP95: number | null
+  status: 'pass' | 'miss' | 'not-applicable'
+}> {
+  const targets = [
+    target('warmOpenMs', 3_000, measuredRuns.map((run) => run.warmOpenMs)),
+    target(
+      'firstUsefulExplorerMs',
+      5_000,
+      measuredRuns.map((run) => run.firstUsefulExplorerMs),
+    ),
+    target(
+      'incrementalDiagnosticsMs',
+      500,
+      measuredRuns.map((run) => run.incrementalDiagnosticsMs),
+    ),
+    target(
+      'definitionMs',
+      300,
+      measuredRuns.map((run) => run.definitionMs),
+    ),
+    target(
+      'diagramProjectionMs',
+      2_000,
+      measuredRuns.map((run) => run.diagramProjectionMs),
+    ),
+    target(
+      'matrixUpdateMs',
+      500,
+      measuredRuns.map((run) => run.matrixUpdateMs),
+    ),
+    target(
+      'semanticDiffMs',
+      10_000,
+      measuredRuns.map((run) => run.semanticDiffMs),
+    ),
+  ]
+  return targets.map((item) =>
+    profile === 'medium'
+      ? item
+      : { ...item, status: 'not-applicable' as const },
+  )
+}
+
+function target(
+  metric: string,
+  thresholdMs: number,
+  values: Array<number | null>,
+): {
+  metric: string
+  thresholdMs: number
+  observedP95: number | null
+  status: 'pass' | 'miss' | 'not-applicable'
+} {
+  const measured = values.filter((value): value is number => value !== null)
+  const observedP95 =
+    measured.length > 0
+      ? distribution(measured).p95
+      : null
+  return {
+    metric,
+    thresholdMs,
+    observedP95,
+    status:
+      observedP95 === null
+        ? 'not-applicable'
+        : observedP95 <= thresholdMs
+          ? 'pass'
+          : 'miss',
+  }
 }
 
 function percentile(sorted: number[], percentileValue: number): number {

@@ -75,7 +75,7 @@ locked-runtime evidence are claimed; release targets remain planned.
 | timeout/cancel/restart | supported | visible failure; no fallback | LSP-RECOVER-001 |
 | normalized semantic snapshot | unsupported at P1 | supported P2 semantic-evidence profile | SEM-SNAP-001 |
 | source preservation | partial | inventory byte stability only; edit safety is P3 | LANG-OPAQUE-001 |
-| medium scale | conditional | warm p95 1.659 s; cold p95 6.109 s | BENCH-MEDIUM-001 |
+| medium scale | supported P7 target profile | 30-sample p95: warm 1.251 s, first useful 4.687 s, diagnostics 175.89 ms | BENCH-MEDIUM-001 |
 | large scale | experimental | no crash; excessive memory and latency | BENCH-LARGE-001 |
 
 ## Workbench capabilities
@@ -106,8 +106,8 @@ locked-runtime evidence are claimed; release targets remain planned.
 | deterministic reports | supported P5 | sanitized HTML, byte-stable PDF, CSV registers, hashed provenance manifests | REPORT-DET-001 |
 | constrained AI | supported P6 profile | twelve narrow tools, stable citations, validated one-command proposals, user-only apply, tamper-evident audit, network disabled | AI-SAFE-001 |
 | public web evaluation | static app | bounded A profile P4/P7 | DEPLOY-A-001 |
-| browser + local companion | unsupported | production B profile P4/P7 | DEPLOY-B-001 |
-| packaged offline desktop | static page | production C profile P7 | INSTALL-001 |
+| browser + local companion | internal RC supported | authenticated same-origin loopback, deterministic exact-runtime macOS arm64 bundle; public gate blocked | DEPLOY-B-001 |
+| packaged offline desktop | unsupported | native signed shell/installer not qualified | INSTALL-001 |
 | managed hosted | unsupported | future D profile | DEPLOY-D-001 |
 
 ## Fixture pack contract

@@ -1,0 +1,58 @@
+name: Verify macOS desktop source
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install exact JavaScript dependencies
+        run: npm ci
+
+      - name: Set up stable Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Compile-check desktop host from clean source
+        run: npm run desktop:check
+
+      - name: Inventory locked Cargo licenses
+        run: npm run desktop:license -- --output "$RUNNER_TEMP/desktop-rust-license-inventory.json"
+
+      - name: Install pinned RustSec scanner
+        run: cargo install cargo-audit --locked --version 0.22.2
+
+      - name: Audit resolved macOS arm64 Cargo graph
+        run: npm run desktop:audit -- --output "$RUNNER_TEMP/desktop-rustsec-audit.json"
+
+      - name: Upload desktop source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-source-evidence-macos-arm64
+          path: |
+            ${{ runner.temp }}/desktop-rust-license-inventory.json
+            ${{ runner.temp }}/desktop-rustsec-audit.json
+          if-no-files-found: error

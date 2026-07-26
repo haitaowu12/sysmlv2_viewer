@@ -40,7 +40,9 @@ approved local roots + Git + engine + report tools + keystore
 
 Controls:
 
-- explicit IPv4/IPv6 loopback bind only; OS-selected port;
+- explicit IPv4/IPv6 loopback bind only; the release launcher uses
+  `127.0.0.1:4317` and the service also supports an OS-selected port for
+  embedded hosts;
 - user-confirmed one-time pairing for exact origin/service/capabilities;
 - exact Host and Origin allowlists; no wildcard or reflected CORS;
 - short-lived audience/origin/session-bound credentials; expiry, revocation, replay control;
@@ -53,13 +55,26 @@ Controls:
 
 TLS is used where practical. If platform/browser constraints require loopback HTTP, credentials are short-lived, never reusable off-session, and the service never binds non-loopback.
 
+The initial release bundle serves immutable UI assets from the same loopback
+origin as JSON-RPC/WebSocket. Static requests still require a valid loopback
+Host and receive CSP, `nosniff`, same-origin resource policy, no-referrer,
+cross-origin opener policy, and a restrictive permissions policy. API calls
+remain unavailable until pairing.
+
 ## Profile C — Tauri desktop
 
 Trust boundaries:
 
-- signed Tauri host/WebView → scoped IPC/stdio → bundled Workbench Service → approved local roots/processes/keystore.
+- signed Tauri host/WebView → typed Tauri commands → bundled Workbench Service
+  on an operating-system-selected loopback port with short-lived pairing →
+  approved local roots and locked language processes.
 
-Tauri grants folder picker, lifecycle, secure storage, and packaging capabilities only. It does not implement semantic operations. Capability files are minimal per window; remote content is not loaded into privileged WebViews; CSP/navigation/external-open inputs are restricted.
+Tauri grants the native file dialog and exact bundled sidecar capabilities
+only. It does not implement semantic operations. Capability files are minimal
+per window; remote content is not loaded into privileged WebViews;
+CSP/navigation/external-open inputs are restricted. The bundled Node sidecar
+requires only the macOS `allow-jit` entitlement; the
+`allow-unsigned-executable-memory` entitlement is not granted.
 
 Offline mode has no required network after installation.
 

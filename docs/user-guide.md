@@ -1,85 +1,126 @@
-# SysML Viewer User Guide
+# SysML Engineering Workbench — User Guide
+
+Status: implemented P1–P6 workflow plus P7 internal release-candidate tooling.
+This guide does not claim broad SysML v2 conformance. See
+`docs/revamp/05-capability-matrix.md`.
+
+## Start and connect
+
+The production profile is a browser UI served by an authenticated local
+Workbench Service. Start the platform bundle with an authorized workspace
+directory:
+
+```sh
+./bin/start-workbench.sh /absolute/path/to/project
+```
+
+Open `http://127.0.0.1:4317`. Enter the one-time pairing code printed by the
+service and select the project's `sysml-workspace.yaml`. Pairing is exact-origin
+bound and expires after two minutes. Sessions expire after fifteen minutes.
+
+The unsigned bundle is an internal release candidate only. Node.js 22 and Java
+21 are required. No network is required after installation.
 
 ## Workspace
 
-SysML Viewer combines a source editor, live diagram canvas, model explorer, component library, properties inspector, Draw.io bridge, and AI assistant.
+Canonical engineering content remains `.sysml` and `.kerml` source under the
+configured roots. The workbench also owns diffable project artifacts:
 
-The SysML source is the primary model. Diagram views update from the source and selected visual edits are converted back into source patches.
+```text
+project/
+  sysml-workspace.yaml
+  model/
+  libraries/
+  views/
+  reviews/
+  evidence/
+  baselines/
+  generated/
+  .sysml-workbench/
+```
 
-R2 support boundaries are defined in `docs/r2-product-contract.md`. The app supports a practical SysML v2 subset; it is not a full SysML v2 conformance tool.
+The hidden directory holds disposable caches plus identity, command recovery,
+and AI audit state. Do not delete it while commands or reviews are active.
+Back up the complete project, not only `model/`.
 
-## Views
+## Primary workflow
 
-- **General** - package, part, port, item, and definition structure.
-- **Interconnection** - internal parts, ports, connections, flows, and bindings.
-- **Action Flow** - actions, inputs, outputs, flows, and bindings.
-- **State Transition** - states, entry transitions, and transition labels.
-- **Requirements** - requirements, docs, attributes, satisfy, verify, and derive links.
-- **Viewpoints** - viewpoints, views, concerns, and conformance links.
-- **Draw.io** - embedded diagrams.net bridge plus advanced XML fallback.
+1. Open the workspace and wait for `ready · qualified-engine`.
+2. Resolve blocking items in Problems.
+3. Navigate in Explorer by containment, types, dependencies, neighbourhood,
+   requirements, verification, or interfaces.
+4. Use Source, Diagram, or Matrix for the same semantic projection.
+5. Select an element to inspect identity, kind, source, owner, relationships,
+   diagnostics, and native edit controls.
+6. Review every proposed patch, diagnostics-before/after, affected identities,
+   and semantic diff.
+7. Apply only through the explicit approval control.
 
-## Import And Export
+`Cmd/Ctrl+K` opens the activity palette. `Escape` closes it. All primary
+activities and patch approval controls are keyboard reachable.
 
-Use the toolbar open button or drag a file into the app.
+## Source and model edits
 
-Supported import formats:
+Source is authoritative. Text changes remain drafts until **Review source
+patch** and **Generate validated patch** produce a command proposal. Native
+rename, move, create, delete, type, multiplicity, property, documentation, and
+relationship operations use the same command boundary. A diagram never writes
+source directly.
 
-- `.sysml` - SysML v2 source.
-- `.drawio` - Draw.io XML translated through the semantic bridge.
+An approved command is rejected if source changed after validation, if an edit
+escapes the workspace, overlaps another edit, crosses an opaque source range,
+or introduces an invalid semantic state. Undo and redo use validated inverse
+transactions.
 
-Supported export formats:
+## Engineering assurance
 
-- `.sysml` - canonical text source.
-- `.drawio` - diagrams.net XML.
-- `.svg` - static diagram export.
-- `.png` - rasterized SVG export.
+- **Interfaces** shows the interface register and deterministic quality
+  findings.
+- **Verification** shows direct requirement satisfaction and verification
+  coverage.
+- **Changes** creates Git-bound baselines and classifies stable-identity
+  semantic changes.
+- **Reviews** creates a baseline-frozen scope, model-anchored findings,
+  dispositions, staleness checks, and closure.
+- **Reports** writes sanitized deterministic HTML/PDF and CSV registers under
+  `generated/reports/`.
 
-## AI Assistant
+The current rule pack deliberately reports direction, units, protocol,
+capacity, timing, modes, failure behaviour, safety, security, status, and
+assumptions as unavailable when the normalized semantic profile cannot prove
+them.
 
-AI provider keys are configured on the local API server, not in the browser. GitHub Pages deployments are static and do not include the Node API server.
+## Controlled assistant
 
-Available modes:
+Assistant networking is disabled by default. The included deterministic local
+provider can search cited elements and propose one rename command. Any provider
+result is rejected if it cites an unknown identity. A model-changing response
+must display its citations, assumptions, typed command, validation,
+diagnostics, semantic diff, and affected identities before a separate
+user-only approval.
 
-- **Local Heuristic** - no key required.
-- **OpenAI Server Key** - uses `OPENAI_API_KEY`.
-- **Anthropic Server Key** - uses `ANTHROPIC_API_KEY`.
-- **Google Server Key** - uses `GOOGLE_API_KEY`.
+AI audit records are stored in
+`.sysml-workbench/audit/ai/`. The assistant cannot bypass command validation
+or approval.
 
-If a selected provider has no configured key, the server falls back to local generation and reports that in diagnostics.
+## Data and network indicators
 
-## Draw.io Bridge
+The qualified local profile sends no model content to external services.
+External AI is not configured in the release candidate. The legacy static demo
+is available only through `?legacy=1`; it is not an authoring authority.
+Draw.io is compatibility/export functionality and is not authoritative SysML.
 
-The Draw.io tab loads diagrams.net in a sandboxed iframe and only accepts messages from `https://embed.diagrams.net`.
+## Recovery
 
-Workflow:
+If startup fails, run `node bin/verify-bundle.mjs`. An integrity failure means
+the installation must be replaced; do not repair individual bundle files.
+Command recovery journals and identity backups are workspace owned. Preserve
+them and consult `docs/user/backup-recovery.md` before manual intervention.
 
-1. Pick a Draw.io view mode.
-2. Regenerate from SysML or reflow layout when needed.
-3. Edit in the Draw.io frame.
-4. Review queued patches if changes are not safe to auto-apply.
+See also:
 
-If the iframe cannot load, use the advanced XML editor fallback.
-
-## Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl + Z` | Undo |
-| `Cmd/Ctrl + Shift + Z` | Redo |
-| `Cmd/Ctrl + B` | Toggle Explorer |
-| `Cmd/Ctrl + J` | Toggle Properties |
-| `Cmd/Ctrl + Shift + D` | Open Draw.io |
-| `Cmd/Ctrl + Shift + I` | Open AI Chat |
-| `Cmd/Ctrl + /` | Keyboard shortcuts |
-| `Delete` / `Backspace` | Delete selected node |
-| `Escape` | Clear focus or close modal |
-
-## Supported SysML Subset
-
-Best-supported roundtrip elements: `Package`, `PartDef`, `PartUsage`, `PortDef`, `PortUsage`, `ConnectionUsage`, `RequirementDef`, `RequirementUsage`, `VerificationDef`, `VerificationUsage`, `satisfy`, and `verify`.
-
-Project examples and AI generation are anchored to `Systems-Modeling/SysML-v2-Release` tag `2026-04`, commit `9baca5908ca28b53da085de69336fde48420ea8f`.
-
-Unsupported or partial syntax can still be edited as source, but may not render or roundtrip visually. Current partial areas include `alias`, `calc`, `individual`, `occurrence`, and `variation`.
-
-Unsupported R2 claims include full SysML v2/KerML language coverage, official conformance validation, collaborative model storage, and arbitrary Draw.io import as valid SysML.
+- `docs/user/workspace-format.md`
+- `docs/user/installation-and-deployment.md`
+- `docs/user/sample-engineering-workflow.md`
+- `docs/user/troubleshooting.md`
+- `docs/user/backup-recovery.md`

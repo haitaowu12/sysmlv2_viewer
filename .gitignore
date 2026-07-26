@@ -13,7 +13,18 @@ dist-workbench
 dist-ssr
 generated/qualification/
 generated/benchmarks/
+generated/release/
+generated/release-evidence/
+release/
+config/release-approval.json
 *.local
+apps/workbench-desktop/src-tauri/binaries/
+apps/workbench-desktop/src-tauri/generated/
+apps/workbench-desktop/src-tauri/gen/
+apps/workbench-desktop/src-tauri/icons/*
+!apps/workbench-desktop/src-tauri/icons/icon.icns
+!apps/workbench-desktop/src-tauri/icons/icon.png
+apps/workbench-desktop/src-tauri/target/
 
 # Editor directories and files
 .vscode/*

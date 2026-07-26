@@ -5,7 +5,7 @@
 - no telemetry;
 - no external AI/provider;
 - no model content in operational logs;
-- no network dependency after Profile C installation;
+- no network dependency after the Profile B release bundle is installed;
 - local source and engineering artifacts remain under user/project control;
 - browser storage is disposable UI/session state, never authoritative reviews/model/evidence.
 
@@ -35,6 +35,9 @@ The Workbench Service:
 - never applies a provider response directly.
 
 Offline deterministic tools remain available when provider AI is disabled.
+
+The `0.7.0-rc.1` bundle registers only the local deterministic provider.
+External provider credentials, adapters, and egress are not shipped.
 
 ## Network indicator
 

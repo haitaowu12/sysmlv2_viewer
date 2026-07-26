@@ -108,7 +108,7 @@ export function NativeCommandEditor({
         <input value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       <button type="button" onClick={buildCommand} disabled={!ownerId || !name}>
-        Review source patch
+        Review model command
       </button>
       {envelope && (
         <CommandReviewPanel

@@ -20,7 +20,7 @@ describe('NativeCommandEditor', () => {
     fireEvent.change(screen.getByLabelText('Name'), {
       target: { value: 'commandLink' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Review source patch' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Review model command' }))
     fireEvent.click(await screen.findByRole('button', {
       name: 'Generate validated patch',
     }))
