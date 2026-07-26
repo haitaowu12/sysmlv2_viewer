@@ -1,81 +1,89 @@
 # Gate P5 Decision — Engineering Assurance
 
-Decision: **pass**
-Qualified implementation head: `8a69813`
-Branch: `codex/sysml-workbench-phase5-assurance`
-Runtime lock outcome: `HYBRID GO`
+Decision: **invalidated as a product gate**
 
-## Acceptance evidence
+Historical implementation head: `8a69813`
 
-The integrated infrastructure pilot passed against the exact locked language
-runtime:
+Historical branch: `codex/sysml-workbench-phase5-assurance`
 
-- semantic authority artifact SHA-256:
-  `8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160`;
-- official library release: `2026-05` at
-  `de1070ae8e79c21532b8004fc663d47b35d0e9fa`;
-- four documents, 38 initial semantic elements, 41 final elements;
-- one deliberately injected unresolved reference was diagnosed without
-  changing canonical source;
-- four unverified requirements were identified;
-- an interface was proposed and validated with canonical source unchanged,
-  then applied only after explicit approval;
-- stable identity cross-navigation matched the created interface;
-- two Git baselines were captured and compared semantically;
-- one model-anchored finding completed its review lifecycle with zero stale
-  anchors;
-- deterministic interface register, semantic change, and review closure
-  reports were emitted as HTML/PDF, plus CSV for the register.
+Runtime lock outcome at the historical run: `HYBRID GO`
 
-The deterministic assurance result contains five requirements, five
-interfaces, two critical findings, seven major findings, and ten minor
-findings. These findings describe the intentionally incomplete pilot model;
-they are evidence that the rule pack detects review gaps, not release defects.
+Invalidation authority:
 
-Machine-readable evidence:
-`docs/revamp/phase5-qualification-observation.json`.
+- `docs/revamp/36-failed-attempt-postmortem.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
 
-## Verification baseline
+## What remains valid
 
-- `npm run test:workbench`: 18 files, 73 tests passed.
-- `npm test`: 38 files passed plus one optional fixture file skipped; 227 tests
-  passed and 19 optional upstream-corpus tests skipped.
-- `npm run build`: passed.
-- `npm audit --omit=dev`: zero production vulnerabilities.
-- `npm run verify:phase5`: passed.
+The exact locked-runtime service workflow produced useful
+`service-integration` evidence:
 
-## Delivered authority boundaries
+- deterministic requirements, verification, and interface rule evaluation;
+- a deliberately injected unresolved reference was diagnosed;
+- canonical source remained unchanged before approval;
+- a typed interface command and requirement documentation command validated and
+  applied through the command engine;
+- two Git baselines were created and compared;
+- a stable-identity review finding completed its service lifecycle;
+- deterministic HTML/PDF reports and an interface-register CSV were generated;
+- report manifests captured source/runtime/rule/query provenance.
 
-- Rule results are deterministic projections over normalized semantic
-  snapshots. AI is not an authority.
-- Baseline manifests are workspace-owned and bind commits, snapshots,
-  diagnostics, runtime versions, and audit metadata.
-- Reviews are diffable JSON with frozen scope, stable anchors, explicit
-  transitions, history, and stale-anchor detection.
-- Report bundles identify the workspace, source commit, baseline, language
-  release, workbench version, rule-pack version, view configuration,
-  generation time, diagnostics, and exclusions.
-- Report HTML is sanitized, PDF generation is byte-deterministic, and report
-  paths reject traversal and unsafe symbolic links.
+These results support retained assurance, baseline, review, and report
+packages.
 
-## Known limitations
+## Why the product gate is invalid
 
-- The current semantic profile does not expose all requested interface fields
-  such as units, protocol, timing, capacity, physical connector, safety, or
-  security attributes. Reports mark unavailable data instead of inventing it.
-- Requirement and verification rules evaluate direct normalized relations;
-  indirect satisfaction analysis is not yet claimed.
-- Generated reports are workspace-local artifacts; packaged desktop download
-  and operating-system integration belong to Gate P7.
-- Pilot-derived engine UUIDs may change between parses. The identity overlay
-  correlates command-engine renames by a unique kind/name/source locator and
-  fails closed on ambiguity.
-- This gate proves the bounded capability profile only. It is not a broad
-  SysML v2 conformance declaration.
+`workbench-qualify-phase5.ts` directly invokes `WorkspaceManager`. Its former
+`integratedUsabilityPilot` label was unsupported:
 
-## Decision
+- workspace load was recorded as a literal boolean;
+- requirement navigation passed when a service query contained a
+  `RequirementUsage`;
+- the interface was created through a direct typed command, not diagram
+  interaction;
+- baseline, review, finding, and report tasks bypassed the delivered UI;
+- no independent practitioner executed the workflow.
 
-Gate P5 passes. The workbench can conduct the representative requirements,
-interface, baseline, review, and evidence workflow locally with canonical
-source and explicit approvals. Gate P6 controlled AI is next. Gate P7 remains
-mandatory before production release.
+The script therefore proves service integration, not usability or product
+readiness.
+
+## Additional product defect
+
+The assurance UI originally loaded assurance, Git status, baselines, and
+reviews in one fail-fast operation. A non-Git workspace could not open
+Interfaces or Verification even though those capabilities do not require Git.
+
+The recovery safety floor makes Git optional for those views. Git-backed
+baseline operations remain disabled when the capability is unavailable.
+
+## Gate disposition
+
+P5 is invalidated as a product gate.
+
+The script is retained and renamed in active commands as the
+**service assurance workflow qualifier**. Its output must state:
+
+```json
+{
+  "evidenceLayer": "service-integration",
+  "result": "service-integration-pass",
+  "productGate": {
+    "id": "P5",
+    "state": "invalidated"
+  }
+}
+```
+
+Historical machine-readable observations remain evidence of the service run;
+they are not practitioner evidence.
+
+## Recovery path
+
+P5 is replaced by Recovery Gates R3-R6:
+
+- notation-specific Interconnection View;
+- three source-preserving graphical edits;
+- bounded interface assurance;
+- independent practitioner pilot and rerun.
+
+No product or release claim may depend on P5 until those gates pass.
