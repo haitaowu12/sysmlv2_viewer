@@ -9,6 +9,7 @@ export interface CompanionPackageIdentity {
 export function validateCompanionPackageIdentity(
   identity: CompanionPackageIdentity,
 ): { version: string; authoringArtifactPath: 'runtime/authoring/spec42' } {
+  assertCompanionPackagingEntrypoint()
   if (
     identity.productName !== 'SysML Engineering Workbench' ||
     identity.packageName !== 'sysml-engineering-workbench' ||
@@ -29,6 +30,26 @@ export function validateCompanionPackageIdentity(
   return {
     version: identity.packageVersion,
     authoringArtifactPath,
+  }
+}
+
+/**
+ * The implementation module is deliberately not a supported command-line
+ * entrypoint. The public packaging command must execute the portable preflight
+ * before importing it. This guard prevents a direct `tsx`/compiled invocation
+ * from bypassing dirty-source and official-library tree verification.
+ */
+export function assertCompanionPackagingEntrypoint(
+  entrypoint = process.argv[1],
+): void {
+  const normalized = entrypoint?.replaceAll('\\', '/') ?? ''
+  if (
+    normalized.endsWith('/workbench-package-companion.ts') ||
+    normalized.endsWith('/workbench-package-companion.js')
+  ) {
+    throw new Error(
+      'Direct companion packaging is disabled; use npm run companion:package so the portable preflight runs first',
+    )
   }
 }
 
