@@ -31,6 +31,9 @@ jobs:
       - name: Verify release source gates
         run: npm run verify:release:source
 
+      - name: Verify GitHub Pages companion profile
+        run: npm run verify:web-companion
+
       - name: Confirm candidate qualification fails closed without engines
         shell: bash
         run: |

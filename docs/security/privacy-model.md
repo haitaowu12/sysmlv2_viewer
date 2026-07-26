@@ -9,6 +9,13 @@
 - local source and engineering artifacts remain under user/project control;
 - browser storage is disposable UI/session state, never authoritative reviews/model/evidence.
 
+The public Pages host receives only ordinary static-asset requests. The
+companion bootstrap stores the loopback service origin and short-lived pairing
+code in the URL fragment, which the workbench consumes and removes. Neither the
+workspace path nor model content is placed in that URL or pairing response.
+After pairing, model-bearing requests travel only between the browser and the
+loopback service. The browser holds an opaque workspace handle.
+
 ## Data classes
 
 | Class | Examples | Default location | Egress |
@@ -20,6 +27,7 @@
 | credentials | provider tokens, hosted auth refresh material | OS keystore/hosted secret manager | only to named service |
 | audit metadata | actor/action/id/version/time/result | configured audit store | policy-approved admin access |
 | model-bearing request | provider prompt/context/citations | memory/short-lived job | explicit named action only |
+| Pages bootstrap | loopback origin, one-time pairing code | browser fragment until consumed | none to Pages host |
 
 ## Provider AI
 
@@ -67,6 +75,8 @@ Hosted profile privacy policy must declare tenant region, subprocessors/provider
 - prove provider calls fail when disabled/unapproved;
 - prove context matches confirmation manifest;
 - prove local companion tokens expire/revoke and never enter committed files;
+- prove the launch URL and pairing response contain no local workspace path,
+  the fragment is scrubbed, and only an opaque handle opens the workspace;
 - prove cache deletion changes no authoritative result;
 - threat-test report/markdown/SVG sanitization;
 - generate a privacy manifest for every deployment package.

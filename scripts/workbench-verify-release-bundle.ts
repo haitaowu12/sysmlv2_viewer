@@ -74,9 +74,29 @@ if (libraryFiles.length !== manifest.runtime.officialLibrary.fileCount) {
 await Promise.all([
   stat(resolve(bundleRoot, 'bin/start-workbench.sh')),
   stat(resolve(bundleRoot, 'bin/start-workbench.cmd')),
+  stat(resolve(bundleRoot, 'bin/start-pages-companion.sh')),
+  stat(resolve(bundleRoot, 'bin/start-pages-companion.cmd')),
+  stat(resolve(bundleRoot, 'bin/launch-pages-companion.mjs')),
   stat(resolve(bundleRoot, 'app/index.html')),
   stat(resolve(bundleRoot, 'service/apps/workbench-service/src/main.js')),
 ])
+const [unixCompanionLauncher, windowsCompanionLauncher] = await Promise.all([
+  readFile(resolve(bundleRoot, 'bin/start-pages-companion.sh'), 'utf8'),
+  readFile(resolve(bundleRoot, 'bin/start-pages-companion.cmd'), 'utf8'),
+])
+for (const [name, launcher] of [
+  ['start-pages-companion.sh', unixCompanionLauncher],
+  ['start-pages-companion.cmd', windowsCompanionLauncher],
+] as const) {
+  if (
+    !launcher.includes('--candidate-manifest') ||
+    !launcher.includes('--runtime-lock') ||
+    !launcher.includes('--workspace-file') ||
+    !launcher.includes('--pages-url')
+  ) {
+    throw new Error(`${name} does not bind all bundle-local companion inputs`)
+  }
+}
 
 process.stdout.write(
   `${JSON.stringify(

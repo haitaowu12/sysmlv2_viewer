@@ -13,6 +13,8 @@ import {
   failure,
   isJsonRpcRequest,
   JSON_RPC_ERRORS,
+  WORKBENCH_METHODS,
+  type JsonRpcRequest,
 } from '../../../packages/workbench-protocol/src/index.js'
 import { assertLoopbackAddress } from '../../../packages/workspace-service/src/path-security.js'
 import type { WorkbenchService } from '../../../packages/workspace-service/src/service.js'
@@ -35,6 +37,7 @@ export interface LoopbackServerOptions {
   port?: number
   allowedOrigins: string[]
   staticRoot?: string
+  bootstrapWorkspaceFile?: string
 }
 
 export interface LoopbackServerHandle {
@@ -62,9 +65,28 @@ export async function createLoopbackServer(
     : undefined
 
   const pairingCode = randomBytes(12).toString('base64url')
+  const bootstrapWorkspaceHandle = options.bootstrapWorkspaceFile
+    ? `workspace_${randomBytes(24).toString('base64url')}`
+    : undefined
   const pairingExpiresAt = Date.now() + PAIRING_TTL_MS
+  let pairingConsumed = false
   const sessions = new Map<string, Session>()
   const sockets = new Set<WebSocket>()
+  const handleRequest = async (request: JsonRpcRequest) => {
+    const resolved = resolveBootstrapWorkspace(
+      request,
+      bootstrapWorkspaceHandle,
+      options.bootstrapWorkspaceFile,
+    )
+    if (!resolved) {
+      return failure(
+        request.id,
+        JSON_RPC_ERRORS.workspaceRejected,
+        'Workspace must be opened with the companion-issued handle',
+      )
+    }
+    return options.service.handle(resolved)
+  }
 
   const server = createServer(async (request, response) => {
     applySecurityHeaders(response)
@@ -92,6 +114,15 @@ export async function createLoopbackServer(
       return
     }
     if (request.method === 'OPTIONS') {
+      if (
+        request.headers['access-control-request-private-network'] === 'true'
+      ) {
+        response.setHeader('Access-Control-Allow-Private-Network', 'true')
+        response.appendHeader(
+          'Vary',
+          'Access-Control-Request-Private-Network',
+        )
+      }
       response.setHeader(
         'Access-Control-Allow-Headers',
         'authorization, content-type, x-workbench-csrf',
@@ -107,6 +138,10 @@ export async function createLoopbackServer(
     }
 
     if (request.url === '/pair') {
+      if (pairingConsumed) {
+        respondJson(response, 410, { error: 'Pairing code already used' })
+        return
+      }
       if (Date.now() >= pairingExpiresAt) {
         respondJson(response, 410, { error: 'Pairing code expired' })
         return
@@ -117,6 +152,11 @@ export async function createLoopbackServer(
         respondJson(response, 401, { error: 'Invalid pairing code' })
         return
       }
+      if (pairingConsumed) {
+        respondJson(response, 410, { error: 'Pairing code already used' })
+        return
+      }
+      pairingConsumed = true
       const token = randomBytes(32).toString('base64url')
       const csrf = randomBytes(24).toString('base64url')
       const key = hash(token).toString('hex')
@@ -131,6 +171,7 @@ export async function createLoopbackServer(
         token,
         csrf,
         expiresAt: new Date(expiresAt).toISOString(),
+        workspaceHandle: bootstrapWorkspaceHandle,
       })
       return
     }
@@ -163,7 +204,11 @@ export async function createLoopbackServer(
         )
         return
       }
-      respondJson(response, 200, await options.service.handle(body))
+      respondJson(
+        response,
+        200,
+        await handleRequest(body),
+      )
       return
     }
 
@@ -230,7 +275,7 @@ export async function createLoopbackServer(
         )
         return
       }
-      socket.send(JSON.stringify(await options.service.handle(request)))
+      socket.send(JSON.stringify(await handleRequest(request)))
     })
   })
 
@@ -251,6 +296,33 @@ export async function createLoopbackServer(
         }),
       )
       await closeServer(server)
+    },
+  }
+}
+
+function resolveBootstrapWorkspace(
+  request: JsonRpcRequest,
+  workspaceHandle: string | undefined,
+  workspaceFile: string | undefined,
+): JsonRpcRequest | null {
+  if (!workspaceHandle || !workspaceFile) {
+    return request
+  }
+  if (request.method !== WORKBENCH_METHODS.workspaceOpen) return request
+  if (
+    !request.params ||
+    typeof request.params !== 'object' ||
+    Array.isArray(request.params) ||
+    !('workspaceFile' in request.params) ||
+    request.params.workspaceFile !== workspaceHandle
+  ) {
+    return null
+  }
+  return {
+    ...request,
+    params: {
+      ...request.params,
+      workspaceFile,
     },
   }
 }

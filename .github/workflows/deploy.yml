@@ -1,4 +1,4 @@
-name: Deploy read-only compatibility demo to GitHub Pages
+name: Deploy SysML Engineering Workbench to GitHub Pages
 
 on:
   push:
@@ -36,11 +36,8 @@ jobs:
           echo "SYSML_V2_RELEASE_DIR is optional; upstream corpus tests are skipped when absent."
           npm run test:release
 
-      - name: Build static app
-        run: npm run build
-        env:
-          VITE_WORKBENCH_DEMO: legacy
-          VITE_BASE_PATH: /sysmlv2_viewer/
+      - name: Build and qualify Pages companion
+        run: npm run verify:web-companion
 
       - name: Production dependency audit
         run: npm audit --omit=dev
