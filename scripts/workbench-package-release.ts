@@ -155,6 +155,7 @@ await Promise.all([
   mkdir(resolve(bundleRoot, 'node_modules/@pdf-lib'), { recursive: true }),
   mkdir(resolve(bundleRoot, 'bin'), { recursive: true }),
   mkdir(resolve(bundleRoot, 'licenses/runtime'), { recursive: true }),
+  mkdir(resolve(bundleRoot, 'licenses/product'), { recursive: true }),
   mkdir(resolve(bundleRoot, 'licenses/npm'), { recursive: true }),
 ])
 
@@ -198,6 +199,16 @@ await Promise.all([
   cp(
     officialLibraryLicense,
     resolve(bundleRoot, 'licenses/runtime/official-library-EPL-2.0.txt'),
+  ),
+  cp(resolve(repositoryRoot, 'LICENSE'), resolve(bundleRoot, 'LICENSE')),
+  cp(resolve(repositoryRoot, 'NOTICE'), resolve(bundleRoot, 'NOTICE')),
+  cp(
+    resolve(repositoryRoot, 'LICENSE'),
+    resolve(bundleRoot, 'licenses/product/Apache-2.0.txt'),
+  ),
+  cp(
+    resolve(repositoryRoot, 'docs/licenses/vinqut-runtime-disposition.md'),
+    resolve(bundleRoot, 'licenses/runtime/vinqut-runtime-disposition.md'),
   ),
 ])
 
@@ -322,8 +333,9 @@ const manifest = {
   distribution: {
     signed: false,
     notarized: false,
-    productLicenseDeclared: false,
-    runtimeLicenseReconciliation: 'unresolved',
+    productLicenseDeclared: true,
+    productLicenseSpdx: 'Apache-2.0',
+    runtimeLicenseReconciliation: 'exact-pin-owner-disposition-recorded',
     networkRequiredAfterInstall: false,
     launcher: platform.startsWith('win32')
       ? 'bin/start-workbench.cmd'

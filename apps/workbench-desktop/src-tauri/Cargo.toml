@@ -1,0 +1,20 @@
+[package]
+name = "sysml-engineering-workbench-desktop"
+version = "0.7.0"
+description = "Offline desktop host for SysML Engineering Workbench"
+authors = ["SysML Engineering Workbench contributors"]
+license = "Apache-2.0"
+repository = "https://github.com/haitaowu12/sysmlv2_viewer"
+edition = "2024"
+rust-version = "1.88"
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "=2.11.5", features = [] }
+tauri-plugin-dialog = "=2.7.2"
+tauri-plugin-shell = "=2.3.5"
+tokio = { version = "1", features = ["time"] }

@@ -1,7 +1,8 @@
 # Phase 7 — Hardening and Release Plan
 
-Status: technical candidate complete; Gate P7 blocked on owner/external evidence
-Baseline: `1b49d5c9339e2169955f48b4add49de6367087e7`
+Status: self-contained desktop technical candidate implemented; Gate P7
+blocked on signing and independent external evidence
+Baseline: exact source commit recorded by each generated release manifest
 Branch: `codex/sysml-workbench-phase7-release`
 
 ## Objective
@@ -17,25 +18,30 @@ qualification as success.
 
 ## Selected distribution profile
 
-Profile B, browser plus authenticated loopback companion, is the first
-production architecture. The release bundle contains:
+Profile C, a Tauri desktop host over the shared Workbench protocol, is the
+first production architecture. The initial supported target is Apple Silicon
+on macOS 13 or later. The application contains:
 
 - the built Workbench UI;
 - the compiled Workbench Service;
+- an exact Node 22 sidecar;
+- a minimized Java 21 runtime generated with `jdeps` and `jlink`;
 - exact production Node dependencies;
 - locked semantic and authoring engine artifacts;
 - the pinned official standard library;
-- launchers for the qualified operating-system target;
-- license notices, SBOM, release manifest, hashes, and recovery guidance.
+- native workspace selection and service lifecycle control;
+- license notices, npm/Rust inventories, release manifest, hashes, and
+  recovery guidance.
 
-The bundle requires a supported Node and Java runtime unless a platform
-installer embeds them. It must function without network access after
-installation.
+The installed application must function without network access and without
+repository-relative or system Node/Java dependencies. Profile B remains a
+supported companion/development architecture and future distribution option;
+it is not the first public production channel.
 
-Profile C native desktop hosting remains a packaging enhancement, not a
-separate semantic architecture. A signed/notarized installer is required for a
-public production channel. An unsigned portable bundle can qualify only as an
-internal release candidate.
+The desktop host contains no semantic authority. A Developer ID signed and
+Apple-notarized `.app` and DMG are required for the public production channel.
+An ad-hoc-signed application qualifies only as a technical/internal candidate.
+Windows is deferred and must not be claimed by this release.
 
 ## Workstreams
 
@@ -53,8 +59,11 @@ internal release candidate.
   headers and no directory traversal.
 - Assemble a reproducible bundle only from exact locked runtime artifacts.
 - Verify artifact/library hashes before launch.
-- Include macOS and Windows launch scripts/config contracts.
+- Stage Node 22 and a minimized Java 21 runtime for macOS arm64.
+- Build and verify the native `.app` and DMG.
 - Run a copied-bundle smoke without repository-relative imports.
+- Run a native-bundle smoke with a restricted `PATH`, the qualified hybrid
+  authority, the four-document pilot, clean shutdown, and log-leak checks.
 
 ### 3. Security and privacy closure
 
@@ -62,6 +71,7 @@ internal release candidate.
 - Add static-asset CSP and traversal tests.
 - Add AI audit path/symlink tests.
 - Produce license policy, SBOM, notices, dependency audit, and threat closure.
+- Inventory the locked Tauri Cargo graph and run RustSec audit before signing.
 - Document residual risks and release blockers.
 
 ### 4. Accessibility and usability
@@ -94,7 +104,12 @@ Technical gates:
 - `npm run verify:release` passes from a clean checkout.
 - The exact runtime bundle assembles and verifies without network.
 - The bundled UI/service opens the pilot workspace and runs the release smoke.
+- The `.app` passes strict code-integrity verification, exact-runtime smoke,
+  and clean service shutdown.
 - Production audit and license policy have zero unapproved findings.
+- The locked desktop Cargo graph has zero unapproved license expressions,
+  vulnerabilities, or unsoundness findings; informational maintenance notices
+  have an owner disposition or remain explicit release blockers.
 - Report and release manifests are deterministic.
 - Accessibility automation has no serious/critical violations.
 - Performance evidence records all required target outcomes.
@@ -103,14 +118,12 @@ Technical gates:
 
 Owner/external gates:
 
-- minimum supported operating systems and distribution channel are approved;
-- each claimed OS has clean-machine evidence;
-- public binaries are signed/notarized or the owner explicitly limits the
-  release to an internal unsigned channel;
+- the selected macOS 13+ arm64 channel has clean-machine evidence;
+- public binaries are Developer ID signed, notarized, and stapled;
 - three independent pilot users complete the specified tasks and critical
   findings are closed;
 - residual performance/security exceptions receive owner, expiry, and
   mitigation;
-- product name and release version are approved.
+- the release version and evidence manifest are approved.
 
 No production tag or public release is created before both gate groups pass.

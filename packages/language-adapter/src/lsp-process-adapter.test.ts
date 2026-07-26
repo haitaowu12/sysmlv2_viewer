@@ -188,4 +188,52 @@ describe('LspProcessAdapter', () => {
       adapter.hover(documentUri, { line: 0, character: 1 }),
     ).rejects.toThrow('Language engine request timed out')
   })
+
+  it('handles an engine crash without an unhandled stdin error during disposal', async () => {
+    const adapter = new LspProcessAdapter({
+      metadata: {
+        adapterId: 'test/fake-lsp-crash',
+        adapterVersion: '0.1.0',
+        engineName: 'fake-lsp',
+        engineVersion: '1',
+        referenceRelease: 'test',
+        qualificationStatus: 'unqualified',
+      },
+      command: process.execPath,
+      arguments: [
+        resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs'),
+      ],
+      environment: {
+        FAKE_LSP_CRASH_AFTER_OPEN: '1',
+        FAKE_LSP_CRASH_DELAY_MS: '25',
+      },
+      diagnosticSettleMs: 10,
+      requestTimeoutMs: 500,
+    })
+    adapters.push(adapter)
+    const filePath = resolve(currentDirectory, 'crash.sysml')
+    const documentUri = pathToFileURL(filePath).href
+    await adapter.openWorkspace({
+      workspaceId: 'fake-crash',
+      rootUri: pathToFileURL(currentDirectory).href,
+      configurationName: 'test',
+      documents: [
+        {
+          uri: documentUri,
+          absolutePath: filePath,
+          languageId: 'sysml',
+          version: 1,
+          text: 'package Fake {}',
+          sha256: 'test',
+        },
+      ],
+    })
+
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 75))
+
+    expect(adapter.health()).toMatchObject({
+      state: 'failed',
+    })
+    await expect(adapter.dispose()).resolves.toBeUndefined()
+  })
 })

@@ -110,6 +110,15 @@ export class LspProcessAdapter implements LanguageAdapter {
         () => (this.captureTruncated = true),
       )
     })
+    const child = this.process
+    child.stdin.on('error', (error) => {
+      if (this.process !== child) return
+      const failure = new Error(
+        `Language engine input stream failed: ${error.message}`,
+      )
+      this.healthState = { state: 'failed', message: failure.message }
+      this.rejectPending(failure)
+    })
     this.process.once('exit', (code, signal) => {
       this.exitCode = code
       this.signal = signal
@@ -541,11 +550,12 @@ export class LspProcessAdapter implements LanguageAdapter {
   }
 
   private send(message: unknown): void {
-    if (!this.process) {
+    const child = this.process
+    if (!child || child.stdin.destroyed || !child.stdin.writable) {
       throw new Error('Language engine process is not running')
     }
     const payload = Buffer.from(JSON.stringify(message), 'utf8')
-    this.process.stdin.write(
+    child.stdin.write(
       Buffer.concat([
         Buffer.from(`Content-Length: ${payload.byteLength}\r\n\r\n`, 'ascii'),
         payload,

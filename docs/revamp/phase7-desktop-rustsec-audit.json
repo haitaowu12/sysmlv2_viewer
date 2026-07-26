@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "outcome": "pass-with-notices",
+  "scope": "locked Tauri Cargo graph compiled for macOS arm64",
+  "target": "aarch64-apple-darwin",
+  "lock": "apps/workbench-desktop/src-tauri/Cargo.lock",
+  "activeComponentCount": 256,
+  "targetVulnerabilities": [],
+  "targetWarnings": {
+    "unmaintained": [
+      {
+        "advisoryId": "RUSTSEC-2025-0081",
+        "package": "unic-char-property",
+        "version": "0.9.0",
+        "title": "`unic-char-property` is unmaintained",
+        "url": "https://github.com/rustsec/advisory-db/issues/2414",
+        "patched": []
+      },
+      {
+        "advisoryId": "RUSTSEC-2025-0075",
+        "package": "unic-char-range",
+        "version": "0.9.0",
+        "title": "`unic-char-range` is unmaintained",
+        "url": "https://github.com/rustsec/advisory-db/issues/2414",
+        "patched": []
+      },
+      {
+        "advisoryId": "RUSTSEC-2025-0080",
+        "package": "unic-common",
+        "version": "0.9.0",
+        "title": "`unic-common` is unmaintained",
+        "url": "https://github.com/rustsec/advisory-db/issues/2414",
+        "patched": []
+      },
+      {
+        "advisoryId": "RUSTSEC-2025-0100",
+        "package": "unic-ucd-ident",
+        "version": "0.9.0",
+        "title": "`unic-ucd-ident` is unmaintained",
+        "url": "https://github.com/rustsec/advisory-db/issues/2414",
+        "patched": []
+      },
+      {
+        "advisoryId": "RUSTSEC-2025-0098",
+        "package": "unic-ucd-version",
+        "version": "0.9.0",
+        "title": "`unic-ucd-version` is unmaintained",
+        "url": "https://github.com/rustsec/advisory-db/issues/2414",
+        "patched": []
+      }
+    ]
+  },
+  "excludedNonTargetWarningCount": 12,
+  "policy": {
+    "vulnerabilities": "blocking",
+    "unsound": "blocking",
+    "unmaintained": "recorded notice requiring monitored upstream replacement or owner risk disposition before final release"
+  },
+  "blockers": []
+}

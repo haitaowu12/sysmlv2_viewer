@@ -1,6 +1,7 @@
 # Phase 7 External Evidence Gate
 
-Status: implemented and fail-closed; genuine evidence not yet supplied
+Status: implemented and fail-closed; source-level owner decisions recorded,
+artifact-bound external evidence not yet supplied
 
 The previous release-approval contract accepted owner booleans and participant
 names without verifying the underlying evidence. That was insufficient for a
@@ -44,7 +45,13 @@ Qualification evidence:
 - production npm audit: zero findings;
 - two independently generated runtime-provenance reports were byte-identical.
 
+The repository now records the selected Apache-2.0 product license, exact-pin
+runtime disposition, SysML Engineering Workbench product name, macOS 13+ arm64
+initial target, and signed Tauri app/DMG distribution plan. These decisions
+remove ambiguity; they do not fabricate the private hash-bound approval
+records.
+
 This closes the implementation gap in how external evidence is validated. It
-does not close the external gates themselves. Owner/legal decisions,
-signed-platform exercises, accessibility review, and participant results must
-be genuine and supplied before the strict release command can pass.
+does not close the signing, notarization, clean-machine, accessibility, or
+human-pilot gates. Those results must be genuine and supplied before the
+strict release command can pass.

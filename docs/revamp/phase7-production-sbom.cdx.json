@@ -367,6 +367,136 @@
       ]
     },
     {
+      "bom-ref": "@tauri-apps/api@2.11.1",
+      "type": "library",
+      "name": "@tauri-apps/api",
+      "version": "2.11.1",
+      "scope": "required",
+      "description": "Tauri API definitions",
+      "purl": "pkg:npm/%40tauri-apps/api@2.11.1",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tauri-apps/api"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@tauri-apps/api/-/api-2.11.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/tauri-apps/tauri.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/tauri-apps/tauri#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/tauri-apps/tauri/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "33614fb98343da6fb087985f5bd66949dc4c3dd109a2f3c15b0a07266c14a72b1360d1da3a4545378d7d9bf2b42c88236ffeca536bc182c51ea495ae8100af00"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR MIT"
+        }
+      ]
+    },
+    {
+      "bom-ref": "@tauri-apps/plugin-dialog@2.7.2",
+      "type": "library",
+      "name": "@tauri-apps/plugin-dialog",
+      "version": "2.7.2",
+      "scope": "required",
+      "purl": "pkg:npm/%40tauri-apps/plugin-dialog@2.7.2",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tauri-apps/plugin-dialog"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@tauri-apps/plugin-dialog/-/plugin-dialog-2.7.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/tauri-apps/plugins-workspace.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/tauri-apps/plugins-workspace#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/tauri-apps/plugins-workspace/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "a57d081a6d48dc8eb073ecde29872ad464aaa202baa2408d5f97ce75a354e5a6f5023192ea5d44e7014d8c46fb99e83b6454a9d0952cfb48d01903723af2ebb2"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ]
+    },
+    {
+      "bom-ref": "@tauri-apps/plugin-shell@2.3.5",
+      "type": "library",
+      "name": "@tauri-apps/plugin-shell",
+      "version": "2.3.5",
+      "scope": "required",
+      "purl": "pkg:npm/%40tauri-apps/plugin-shell@2.3.5",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tauri-apps/plugin-shell"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@tauri-apps/plugin-shell/-/plugin-shell-2.3.5.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/tauri-apps/plugins-workspace.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/tauri-apps/plugins-workspace#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/tauri-apps/plugins-workspace/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8dec2d50b86243b948efea3008a02373cb582c9afdd94d7a6cf39e01ae3bd8b1c97606a26cb3fcdcd71f005d9efb0904700e77171290019edbc83cecd9e7a2ce"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ]
+    },
+    {
       "bom-ref": "@types/d3-color@3.1.3",
       "type": "library",
       "name": "@types/d3-color",
@@ -2040,6 +2170,22 @@
       ]
     },
     {
+      "ref": "@tauri-apps/api@2.11.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "@tauri-apps/plugin-dialog@2.7.2",
+      "dependsOn": [
+        "@tauri-apps/api@2.11.1"
+      ]
+    },
+    {
+      "ref": "@tauri-apps/plugin-shell@2.3.5",
+      "dependsOn": [
+        "@tauri-apps/api@2.11.1"
+      ]
+    },
+    {
       "ref": "@types/d3-color@3.1.3",
       "dependsOn": []
     },
@@ -2219,6 +2365,9 @@
       "dependsOn": [
         "@dagrejs/dagre@2.0.4",
         "@monaco-editor/react@4.7.0",
+        "@tauri-apps/api@2.11.1",
+        "@tauri-apps/plugin-dialog@2.7.2",
+        "@tauri-apps/plugin-shell@2.3.5",
         "@xyflow/react@12.10.0",
         "lucide-react@1.8.0",
         "pdf-lib@1.17.1",

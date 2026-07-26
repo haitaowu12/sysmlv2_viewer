@@ -1,0 +1,28 @@
+SysML Engineering Workbench
+
+This product is licensed under the Apache License, Version 2.0.
+
+The production runtime contains separately licensed components. The release
+assembler preserves their license and notice texts in the distribution:
+
+- VinQut/sysmlv2-lsp wrapper: MIT License.
+- SysML v2 Pilot Implementation at commit
+  fa709f28dfd49dfdb7ee83e4e19da2f57e0eb3aa: Eclipse Public License 2.0.
+- SysML v2 standard libraries at commit
+  de1070ae8e79c21532b8004fc663d47b35d0e9fa: Eclipse Public License 2.0.
+- Spec42 authoring runtime: MIT License.
+- Eclipse Xtext, EMF, LSP4J, Equinox, OSGi, and UML2 components:
+  Eclipse Public License 2.0 or the license stated by the component.
+- Google Guice, Guava, and Gson components: Apache License 2.0.
+- ANTLR Runtime 3.2: BSD 3-Clause License.
+- Node.js, when bundled by the desktop distribution: MIT License and the
+  third-party notices shipped with the exact Node.js runtime.
+- The Java runtime, when bundled by the desktop distribution: the license and
+  notices shipped with the exact selected runtime.
+
+The original VinQut NOTICE is retained verbatim in release artifacts for
+provenance. Its LGPL-3.0-or-later label for the Pilot is superseded for this
+distribution by the exact pinned Pilot repository LICENSE, which declares
+EPL-2.0. See docs/licenses/vinqut-runtime-disposition.md.
+
+Product names and trademarks remain the property of their respective owners.

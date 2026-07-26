@@ -45,6 +45,8 @@ distribution and usability gates prevent a public production claim.
 | T15 | hosted cross-tenant access | hosted service→persistence/jobs | server-side object auth, isolation, quotas, encryption, audit, tests | before D |
 | T16 | database becomes shadow model | hosted adapter→semantics | canonical source/artifact schemas, adapter equivalence, immutable manifests | before D |
 | T17 | denial during indexing/report | service resources | progressive status, cancellation, worker isolation, budgets, degraded mode | P1/P5 |
+| T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
+| T19 | bundled Node JIT entitlement expands executable-memory surface | desktop host→sidecar | exact signed Node hash, `allow-jit` only, no unsigned-executable-memory entitlement, no remote privileged content, strict CSP, loopback pairing, mounted-DMG runtime smoke | P7 |
 
 ## Implemented control status
 
@@ -60,7 +62,12 @@ Implemented and tested:
 - locked runtime artifact SHA-256 verification before qualified startup;
 - engine-proposed workspace edits rejected when any URI is outside the active
   document set;
-- zero-finding npm audit and deterministic production SBOM/license inventory.
+- zero-finding npm audit and deterministic production SBOM/license inventory;
+- target-aware macOS arm64 RustSec audit with zero vulnerabilities and zero
+  unsoundness findings, plus explicit unmaintained-dependency notices;
+- self-contained Tauri app/DMG with exact Node/Java manifests, strict
+  code-integrity verification, native picker ACL, app-owned service lifecycle,
+  mounted-read-only DMG workspace smoke, clean shutdown, and log-leak checks;
 - same-origin loopback static serving with strict CSP, traversal rejection,
   immutable asset caching, and whole-bundle preflight hashes;
 - recovery-journaled command writes, base-hash conflicts, opaque-range guards,
@@ -88,15 +95,12 @@ Open release gates:
 - watcher debounce/quotas and TOCTOU tests when watching is introduced;
 - process sandboxing and large-workspace memory budgets remain residual risk
   for the internal RC and require disposition before public distribution;
-- Windows packaging/IPC review, signing, and installer threat tests;
-- owner product-license decision and runtime redistribution-license
-  reconciliation;
-- signed/notarized update/distribution channel;
+- Developer ID signing, notarization, stapling, and signed-update policy;
 - clean-machine OS and three-person usability evidence;
+- final owner disposition or upstream removal of the five target-relevant
+  unmaintained `unic-*` maintenance notices;
 - manual contrast/screen-reader review (automated JSDOM axe cannot measure
   rendered color contrast).
-| T18 | Draw.io/remote embed egress | export/markup | export-only, local default, isolated explicit remote action, sanitized reimport as attachment | P4 |
-
 ## Security invariants
 
 - no renderer, client, AI, or transport bypasses service authorization and command validation;
