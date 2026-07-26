@@ -1,25 +1,31 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
 
-const requiredFiles = [
+/**
+ * Governing recovery and deployment records. Historical research, observations,
+ * and superseded phase notes remain available, but only these files are allowed
+ * to define current gate or delivery posture.
+ */
+const governedFiles = [
   'README.md',
+  'docs/adr/ADR-001-language-reference-and-runtime-engine-selection.md',
+  'docs/adr/ADR-003-client-service-and-deployment-architecture.md',
+  'docs/adr/ADR-008-deployment-profiles.md',
+  'docs/revamp/04-target-product-contract.md',
+  'docs/revamp/15-deployment-and-access-strategy.md',
   'docs/revamp/23-phase4-product-shell-status.md',
   'docs/revamp/24-phase5-assurance-plan.md',
   'docs/revamp/25-phase5-gate-decision.md',
   'docs/revamp/26-phase6-controlled-ai-plan.md',
   'docs/revamp/27-phase6-gate-decision.md',
+  'docs/revamp/34-web-companion-deployment.md',
+  'docs/revamp/35-self-contained-companion-packaging.md',
   'docs/revamp/36-failed-attempt-postmortem.md',
   'docs/revamp/37-recovery-acceptance-contract.md',
   'docs/revamp/38-codex-recovery-execution-handoff.md',
-]
-
-const governedFiles = [
-  'README.md',
-  ...(await markdownFiles('docs/adr')),
-  ...(await markdownFiles('docs/revamp')),
-].sort()
+] as const
 
 const contents = Object.fromEntries(
   await Promise.all(
@@ -28,19 +34,25 @@ const contents = Object.fromEntries(
       await readFile(resolve(repositoryRoot, path), 'utf8'),
     ]),
   ),
-) as Record<string, string>
+) as Record<(typeof governedFiles)[number], string>
 
 const failures: string[] = []
-
-for (const required of requiredFiles) {
-  if (!(required in contents)) {
-    failures.push(`Required recovery document is missing: ${required}`)
-  }
-}
 
 requireText(
   'README.md',
   'Recovery status: **pre-alpha technical foundation; not a production release**',
+)
+requireText(
+  'docs/adr/ADR-003-client-service-and-deployment-architecture.md',
+  'The recovery authoring client is a **VS Code extension**',
+)
+requireText(
+  'docs/adr/ADR-008-deployment-profiles.md',
+  '- Status: amended for recovery',
+)
+requireText(
+  'docs/revamp/15-deployment-and-access-strategy.md',
+  'Status: amended for recovery; production profile selection deferred',
 )
 requireText(
   'docs/revamp/23-phase4-product-shell-status.md',
@@ -61,6 +73,14 @@ requireText(
 requireText(
   'docs/revamp/27-phase6-gate-decision.md',
   'Decision: **product-gate status withdrawn; service safety evidence retained**',
+)
+requireText(
+  'docs/revamp/34-web-companion-deployment.md',
+  'production recommendation\nwithdrawn during recovery',
+)
+requireText(
+  'docs/revamp/35-self-contained-companion-packaging.md',
+  'release work frozen during\nrecovery',
 )
 requireText(
   'docs/revamp/37-recovery-acceptance-contract.md',
@@ -89,41 +109,30 @@ if (failures.length > 0) {
 
 process.stdout.write(
   `${JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     result: 'pass',
     recoveryState: 'pre-alpha',
     p4: 'invalidated',
     p5: 'invalidated',
     p6: 'service-safety-evidence-only',
-    requiredFiles,
-    governedMarkdownFiles: governedFiles.length,
+    governedFiles: [...governedFiles],
   }, null, 2)}\n`,
 )
 
-async function markdownFiles(relativeRoot: string): Promise<string[]> {
-  const entries = await readdir(resolve(repositoryRoot, relativeRoot), {
-    withFileTypes: true,
-  })
-  const result: string[] = []
-  for (const entry of entries) {
-    const relativePath = `${relativeRoot}/${entry.name}`
-    if (entry.isDirectory()) {
-      result.push(...await markdownFiles(relativePath))
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      result.push(relativePath)
-    }
-  }
-  return result
-}
-
-function requireText(path: string, expected: string): void {
-  if (!contents[path]?.includes(expected)) {
+function requireText(
+  path: (typeof governedFiles)[number],
+  expected: string,
+): void {
+  if (!contents[path].includes(expected)) {
     failures.push(`${path} is missing required text: ${expected}`)
   }
 }
 
-function forbidText(path: string, prohibited: string): void {
-  if (contents[path]?.includes(prohibited)) {
+function forbidText(
+  path: (typeof governedFiles)[number],
+  prohibited: string,
+): void {
+  if (contents[path].includes(prohibited)) {
     failures.push(`${path} contains prohibited text: ${prohibited}`)
   }
 }
