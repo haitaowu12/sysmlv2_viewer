@@ -1,199 +1,180 @@
 # SysML Engineering Workbench
 
-Local-first SysML v2 engineering workbench under staged architectural revamp.
-SysML/KerML source is canonical. The production path is a workspace service
-backed by a locked, qualified language-engine runtime.
+Recovery status: **pre-alpha technical foundation; not a production release**
 
-## Current implemented state
+SysML/KerML source is canonical. The repository retains a transport-neutral
+Workbench Service, Protocol, Client SDK, language adapter, semantic evidence,
+identity, typed-command, assurance, and security foundation. The former Phase 4
+and Phase 5 product-gate claims have been invalidated because their evidence
+bypassed the delivered UI.
 
-Gates P1-P6 provide:
+The active recovery authorities are:
 
-- multi-file workspace loading and configured libraries;
-- locked VinQut/Pilot semantic authority plus non-authoritative Spec42
-  authoring assistance;
-- deterministic diagnostics and standard LSP navigation operations;
-- explicit Pilot EMF semantic evidence with no legacy-parser fallback;
-- normalized elements and containment, typing, dependency, satisfaction,
-  verification, connection, flow, and interface relationships;
-- durable identity registry with aliases, tombstones, reconciliation receipts,
-  conflict failure, and backup recovery;
-- bounded containment, type, dependency, neighbourhood, requirements,
-  verification, and interface queries;
-- an explorer projection built only from the normalized snapshot;
-- identity-aware rename/move semantic diff classification.
+- `docs/revamp/36-failed-attempt-postmortem.md`
+- `docs/revamp/37-recovery-acceptance-contract.md`
+- `docs/revamp/38-codex-recovery-execution-handoff.md`
 
-The Phase 3 command boundary includes:
+## Release truth
 
-- versioned command registry and command envelopes;
-- mandatory base snapshot/document hashes;
-- deterministic workspace edits with overlap, range, and scope rejection;
-- exact inverse edits and validated undo/redo transactions;
-- rename plus bounded create/delete/move/type/multiplicity/property,
-  documentation, relationship, and versioned-pattern source profiles;
-- protocol, service, client SDK, and native structural/interconnection command
-  review components;
-- command-id idempotency conflicts;
-- authoritative overlay diagnostics and semantic diff;
-- explicit human approval before crash-consistent multi-file commit;
-- durable audit metadata, recovery journals, external-writer conflict detection,
-  and startup recovery;
-- canonical source remains unchanged before approval.
+- P1-P3 remain technical foundation evidence, subject to recovery
+  requalification.
+- P4 is invalidated as a product gate.
+- P5 is invalidated as a product gate.
+- P6 retains service-level safety evidence; its product-gate status is
+  withdrawn.
+- P7 and release progression remain blocked.
+- No public production, release-candidate product, Windows, hosted
+  collaboration, or complete SysML v2 notation claim is made.
 
-The Phase 4 product-shell component now adds:
+The existing `0.7.0-rc.1` package identifier is historical compatibility
+metadata. It does not indicate product release readiness.
 
-- the service-backed workbench as the primary local application route;
-- Explorer, Model, Diagrams, Traceability, Interfaces, Verification, Reviews,
-  Changes, Reports, and Settings activities;
-- containment, type, dependency, neighbourhood, requirements, verification,
-  and interface explorer modes;
-- source, semantic diagram, matrix, inspector, Problems, saved-view, and
-  command-palette surfaces;
-- Monaco completion, hover, definition, references, and formatting delegated
-  to the language service;
-- source drafts that become validated `replace-document` command proposals and
-  cannot write before explicit human approval;
-- workspace-owned saved views and stable-identity layout positions.
+## Retained technical capabilities
 
-Phase 5 adds the qualified engineering-assurance workflow:
+The repository contains implemented and tested foundations for:
 
-- deterministic requirements, verification, and interface rule packs;
-- Git status, workspace-owned baseline manifests, and stable-identity semantic
-  comparison;
-- model-anchored reviews with explicit dispositions, history, and stale-anchor
-  detection;
-- reproducible, sanitized HTML and byte-deterministic PDF reports, with CSV
-  exports for registers;
-- operational Interfaces, Verification, Changes, Reviews, and Reports
-  workbench surfaces;
-- a realistic four-document infrastructure pilot with two Git baselines, an
-  approved source-backed interface edit, a completed review cycle, and
-  generated evidence.
+- configured multi-file workspaces and official libraries;
+- locked VinQut/Pilot semantic authority with a product-owned evidence
+  extension;
+- diagnostics, symbols, definition, references, hover, and bounded authoring
+  assistance;
+- normalized source-backed elements and containment, typing, dependency,
+  satisfaction, verification, connection, flow, and interface relationships;
+- stable identity, reconciliation, tombstones, recovery, and semantic diff;
+- bounded queries over the normalized snapshot;
+- typed commands, explicit source edits, authoritative validation, approval,
+  crash-consistent apply, audit, undo, and recovery;
+- deterministic rule evaluation;
+- Git-backed baselines when Git is available;
+- model-anchored review and report service schemas;
+- loopback pairing, origin controls, opaque workspace handles, and packaged
+  runtime integrity checks;
+- bounded AI/tool proposal safety mechanisms at the service layer.
 
-Phase 6 adds the controlled-assistant boundary:
+These capabilities do not by themselves prove a usable authoring product.
 
-- twelve narrow semantic/model tools and no raw repository access;
-- stable-identity citation validation and rejection of invented references;
-- typed command proposals with source edits, diagnostics, affected identities,
-  semantic diff, and no provider-side apply;
-- a separate user-only approval operation that safely revalidates after
-  workspace restart;
-- tamper-evident, diffable local AI audit records;
-- offline deterministic search/rename fallback with provider networking
-  disabled;
-- an Assistant patch-review surface with explicit network state;
-- removal of the legacy whole-document AI implementation and `410 Gone`
-  retirement responses.
+## Recovery UI boundary
 
-Phase 7 technical work now adds:
+The current shared web shell is a recovery/evaluation client:
 
-- same-origin static UI delivery from the authenticated loopback service with
-  strict CSP, Host checking, traversal rejection, and immutable asset caching;
-- deterministic exact-runtime bundle assembly, embedded whole-bundle
-  verification, complete runtime/npm notices, and a copied-bundle offline
-  smoke;
-- release-source and fail-closed production verification commands;
-- automated serious/critical accessibility checks, command-palette focus
-  containment, reduced-motion and visible-focus behavior;
-- refreshed performance instrumentation with warmups, p95 distributions, and
-  all mandated medium-workspace targets;
-- current workspace, installation, recovery, migration, architecture,
-  security, troubleshooting, and release documentation.
+- the Pages profile does not expose source authoring until Monaco and its
+  workers pass exact-artifact CSP/offline qualification;
+- the current card grid is labelled an **element map**, not a SysML diagram;
+- the current table is labelled an **element inventory**, not an engineering
+  matrix;
+- generic dropdown graphical editing is not a product capability;
+- Interfaces and Verification remain available when Git is unavailable;
+- Git baseline controls are disabled with an explicit capability message.
 
-The GitHub Pages build now uses the modern service-backed workbench shell. It
-has two explicit modes:
+The retained viewer at `?legacy=1` is a regression and rendering reference. Its
+parser and browser store are not authoritative.
 
-- without a local companion it is a bounded public sample/evaluation surface;
-- after an explicit one-time pairing with the local companion it uses the
-  qualified local language/workspace service for private authoring and review.
+## Recovery target
 
-The browser receives an opaque workspace handle, not a filesystem path.
-Canonical source, Git access, engines, reviews, and evidence stay local. The old
-Vite viewer is isolated behind `?legacy=1` as a read-only compatibility sample;
-its parser, fixed diagram tabs, Draw.io round trip, and browser store are not
-authoritative architecture.
+The recovery contract selects a VS Code-first authoring shell backed by the
+existing service and protocol. The first practitioner slice is a bounded
+OMC4/SCADA-style interface workflow:
 
-Not yet approved as production claims: complete notation-specific graphical
-mutation, external AI-provider adapters, signed desktop installers, Windows
-qualification, or remote collaboration. P7 public release remains blocked by
-product/runtime license reconciliation, signed/notarized distribution,
-clean-machine evidence for every claimed OS, and three-user usability evidence.
+1. open multi-file source;
+2. diagnose and navigate through the required language authority;
+3. render a source-backed Interconnection View;
+4. create a port;
+5. connect eligible ports;
+6. create or change an item flow;
+7. review and approve source edits;
+8. undo and restart;
+9. reproduce an interface register;
+10. pass three independent practitioner runs.
+
+AI expansion, broader diagrams, packaging expansion, and release promotion are
+frozen until that slice passes.
 
 ## Development
 
+Install and run the source baseline:
+
 ```bash
 npm ci
-npm run verify:release:source
+npm run verify:gate-truth
+npm run lint
+npm run test:workbench
+npm test
+npm run build
+npm run audit:production
 ```
 
-Run the service without a configured engine in preservation-control mode:
+Run the retained service qualifiers:
+
+```bash
+npm run qualify:service-product-shell-foundation
+npm run qualify:service-assurance-workflow
+```
+
+Compatibility aliases remain:
+
+```bash
+npm run qualify:phase4
+npm run qualify:phase5
+```
+
+Their output is `service-integration` evidence. It is not UI, usability, or
+practitioner evidence.
+
+Run the service without a qualified runtime in preservation-control mode:
 
 ```bash
 npm run build:workbench
 npm run workbench:service -- --stdio --workspace-root /authorized/root
 ```
 
-The qualified hybrid requires the exact runtime artifacts and environment
-bindings in `config/language-engine-runtime-lock.json`. With those configured:
+The exact qualified runtime requires the artifacts and environment bindings in
+`config/language-engine-runtime-lock.json`. That historical hybrid lock remains
+in place until the single-required-runtime recovery profile is rebuilt and
+requalified.
 
-```bash
-npm run qualify:phase2
-npm run qualify:phase3
-npm run qualify:phase4
-npm run qualify:phase5
-npm run qualify:phase6
-npm run benchmark:workbench -- \
-  --candidate qualified-hybrid --profile medium --repetitions 1
-```
+## Pages recovery evaluation
 
-Launch the Pages workbench against a local workspace with:
+The Pages shell may be paired with a local companion for technical evaluation:
 
 ```bash
 npm run workbench:companion -- \
   --workspace-file /absolute/path/to/sysml-workspace.yaml
 ```
 
-The command starts the service on an operating-system-selected loopback port
-and opens the Pages URL with a short-lived pairing secret in the URL fragment.
-The workbench consumes and removes the fragment. Keep the terminal open while
-using the workspace. This source command is for qualified development; the
-exact-engine release bundle contains equivalent `start-pages-companion`
-launchers. That bundle currently requires supported system Node and Java
-runtimes; self-contained per-OS companion packaging remains a release gate.
+The companion binds to an operating-system-selected loopback port and opens a
+short-lived pairing secret in the URL fragment. Canonical source, engines, Git,
+reviews, and evidence remain local.
+
+This path is not production authoring. The Pages profile must pass a real
+browser exact-artifact test before any source or notation capability is
+restored.
 
 ## Authority and evidence
 
-- language decision: `docs/adr/ADR-001-language-reference-and-runtime-engine-selection.md`;
-- identity model: `docs/adr/ADR-002-model-identity.md`;
-- Phase 2 gate record: `docs/revamp/19-phase2-semantic-core-status.md`;
-- Phase 3 execution plan: `docs/revamp/20-phase3-command-editing-plan.md`;
-- Phase 3 gate candidate: `docs/revamp/21-phase3-gate-decision.md`;
-- Phase 4 component status: `docs/revamp/23-phase4-product-shell-status.md`;
-- Phase 5 gate decision: `docs/revamp/25-phase5-gate-decision.md`;
-- Phase 6 safety contract: `docs/architecture/controlled-ai.md`;
-- Phase 6 gate decision: `docs/revamp/27-phase6-gate-decision.md`;
-- exact runtime observation: `docs/revamp/phase2-qualification-observation.json`;
-- exact Phase 3 command observation:
-  `docs/revamp/phase3-qualification-observation.json`;
-- Phase 4 component observation:
-  `docs/revamp/phase4-qualification-observation.json`;
-- integrated Phase 5 observation:
-  `docs/revamp/phase5-qualification-observation.json`;
-- controlled Phase 6 observation:
-  `docs/revamp/phase6-qualification-observation.json`;
-- medium benchmark: `docs/revamp/phase2-benchmark-observation.json`;
-- mandatory golden: `fixtures/language/golden/phase2-semantic-evidence.json`.
+- language authority decision:
+  `docs/adr/ADR-001-language-reference-and-runtime-engine-selection.md`
+- client/service boundary:
+  `docs/adr/ADR-003-client-service-and-deployment-architecture.md`
+- identity model: `docs/adr/ADR-002-model-identity.md`
+- P4 correction: `docs/revamp/23-phase4-product-shell-status.md`
+- P5 correction: `docs/revamp/25-phase5-gate-decision.md`
+- P6 correction: `docs/revamp/27-phase6-gate-decision.md`
+- incident record: `docs/revamp/36-failed-attempt-postmortem.md`
+- recovery contract: `docs/revamp/37-recovery-acceptance-contract.md`
+- Codex execution handoff:
+  `docs/revamp/38-codex-recovery-execution-handoff.md`
+- supported language boundary: `docs/revamp/05-capability-matrix.md`
 
-No broad “supports SysML v2” claim is made. Capability boundaries are in
-`docs/revamp/05-capability-matrix.md` and must remain linked to tests.
+Historical machine-readable Phase 4-6 observations remain in
+`docs/revamp/`. Their active gate classification is governed by the corrected
+status documents.
 
 ## Security posture
 
-The workbench service authorizes workspace roots, rejects path traversal and
-symlink-backed model/identity paths, binds shared access to authenticated
-loopback transport, and keeps source local. Provider-backed AI is not part of
-the authority path and cannot mutate canonical source. Phase 3 commands require
-an explicit, validated human approval transaction.
+The Workbench Service authorizes roots, rejects path traversal and unsafe
+identity paths, binds shared access to authenticated loopback transport, and
+keeps source local. Provider-backed AI is outside the authority path. Source
+mutation requires a validated typed command and explicit user approval.
 
-The project is not yet a public production release. The portable macOS arm64
-artifact is an unsigned internal release candidate only; the open P7 gates
-above remain mandatory.
+The project is not approved for public binary distribution. Issue #10 remains
+open.
