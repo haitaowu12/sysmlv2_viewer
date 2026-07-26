@@ -65,9 +65,16 @@ remain unavailable until pairing.
 
 Trust boundaries:
 
-- signed Tauri host/WebView → scoped IPC/stdio → bundled Workbench Service → approved local roots/processes/keystore.
+- signed Tauri host/WebView → typed Tauri commands → bundled Workbench Service
+  on an operating-system-selected loopback port with short-lived pairing →
+  approved local roots and locked language processes.
 
-Tauri grants folder picker, lifecycle, secure storage, and packaging capabilities only. It does not implement semantic operations. Capability files are minimal per window; remote content is not loaded into privileged WebViews; CSP/navigation/external-open inputs are restricted.
+Tauri grants the native file dialog and exact bundled sidecar capabilities
+only. It does not implement semantic operations. Capability files are minimal
+per window; remote content is not loaded into privileged WebViews;
+CSP/navigation/external-open inputs are restricted. The bundled Node sidecar
+requires only the macOS `allow-jit` entitlement; the
+`allow-unsigned-executable-memory` entitlement is not granted.
 
 Offline mode has no required network after installation.
 

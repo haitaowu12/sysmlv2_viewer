@@ -40,6 +40,7 @@ jobs:
         run: npm run build
         env:
           VITE_WORKBENCH_DEMO: legacy
+          VITE_BASE_PATH: /sysmlv2_viewer/
 
       - name: Production dependency audit
         run: npm audit --omit=dev

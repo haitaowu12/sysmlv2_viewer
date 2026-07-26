@@ -49,6 +49,10 @@ const outputPath = resolve(
     resolve(repositoryRoot, 'generated/release-evidence/phase7-runtime-provenance.json'),
 )
 const allowLicenseConflict = process.argv.includes('--allow-license-conflict')
+const runtimeDispositionPath = resolve(
+  repositoryRoot,
+  'docs/licenses/vinqut-runtime-disposition.md',
+)
 const lock = JSON.parse(
   await readFile(
     resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
@@ -126,6 +130,21 @@ try {
       resolve(repositoryRoot, 'docs/licenses/spec42-MIT.txt'),
       'workbench/docs/licenses/spec42-MIT.txt',
     ),
+    licenseRecord(
+      'workbench-product-license',
+      resolve(repositoryRoot, 'LICENSE'),
+      'workbench/LICENSE',
+    ),
+    licenseRecord(
+      'workbench-product-notice',
+      resolve(repositoryRoot, 'NOTICE'),
+      'workbench/NOTICE',
+    ),
+    licenseRecord(
+      'workbench-runtime-disposition',
+      runtimeDispositionPath,
+      'workbench/docs/licenses/vinqut-runtime-disposition.md',
+    ),
   ])
   const noticeText = await readFile(resolve(semanticSourceRoot, 'NOTICE'), 'utf8')
   const pilotLicenseText = await readFile(pilotLicense, 'utf8')
@@ -133,9 +152,23 @@ try {
   const pilotCheckoutDeclaresEpl = /Eclipse Public License - v 2\.0/i.test(
     pilotLicenseText,
   )
+  const runtimeDispositionText = await readFile(runtimeDispositionPath, 'utf8')
+  const exactPinDispositionApplies =
+    runtimeDispositionText.includes(semanticCheckout.commit) &&
+    runtimeDispositionText.includes(pilotCheckout.commit) &&
+    runtimeDispositionText.includes(semanticSha256) &&
+    /Eclipse Public\s+License 2\.0/.test(runtimeDispositionText)
+  const noticeConflictPresent =
+    noticeClaimsLgpl &&
+    pilotCheckoutDeclaresEpl &&
+    !exactPinDispositionApplies
+  const productLicensePresent = await exists(resolve(repositoryRoot, 'LICENSE'))
   const report = {
     schemaVersion: 1,
-    outcome: 'evidence-complete-owner-legal-decision-required',
+    outcome:
+      noticeConflictPresent || !productLicensePresent
+        ? 'evidence-complete-owner-legal-decision-required'
+        : 'evidence-complete-owner-disposition-recorded',
     sourceCommit: await gitCommit(repositoryRoot),
     lockedRuntime: {
       semantic: {
@@ -173,11 +206,15 @@ try {
     conflicts: [
       {
         id: 'RUNTIME-NOTICE-PILOT-LICENSE',
-        present: noticeClaimsLgpl && pilotCheckoutDeclaresEpl,
+        present: noticeConflictPresent,
         statement:
-          'The VinQut NOTICE labels the bundled Pilot implementation LGPL-3.0-or-later, while the exact official Pilot checkout root LICENSE declares EPL-2.0.',
+          exactPinDispositionApplies
+            ? 'The original VinQut NOTICE is preserved, and the exact-pin owner disposition applies the pinned Pilot EPL-2.0 license to the proven Pilot-derived inputs.'
+            : 'The VinQut NOTICE labels the bundled Pilot implementation LGPL-3.0-or-later, while the exact official Pilot checkout root LICENSE declares EPL-2.0.',
         requiredClosure:
-          'A qualified legal or owner review must reconcile the distributed notice and approve the final runtime notice set.',
+          exactPinDispositionApplies
+            ? 'Closed for the exact locked runtime. Any source pin or artifact change requires a new review.'
+            : 'A qualified legal or owner review must reconcile the distributed notice and approve the final runtime notice set.',
       },
       {
         id: 'UML-INPUT-BYTE-PROVENANCE',
@@ -190,20 +227,26 @@ try {
       },
       {
         id: 'PRODUCT-LICENSE-ABSENT',
-        present: !(await exists(resolve(repositoryRoot, 'LICENSE'))),
-        statement:
-          'The product repository has no root LICENSE file.',
+        present: !productLicensePresent,
+        statement: productLicensePresent
+          ? 'The product repository declares Apache-2.0 in its root LICENSE.'
+          : 'The product repository has no root LICENSE file.',
         requiredClosure:
-          'The owner must select and approve the product license before production distribution.',
+          productLicensePresent
+            ? 'Closed for this source commit.'
+            : 'The owner must select and approve the product license before production distribution.',
       },
     ],
     legalConclusion:
-      'No legal conclusion is made. This report binds exact bytes to source and license evidence for owner or counsel review.',
+      'This report binds exact bytes to source and license evidence and records the repository-owner exact-pin distribution decision. It is not a general legal opinion.',
   }
   await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
-  if (!allowLicenseConflict) {
+  if (
+    !allowLicenseConflict &&
+    (noticeConflictPresent || !productLicensePresent)
+  ) {
     throw new Error(
       'Runtime provenance conflicts require owner/legal closure; use --allow-license-conflict only for a technical release candidate',
     )

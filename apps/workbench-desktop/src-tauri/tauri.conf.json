@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SysML Engineering Workbench",
+  "version": "0.7.0",
+  "identifier": "io.sysml.workbench",
+  "build": {
+    "frontendDist": "../../../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SysML Engineering Workbench",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1040,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first SysML v2 engineering workbench",
+    "longDescription": "Author, review, trace, compare, and report source-canonical SysML v2 workspaces locally.",
+    "externalBin": [
+      "binaries/workbench-node"
+    ],
+    "resources": {
+      "generated/workbench": "workbench",
+      "generated/java": "runtime/java",
+      "generated/licenses": "licenses",
+      "generated/desktop-runtime-manifest.json": "desktop-runtime-manifest.json"
+    },
+    "macOS": {
+      "entitlements": "Entitlements.plist",
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}

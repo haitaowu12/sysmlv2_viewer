@@ -11,14 +11,19 @@
 - [ ] medium benchmark uses five warmups and thirty samples;
 - [ ] serious/critical axe findings are zero and manual contrast/keyboard
   review is recorded;
-- [ ] production vulnerability and license policy have zero open blockers;
+- [x] Apache-2.0 product license, product `NOTICE`, and exact-pin runtime
+  disposition are committed;
+- [x] npm and locked Tauri Cargo license inventories have zero unapproved
+  expressions;
+- [ ] production npm and RustSec vulnerability audits have zero open blockers;
 - [ ] deterministic archive rebuild produces the same SHA-256;
 - [ ] copied bundle opens the pilot without network or repository paths.
 
 ## Security and operations
 
 - [ ] threat-model critical risks have dated dispositions;
-- [ ] product license and runtime redistribution obligations are approved;
+- [x] product license and exact-pin runtime redistribution disposition are
+  approved in source; artifact-bound release approval remains separate;
 - [ ] every claimed OS has clean-machine install/open/edit/report/recovery
   evidence;
 - [ ] public artifacts are signed/notarized and verification is documented;
@@ -32,7 +37,8 @@
 
 ## Product evidence
 
-- [ ] product name and version approved;
+- [x] product name approved: SysML Engineering Workbench;
+- [ ] release version approved;
 - [ ] three independent pilot users complete all eight usability tasks;
 - [ ] every participant record is independent, unassisted, complete, and
   hash-bound by the release approval manifest;
