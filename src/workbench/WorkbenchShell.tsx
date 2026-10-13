@@ -30,8 +30,9 @@ import { NativeCommandEditor } from '../components/NativeCommandEditor.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
 import { AssuranceSurface, type AssuranceActivity } from './AssuranceSurface.js'
 import { ControlledAiSurface } from './ControlledAiSurface.js'
+import { ContributorSurface } from './ContributorSurface.js'
 
-type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'assistant' | 'settings'
+type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'requirements' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'assistant' | 'settings'
 type SurfaceId = 'source' | 'diagram' | 'matrix'
 type BottomPanelId = 'problems' | 'output' | 'query' | 'changes'
 
@@ -40,6 +41,7 @@ const ACTIVITIES: Array<{ id: ActivityId; label: string; icon: ComponentType<{ s
   { id: 'model', label: 'Model', icon: LayoutDashboard },
   { id: 'diagrams', label: 'Diagrams', icon: Network },
   { id: 'traceability', label: 'Traceability', icon: BetweenHorizontalStart },
+  { id: 'requirements', label: 'Requirements', icon: TableProperties },
   { id: 'interfaces', label: 'Interfaces', icon: ShieldCheck },
   { id: 'verification', label: 'Verification', icon: ClipboardCheck },
   { id: 'reviews', label: 'Reviews', icon: ListChecks },
@@ -195,6 +197,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
     setActivity(next)
     if (next === 'interfaces') setMode('interfaces')
     if (next === 'traceability') setMode('requirements')
+    if (next === 'requirements') setMode('requirements')
     if (next === 'verification') setMode('verification')
     if (next === 'model') setMode('containment')
   }
@@ -330,6 +333,18 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                 onApplied={refreshWorkspace}
               />
             )}
+            {activity === 'requirements' && (
+              <ContributorSurface
+                gateway={gateway}
+                workspace={workspace}
+                userId={userId}
+                onSelectId={(identity) => {
+                  const element = workspace.snapshot.elements.find((candidate) => candidate.id === identity)
+                  if (element) selectElement(element)
+                }}
+                onApplied={refreshWorkspace}
+              />
+            )}
             {isAssuranceActivity(activity) && (
               <AssuranceSurface
                 activity={activity}
@@ -343,14 +358,14 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
                 }}
               />
             )}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && document && (
+            {activity !== 'assistant' && activity !== 'requirements' && !isAssuranceActivity(activity) && surface === 'source' && document && (
               <SourceSurface gateway={gateway} workspace={workspace} document={document} userId={userId} onApplied={refreshWorkspace} />
             )}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'diagram' && (
+            {activity !== 'assistant' && activity !== 'requirements' && !isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
+            {activity !== 'assistant' && activity !== 'requirements' && !isAssuranceActivity(activity) && surface === 'diagram' && (
               <DiagramSurface snapshot={workspace.snapshot} result={queryResult} selectedId={selectedId} onSelect={selectElement} />
             )}
-            {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'matrix' && (
+            {activity !== 'assistant' && activity !== 'requirements' && !isAssuranceActivity(activity) && surface === 'matrix' && (
               <MatrixSurface snapshot={workspace.snapshot} result={queryResult} onSelect={selectElement} />
             )}
           </div>

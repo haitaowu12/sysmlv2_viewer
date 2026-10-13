@@ -1,0 +1,5 @@
+schemaVersion: 1
+id: contributor-pilot
+name: Infrastructure control contributor pilot
+sourceRoots:
+  - model

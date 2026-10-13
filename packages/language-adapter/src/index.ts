@@ -73,6 +73,16 @@ export interface EngineSemanticEvidence {
   uri: string
   elements: EngineSemanticElementEvidence[]
   relationships: EngineSemanticRelationshipEvidence[]
+  /**
+   * Optional evidence-bound diagnostic result. Engines must provide the full
+   * validation tuple together; the adapter only consumes it when the
+   * candidate manifest explicitly negotiates the validation contract.
+   */
+  documentVersion?: number
+  documentSha256?: string
+  diagnosticsComplete?: boolean
+  diagnosticsError?: string | null
+  diagnostics?: LanguageDiagnostic[]
 }
 
 export interface LanguageAdapter {

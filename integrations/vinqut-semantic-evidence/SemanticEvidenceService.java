@@ -1,23 +1,34 @@
 package org.omg.sysml.lsp;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
+import org.eclipse.xtext.diagnostics.Severity;
 import org.eclipse.xtext.ide.server.ILanguageServerAccess;
 import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
+import org.eclipse.xtext.resource.IResourceServiceProvider;
+import org.eclipse.xtext.resource.XtextResource;
+import org.eclipse.xtext.validation.CheckMode;
+import org.eclipse.xtext.validation.IResourceValidator;
+import org.eclipse.xtext.validation.Issue;
 import org.omg.sysml.lang.sysml.Element;
 
 /** Read-only semantic evidence endpoint over the resolved OMG Pilot EMF model. */
@@ -43,9 +54,21 @@ public class SemanticEvidenceService {
         model.uri = uri;
         Resource resource = ctx.getResource();
         if (resource == null) {
+            model.diagnosticsError = "Xtext read returned no resource";
             return model;
         }
         String text = ctx.getDocument() == null ? null : ctx.getDocument().getContents();
+        if (ctx.getDocument() == null) {
+            model.diagnosticsError = "Xtext read returned no document";
+            return model;
+        }
+        if (text == null) {
+            model.diagnosticsError = "Xtext document has no text";
+            return model;
+        }
+        model.documentVersion = ctx.getDocument().getVersion();
+        model.documentSha256 = sha256(text);
+        validate(resource, ctx, model, uri);
         List<Element> elements = sourceElements(resource);
         for (Element element : elements) {
             SemanticEvidenceModel.ElementEvidence evidence =
@@ -84,6 +107,110 @@ public class SemanticEvidenceService {
             }
         }
         return model;
+    }
+
+    /**
+     * Validate the exact resource/document pair held by this doRead callback.
+     * A diagnostics list is authoritative only when this method completes and
+     * sets diagnosticsComplete; failures stay explicit and cannot look like a
+     * clean document to a caller.
+     */
+    private void validate(
+            Resource resource,
+            ILanguageServerAccess.Context ctx,
+            SemanticEvidenceModel model,
+            String requestedUri) {
+        IResourceServiceProvider provider = resource instanceof XtextResource
+                ? ((XtextResource) resource).getResourceServiceProvider()
+                : null;
+        if (provider == null) {
+            model.diagnosticsError = "No Xtext resource service provider for " + requestedUri;
+            return;
+        }
+        IResourceValidator validator = provider.get(IResourceValidator.class);
+        if (validator == null) {
+            model.diagnosticsError = "No Xtext resource validator for " + requestedUri;
+            return;
+        }
+        try {
+            List<Issue> issues = validator.validate(resource, CheckMode.ALL, ctx.getCancelChecker());
+            for (Issue issue : issues) {
+                SemanticEvidenceModel.DiagnosticEvidence diagnostic =
+                        new SemanticEvidenceModel.DiagnosticEvidence();
+                diagnostic.uri = diagnosticUri(issue, requestedUri);
+                diagnostic.severity = severityName(issue.getSeverity());
+                diagnostic.code = issue.getCode();
+                diagnostic.message = issue.getMessage();
+                diagnostic.range = rangeOf(issue);
+                model.diagnostics.add(diagnostic);
+            }
+            model.diagnosticsComplete = true;
+        } catch (RuntimeException exception) {
+            model.diagnosticsError = "Authoritative Xtext validation failed: "
+                    + exception.getClass().getSimpleName() + ": " + exception.getMessage();
+        }
+    }
+
+    private String diagnosticUri(Issue issue, String requestedUri) {
+        if (issue.getUriToProblem() == null) {
+            return requestedUri;
+        }
+        URI issueUri = issue.getUriToProblem();
+        URI documentUri = URI.createURI(requestedUri);
+        if (issueUri.trimFragment().equals(documentUri.trimFragment())) {
+            return requestedUri;
+        }
+        return issueUri.toString();
+    }
+
+    private String severityName(Severity severity) {
+        if (severity == null) {
+            return "unknown";
+        }
+        switch (severity) {
+        case ERROR:
+            return "error";
+        case WARNING:
+            return "warning";
+        case INFO:
+            return "information";
+        case IGNORE:
+            return "hint";
+        default:
+            return severity.name().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    private Range rangeOf(Issue issue) {
+        int startLine = position(issue.getLineNumber());
+        int startColumn = position(issue.getColumn());
+        int endLine = issue.getLineNumberEnd() == null
+                ? startLine
+                : position(issue.getLineNumberEnd());
+        int endColumn = issue.getColumnEnd() == null
+                ? startColumn
+                : position(issue.getColumnEnd());
+        return new Range(
+                new Position(startLine, startColumn),
+                new Position(endLine, endColumn));
+    }
+
+    private int position(Integer oneBased) {
+        return oneBased == null ? 0 : Math.max(0, oneBased - 1);
+    }
+
+    private String sha256(String text) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                result.append(String.format("%02x", value & 0xff));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     private void appendRelationship(

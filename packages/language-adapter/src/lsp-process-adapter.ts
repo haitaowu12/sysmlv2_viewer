@@ -23,11 +23,19 @@ import type {
 const MAX_CAPTURE_BYTES = 16 * 1024 * 1024
 const MAX_SEMANTIC_EVIDENCE_ELEMENTS = 100_000
 const MAX_SEMANTIC_EVIDENCE_RELATIONSHIPS = 1_000_000
+const MAX_SEMANTIC_EVIDENCE_DIAGNOSTICS = 100_000
 
 interface PendingRequest {
   resolve(value: unknown): void
   reject(error: Error): void
   timeout: NodeJS.Timeout
+}
+
+interface DiagnosticRevalidation {
+  pendingUris: Set<string>
+  expectedVersions: Map<string, number>
+  lastDiagnosticAt: number
+  authoritativeUris: Set<string>
 }
 
 export interface LspProcessAdapterOptions {
@@ -40,6 +48,7 @@ export interface LspProcessAdapterOptions {
   requestTimeoutMs?: number
   diagnosticSettleMs?: number
   semanticEvidenceMethod?: string
+  semanticEvidenceValidation?: 'document-diagnostics-v1'
 }
 
 export interface ProcessEvidence {
@@ -71,6 +80,8 @@ export class LspProcessAdapter implements LanguageAdapter {
   private exitCode: number | null = null
   private signal: NodeJS.Signals | null = null
   private activeWorkspace?: AdapterWorkspace
+  private readonly engineDocumentVersions = new Map<string, number>()
+  private diagnosticRevalidation?: DiagnosticRevalidation
   private negotiated = false
   private initializedRootUri?: string
   private semanticTokenLegend = {
@@ -255,20 +266,33 @@ export class LspProcessAdapter implements LanguageAdapter {
     this.activeWorkspace = workspace
     this.diagnostics.clear()
     this.lastDiagnosticAt = 0
+    this.diagnosticRevalidation = undefined
     for (const document of workspace.documents) {
-      this.notify('textDocument/didOpen', {
-        textDocument: {
-          uri: document.uri,
-          languageId: document.languageId,
-          version: document.version,
-          text: document.text,
-        },
-      })
+      this.engineDocumentVersions.set(document.uri, document.version)
     }
-    await this.waitForDiagnostics(
-      workspace.documents.map((document) => document.uri),
-      this.options.diagnosticSettleMs ?? 500,
+    const documentUris = workspace.documents.map((document) => document.uri)
+    this.openDocuments(workspace.documents)
+    await this.waitForDiagnostics(documentUris, this.diagnosticSettleMs())
+
+    // Some Xtext-based engines finish loading their library index while
+    // handling the initial didOpen notifications. Their first parse can then
+    // publish stale linking errors even though the index is ready before the
+    // client receives the initialize response. Ask the configured semantic
+    // validation endpoint to finish that initialization, then issue one
+    // same-text change at an engine-only version so the engine reparses. The
+    // caller's document version remains unchanged. Persistent errors remain
+    // authoritative and are returned below.
+    const errorDocuments = workspace.documents.filter((document) =>
+      this.hasErrorDiagnostics([document.uri]),
     )
+    if (errorDocuments.length > 0) {
+      const priorDiagnostics = this.snapshotDiagnostics()
+      await this.revalidateInitialDiagnostics(
+        errorDocuments,
+        errorDocuments.map((document) => document.uri),
+        priorDiagnostics,
+      )
+    }
     return [...this.diagnostics.values()].flat()
   }
 
@@ -282,6 +306,8 @@ export class LspProcessAdapter implements LanguageAdapter {
       }
     }
     this.activeWorkspace = undefined
+    this.engineDocumentVersions.clear()
+    this.diagnosticRevalidation = undefined
     this.diagnostics.clear()
   }
 
@@ -454,12 +480,14 @@ export class LspProcessAdapter implements LanguageAdapter {
         `Document version must increase from ${document.version}; received ${version}`,
       )
     }
+    this.releaseDiagnosticGuard(uri)
+    const engineVersion = this.nextEngineVersion(uri, version)
     document.version = version
     document.text = text
     this.diagnostics.delete(uri)
     this.lastDiagnosticAt = 0
     this.notify('textDocument/didChange', {
-      textDocument: { uri, version },
+      textDocument: { uri, version: engineVersion },
       contentChanges: [{ text }],
     })
     await this.waitForDiagnostics(
@@ -535,10 +563,207 @@ export class LspProcessAdapter implements LanguageAdapter {
     this.send({ jsonrpc: '2.0', method, params })
   }
 
+  private openDocuments(
+    documents: AdapterWorkspace['documents'],
+  ): void {
+    for (const document of documents) {
+      this.notify('textDocument/didOpen', {
+        textDocument: {
+          uri: document.uri,
+          languageId: document.languageId,
+          version: document.version,
+          text: document.text,
+        },
+      })
+    }
+  }
+
+  private hasErrorDiagnostics(documentUris: string[]): boolean {
+    return documentUris.some((uri) =>
+      this.diagnostics.get(uri)?.some((diagnostic) => diagnostic.severity === 'error'),
+    )
+  }
+
+  private snapshotDiagnostics(): Map<string, LanguageDiagnostic[]> {
+    return new Map(
+      [...this.diagnostics.entries()].map(([uri, diagnostics]) => [
+        uri,
+        diagnostics.map((diagnostic) => structuredClone(diagnostic)),
+      ]),
+    )
+  }
+
+  private restoreDiagnostics(
+    diagnostics: Map<string, LanguageDiagnostic[]>,
+  ): void {
+    this.diagnostics.clear()
+    for (const [uri, items] of diagnostics) {
+      this.diagnostics.set(
+        uri,
+        items.map((diagnostic) => structuredClone(diagnostic)),
+      )
+    }
+    this.lastDiagnosticAt = performance.now()
+  }
+
+  private nextEngineVersion(uri: string, requestedVersion: number): number {
+    const current = this.engineDocumentVersions.get(uri) ?? 0
+    const next = Math.max(current + 1, requestedVersion)
+    this.engineDocumentVersions.set(uri, next)
+    return next
+  }
+
+  private releaseDiagnosticGuard(uri: string): void {
+    const revalidation = this.diagnosticRevalidation
+    if (!revalidation) return
+    revalidation.pendingUris.delete(uri)
+    revalidation.expectedVersions.delete(uri)
+    revalidation.authoritativeUris.delete(uri)
+    if (revalidation.expectedVersions.size === 0) {
+      this.diagnosticRevalidation = undefined
+    }
+  }
+
+  private async revalidateInitialDiagnostics(
+    documents: AdapterWorkspace['documents'],
+    documentUris: string[],
+    priorDiagnostics: Map<string, LanguageDiagnostic[]>,
+  ): Promise<void> {
+    const validationMethod = this.options.semanticEvidenceMethod
+    if (!validationMethod) return
+
+    const expectedVersions = new Map<string, number>()
+    for (const document of documents) {
+      expectedVersions.set(
+        document.uri,
+        this.nextEngineVersion(document.uri, document.version),
+      )
+    }
+    const revalidation: DiagnosticRevalidation = {
+      pendingUris: new Set(documentUris),
+      expectedVersions,
+      lastDiagnosticAt: 0,
+      authoritativeUris: new Set(),
+    }
+    this.diagnosticRevalidation = revalidation
+
+    // Keep the version guard alive after this method returns. A delayed
+    // versionless publication can arrive after either validation path has
+    // completed; releasing the guard here would let it erase an accepted
+    // result. A subsequent real document change releases only that URI's
+    // guard.
+    try {
+      this.restoreDiagnostics(priorDiagnostics)
+
+      if (this.options.semanticEvidenceValidation) {
+        for (const document of documents) {
+          this.notify('textDocument/didChange', {
+            textDocument: {
+              uri: document.uri,
+              version: expectedVersions.get(document.uri),
+            },
+            contentChanges: [{ text: document.text }],
+          })
+        }
+
+        const validated = new Map<string, LanguageDiagnostic[]>()
+        for (const document of documents) {
+          const evidence = normalizeSemanticEvidence(
+            await this.request(validationMethod, { uri: document.uri }),
+            document.uri,
+          )
+          const expectedVersion = expectedVersions.get(document.uri)
+          const expectedSourceSha256 = sha256(
+            Buffer.from(document.text, 'utf8'),
+          )
+          if (
+            evidence.documentVersion !== expectedVersion ||
+            evidence.documentSha256 !== expectedSourceSha256 ||
+            evidence.diagnostics === undefined
+          ) {
+            throw new Error(
+              `Language engine returned uncorrelated diagnostics for ${document.uri}`,
+            )
+          }
+          validated.set(document.uri, evidence.diagnostics)
+        }
+
+        for (const [uri, diagnostics] of validated) {
+          this.diagnostics.set(
+            uri,
+            diagnostics.map((diagnostic) => structuredClone(diagnostic)),
+          )
+          revalidation.authoritativeUris.add(uri)
+          revalidation.pendingUris.delete(uri)
+        }
+        revalidation.lastDiagnosticAt = performance.now()
+        return
+      }
+
+      // Semantic evidence confirms that the engine can read the current
+      // document, but it does not correlate a later diagnostics publication
+      // with this revalidation. The publication handler therefore accepts
+      // only the exact engine version requested below.
+      for (const uri of documentUris) {
+        normalizeSemanticEvidence(
+          await this.request(validationMethod, { uri }),
+          uri,
+        )
+      }
+      this.restoreDiagnostics(priorDiagnostics)
+      for (const document of documents) {
+        this.notify('textDocument/didChange', {
+          textDocument: {
+            uri: document.uri,
+            version: expectedVersions.get(document.uri),
+          },
+          contentChanges: [{ text: document.text }],
+        })
+      }
+      if (!(await this.waitForFreshDiagnostics(revalidation, this.diagnosticSettleMs()))) {
+        this.restoreDiagnostics(priorDiagnostics)
+      }
+    } catch {
+      this.restoreDiagnostics(priorDiagnostics)
+    }
+  }
+
+  private async waitForFreshDiagnostics(
+    revalidation: DiagnosticRevalidation,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    const deadline = performance.now() + timeoutMs
+    const quietPeriodMs = Math.min(
+      125,
+      Math.max(20, Math.floor(timeoutMs / 4)),
+    )
+    while (performance.now() < deadline) {
+      if (this.healthState.state === 'failed') {
+        throw new Error(
+          this.healthState.message ?? 'Language engine failed while revalidating',
+        )
+      }
+      if (
+        revalidation.pendingUris.size === 0 &&
+        revalidation.lastDiagnosticAt > 0 &&
+        performance.now() - revalidation.lastDiagnosticAt >= quietPeriodMs
+      ) {
+        return true
+      }
+      await delay(10)
+    }
+    return false
+  }
+
+  private diagnosticSettleMs(): number {
+    return this.options.diagnosticSettleMs ?? 500
+  }
+
   private async restartProcess(): Promise<void> {
     await this.dispose()
     this.buffer = Buffer.alloc(0)
     this.diagnostics.clear()
+    this.diagnosticRevalidation = undefined
     this.capabilities = emptyCapabilities()
     this.semanticTokenLegend = { tokenTypes: [], tokenModifiers: [] }
     this.negotiated = false
@@ -638,6 +863,27 @@ export class LspProcessAdapter implements LanguageAdapter {
       const params = message.params as {
         uri: string
         diagnostics: unknown[]
+        version?: unknown
+      }
+      const revalidation = this.diagnosticRevalidation
+      if (revalidation?.authoritativeUris.has(params.uri)) {
+        // The correlated validation response is the authoritative result for
+        // this source/version. Ignore later push notifications, including
+        // versionless clears from an older parse.
+        return
+      }
+      const expectedVersion = revalidation?.expectedVersions.get(params.uri)
+      if (
+        revalidation &&
+        expectedVersion !== undefined &&
+        (typeof params.version !== 'number' ||
+          params.version !== expectedVersion)
+      ) {
+        // A versionless publication cannot be correlated with the same-text
+        // revalidation. It may be a delayed result from the initial parse (or
+        // a close/old-parse clear), so fail closed and retain the snapshot
+        // until the engine publishes the expected document version.
+        return
       }
       this.diagnostics.set(
         params.uri,
@@ -645,7 +891,12 @@ export class LspProcessAdapter implements LanguageAdapter {
           .map((diagnostic) => normalizeDiagnostic(params.uri, diagnostic))
           .filter((diagnostic): diagnostic is LanguageDiagnostic => diagnostic !== undefined),
       )
-      this.lastDiagnosticAt = performance.now()
+      const receivedAt = performance.now()
+      this.lastDiagnosticAt = receivedAt
+      if (revalidation?.pendingUris.has(params.uri)) {
+        revalidation.pendingUris.delete(params.uri)
+        revalidation.lastDiagnosticAt = receivedAt
+      }
     }
   }
 
@@ -877,11 +1128,75 @@ function normalizeSemanticEvidence(
       sourceRange: optionalRange(item.sourceRange),
     }
   })
+  const hasDiagnosticValidation =
+    'documentVersion' in value ||
+    'documentSha256' in value ||
+    'diagnosticsComplete' in value ||
+    'diagnosticsError' in value ||
+    'diagnostics' in value
+  let documentVersion: number | undefined
+  let documentSha256: string | undefined
+  let diagnosticsComplete: boolean | undefined
+  let diagnosticsError: string | null | undefined
+  let diagnostics: LanguageDiagnostic[] | undefined
+  if (hasDiagnosticValidation) {
+    if (
+      typeof value.documentVersion !== 'number' ||
+      !Number.isInteger(value.documentVersion) ||
+      value.documentVersion <= 0 ||
+      typeof value.documentSha256 !== 'string' ||
+      !/^[0-9a-f]{64}$/u.test(value.documentSha256) ||
+      value.diagnosticsComplete !== true ||
+      (value.diagnosticsError !== undefined &&
+        value.diagnosticsError !== null &&
+        typeof value.diagnosticsError !== 'string') ||
+      typeof value.diagnosticsError === 'string' ||
+      !Array.isArray(value.diagnostics)
+    ) {
+      throw new Error(
+        'Language engine returned incomplete correlated diagnostic evidence',
+      )
+    }
+    if (value.diagnostics.length > MAX_SEMANTIC_EVIDENCE_DIAGNOSTICS) {
+      throw new Error(
+        'Language engine correlated diagnostics exceed the response limit',
+      )
+    }
+    diagnostics = value.diagnostics.map((item) => {
+      if (
+        isRecord(item) &&
+        item.uri !== undefined &&
+        item.uri !== expectedUri
+      ) {
+        throw new Error(
+          'Language engine returned correlated diagnostics for another URI',
+        )
+      }
+      const diagnostic = normalizeDiagnostic(expectedUri, item)
+      if (!diagnostic) {
+        throw new Error(
+          'Language engine returned invalid correlated diagnostic evidence',
+        )
+      }
+      return diagnostic
+    })
+    documentVersion = value.documentVersion
+    documentSha256 = value.documentSha256
+    diagnosticsComplete = value.diagnosticsComplete
+    diagnosticsError = value.diagnosticsError === null
+      ? null
+      : value.diagnosticsError
+  }
   return {
     schemaVersion: 1,
     uri: expectedUri,
     elements,
     relationships,
+    ...(documentVersion === undefined ? {} : { documentVersion }),
+    ...(documentSha256 === undefined ? {} : { documentSha256 }),
+    ...(diagnosticsComplete === undefined ? {} : { diagnosticsComplete }),
+    ...(diagnosticsError === undefined ? {} : { diagnosticsError }),
+    ...(diagnostics === undefined ? {} : { diagnostics }),
   }
 }
 
@@ -916,7 +1231,13 @@ function normalizeDiagnostic(
         ? 'warning'
         : value.severity === 3
           ? 'information'
-          : 'hint'
+          : value.severity === 'error'
+            ? 'error'
+            : value.severity === 'warning'
+              ? 'warning'
+              : value.severity === 'information' || value.severity === 'info'
+                ? 'information'
+                : 'hint'
   return {
     uri: uriValue,
     severity,

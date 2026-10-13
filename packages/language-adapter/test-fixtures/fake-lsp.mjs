@@ -1,9 +1,12 @@
+import { createHash } from 'node:crypto'
+
 let input = Buffer.alloc(0)
 let documentUri = ''
 let crashScheduled = false
 let initialized = false
 let documentVersion = 0
 let semanticEvidenceRevision = 0
+let openedDocumentCount = 0
 const documentTexts = new Map()
 
 process.stdin.on('data', (chunk) => {
@@ -61,15 +64,34 @@ function handle(message) {
       }
     })
   } else if (message.method === 'textDocument/didOpen') {
+    openedDocumentCount += 1
     documentUri = message.params.textDocument.uri
     documentVersion = message.params.textDocument.version
     documentTexts.set(documentUri, message.params.textDocument.text ?? '')
+    const persistentError = process.env.FAKE_LSP_PERSISTENT_OPEN_ERROR === '1'
+      ? [{
+          range: range(),
+          severity: 1,
+          code: 'FAKE-PERSISTENT-001',
+          message: 'persistent indexing error'
+        }]
+      : null
+    const transientError = process.env.FAKE_LSP_TRANSIENT_OPEN_ERROR === '1'
+      ? openedDocumentCount === 1
+        ? [{
+            range: range(),
+            severity: 1,
+            code: 'FAKE-TRANSIENT-001',
+            message: 'transient initial indexing error'
+          }]
+        : []
+      : null
     send({
       jsonrpc: '2.0',
       method: 'textDocument/publishDiagnostics',
       params: {
         uri: message.params.textDocument.uri,
-        diagnostics: [{
+        diagnostics: persistentError ?? transientError ?? [{
           range: {
             start: { line: 0, character: 0 },
             end: { line: 0, character: 1 }
@@ -90,23 +112,36 @@ function handle(message) {
   } else if (message.method === 'textDocument/didChange') {
     documentVersion = message.params.textDocument.version
     const text = message.params.contentChanges[0]?.text ?? ''
+    if (process.env.FAKE_LSP_NO_CHANGE_DIAGNOSTICS === '1') return
     documentTexts.set(message.params.textDocument.uri, text)
-    send({
-      jsonrpc: '2.0',
-      method: 'textDocument/publishDiagnostics',
-      params: {
-        uri: message.params.textDocument.uri,
-        version: documentVersion,
-        diagnostics: text.includes('BROKEN')
-          ? [{
-              range: range(),
-              severity: 1,
-              code: 'FAKE-CHANGE-001',
-              message: 'changed document is broken'
-            }]
-          : []
-      }
-    })
+    const publishChangedDiagnostics = () => send({
+        jsonrpc: '2.0',
+        method: 'textDocument/publishDiagnostics',
+        params: {
+          uri: message.params.textDocument.uri,
+          version: documentVersion,
+          diagnostics: process.env.FAKE_LSP_PERSISTENT_OPEN_ERROR === '1'
+            ? [{
+                range: range(),
+                severity: 1,
+                code: 'FAKE-PERSISTENT-001',
+                message: 'persistent indexing error'
+              }]
+            : text.includes('BROKEN')
+            ? [{
+                range: range(),
+                severity: 1,
+                code: 'FAKE-CHANGE-001',
+                message: 'changed document is broken'
+              }]
+            : []
+        }
+      })
+    if (process.env.FAKE_LSP_DELAY_CHANGE_DIAGNOSTICS === '1') {
+      setTimeout(publishChangedDiagnostics, 400)
+    } else {
+      publishChangedDiagnostics()
+    }
   } else if (message.method === 'textDocument/documentSymbol') {
     const response = {
       jsonrpc: '2.0',
@@ -190,6 +225,16 @@ function handle(message) {
     })
   } else if (message.method === 'sysml/semanticEvidence') {
     semanticEvidenceRevision += 1
+    if (process.env.FAKE_LSP_STALE_VERSIONLESS_REVALIDATION === '1') {
+      setTimeout(() => send({
+        jsonrpc: '2.0',
+        method: 'textDocument/publishDiagnostics',
+        params: {
+          uri: message.params.uri,
+          diagnostics: []
+        }
+      }), 20)
+    }
     const dynamic = process.env.FAKE_LSP_DYNAMIC_SEMANTICS === '1'
       ? packageEvidence(documentTexts.get(message.params.uri) ?? '')
       : null
@@ -220,6 +265,31 @@ function handle(message) {
         relationships: []
       }
     }
+    if (process.env.FAKE_LSP_CORRELATED_SEMANTIC_EVIDENCE === '1') {
+      response.result.documentVersion = documentVersion
+      response.result.documentSha256 = sha256(
+        documentTexts.get(message.params.uri) ?? '',
+      )
+      response.result.diagnosticsComplete = true
+      response.result.diagnosticsError = null
+      response.result.diagnostics = process.env.FAKE_LSP_PERSISTENT_OPEN_ERROR === '1'
+        ? [{
+            range: range(),
+            severity: 1,
+            code: 'FAKE-PERSISTENT-001',
+            message: 'persistent indexing error'
+          }]
+        : []
+    }
+    if (process.env.FAKE_LSP_CORRELATED_BAD_VERSION === '1') {
+      response.result.documentVersion = documentVersion - 1
+    }
+    if (process.env.FAKE_LSP_CORRELATED_BAD_HASH === '1') {
+      response.result.documentSha256 = '0'.repeat(64)
+    }
+    if (process.env.FAKE_LSP_CORRELATED_MISSING_DIAGNOSTICS === '1') {
+      delete response.result.diagnostics
+    }
     const delay = Number(process.env.FAKE_LSP_SYMBOL_DELAY_MS ?? 0)
     if (delay > 0) setTimeout(() => send(response), delay)
     else send(response)
@@ -237,6 +307,10 @@ function range() {
     start: { line: 0, character: 0 },
     end: { line: 0, character: 4 }
   }
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value, 'utf8').digest('hex')
 }
 
 function packageEvidence(text) {

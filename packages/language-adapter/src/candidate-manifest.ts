@@ -14,6 +14,7 @@ export interface EngineCandidate {
   commandEnvironment?: string
   argumentsEnvironment?: string
   semanticEvidenceMethod?: string
+  semanticEvidenceValidation?: 'document-diagnostics-v1'
 }
 
 export interface EngineCandidateManifest {
@@ -110,6 +111,7 @@ export async function createCandidateAdapter(
     requestTimeoutMs: runtime.requestTimeoutMs,
     diagnosticSettleMs: runtime.diagnosticSettleMs,
     semanticEvidenceMethod: candidate.semanticEvidenceMethod,
+    semanticEvidenceValidation: candidate.semanticEvidenceValidation,
   })
 }
 

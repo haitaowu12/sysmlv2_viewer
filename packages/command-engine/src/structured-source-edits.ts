@@ -10,8 +10,13 @@ import type {
 } from '../../semantic-model/src/index.js'
 import type {
   CommandWorkspaceDocument,
+  ContributorFieldCommand,
   WorkbenchCommand,
 } from './index.js'
+import {
+  directDocumentation,
+  type DirectDocumentation,
+} from './documentation.js'
 
 export interface StructuredSourceEditPlan {
   edits: WorkbenchWorkspaceEdit
@@ -26,7 +31,7 @@ export class StructuredSourceEditError extends Error {
 }
 
 export function planStructuredSourceEdits(
-  command: Exclude<WorkbenchCommand, { kind: 'rename-element' | 'replace-document' | 'undo-command' | 'redo-command' }>,
+  command: Exclude<WorkbenchCommand, { kind: 'rename-element' | 'replace-document' | 'undo-command' | 'redo-command' | 'batch-edit' }>,
   snapshot: SemanticSnapshot,
   documents: CommandWorkspaceDocument[],
 ): StructuredSourceEditPlan {
@@ -74,6 +79,10 @@ export function planStructuredSourceEdits(
       const declaration = `attribute :>> ${qualifiedName(command.propertyQualifiedName)} = ${literal(command.value)};`
       return context.insertInOwner(target, declaration, [target.id])
     }
+    case 'set-attribute-value': {
+      const target = context.editable(command.targetId)
+      return context.setAttributeValue(target, command.value)
+    }
     case 'update-documentation': {
       const target = context.editable(command.targetId)
       return context.updateDocumentation(target, command.documentation)
@@ -96,6 +105,95 @@ export function planStructuredSourceEdits(
         `// TODO verify interface ${name}`,
       ].join('\n')
       return context.insertInOwner(owner, declaration, [owner.id])
+    }
+  }
+}
+
+/**
+ * Plan bounded contributor field edits against one immutable source snapshot.
+ * The caller applies the merged edit set once, preserving one proposal,
+ * authority validation, approval, transaction, and inverse for the batch.
+ */
+export function planBatchStructuredSourceEdits(
+  commands: ContributorFieldCommand[],
+  snapshot: SemanticSnapshot,
+  documents: CommandWorkspaceDocument[],
+): StructuredSourceEditPlan {
+  if (commands.length < 1 || commands.length > 50) {
+    throw new StructuredSourceEditError(
+      'Batch edit must contain between 1 and 50 field commands',
+    )
+  }
+
+  const plans = commands.map((command) => {
+    if (!command || typeof command !== 'object') {
+      throw new StructuredSourceEditError('Batch edit contains an invalid command')
+    }
+    if (
+      command.kind !== 'set-property' &&
+      command.kind !== 'set-attribute-value' &&
+      command.kind !== 'update-documentation'
+    ) {
+      throw new StructuredSourceEditError(
+        'Batch edit only supports set-property, set-attribute-value, and update-documentation commands',
+      )
+    }
+    return planStructuredSourceEdits(command, snapshot, documents)
+  })
+
+  const changes: Record<string, WorkbenchTextEdit[]> = {}
+  const affectedElementIds = new Set<string>()
+  for (const planned of plans) {
+    for (const [uri, edits] of Object.entries(planned.edits.changes)) {
+      changes[uri] = [...(changes[uri] ?? []), ...edits]
+    }
+    for (const elementId of planned.affectedElementIds) {
+      affectedElementIds.add(elementId)
+    }
+  }
+  validateBatchEdits(changes, documents)
+  return {
+    edits: { changes },
+    affectedElementIds: [...affectedElementIds],
+  }
+}
+
+function validateBatchEdits(
+  changes: Record<string, WorkbenchTextEdit[]>,
+  documents: CommandWorkspaceDocument[],
+): void {
+  if (Object.keys(changes).length === 0) {
+    throw new StructuredSourceEditError('Batch edit produced no source edits')
+  }
+  const documentsByUri = new Map(documents.map((document) => [document.uri, document]))
+  for (const [uri, edits] of Object.entries(changes)) {
+    const document = documentsByUri.get(uri)
+    if (!document || edits.length === 0) {
+      throw new StructuredSourceEditError(`Batch edit has no usable edits for ${uri}`)
+    }
+    const normalized = edits.map((edit) => {
+      const start = offsetAt(document.text, edit.range.start)
+      const end = offsetAt(document.text, edit.range.end)
+      if (end < start) {
+        throw new StructuredSourceEditError(`Batch edit has a reversed range: ${uri}`)
+      }
+      if (start === end && edit.newText.length === 0) {
+        throw new StructuredSourceEditError(`Batch edit contains an empty edit: ${uri}`)
+      }
+      if (document.text.slice(start, end) === edit.newText) {
+        throw new StructuredSourceEditError(`Batch edit contains a no-op edit: ${uri}`)
+      }
+      return { start, end }
+    }).sort((left, right) => left.start - right.start || left.end - right.end)
+
+    for (let index = 1; index < normalized.length; index += 1) {
+      const prior = normalized[index - 1]!
+      const current = normalized[index]!
+      if (current.start < prior.end || current.start === prior.start) {
+        throw new StructuredSourceEditError(
+          `Batch edits overlap or share an ambiguous insertion point: ${uri}`,
+        )
+      }
     }
   }
 }
@@ -141,19 +239,20 @@ class SourceContext {
       )
     }
     const closingLineStart = source.text.lastIndexOf('\n', block.close) + 1
-    const closingIndent = source.text.slice(closingLineStart, block.close)
+    const closingPrefix = source.text.slice(closingLineStart, block.close)
     const ownerIndent = lineIndent(source.document.text, source.start)
     const childIndent = `${ownerIndent}    `
     const rendered = declaration
       .split('\n')
       .map((line) => `${childIndent}${line}`)
       .join('\n')
-    const insertionOffset = closingLineStart > block.open
+    const closingLineIsIndentOnly = /^\s*$/u.test(closingPrefix)
+    const insertionOffset = closingLineIsIndentOnly
       ? source.start + closingLineStart
       : source.start + block.close
-    const newText = closingLineStart > block.open
+    const newText = closingLineIsIndentOnly
       ? `${rendered}\n`
-      : `\n${rendered}\n${closingIndent}`
+      : `\n${rendered}\n${ownerIndent}`
     return plan(source.document.uri, [editAt(source.document.text, insertionOffset, insertionOffset, newText)], affectedElementIds)
   }
 
@@ -242,15 +341,59 @@ class SourceContext {
       throw new StructuredSourceEditError('Documentation contains a block-comment terminator')
     }
     const source = this.declaration(target)
-    const existing = /\bdoc\s*\/\*[\s\S]*?\*\//u.exec(source.text)
+    let existing: DirectDocumentation | null
+    try {
+      existing = directDocumentation(source.text)
+    } catch (error) {
+      throw new StructuredSourceEditError(
+        error instanceof Error ? error.message : 'Documentation source is malformed',
+      )
+    }
     const rendered = `doc /* ${documentation.trim()} */`
-    if (existing?.index !== undefined) {
-      const start = source.start + existing.index
+    if (existing) {
+      const start = source.start + existing.start
       return plan(source.document.uri, [
-        editAt(source.document.text, start, start + existing[0].length, rendered),
+        editAt(source.document.text, start, source.start + existing.end, rendered),
       ], [target.id])
     }
     return this.insertInOwner(target, rendered, [target.id])
+  }
+
+  setAttributeValue(
+    target: SemanticElement,
+    value: string | number | boolean,
+  ): StructuredSourceEditPlan {
+    if (target.kind !== 'AttributeUsage') {
+      throw new StructuredSourceEditError(
+        'Attribute value changes are limited to AttributeUsage declarations',
+      )
+    }
+    const source = this.declaration(target)
+    const name = escapeRegex(target.name)
+    const literalPattern = '(?:"(?:\\\\.|[^"\\\\])*"|true|false|[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?)'
+    const pattern = new RegExp(
+      `^\\s*attribute\\s+${name}\\s*:\\s*[\\p{L}_][\\p{L}\\p{N}_]*(?:::[\\p{L}_][\\p{L}\\p{N}_]*)*\\s*=\\s*(?<literal>${literalPattern})\\s*;\\s*$`,
+      'u',
+    )
+    const match = pattern.exec(source.text)
+    if (!match?.groups?.literal || match.index === undefined) {
+      throw new StructuredSourceEditError(
+        'Attribute value change only supports a simple typed literal AttributeUsage',
+      )
+    }
+    const assignment = /=\s*/u.exec(match[0])
+    if (!assignment) {
+      throw new StructuredSourceEditError('Attribute literal range could not be located')
+    }
+    const literalStart = match.index + assignment.index + assignment[0].length
+    return plan(source.document.uri, [
+      editAt(
+        source.document.text,
+        source.start + literalStart,
+        source.start + literalStart + match.groups.literal.length,
+        literal(value),
+      ),
+    ], [target.id])
   }
 
   private declaration(element: SemanticElement): {
@@ -485,6 +628,11 @@ function literal(value: string | number | boolean): string {
   if (typeof value === 'string') return JSON.stringify(value)
   if (typeof value === 'number' && !Number.isFinite(value)) {
     throw new StructuredSourceEditError('Property number must be finite')
+  }
+  if (typeof value !== 'number' && typeof value !== 'boolean') {
+    throw new StructuredSourceEditError(
+      'Property value must be a finite number, string, or boolean',
+    )
   }
   return String(value)
 }

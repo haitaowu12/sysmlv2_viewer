@@ -24,3 +24,20 @@ shasum -a 256 build/libs/sysmlv2-lsp-server.jar
 `isPreserveFileTimestamps = false` and `isReproducibleFileOrder = true` make
 the selected runtime artifact reproducible. The qualified Phase 2 artifact is
 locked in `config/language-engine-runtime-lock.json`.
+
+## Optional candidate validation contract
+
+The current overlay also supports `document-diagnostics-v1`. In one Xtext
+`doRead` context, it captures the actual document version and UTF-8 source
+SHA-256 and runs `CheckMode.ALL` validation. The response returns typed
+diagnostics, `diagnosticsComplete`, and any explicit `diagnosticsError`. It
+does not stamp a current version onto an asynchronous notification.
+
+Select this contract only with a candidate manifest whose VinQut entry includes
+`"semanticEvidenceValidation": "document-diagnostics-v1"` alongside the method.
+The adapter requires exact URI, version, source digest and successful completion
+before accepting corrective diagnostics. Missing or inconsistent evidence keeps
+existing errors visible. This overlay requires a separate candidate artifact
+and lock; the default product manifest and production lock are unchanged. See
+[the contributor pilot](../../docs/contributor-pilot.md) for the candidate build
+and qualification procedure.

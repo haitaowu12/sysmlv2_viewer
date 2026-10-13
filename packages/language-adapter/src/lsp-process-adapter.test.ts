@@ -189,6 +189,254 @@ describe('LspProcessAdapter', () => {
     ).rejects.toThrow('Language engine request timed out')
   })
 
+  it('reopens once when initial indexing publishes transient errors', async () => {
+    const adapter = new LspProcessAdapter({
+      metadata: {
+        adapterId: 'test/fake-lsp-transient-index',
+        adapterVersion: '0.1.0',
+        engineName: 'fake-lsp',
+        engineVersion: '1',
+        referenceRelease: 'test',
+        qualificationStatus: 'unqualified',
+      },
+      command: process.execPath,
+      arguments: [
+        resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs'),
+      ],
+      environment: { FAKE_LSP_TRANSIENT_OPEN_ERROR: '1' },
+      diagnosticSettleMs: 100,
+      requestTimeoutMs: 2_000,
+      semanticEvidenceMethod: 'sysml/semanticEvidence',
+    })
+    adapters.push(adapter)
+    const filePath = resolve(currentDirectory, 'transient-index.sysml')
+    const documentUri = pathToFileURL(filePath).href
+    const workspace = {
+      workspaceId: 'fake-transient-index',
+      rootUri: pathToFileURL(currentDirectory).href,
+      configurationName: 'test',
+      documents: [
+        {
+          uri: documentUri,
+          absolutePath: filePath,
+          languageId: 'sysml' as const,
+          version: 1,
+          text: 'package Fake {}',
+          sha256: 'test',
+        },
+      ],
+    }
+
+    await expect(adapter.openWorkspace(workspace)).resolves.toEqual([])
+    // Reopening must not consume a document version; the first real edit is
+    // still accepted as version 2.
+    await expect(
+      adapter.changeDocument(documentUri, 2, 'package Fake {}'),
+    ).resolves.toEqual([])
+  })
+
+  it('returns persistent initial errors after the bounded revalidation pass', async () => {
+    const adapter = new LspProcessAdapter({
+      metadata: {
+        adapterId: 'test/fake-lsp-persistent-index',
+        adapterVersion: '0.1.0',
+        engineName: 'fake-lsp',
+        engineVersion: '1',
+        referenceRelease: 'test',
+        qualificationStatus: 'unqualified',
+      },
+      command: process.execPath,
+      arguments: [
+        resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs'),
+      ],
+      environment: { FAKE_LSP_PERSISTENT_OPEN_ERROR: '1' },
+      diagnosticSettleMs: 100,
+      requestTimeoutMs: 2_000,
+      semanticEvidenceMethod: 'sysml/semanticEvidence',
+    })
+    adapters.push(adapter)
+    const filePath = resolve(currentDirectory, 'persistent-index.sysml')
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace({
+        workspaceId: 'fake-persistent-index',
+        rootUri: pathToFileURL(currentDirectory).href,
+        configurationName: 'test',
+        documents: [
+          {
+            uri: documentUri,
+            absolutePath: filePath,
+            languageId: 'sysml',
+            version: 1,
+            text: 'package Fake {}',
+            sha256: 'test',
+          },
+        ],
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'FAKE-PERSISTENT-001',
+      }),
+    ])
+  })
+
+  it('keeps prior errors when revalidation emits no fresh diagnostics', async () => {
+    const adapter = new LspProcessAdapter({
+      metadata: {
+        adapterId: 'test/fake-lsp-missing-revalidation',
+        adapterVersion: '0.1.0',
+        engineName: 'fake-lsp',
+        engineVersion: '1',
+        referenceRelease: 'test',
+        qualificationStatus: 'unqualified',
+      },
+      command: process.execPath,
+      arguments: [
+        resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs'),
+      ],
+      environment: {
+        FAKE_LSP_PERSISTENT_OPEN_ERROR: '1',
+        FAKE_LSP_NO_CHANGE_DIAGNOSTICS: '1',
+      },
+      diagnosticSettleMs: 100,
+      requestTimeoutMs: 2_000,
+      semanticEvidenceMethod: 'sysml/semanticEvidence',
+    })
+    adapters.push(adapter)
+    const filePath = resolve(currentDirectory, 'missing-revalidation.sysml')
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace({
+        workspaceId: 'fake-missing-revalidation',
+        rootUri: pathToFileURL(currentDirectory).href,
+        configurationName: 'test',
+        documents: [
+          {
+            uri: documentUri,
+            absolutePath: filePath,
+            languageId: 'sysml',
+            version: 1,
+            text: 'package Fake {}',
+            sha256: 'test',
+          },
+        ],
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'FAKE-PERSISTENT-001',
+      }),
+    ])
+  })
+
+  it('clears transient errors from a correlated validation response', async () => {
+    const adapter = createCorrelatedAdapter({
+      FAKE_LSP_TRANSIENT_OPEN_ERROR: '1',
+      FAKE_LSP_CORRELATED_SEMANTIC_EVIDENCE: '1',
+    })
+    const filePath = resolve(currentDirectory, 'correlated-transient.sysml')
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace(correlatedWorkspace('correlated-transient', filePath, documentUri)),
+    ).resolves.toEqual([])
+  })
+
+  it('retains persistent errors from a correlated validation response', async () => {
+    const adapter = createCorrelatedAdapter({
+      FAKE_LSP_PERSISTENT_OPEN_ERROR: '1',
+      FAKE_LSP_CORRELATED_SEMANTIC_EVIDENCE: '1',
+    })
+    const filePath = resolve(currentDirectory, 'correlated-persistent.sysml')
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace(correlatedWorkspace('correlated-persistent', filePath, documentUri)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'FAKE-PERSISTENT-001',
+      }),
+    ])
+  })
+
+  it.each([
+    ['mismatched version', 'FAKE_LSP_CORRELATED_BAD_VERSION'],
+    ['mismatched source hash', 'FAKE_LSP_CORRELATED_BAD_HASH'],
+    ['missing diagnostics', 'FAKE_LSP_CORRELATED_MISSING_DIAGNOSTICS'],
+  ])('retains prior errors for correlated validation with %s', async (_label, failureFlag) => {
+    const adapter = createCorrelatedAdapter({
+      FAKE_LSP_TRANSIENT_OPEN_ERROR: '1',
+      FAKE_LSP_CORRELATED_SEMANTIC_EVIDENCE: '1',
+      [failureFlag]: '1',
+    })
+    const filePath = resolve(currentDirectory, `correlated-${failureFlag}.sysml`)
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace(correlatedWorkspace(`correlated-${failureFlag}`, filePath, documentUri)),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'FAKE-TRANSIENT-001',
+      }),
+    ])
+  })
+
+  it('ignores a delayed versionless publication during revalidation', async () => {
+    const adapter = new LspProcessAdapter({
+      metadata: {
+        adapterId: 'test/fake-lsp-versionless-race',
+        adapterVersion: '0.1.0',
+        engineName: 'fake-lsp',
+        engineVersion: '1',
+        referenceRelease: 'test',
+        qualificationStatus: 'unqualified',
+      },
+      command: process.execPath,
+      arguments: [
+        resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs'),
+      ],
+      environment: {
+        FAKE_LSP_PERSISTENT_OPEN_ERROR: '1',
+        FAKE_LSP_STALE_VERSIONLESS_REVALIDATION: '1',
+        FAKE_LSP_DELAY_CHANGE_DIAGNOSTICS: '1',
+      },
+      diagnosticSettleMs: 750,
+      requestTimeoutMs: 2_000,
+      semanticEvidenceMethod: 'sysml/semanticEvidence',
+    })
+    adapters.push(adapter)
+    const filePath = resolve(currentDirectory, 'versionless-race.sysml')
+    const documentUri = pathToFileURL(filePath).href
+
+    await expect(
+      adapter.openWorkspace({
+        workspaceId: 'fake-versionless-race',
+        rootUri: pathToFileURL(currentDirectory).href,
+        configurationName: 'test',
+        documents: [
+          {
+            uri: documentUri,
+            absolutePath: filePath,
+            languageId: 'sysml',
+            version: 1,
+            text: 'package Fake {}',
+            sha256: 'test',
+          },
+        ],
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'FAKE-PERSISTENT-001',
+      }),
+    ])
+  })
+
   it('handles an engine crash without an unhandled stdin error during disposal', async () => {
     const adapter = new LspProcessAdapter({
       metadata: {
@@ -237,3 +485,47 @@ describe('LspProcessAdapter', () => {
     await expect(adapter.dispose()).resolves.toBeUndefined()
   })
 })
+
+function createCorrelatedAdapter(environment: Record<string, string>): LspProcessAdapter {
+  const adapter = new LspProcessAdapter({
+    metadata: {
+      adapterId: 'test/fake-lsp-correlated-validation',
+      adapterVersion: '0.1.0',
+      engineName: 'fake-lsp',
+      engineVersion: '1',
+      referenceRelease: 'test',
+      qualificationStatus: 'unqualified',
+    },
+    command: process.execPath,
+    arguments: [resolve(currentDirectory, '../test-fixtures/fake-lsp.mjs')],
+    environment,
+    diagnosticSettleMs: 250,
+    requestTimeoutMs: 2_000,
+    semanticEvidenceMethod: 'sysml/semanticEvidence',
+    semanticEvidenceValidation: 'document-diagnostics-v1',
+  })
+  adapters.push(adapter)
+  return adapter
+}
+
+function correlatedWorkspace(
+  workspaceId: string,
+  filePath: string,
+  documentUri: string,
+) {
+  return {
+    workspaceId,
+    rootUri: pathToFileURL(currentDirectory).href,
+    configurationName: 'test',
+    documents: [
+      {
+        uri: documentUri,
+        absolutePath: filePath,
+        languageId: 'sysml' as const,
+        version: 1,
+        text: 'package Fake {}',
+        sha256: 'test',
+      },
+    ],
+  }
+}

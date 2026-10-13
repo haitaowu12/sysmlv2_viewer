@@ -15,6 +15,7 @@ import {
 } from '../../semantic-diff/src/index.js'
 import type { WorkspaceTransactionReceipt } from './file-transaction.js'
 import {
+  planBatchStructuredSourceEdits,
   planStructuredSourceEdits,
 } from './structured-source-edits.js'
 
@@ -27,7 +28,9 @@ export const COMMAND_KINDS = [
   'change-type',
   'change-multiplicity',
   'set-property',
+  'set-attribute-value',
   'update-documentation',
+  'batch-edit',
   'apply-pattern',
   'replace-document',
   'undo-command',
@@ -47,6 +50,20 @@ export type CreatableRelationshipKind =
   | 'interface'
   | 'satisfaction'
   | 'verification'
+
+export type ContributorFieldCommand =
+  | {
+      kind: 'set-property'
+      targetId: string
+      propertyQualifiedName: string
+      value: string | number | boolean
+    }
+  | {
+      kind: 'set-attribute-value'
+      targetId: string
+      value: string | number | boolean
+    }
+  | { kind: 'update-documentation'; targetId: string; documentation: string }
 
 export type WorkbenchCommand =
   | {
@@ -75,13 +92,8 @@ export type WorkbenchCommand =
       lower: number
       upper: number | '*'
     }
-  | {
-      kind: 'set-property'
-      targetId: string
-      propertyQualifiedName: string
-      value: string | number | boolean
-    }
-  | { kind: 'update-documentation'; targetId: string; documentation: string }
+  | ContributorFieldCommand
+  | { kind: 'batch-edit'; commands: ContributorFieldCommand[] }
   | {
       kind: 'apply-pattern'
       patternId: string
@@ -250,6 +262,20 @@ export async function planCommand(
   ) {
     throw new CommandValidationError(
       `Command ${envelope.command.kind} is not implemented by the active command profile`,
+    )
+  }
+  if (envelope.command.kind === 'batch-edit') {
+    const batch = planBatchStructuredSourceEdits(
+      envelope.command.commands,
+      snapshot,
+      documents,
+    )
+    return createProposal(
+      envelope,
+      snapshot,
+      documents,
+      batch.edits,
+      batch.affectedElementIds,
     )
   }
   if (envelope.command.kind === 'rename-element') {
@@ -560,6 +586,62 @@ function validateEnvelope(envelope: CommandEnvelope): void {
   ) {
     throw new CommandValidationError('Rename target must be a SysML identifier')
   }
+  if (envelope.command.kind === 'batch-edit') {
+    validateBatchCommand(envelope.command.commands)
+  }
+  if (
+    envelope.command.kind === 'set-property' ||
+    envelope.command.kind === 'set-attribute-value'
+  ) {
+    validateFieldValue(envelope.command.value)
+  }
+}
+
+function validateBatchCommand(commands: ContributorFieldCommand[]): void {
+  if (!Array.isArray(commands) || commands.length < 1 || commands.length > 50) {
+    throw new CommandValidationError(
+      'Batch edit must contain between 1 and 50 field commands',
+    )
+  }
+  for (const command of commands) {
+    if (!command || typeof command !== 'object') {
+      throw new CommandValidationError('Batch edit contains an invalid command')
+    }
+    if (
+      command.kind !== 'set-property' &&
+      command.kind !== 'set-attribute-value' &&
+      command.kind !== 'update-documentation'
+    ) {
+      throw new CommandValidationError(
+        'Batch edit only supports set-property, set-attribute-value, and update-documentation commands',
+      )
+    }
+    if (!command.targetId || typeof command.targetId !== 'string') {
+      throw new CommandValidationError('Batch edit targetId must be a non-empty string')
+    }
+    if (command.kind === 'set-property' && (
+      !command.propertyQualifiedName ||
+      typeof command.propertyQualifiedName !== 'string'
+    )) {
+      throw new CommandValidationError(
+        'Batch set-property requires a non-empty propertyQualifiedName',
+      )
+    }
+    if (command.kind === 'update-documentation' && typeof command.documentation !== 'string') {
+      throw new CommandValidationError(
+        'Batch update-documentation requires a string documentation value',
+      )
+    }
+    if (command.kind === 'set-property' || command.kind === 'set-attribute-value') {
+      validateFieldValue(command.value)
+    }
+  }
+}
+
+function validateFieldValue(value: unknown): asserts value is string | number | boolean {
+  if (typeof value === 'number' && Number.isFinite(value)) return
+  if (typeof value === 'string' || typeof value === 'boolean') return
+  throw new CommandValidationError('Field value must be a finite number, string, or boolean')
 }
 
 function fullDocumentRange(text: string): {

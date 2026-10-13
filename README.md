@@ -118,6 +118,18 @@ qualification, or remote collaboration. P7 public release remains blocked by
 product/runtime license reconciliation, signed/notarized distribution,
 clean-machine evidence for every claimed OS, and three-user usability evidence.
 
+## Contributor pilot
+
+The Requirements activity now provides source-backed requirement, interface and
+scalar-property registers. Related edits can be staged as one bounded batch,
+reviewed as an engineering change, and applied through the existing approved
+transaction path. Unsupported constructs remain visible and unchanged.
+
+See the [contributor pilot guide](docs/contributor-pilot.md) for the supported
+profile, fictional fixture, independent expected output, runtime qualification
+command and explicit candidate-runtime limits. This slice does not change the
+production release gates above.
+
 ## Development
 
 ```bash
