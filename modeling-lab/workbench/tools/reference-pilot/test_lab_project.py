@@ -1,5 +1,5 @@
 import unittest
-from lab_project import candidate, digest, views_for
+from lab_project import candidate, digest, views_for, scenario_view, exploration_views
 
 
 class LabProjectTests(unittest.TestCase):
@@ -54,6 +54,24 @@ class LabProjectTests(unittest.TestCase):
         self.assertEqual(views_for([view]), [view])
         for views in ([view, view], [dict(view, renderer='custom-executable')], [dict(view, names=[])], [dict(view, styles=['arbitrary'])]):
             with self.assertRaises(ValueError): views_for(views)
+
+    def test_temporary_exploration_keeps_saved_recipes_unchanged(self):
+        saved = [{'id': 'overview', 'names': ['DifferentPlant'], 'view': 'TREE', 'styles': []}]
+        rendered = exploration_views(saved, 'DifferentPlant::Plant', 'SUMMARY')
+        self.assertEqual([v['id'] for v in saved], ['overview'])
+        self.assertEqual([v['id'] for v in rendered], ['overview', 'focused'])
+        self.assertEqual(rendered[-1]['names'], ['DifferentPlant::Plant'])
+        self.assertEqual(exploration_views(saved, None), saved)
+
+    def test_scenario_view_ids_handle_scopes_existing_ids_and_long_names(self):
+        first = scenario_view([], 'PackageA', 'RecoverService')
+        second = scenario_view([first], 'PackageB', 'RecoverService')
+        collision = scenario_view([first, second], 'PackageA', 'RecoverService')
+        long_a = scenario_view([], 'PackageA', 'A' * 63 + 'B')
+        long_b = scenario_view([], 'PackageA', 'A' * 63 + 'C')
+        views_for([first, second, collision, long_a, long_b])
+        self.assertEqual(len({v['id'] for v in [first, second, collision, long_a, long_b]}), 5)
+        self.assertEqual(second['names'], ['PackageB::RecoverService'])
 
 
 if __name__ == '__main__': unittest.main()

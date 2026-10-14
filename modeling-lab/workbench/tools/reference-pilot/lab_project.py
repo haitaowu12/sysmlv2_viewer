@@ -134,3 +134,25 @@ def views_for(value):
         ids.add(view['id'])
         view.setdefault('styles', [])
     return value
+
+
+def scenario_view(views, target, name):
+    """Allocate a presentation identifier without changing the model identifier."""
+    qualified = target + '::' + name
+    stem = 'scenario-' + name.lower().replace('_', '-')[:40] + '-' + digest(qualified)[:8]
+    existing = {v['id'] for v in views}
+    view_id, suffix = stem, 2
+    while view_id in existing:
+        view_id = stem + '-' + str(suffix)
+        suffix += 1
+    return {'id': view_id, 'names': [qualified], 'view': 'ACTION', 'styles': ['LR'], 'renderer': 'behavior'}
+
+
+def exploration_views(views, target, view='DEFAULT'):
+    """Render a temporary scope without mutating the project's saved recipes."""
+    if not target:
+        return views
+    return views_for([v for v in views if v['id'] != 'focused'] + [{
+        'id': 'focused', 'names': [target],
+        'view': 'INTERCONNECTION' if view == 'SUMMARY' else view, 'styles': ['LR'],
+        'renderer': 'summary' if view == 'SUMMARY' else ('engineering' if view == 'INTERCONNECTION' else 'pilot')}])
