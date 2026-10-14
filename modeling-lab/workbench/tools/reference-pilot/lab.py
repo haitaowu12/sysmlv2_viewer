@@ -14,7 +14,7 @@ from view_scope import catalogue, compose
 from review_routes import prepare as prepare_reviews
 from report_integrity import load_report
 from change_summary import summarize
-from lab_project import candidate, views_for, digest
+from lab_project import candidate, views_for, digest, scenario_view, exploration_views
 from lab_delivery import browser_report, element_detail
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -146,7 +146,7 @@ def main():
                     draft, proposal = candidate(old, old['source'] if old else '', data)
                     views = json.loads(json.dumps(current['views']))
                     if data['operation'] == 'scenario':
-                        views.append({'id': 'scenario-' + data['name'].lower().replace('_', '-')[:55], 'names': [data['target']+'::'+data['name']], 'view': 'ACTION', 'styles': ['LR'], 'renderer': 'behavior'})
+                        views.append(scenario_view(views, data['target'], data['name']))
                     report = render_model(draft, views_for(views))
                     if not report.get('staticChecksPassed'):
                         return self.reply(400, {'error': 'The proposed edit failed language validation. Current model is unchanged.', 'diagnostics': report['diagnostics']})
@@ -157,10 +157,8 @@ def main():
                     raise ValueError('Model source must be text, up to 256 KiB')
                 if data.get('expectedBase') and data['expectedBase'] != (current['report'] or {}).get('sourceSha256'):
                     raise ValueError('The model changed while this proposal was open. Reopen the task.')
-                views = views_for(data.get('views', presets))
-                if data.get('target'):
-                    view = data.get('view', 'DEFAULT')
-                    views = views_for([v for v in views if v['id'] != 'focused'] + [{'id': 'focused', 'names': [data['target']], 'view': 'INTERCONNECTION' if view == 'SUMMARY' else view, 'styles': ['LR'], 'renderer': 'summary' if view == 'SUMMARY' else ('engineering' if view == 'INTERCONNECTION' else 'pilot')}])
+                project_views = views_for(data.get('views', presets))
+                views = exploration_views(project_views, data.get('target'), data.get('view', 'DEFAULT'))
                 baseline = data.get('baselineSource', source)
                 if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
                     raise ValueError('Invalid baseline source')
@@ -172,7 +170,7 @@ def main():
                         current['baseline'] = None
                         raise ValueError('The project baseline does not pass language validation.')
                 report = render_model(draft, views)
-                report['viewRecipes'] = views
+                report['viewRecipes'] = project_views
                 report['changeSummary'] = summarize(current['baseline'], report)
                 for view in report['views']:
                     if view.get('stakeholder'):
@@ -181,7 +179,7 @@ def main():
                         view['stakeholder']['changeSummary'] = [change for change in report['changeSummary'] if change['requirement'] in concerns]
                 current['catalogue'] = report.get('catalogue') if report.get('staticChecksPassed') else None
                 current['report'] = report if report.get('staticChecksPassed') else None
-                current['views'] = views
+                current['views'] = project_views
                 return self.reply(200, browser_report(report))
             except Exception as error:
                 return self.reply(400, {'error': str(error)})
