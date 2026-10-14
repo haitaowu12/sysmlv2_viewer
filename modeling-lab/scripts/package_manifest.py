@@ -142,6 +142,7 @@ SOURCE_PATHS = (
     'workbench/fixtures/workspaces/source-set/types.sysml',
     'workbench/package-lock.json',
     'workbench/package.json',
+    'workbench/vitest.config.ts',
     'workbench/src/test/referenceLab.test.ts',
     'workbench/tools/reference-pilot/AGENT_WORKFLOW.md',
     'workbench/tools/reference-pilot/EVIDENCE_CONTRACT.md',
