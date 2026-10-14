@@ -1,3 +1,4 @@
+import { quantityField, referenceField, interfaceAgreementField, AGREEMENT_STATUSES } from './contributor-profile.js'
 import type {
   WorkbenchRange,
   WorkbenchTextEdit,
@@ -83,6 +84,11 @@ export function planStructuredSourceEdits(
       const target = context.editable(command.targetId)
       return context.setAttributeValue(target, command.value)
     }
+    case 'set-quantity-value':
+    case 'set-reference-target':
+    case 'set-interface-agreement': {
+      return context.contributorField(command)
+    }
     case 'update-documentation': {
       const target = context.editable(command.targetId)
       return context.updateDocumentation(target, command.documentation)
@@ -132,10 +138,13 @@ export function planBatchStructuredSourceEdits(
     if (
       command.kind !== 'set-property' &&
       command.kind !== 'set-attribute-value' &&
-      command.kind !== 'update-documentation'
+      command.kind !== 'update-documentation' &&
+      command.kind !== 'set-quantity-value' &&
+      command.kind !== 'set-reference-target' &&
+      command.kind !== 'set-interface-agreement'
     ) {
       throw new StructuredSourceEditError(
-        'Batch edit only supports set-property, set-attribute-value, and update-documentation commands',
+        'Batch edit only supports contributor field commands',
       )
     }
     return planStructuredSourceEdits(command, snapshot, documents)
@@ -394,6 +403,50 @@ class SourceContext {
         literal(value),
       ),
     ], [target.id])
+  }
+
+  contributorField(command: Extract<ContributorFieldCommand, { kind: 'set-quantity-value' | 'set-reference-target' | 'set-interface-agreement' }>): StructuredSourceEditPlan {
+    const target = this.editable(command.targetId)
+    const source = this.declaration(target)
+    const edits: WorkbenchTextEdit[] = []
+    const affected = new Set([target.id])
+    const replace = (range: { start: number; end: number }, text: string): void => {
+      if (source.text.slice(range.start, range.end) !== text) edits.push(editAt(source.document.text, source.start + range.start, source.start + range.end, text))
+    }
+    if (command.kind === 'set-quantity-value') {
+      const field = quantityField(target, source.text, this.snapshot, source.document.text)
+      if (!field) throw new StructuredSourceEditError('Unsupported quantity declaration; expected a supported typed literal with explicit unit')
+      const unit = field.units.find((entry) => entry.id === command.unitId)
+      if (!unit) throw new StructuredSourceEditError('Unit is unknown or incompatible with the quantity dimension')
+      if (typeof command.value !== 'number' || !Number.isFinite(command.value)) throw new StructuredSourceEditError('Quantity value must be a finite number')
+      if (command.value !== field.value) replace(field.numberRange, String(command.value))
+      if (unit.id !== field.unitId) replace(field.unitRange, unit.expression)
+    } else if (command.kind === 'set-reference-target') {
+      const field = referenceField(target, source.text, this.snapshot, source.document.text)
+      if (!field) throw new StructuredSourceEditError('Unsupported reference declaration or unresolved semantic type')
+      const chosen = field.candidates.find((entry) => entry.id === command.referencedElementId)
+      if (!chosen) throw new StructuredSourceEditError('Reference target must have the same semantic type and supported source scope')
+      if (chosen.id !== field.referencedElementId) replace(field.valueRange, qualifiedName(chosen.qualifiedName))
+      affected.add(chosen.id)
+      affected.add(field.referencedElementId)
+    } else {
+      const field = interfaceAgreementField(target, source.text, this.snapshot, source.document.text)
+      if (!field) throw new StructuredSourceEditError('Unsupported interface agreement; explicit endpoint and typed agreement fields are required')
+      const from = field.sourceCandidates.find((entry) => entry.id === command.sourceId)
+      const to = field.targetCandidates.find((entry) => entry.id === command.targetEndpointId)
+      if (!from || !to || from.id === to.id) throw new StructuredSourceEditError('Interface endpoints must be distinct compatible ports in the supported source scope')
+      if (!AGREEMENT_STATUSES.includes(command.status)) throw new StructuredSourceEditError('Unknown recorded agreement status')
+      if (typeof command.owner !== 'string' || typeof command.rationale !== 'string' || command.owner.length > 512 || command.rationale.length > 8000) throw new StructuredSourceEditError('Agreement owner/rationale must be bounded text')
+      if (command.status !== 'draft' && (!command.owner.trim() || !command.rationale.trim())) throw new StructuredSourceEditError('A non-draft recorded agreement requires an owner and rationale')
+      if (from.id !== field.sourceId) replace(field.ranges.source, qualifiedName(from.qualifiedName))
+      if (to.id !== field.targetEndpointId) replace(field.ranges.target, qualifiedName(to.qualifiedName))
+      replace(field.ranges.status, `${field.statusType}::${command.status}`)
+      if (command.owner.trim() !== field.owner) replace(field.ranges.owner, literal(command.owner.trim()))
+      if (command.rationale.trim() !== field.rationale) replace(field.ranges.rationale, literal(command.rationale.trim()))
+      for (const id of [from.id, to.id, field.sourceId, field.targetEndpointId]) affected.add(id)
+    }
+    if (!edits.length) throw new StructuredSourceEditError('Contributor command contains no changes')
+    return plan(source.document.uri, edits, [...affected])
   }
 
   private declaration(element: SemanticElement): {

@@ -14,6 +14,8 @@ engine remains the authority for diagnostics, identity, navigation, and
 relationships; the contributor surface is a task-specific projection over
 that model.
 
+The next increment adds [units, references and interface agreements](contributor-phase2.md), with a separately qualified offline installation route. The original fictional pilot and its receipt below remain the prior baseline.
+
 ## What is implemented
 
 The primary surface is the **Requirements and interfaces** contributor task.

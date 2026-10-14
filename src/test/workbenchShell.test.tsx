@@ -6,6 +6,9 @@ import type { WorkbenchGateway } from '../workbench/gateway.js'
 import type { AiOperationRecord } from '../../packages/ai-orchestrator/src/index.js'
 import { WorkbenchShell } from '../workbench/WorkbenchShell.js'
 
+// Browser-only Monaco initialization is covered by the installed-artifact IAB journey.
+vi.mock('../workbench/monaco-local.js', () => ({}))
+
 vi.mock('@monaco-editor/react', () => ({
   default: ({ value, onChange }: { value: string; onChange(value: string): void }) => (
     <textarea aria-label="SysML source editor" value={value} onChange={(event) => onChange(event.target.value)} />
@@ -74,12 +77,14 @@ describe('service-backed workbench shell', () => {
     render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
     fireEvent.click(screen.getByRole('tab', { name: /source/i }))
     const editor = await screen.findByRole('textbox', { name: 'SysML source editor' })
+    await waitFor(() => expect(editor).toHaveValue(source))
     fireEvent.change(editor, { target: { value: source.replace('Controller', 'Controller2') } })
 
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Review source patch' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Review source patch' }))
     expect(gateway.proposeCommand).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Generate validated patch' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Generate validated patch' }))
 
     await waitFor(() => expect(gateway.proposeCommand).toHaveBeenCalledWith(
       expect.objectContaining({

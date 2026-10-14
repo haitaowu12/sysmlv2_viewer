@@ -29,6 +29,9 @@ export const COMMAND_KINDS = [
   'change-multiplicity',
   'set-property',
   'set-attribute-value',
+  'set-quantity-value',
+  'set-reference-target',
+  'set-interface-agreement',
   'update-documentation',
   'batch-edit',
   'apply-pattern',
@@ -52,6 +55,9 @@ export type CreatableRelationshipKind =
   | 'verification'
 
 export type ContributorFieldCommand =
+  | { kind: 'set-quantity-value'; targetId: string; value: number; unitId: string }
+  | { kind: 'set-reference-target'; targetId: string; referencedElementId: string }
+  | { kind: 'set-interface-agreement'; targetId: string; sourceId: string; targetEndpointId: string; status: import('./contributor-profile.js').AgreementStatus; owner: string; rationale: string }
   | {
       kind: 'set-property'
       targetId: string
@@ -610,10 +616,13 @@ function validateBatchCommand(commands: ContributorFieldCommand[]): void {
     if (
       command.kind !== 'set-property' &&
       command.kind !== 'set-attribute-value' &&
-      command.kind !== 'update-documentation'
+      command.kind !== 'update-documentation' &&
+      command.kind !== 'set-quantity-value' &&
+      command.kind !== 'set-reference-target' &&
+      command.kind !== 'set-interface-agreement'
     ) {
       throw new CommandValidationError(
-        'Batch edit only supports set-property, set-attribute-value, and update-documentation commands',
+        'Batch edit only supports contributor field commands',
       )
     }
     if (!command.targetId || typeof command.targetId !== 'string') {

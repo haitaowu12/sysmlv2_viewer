@@ -376,3 +376,7 @@
   .activity-rail button.active,
   .diagram-node.selected { outline: 2px solid ButtonText; }
 }
+
+.contributor-disposition-note { padding: 8px; border-left: 2px solid var(--wb-accent); color: var(--wb-muted); background: var(--wb-accent-soft); font-size: 10px; line-height: 1.5; }
+.contributor-form select { text-overflow: ellipsis; }
+.contributor-change-summary li span, .contributor-review > ul li > span { overflow-wrap: anywhere; min-width: 0; }

@@ -4,13 +4,14 @@ import type {
   ContributorFieldCommand,
   WorkbenchCommand,
 } from '../../packages/command-engine/src/index.js'
+import { roundTripsNumericLiteral, quantityField, referenceField, interfaceAgreementField, type QuantityField, type ReferenceField, type InterfaceAgreementField } from '../../packages/command-engine/src/contributor-profile.js'
 import { directDocumentation } from '../../packages/command-engine/src/documentation.js'
 import type { SemanticElement, SemanticRelationship } from '../../packages/semantic-model/src/index.js'
 import { CommandReviewPanel } from '../components/CommandReviewPanel.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
 
-type ContributorScope = 'requirements' | 'interfaces' | 'properties'
-type EditKind = 'documentation' | 'property' | 'attribute'
+type ContributorScope = 'requirements' | 'interfaces' | 'properties' | 'references'
+type EditKind = 'documentation' | 'property' | 'attribute' | 'reference' | 'agreement'
 type PropertyValueKind = 'string' | 'number' | 'boolean'
 
 const CONTRIBUTOR_PAGE_SIZE = 50
@@ -27,6 +28,7 @@ interface StagedChange {
   beforeValue: string
   afterValue: string
   attributeType?: string
+  command?: ContributorFieldCommand
 }
 
 interface AttributeDescriptor {
@@ -39,7 +41,7 @@ interface AttributeDescriptor {
 type SourceReadState =
   | { status: 'idle' }
   | { status: 'loading'; targetId: string }
-  | { status: 'ready'; targetId: string; documentSha256: string; documentation: string; attribute: AttributeDescriptor | null }
+  | { status: 'ready'; targetId: string; documentSha256: string; documentation: string; attribute: AttributeDescriptor | null; quantity: QuantityField | null; reference: ReferenceField | null; agreement: InterfaceAgreementField | null }
   | { status: 'error'; targetId: string; message: string }
 
 /**
@@ -69,6 +71,13 @@ export function ContributorSurface({
   const [propertyValue, setPropertyValue] = useState('')
   const [propertyValueKind, setPropertyValueKind] = useState<PropertyValueKind>('string')
   const [attributeValue, setAttributeValue] = useState('')
+  const [unit, setUnit] = useState('')
+  const [referenceId, setReferenceId] = useState('')
+  const [agreementSource, setAgreementSource] = useState('')
+  const [agreementTarget, setAgreementTarget] = useState('')
+  const [agreementStatus, setAgreementStatus] = useState<InterfaceAgreementField['status']>('draft')
+  const [agreementOwner, setAgreementOwner] = useState('')
+  const [agreementRationale, setAgreementRationale] = useState('')
   const [staged, setStaged] = useState<StagedChange[]>([])
   const [envelope, setEnvelope] = useState<CommandEnvelope | null>(null)
   const [error, setError] = useState('')
@@ -85,7 +94,8 @@ export function ContributorSurface({
   const contributorItems = useMemo(
     () => contributorElements(workspace.snapshot.elements, 'requirements')
       .concat(contributorElements(workspace.snapshot.elements, 'interfaces'))
-      .concat(contributorElements(workspace.snapshot.elements, 'properties')),
+      .concat(contributorElements(workspace.snapshot.elements, 'properties'))
+      .concat(contributorElements(workspace.snapshot.elements, 'references')),
     [workspace.snapshot.elements],
   )
   const selected = contributorItems.find((element) => element.id === selectedId) ?? rows[0]
@@ -104,8 +114,10 @@ export function ContributorSurface({
   const canEdit = Boolean(
     selected &&
     selected.provenance.classification !== 'opaque' &&
-    source.status === 'ready' &&
-    (scope !== 'properties' || source.attribute !== null),
+    source.status === 'ready' && source.targetId === selected.id &&
+    (scope !== 'properties' || source.attribute !== null || source.quantity !== null) &&
+    (scope !== 'references' || source.reference !== null) &&
+    (editKind !== 'agreement' || source.agreement !== null),
   )
 
   useEffect(() => {
@@ -150,6 +162,13 @@ export function ContributorSurface({
     }
     setDocumentation('')
     setAttributeValue('')
+    setUnit('')
+    setReferenceId('')
+    setAgreementSource('')
+    setAgreementTarget('')
+    setAgreementStatus('draft')
+    setAgreementOwner('')
+    setAgreementRationale('')
     setPropertyQualifiedName('')
     setPropertyValue('')
     const documentSummary = workspace.snapshot.documents.find((item) => item.uri === selected.source.uri)
@@ -171,13 +190,23 @@ export function ContributorSurface({
       const elementText = sliceSourceRange(document.text, selected.source.range)
       setDocumentation(extractDocumentation(elementText))
       const attribute = parseSimpleAttribute(elementText)
-      setAttributeValue(attribute?.value ?? '')
+      const quantity = quantityField(selected, elementText, workspace.snapshot)
+      const reference = referenceField(selected, elementText, workspace.snapshot, document.text)
+      const agreement = interfaceAgreementField(selected, elementText, workspace.snapshot, document.text)
+      setAttributeValue(quantity ? String(quantity.value) : attribute?.value ?? '')
+      setUnit(quantity?.unitId ?? '')
+      setReferenceId(reference?.referencedElementId ?? '')
+      setAgreementSource(agreement?.sourceId ?? '')
+      setAgreementTarget(agreement?.targetEndpointId ?? '')
+      setAgreementStatus(agreement?.status ?? 'draft')
+      setAgreementOwner(agreement?.owner ?? '')
+      setAgreementRationale(agreement?.rationale ?? '')
       setSource({
         status: 'ready',
         targetId: selected.id,
         documentSha256: document.sha256,
         documentation: extractDocumentation(elementText),
-        attribute,
+        attribute, quantity, reference, agreement,
       })
     }).catch((cause: unknown) => {
       if (!active) return
@@ -188,7 +217,7 @@ export function ContributorSurface({
       })
     })
     return () => { active = false }
-  }, [gateway, selected, selected?.id, selected?.source.documentSha256, selected?.source.range, selected?.source.uri, workspace.snapshot.documents, workspace.snapshot.snapshotSha256, workspace.status.workspaceId])
+  }, [gateway, selected, selected?.id, selected?.source.documentSha256, selected?.source.range, selected?.source.uri, workspace.snapshot, workspace.status.workspaceId])
 
   const select = (element: SemanticElement) => {
     setSelectedId(element.id)
@@ -198,14 +227,43 @@ export function ContributorSurface({
 
   const addChange = () => {
     if (!selected) {
-      setError('Select a source-backed requirement or interface first.')
+      setError('Select a source-backed model item first.')
       return
     }
     if (!canEdit) {
-      setError('This element is preserved as opaque source and is read-only in this task.')
+      setError('This element is not ready for the selected editing profile. Refresh or select a supported source-backed item.')
       return
     }
-    const change = readChange({
+    let change: StagedChange | { error: string }
+    const descriptor = source.status === 'ready' ? source : null
+    if (scope === 'properties' && descriptor?.quantity) {
+      const parsed = parseScalarValue(attributeValue.trim(), 'number')
+      change = 'error' in parsed ? parsed : !descriptor.quantity.units.some((item) => item.id === unit) ? { error: 'Select a compatible unit from this quantity profile.' } : {
+        id: selected.id + ':quantity', targetId: selected.id, targetLabel: selected.qualifiedName, kind: 'attribute',
+        beforeValue: String(descriptor.quantity.value) + ' [' + descriptor.quantity.unitExpression + ']',
+        afterValue: attributeValue + ' [' + unit + ']',
+        command: { kind: 'set-quantity-value', targetId: selected.id, value: Number(parsed.value), unitId: unit },
+      }
+    } else if (scope === 'references' && descriptor?.reference) {
+      const candidate = descriptor.reference.candidates.find((item) => item.id === referenceId)
+      change = !candidate ? { error: 'Select a compatible reference from this baseline.' } : {
+        id: selected.id + ':reference', targetId: selected.id, targetLabel: selected.qualifiedName, kind: 'reference',
+        beforeValue: descriptor.reference.referenceQualifiedName, afterValue: candidate.qualifiedName,
+        command: { kind: 'set-reference-target', targetId: selected.id, referencedElementId: candidate.id },
+      }
+    } else if (editKind === 'agreement' && descriptor?.agreement) {
+      const from = descriptor.agreement.sourceCandidates.find((item) => item.id === agreementSource)
+      const to = descriptor.agreement.targetCandidates.find((item) => item.id === agreementTarget)
+      change = !from || !to ? { error: 'Select both compatible interface endpoints.' }
+        : from.id === to.id ? { error: 'Interface source and target must be different endpoints.' }
+        : !agreementOwner.trim() || !agreementRationale.trim() ? { error: 'Enter an owner and rationale for this interface disposition.' }
+        : {
+          id: selected.id + ':agreement', targetId: selected.id, targetLabel: selected.qualifiedName, kind: 'agreement',
+          beforeValue: agreementSummary(descriptor.agreement, workspace.snapshot.elements),
+          afterValue: from.qualifiedName + ' → ' + to.qualifiedName + '; ' + agreementStatus + '; owner: ' + agreementOwner.trim() + '; ' + agreementRationale.trim(),
+          command: { kind: 'set-interface-agreement', targetId: selected.id, sourceId: from.id, targetEndpointId: to.id, status: agreementStatus, owner: agreementOwner.trim(), rationale: agreementRationale.trim() },
+        }
+    } else change = readChange({
       selected,
       editKind,
       documentation,
@@ -266,7 +324,7 @@ export function ContributorSurface({
   const changeScope = (next: ContributorScope) => {
     setScope(next)
     setSelectedId('')
-    setEditKind(next === 'properties' ? 'attribute' : 'documentation')
+    setEditKind(next === 'properties' ? 'attribute' : next === 'references' ? 'reference' : 'documentation')
     setError('')
   }
 
@@ -276,7 +334,7 @@ export function ContributorSurface({
         <div>
           <p className="eyebrow">TASK-SPECIFIC CONTRIBUTION</p>
           <h2>Requirements and interfaces</h2>
-          <p>Maintain source-backed engineering statements through a typed, reviewable command.</p>
+          <p>Maintain engineering statements, values, references and interface agreements through reviewed source changes.</p>
         </div>
         <div className="contributor-baseline" aria-label="Contributor baseline">
           <span>{workspace.snapshot.elements.length} model elements</span>
@@ -314,11 +372,14 @@ export function ContributorSurface({
             >
               Properties ({contributorElements(workspace.snapshot.elements, 'properties').length})
             </button>
+            <button type="button" role="tab" aria-selected={scope === 'references'} onClick={() => changeScope('references')}>
+              References ({contributorElements(workspace.snapshot.elements, 'references').length})
+            </button>
           </div>
           <div className="contributor-register-heading">
             <div>
-              <h3 id="contributor-register-title">{scope === 'requirements' ? 'Requirement register' : scope === 'interfaces' ? 'Interface register' : 'Simple attribute register'}</h3>
-              <p>Choose an item to see its source and linked model relationships.</p>
+              <h3 id="contributor-register-title">{scope === 'requirements' ? 'Requirement register' : scope === 'interfaces' ? 'Interface register' : scope === 'references' ? 'Reference register' : 'Attribute register'}</h3>
+              <p>{scope === 'references' ? 'Select a typed usage. Existing reference bindings can be edited; other usages remain read-only.' : 'Choose an item to see its source and linked model relationships.'}</p>
             </div>
             <span className="contributor-count">{rows.length} total · showing {visibleRows.length}</span>
           </div>
@@ -394,28 +455,61 @@ export function ContributorSurface({
                   })}
                 </div>
               )}
-              {!canEdit && <p className="contributor-readonly">This element is opaque, stale, loading, or outside the supported scalar profile. It remains visible for review but cannot be staged here.</p>}
+              {!canEdit && <p className="contributor-readonly">This element is opaque, stale, loading, or outside this supported editing profile. It remains visible for review but cannot be staged here.</p>}
               {source.status === 'loading' && <p role="status" className="contributor-source-status">Reading the current source document…</p>}
               {source.status === 'error' && <p role="alert" className="contributor-source-status contributor-source-error">{source.message}</p>}
               <div className="contributor-form">
-                {scope !== 'properties' && <label>
+                {scope !== 'properties' && scope !== 'references' && <label>
                   Edit type
-                  <select value={editKind} onChange={(event) => setEditKind(event.target.value as EditKind)} disabled={!canEdit}>
+                  <select value={editKind} onChange={(event) => setEditKind(event.target.value as EditKind)} disabled={source.status !== 'ready' || selected.provenance.classification === 'opaque'}>
                     <option value="documentation">Documentation</option>
                     <option value="property">Advanced property override</option>
+                    {scope === 'interfaces' && <option value="agreement">Interface agreement</option>}
                   </select>
                 </label>}
                 {scope === 'properties' ? (
                   <>
                     <div className="contributor-attribute-summary">
                       <strong>Typed attribute value</strong>
-                      <span>{source.status === 'ready' && source.attribute ? source.attribute.type : 'Unknown scalar type'}</span>
+                      <span>{source.status === 'ready' && source.quantity ? source.quantity.quantityType : source.status === 'ready' && source.attribute ? source.attribute.type : 'Unknown attribute type'}</span>
                     </div>
                     <label>
                       Current value
                       <input aria-label="Attribute value" value={attributeValue} onChange={(event) => setAttributeValue(event.target.value)} disabled={!canEdit} />
-                      <small>The qualified profile supports simple scalar literals only. The existing type is preserved.</small>
+                      <small>{source.status === 'ready' && source.quantity ? 'Enter a numeric magnitude and select a compatible unit. Changing units does not convert the magnitude.' : 'The qualified profile supports simple scalar literals only. The existing type is preserved.'}</small>
                     </label>
+                    {source.status === 'ready' && source.quantity && <label>
+                      Unit
+                      <select aria-label="Quantity unit" value={unit} onChange={(event) => setUnit(event.target.value)} disabled={!canEdit}>
+                        {source.quantity.units.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                      </select>
+                    </label>}
+                  </>
+                ) : scope === 'references' ? (
+                  <label>
+                    Referenced model item
+                    <select value={referenceId} onChange={(event) => setReferenceId(event.target.value)} disabled={!canEdit}>
+                      <option value="">Select a compatible item</option>
+                      {source.status === 'ready' && source.reference?.candidates.map((item) => <option key={item.id} value={item.id}>{item.qualifiedName}</option>)}
+                    </select>
+                    <small>Only compatible items from this workspace baseline are offered. Source and type checks run before approval.</small>
+                  </label>
+                ) : editKind === 'agreement' ? (
+                  <>
+                    <p className="contributor-disposition-note">Record the engineering disposition and its accountable owner. Selecting “agreed” does not establish stakeholder acceptance or verification evidence.</p>
+                    <label>Source endpoint<select value={agreementSource} onChange={(event) => setAgreementSource(event.target.value)} disabled={!canEdit}>
+                      <option value="">Select source endpoint</option>
+                      {source.status === 'ready' && source.agreement?.sourceCandidates.map((item) => <option key={item.id} value={item.id}>{item.qualifiedName}</option>)}
+                    </select></label>
+                    <label>Target endpoint<select value={agreementTarget} onChange={(event) => setAgreementTarget(event.target.value)} disabled={!canEdit}>
+                      <option value="">Select target endpoint</option>
+                      {source.status === 'ready' && source.agreement?.targetCandidates.map((item) => <option key={item.id} value={item.id}>{item.qualifiedName}</option>)}
+                    </select></label>
+                    <label>Agreement status<select value={agreementStatus} onChange={(event) => setAgreementStatus(event.target.value as InterfaceAgreementField['status'])} disabled={!canEdit}>
+                      <option value="draft">Draft</option><option value="proposed">Proposed</option><option value="agreed">Agreed</option><option value="rejected">Rejected</option>
+                    </select></label>
+                    <label>Agreement owner<input value={agreementOwner} onChange={(event) => setAgreementOwner(event.target.value)} disabled={!canEdit} /></label>
+                    <label>Agreement rationale<textarea rows={3} value={agreementRationale} onChange={(event) => setAgreementRationale(event.target.value)} disabled={!canEdit} /></label>
                   </>
                 ) : editKind === 'documentation' ? (
                   <label>
@@ -455,7 +549,7 @@ export function ContributorSurface({
               </div>
             </>
           ) : (
-            <div className="contributor-empty"><h3>No source-backed item selected</h3><p>Choose a requirement or interface from the register.</p></div>
+            <div className="contributor-empty"><h3>No source-backed item selected</h3><p>Choose a source-backed item from the register.</p></div>
           )}
         </section>
       </div>
@@ -494,7 +588,7 @@ function contributorElements(elements: SemanticElement[], scope: ContributorScop
       ? element.kind === 'RequirementDefinition' || element.kind === 'RequirementUsage'
       : scope === 'interfaces'
         ? element.kind === 'InterfaceDefinition' || element.kind === 'InterfaceUsage' || element.kind === 'ConnectionDefinition' || element.kind === 'ConnectionUsage'
-        : element.kind === 'AttributeUsage')
+        : scope === 'references' ? ['ReferenceUsage', 'PartUsage', 'PortUsage', 'ItemUsage'].includes(element.kind) : element.kind === 'AttributeUsage')
     .sort((left, right) => left.qualifiedName.localeCompare(right.qualifiedName))
 }
 
@@ -547,7 +641,10 @@ function readChange(input: {
   }
   const raw = input.propertyValue.trim()
   if (!raw) return { error: 'Enter a property value before adding the change.' }
-  if (input.propertyValueKind === 'number' && !Number.isFinite(Number(raw))) return { error: 'Number properties require a finite numeric value.' }
+  if (input.propertyValueKind === 'number') {
+    const numeric = parseScalarValue(raw, 'number')
+    if ('error' in numeric) return numeric
+  }
   if (input.propertyValueKind === 'boolean' && raw !== 'true' && raw !== 'false') return { error: 'Boolean properties require true or false.' }
   return {
     id: input.selected.id + ':property:' + property,
@@ -563,6 +660,7 @@ function readChange(input: {
 }
 
 function toCommand(change: StagedChange): ContributorFieldCommand {
+  if (change.command) return change.command
   if (change.kind === 'documentation') {
     return { kind: 'update-documentation', targetId: change.targetId, documentation: change.documentation! }
   }
@@ -584,6 +682,8 @@ function toCommand(change: StagedChange): ContributorFieldCommand {
 }
 
 function displayChange(change: StagedChange): string {
+  if (change.kind === 'reference') return 'reference → ' + change.afterValue
+  if (change.kind === 'agreement') return 'interface agreement: ' + change.afterValue
   return change.kind === 'documentation'
     ? 'documentation'
     : change.kind === 'attribute'
@@ -685,8 +785,7 @@ function parseLiteral(literal: string, kind: PropertyValueKind): { value: string
       ? { value: literal }
       : { error: 'Boolean scalar values require true or false.' }
   }
-  const number = Number(literal)
-  return Number.isFinite(number) ? { value: literal } : { error: 'The current scalar number literal is not finite.' }
+  return roundTripsNumericLiteral(literal) ? { value: literal } : { error: 'The current scalar number cannot be represented without changing its value.' }
 }
 
 function parseScalarValue(value: string, kind: PropertyValueKind): { value: string } | { error: string } {
@@ -696,7 +795,11 @@ function parseScalarValue(value: string, kind: PropertyValueKind): { value: stri
       ? { value }
       : { error: 'Boolean attributes require true or false.' }
   }
-  return Number.isFinite(Number(value)) && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(value)
-    ? { value }
-    : { error: 'Number attributes require a finite numeric literal.' }
+  if (!Number.isFinite(Number(value)) || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(value)) return { error: 'Number attributes require a finite numeric literal.' }
+  return roundTripsNumericLiteral(value) ? { value } : { error: 'This number cannot be represented without changing its value. Enter a magnitude supported by the numeric editor.' }
+}
+
+function agreementSummary(value: InterfaceAgreementField, elements: SemanticElement[]): string {
+  const label = (id: string) => elements.find((item) => item.id === id)?.qualifiedName ?? id
+  return label(value.sourceId) + ' → ' + label(value.targetEndpointId) + '; ' + value.status + '; owner: ' + value.owner + '; ' + value.rationale
 }

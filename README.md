@@ -209,3 +209,7 @@ an explicit, validated human approval transaction.
 The project is not yet a public production release. The portable macOS arm64
 artifact is an unsigned internal release candidate only; the open P7 gates
 above remain mandatory.
+
+### Contributor phase 2
+
+[Units, references and interface agreements](docs/contributor-phase2.md) extend the source-backed contributor workflow. The [offline installation candidate](docs/runtime-candidate-installation.md) bundles local UI and runtimes for Apple Silicon macOS, with a fresh-environment qualification route and explicit remaining clean-machine gates.

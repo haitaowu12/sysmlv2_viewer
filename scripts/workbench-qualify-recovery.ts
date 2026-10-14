@@ -21,6 +21,12 @@ import { createQualifiedHybridAdapter } from '../packages/language-adapter/src/i
 import { WorkspaceManager } from '../packages/workspace-service/src/workspace.js'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
+const candidateManifestPath = resolve(
+  valueAfter('--candidate-manifest') ?? resolve(repositoryRoot, 'config/language-engine-candidates.json'),
+)
+const runtimeLockPath = resolve(
+  valueAfter('--runtime-lock') ?? resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+)
 const crashWorker = process.argv.includes('--crash-worker')
 if (crashWorker) {
   await runCrashWorker(resolve(requiredValue('--workspace-root')))
@@ -102,6 +108,13 @@ async function runQualification(): Promise<void> {
 
     const report = {
       schemaVersion: 1,
+      runtimeSelection: {
+        candidateManifestPath,
+        runtimeLockPath,
+        profile: process.argv.includes('--runtime-lock') || process.argv.includes('--candidate-manifest')
+          ? 'explicit-candidate'
+          : 'production-default',
+      },
       outcome: 'pass',
       gate: 'P7-recovery',
       sourceCommit: await gitHead(),
@@ -224,8 +237,8 @@ async function openEvidence(workspaceRoot: string): Promise<{
   elementIds: string[]
 }> {
   const adapter = await createQualifiedHybridAdapter(
-    resolve(repositoryRoot, 'config/language-engine-candidates.json'),
-    resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+    candidateManifestPath,
+    runtimeLockPath,
     { requestTimeoutMs: 180_000, diagnosticSettleMs: 10_000 },
   )
   const manager = new WorkspaceManager({

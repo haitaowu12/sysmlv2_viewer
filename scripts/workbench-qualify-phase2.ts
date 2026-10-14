@@ -7,6 +7,12 @@ import { SEMANTIC_RELATIONSHIP_KINDS } from '../packages/semantic-model/src/inde
 import { WorkspaceManager } from '../packages/workspace-service/src/workspace.js'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
+const candidateManifestPath = resolve(
+  valueAfter('--candidate-manifest') ?? resolve(repositoryRoot, 'config/language-engine-candidates.json'),
+)
+const runtimeLockPath = resolve(
+  valueAfter('--runtime-lock') ?? resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+)
 const sourceFixture = resolve(repositoryRoot, 'fixtures/workspaces/phase2-semantic')
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'sysml-workbench-phase2-'))
 const fixtureRoot = resolve(temporaryRoot, 'phase2-semantic')
@@ -27,8 +33,8 @@ const modes = [
 try {
   await cp(sourceFixture, fixtureRoot, { recursive: true })
   const adapter = await createQualifiedHybridAdapter(
-    resolve(repositoryRoot, 'config/language-engine-candidates.json'),
-    resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+    candidateManifestPath,
+    runtimeLockPath,
     { requestTimeoutMs: 180_000, diagnosticSettleMs: 10_000 },
   )
   const manager = new WorkspaceManager({ allowedRoots: [fixtureRoot], adapter })
@@ -86,10 +92,17 @@ try {
       throw new Error('Phase 2 snapshot or identities changed across clean reopen')
     }
     const runtimeLock = JSON.parse(
-      await readFile(resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'), 'utf8'),
+      await readFile(runtimeLockPath, 'utf8'),
     )
     const report = {
       schemaVersion: 1,
+      runtimeSelection: {
+        candidateManifestPath,
+        runtimeLockPath,
+        profile: process.argv.includes('--runtime-lock') || process.argv.includes('--candidate-manifest')
+          ? 'explicit-candidate'
+          : 'production-default',
+      },
       recordedAt: new Date().toISOString(),
       gate: 'P2',
       result: 'pass',

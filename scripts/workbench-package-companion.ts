@@ -18,6 +18,7 @@ import {
   sha256File,
 } from './workbench-release-support.js'
 import { stageSelfContainedRuntimes } from './workbench-stage-runtimes.js'
+import { localCompanionLauncher, localCompanionEntry, localCompanionReadme } from './workbench-local-companion-support.js'
 import {
   embeddedCompanionVerifier,
   validateCompanionPackageIdentity,
@@ -61,6 +62,7 @@ const outputRoot = await canonicalizeOutputRoot(
 )
 const platform = valueAfter('--platform') ?? 'darwin-arm64'
 const allowDirty = process.argv.includes('--allow-dirty')
+const localUi = process.argv.includes('--local-ui')
 if (platform !== 'darwin-arm64') {
   throw new Error(
     'The self-contained companion is currently qualified only for darwin-arm64',
@@ -119,7 +121,7 @@ await verifyPortableBundle(portableBundle, portableManifest)
 
 const bundleName =
   `sysml-engineering-workbench-${packageIdentity.version}` +
-  `-pages-companion-${platform}`
+  `-${localUi ? 'local-candidate' : 'pages-companion'}-${platform}`
 const bundleRoot = resolve(outputRoot, bundleName)
 const archivePath = resolve(outputRoot, `${bundleName}.tar.gz`)
 if (
@@ -194,11 +196,20 @@ await Promise.all([
   ),
   writeFile(
     resolve(bundleRoot, 'README.md'),
-    companionReadme(packageIdentity.version),
+    localUi ? localCompanionReadme(packageIdentity.version) : companionReadme(packageIdentity.version),
     'utf8',
   ),
 ])
 await chmod(resolve(bundleRoot, 'bin/start-pages-companion.sh'), 0o755)
+if (localUi) {
+  await unlink(resolve(bundleRoot, 'bin/start-pages-companion.sh'))
+  await writeFile(resolve(bundleRoot, 'bin/start-local-workbench.sh'), localCompanionLauncher(), 'utf8')
+  await chmod(resolve(bundleRoot, 'bin/start-local-workbench.sh'), 0o755)
+  await writeFile(resolve(bundleRoot, 'bin/local-workbench.mjs'), localCompanionEntry(), 'utf8')
+  for (const profile of ['contributor-pilot', 'contributor-phase2']) {
+    await cp(resolve(repositoryRoot, 'fixtures/workspaces', profile), resolve(bundleRoot, 'samples', profile), { recursive: true })
+  }
+}
 
 const manifestRelativePath = 'manifests/companion-manifest.json'
 const files = await inventoryFiles(
@@ -244,11 +255,13 @@ const companionManifest = {
   },
   distribution: {
     selfContained: true,
-    networkRequiredAfterInstall: true,
+    networkRequiredAfterInstall: !localUi,
+    localUiIncluded: localUi,
+    runtimeDisposition: localUi ? 'explicit-candidate-not-production-adoption' : 'locked-runtime',
     localRuntimeNetworkRequired: false,
     signed: false,
     notarized: false,
-    launcher: 'bin/start-pages-companion.sh',
+    launcher: localUi ? 'bin/start-local-workbench.sh' : 'bin/start-pages-companion.sh',
     hostedRunnerEvidenceIsCleanMachineAcceptance: false,
     windowsQualified: false,
   },

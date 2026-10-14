@@ -118,6 +118,7 @@ const [
   { stdout: sourceTimeOutput },
   { stdout: dirtyOutput },
   { stdout: libraryCommitOutput },
+  { stdout: libraryDirtyOutput },
 ] = await Promise.all([
     execFileAsync('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot }),
     execFileAsync('git', ['show', '-s', '--format=%cI', 'HEAD'], {
@@ -128,12 +129,16 @@ const [
       maxBuffer: 16 * 1024 * 1024,
     }),
     execFileAsync('git', ['-C', libraryRoot, 'rev-parse', 'HEAD']),
+    execFileAsync('git', ['-C', libraryRoot, 'status', '--porcelain', '--untracked-files=all', '--', '.']),
   ])
 const sourceCommit = headOutput.trim()
 const sourceTime = sourceTimeOutput.trim()
 const dirty = dirtyOutput.trim().length > 0
 if (dirty && !allowDirty) {
   throw new Error('Release assembly requires a clean Git worktree')
+}
+if (libraryDirtyOutput.trim()) {
+  throw new Error('Official library must be an unmodified checkout of the locked release; --allow-dirty applies only to product development source')
 }
 const libraryCommit = libraryCommitOutput.trim()
 if (libraryCommit !== runtimeLock.referenceRelease.commit) {

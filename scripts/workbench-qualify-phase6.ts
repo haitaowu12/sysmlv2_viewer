@@ -14,6 +14,12 @@ import type { SemanticElement } from '../packages/semantic-model/src/index.js'
 import { WorkspaceManager } from '../packages/workspace-service/src/workspace.js'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
+const candidateManifestPath = resolve(
+  valueAfter('--candidate-manifest') ?? resolve(repositoryRoot, 'config/language-engine-candidates.json'),
+)
+const runtimeLockPath = resolve(
+  valueAfter('--runtime-lock') ?? resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+)
 const sourceFixture = resolve(
   repositoryRoot,
   'fixtures/workspaces/phase5-infrastructure',
@@ -30,8 +36,8 @@ const provider = qualificationProvider()
 try {
   await cp(sourceFixture, fixtureRoot, { recursive: true })
   const adapter = await createQualifiedHybridAdapter(
-    resolve(repositoryRoot, 'config/language-engine-candidates.json'),
-    resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+    candidateManifestPath,
+    runtimeLockPath,
     { requestTimeoutMs: 180_000, diagnosticSettleMs: 10_000 },
   )
   const manager = new WorkspaceManager({
@@ -184,11 +190,18 @@ try {
       throw new Error('Applied AI operation audit is unavailable or invalid')
     }
     const runtimeLock = JSON.parse(await readFile(
-      resolve(repositoryRoot, 'config/language-engine-runtime-lock.json'),
+      runtimeLockPath,
       'utf8',
     ))
     const report = {
       schemaVersion: 1,
+      runtimeSelection: {
+        candidateManifestPath,
+        runtimeLockPath,
+        profile: process.argv.includes('--runtime-lock') || process.argv.includes('--candidate-manifest')
+          ? 'explicit-candidate'
+          : 'production-default',
+      },
       recordedAt: new Date().toISOString(),
       gate: 'P6',
       result: 'pass',

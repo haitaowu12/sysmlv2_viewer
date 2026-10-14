@@ -54,8 +54,7 @@ interface FixtureObservation {
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const candidateManifestPath = resolve(
-  repositoryRoot,
-  'config/language-engine-candidates.json',
+  valueAfter('--candidate-manifest') ?? resolve(repositoryRoot, 'config/language-engine-candidates.json'),
 )
 const fixtureManifestPath = resolve(
   repositoryRoot,
@@ -96,7 +95,10 @@ if (officialReleaseDirectory) {
 
 await mkdir(outputDirectory, { recursive: true })
 const candidateResults = []
-for (const candidate of candidateManifest.candidates) {
+const selectedCandidateId = valueAfter('--candidate')
+const selectedCandidates = candidateManifest.candidates.filter((candidate) => !selectedCandidateId || candidate.id === selectedCandidateId)
+if (selectedCandidates.length === 0) throw new Error(`Unknown candidate: ${selectedCandidateId}`)
+for (const candidate of selectedCandidates) {
   candidateResults.push(await observeCandidate(candidate))
 }
 
@@ -107,6 +109,8 @@ const report = {
   schemaVersion: 1,
   outcome: runnable.length === 0 ? 'blocked' : 'incomplete',
   selection: null,
+  candidateManifestPath,
+  selectedCandidateId: selectedCandidateId ?? null,
   qualificationRelease: candidateManifest.qualificationRelease,
   behavioralOracle: candidateManifest.behavioralOracle,
   fixtureManifest: relative(repositoryRoot, fixtureManifestPath),

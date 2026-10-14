@@ -1,3 +1,4 @@
+import './monaco-local.js'
 import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import Editor, { type Monaco } from '@monaco-editor/react'
 import type { editor as MonacoEditor, Position as MonacoPosition } from 'monaco-editor'

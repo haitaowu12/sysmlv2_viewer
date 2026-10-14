@@ -5,6 +5,7 @@ import type {
   CommandEnvelope,
   CommandProposal,
 } from '../../packages/command-engine/src/index.js'
+import type { SemanticElement, SemanticSnapshot } from '../../packages/semantic-model/src/index.js'
 import type { WorkbenchGateway, LoadedWorkspace } from '../workbench/gateway.js'
 import { ContributorSurface } from '../workbench/ContributorSurface.js'
 
@@ -265,7 +266,7 @@ describe('ContributorSurface', () => {
     render(<ContributorSurface gateway={gateway} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
 
     fireEvent.click(screen.getByRole('tab', { name: /Properties/ }))
-    expect(await screen.findByText('Unknown scalar type')).toBeInTheDocument()
+    expect(await screen.findByText('Unknown attribute type')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
   })
 
@@ -287,7 +288,7 @@ describe('ContributorSurface', () => {
     render(<ContributorSurface gateway={gateway} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
 
     fireEvent.click(screen.getByRole('tab', { name: /Properties/ }))
-    expect(await screen.findByText('Unknown scalar type')).toBeInTheDocument()
+    expect(await screen.findByText('Unknown attribute type')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
   })
 
@@ -329,6 +330,107 @@ describe('ContributorSurface', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/multiple directly owned documentation comments/i)
     expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
   })
+
+  it('loads a quantity and stages an explicit magnitude and compatible unit without conversion', async () => {
+    const declaration = 'attribute elapsed : ISQ::DurationValue = 2 [SI::s];'
+    const loaded = workspaceWithElement(declaration, { id: 'elapsed', kind: 'AttributeUsage', name: 'elapsed', qualifiedName: 'System::elapsed', startLine: 0, endLine: 0, startCharacter: 0, endCharacter: declaration.length })
+    const gateway = createGatewayForSource(declaration)
+    render(<ContributorSurface gateway={gateway} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Properties/ }))
+    expect(await screen.findByDisplayValue('2')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Quantity unit' })).toHaveValue('s')
+    expect(screen.getByText(/does not convert the magnitude/)).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Attribute value' }), { target: { value: '1500 ms' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add to review' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('finite numeric literal')
+    for (const lossy of ['9007199254740993', '1e-400', '0.1234567890123456789']) {
+      fireEvent.change(screen.getByRole('textbox', { name: 'Attribute value' }), { target: { value: lossy } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add to review' }))
+      expect(screen.getByRole('alert')).toHaveTextContent('cannot be represented without changing its value')
+      expect(screen.getByRole('button', { name: 'Review staged changes' })).toBeDisabled()
+    }
+    fireEvent.change(screen.getByRole('textbox', { name: 'Attribute value' }), { target: { value: '1500' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Quantity unit' }), { target: { value: 'ms' } })
+    await submitStaged()
+    expect(gateway.proposeCommand).toHaveBeenCalledWith(expect.objectContaining({ command: { kind: 'set-quantity-value', targetId: 'elapsed', value: 1500, unitId: 'ms' } }))
+    expect(gateway.applyCommand).not.toHaveBeenCalled()
+  })
+
+  it.each(['ScalarValues::Real = 9007199254740993', 'ISQ::DurationValue = 1e-400 [SI::s]'])(
+    'does not prefill a rounded source number for %s', async (value) => {
+      const declaration = 'attribute elapsed : ' + value + ';'
+      const loaded = workspaceWithElement(declaration, { id: 'elapsed', kind: 'AttributeUsage', name: 'elapsed', qualifiedName: 'System::elapsed', startLine: 0, endLine: 0, startCharacter: 0, endCharacter: declaration.length })
+      render(<ContributorSurface gateway={createGatewayForSource(declaration)} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+      fireEvent.click(screen.getByRole('tab', { name: /Properties/ }))
+      await waitFor(() => expect(screen.queryByText('Reading the current source document…')).not.toBeInTheDocument())
+      expect(screen.getByRole('textbox', { name: 'Attribute value' })).toHaveValue('')
+      expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
+    },
+  )
+
+  it('keeps unsupported quantities readonly', async () => {
+    const declaration = 'attribute elapsed : ISQ::DurationValue = 2 [Unknown::unit];'
+    const loaded = workspaceWithElement(declaration, { id: 'elapsed', kind: 'AttributeUsage', name: 'elapsed', qualifiedName: 'System::elapsed', startLine: 0, endLine: 0, startCharacter: 0, endCharacter: declaration.length })
+    render(<ContributorSurface gateway={createGatewayForSource(declaration)} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Properties/ }))
+    await waitFor(() => expect(screen.queryByText('Reading the current source document…')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
+    expect(screen.queryByRole('combobox', { name: 'Quantity unit' })).not.toBeInTheDocument()
+  })
+
+  it('offers only same-baseline compatible reference targets and stages the selected identity', async () => {
+    const { loaded, source } = phaseTwoWorkspace()
+    const gateway = createGatewayForSource(source)
+    render(<ContributorSurface gateway={gateway} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+    fireEvent.click(screen.getByRole('tab', { name: /References/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'selectedControllerSystem::selectedController' }))
+    const picker = await screen.findByRole('combobox', { name: /Referenced model item/ })
+    await waitFor(() => expect(picker).toHaveValue('primary'))
+    expect(screen.getByRole('option', { name: 'System::backup' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'System::otherType' })).not.toBeInTheDocument()
+    fireEvent.change(picker, { target: { value: 'backup' } })
+    await submitStaged()
+    expect(gateway.proposeCommand).toHaveBeenCalledWith(expect.objectContaining({ command: { kind: 'set-reference-target', targetId: 'selectedController', referencedElementId: 'backup' } }))
+  })
+
+  it('loads interface disposition and endpoints, requires rationale, and stages one reviewed agreement', async () => {
+    const { loaded, source } = phaseTwoWorkspace()
+    const gateway = createGatewayForSource(source)
+    render(<ContributorSurface gateway={gateway} workspace={loaded} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Interfaces/ }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Edit type' })).toBeEnabled())
+    fireEvent.change(screen.getByRole('combobox', { name: 'Edit type' }), { target: { value: 'agreement' } })
+    expect(screen.getByRole('combobox', { name: 'Source endpoint' })).toHaveValue('outbound')
+    expect(screen.getByRole('combobox', { name: 'Target endpoint' })).toHaveValue('inbound')
+    expect(screen.getByRole('textbox', { name: 'Agreement owner' })).toHaveValue('Interface team')
+    expect(screen.getByText(/does not establish stakeholder acceptance/)).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Target endpoint' }), { target: { value: 'alternate' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Source endpoint' }), { target: { value: 'alternate' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add to review' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('different endpoints')
+    fireEvent.change(screen.getByRole('combobox', { name: 'Source endpoint' }), { target: { value: 'outbound' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Agreement status' }), { target: { value: 'proposed' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Agreement rationale' }), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add to review' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('owner and rationale')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Agreement rationale' }), { target: { value: 'Alternate receiver pending stakeholder review.' } })
+    await submitStaged()
+    expect(gateway.proposeCommand).toHaveBeenCalledWith(expect.objectContaining({ command: { kind: 'set-interface-agreement', targetId: 'control', sourceId: 'outbound', targetEndpointId: 'alternate', status: 'proposed', owner: 'Interface team', rationale: 'Alternate receiver pending stakeholder review.' } }))
+    expect(gateway.applyCommand).not.toHaveBeenCalled()
+  })
+
+  it('allows returning to documentation when an interface agreement shape is unsupported', async () => {
+    render(<ContributorSurface gateway={createGateway()} workspace={workspace()} userId="engineer" onSelectId={vi.fn()} onApplied={vi.fn().mockResolvedValue(undefined)} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Interfaces/ }))
+    await screen.findByDisplayValue('Existing interface wording.')
+    fireEvent.change(screen.getByRole('combobox', { name: 'Edit type' }), { target: { value: 'agreement' } })
+    expect(screen.getByRole('button', { name: 'Add to review' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Edit type' })).toBeEnabled()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Edit type' }), { target: { value: 'documentation' } })
+    expect(screen.getByRole('textbox', { name: 'Engineering statement' })).toHaveValue('Existing interface wording.')
+    expect(screen.getByRole('button', { name: 'Add to review' })).toBeEnabled()
+  })
+
 })
 
 function createGateway() {
@@ -425,7 +527,7 @@ function workspaceWithElement(
   source: string,
   input: {
     id: string
-    kind: 'RequirementUsage' | 'InterfaceUsage' | 'AttributeUsage'
+    kind: SemanticElement['kind']
     name: string
     qualifiedName: string
     startLine: number
@@ -458,7 +560,7 @@ function workspaceWithElement(
   return loaded
 }
 
-function element(id: string, kind: 'RequirementUsage' | 'InterfaceUsage' | 'AttributeUsage', name: string, qualifiedName: string, uri: string, startLine: number, endLine: number, endCharacter: number, startCharacter = 2) {
+function element(id: string, kind: SemanticElement['kind'], name: string, qualifiedName: string, uri: string, startLine: number, endLine: number, endCharacter: number, startCharacter = 2) {
   return {
     id,
     kind,
@@ -521,4 +623,35 @@ function receipt(proposalId: string): AppliedCommandReceipt {
     appliedAt: '2026-10-12T00:00:00.000Z',
     undo: { baseSnapshotSha256: 'snapshot-2', baseDocuments: {}, edits: { changes: {} } },
   }
+}
+
+
+async function submitStaged() {
+  fireEvent.click(screen.getByRole('button', { name: 'Add to review' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Review staged changes' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Generate validated patch' }))
+  await screen.findByRole('button', { name: 'Approve and apply' })
+}
+
+function phaseTwoWorkspace() {
+  const declarations: Array<[string, SemanticElement['kind'], string]> = [
+    ['Controller', 'PartDefinition', 'part def Controller;'],
+    ['Other', 'PartDefinition', 'part def Other;'],
+    ['Signal', 'PortDefinition', 'port def Signal;'],
+    ['primary', 'PartUsage', 'part primary : System::Controller;'],
+    ['backup', 'PartUsage', 'part backup : System::Controller;'],
+    ['otherType', 'PartUsage', 'part otherType : System::Other;'],
+    ['selectedController', 'PartUsage', 'ref part selectedController : System::Controller = System::primary;'],
+    ['outbound', 'PortUsage', 'port outbound : System::Signal;'],
+    ['inbound', 'PortUsage', 'port inbound : System::Signal;'],
+    ['alternate', 'PortUsage', 'port alternate : System::Signal;'],
+    ['control', 'InterfaceUsage', 'interface control connect System::outbound to System::inbound { attribute agreementStatus : System::AgreementStatus = System::AgreementStatus::draft; attribute agreementOwner : ScalarValues::String = "Interface team"; attribute agreementRationale : ScalarValues::String = "Endpoints under review."; }'],
+  ]
+  const source = 'package System {\n' + declarations.map((entry) => entry[2]).join('\n') + '\n}'
+  const loaded = workspace()
+  loaded.snapshot.elements = declarations.map(([id, kind, text], line) => ({ ...element(id, kind, id, 'System::' + id, 'file:///workspace/model.sysml', line + 1, line + 1, text.length, 0), ownerId: 'System' }))
+  loaded.snapshot.elements.unshift(element('System', 'Package', 'System', 'System', 'file:///workspace/model.sysml', 0, declarations.length + 1, 1, 0))
+  const typing: Array<[string, string]> = [['primary', 'Controller'], ['backup', 'Controller'], ['otherType', 'Other'], ['selectedController', 'Controller'], ['outbound', 'Signal'], ['inbound', 'Signal'], ['alternate', 'Signal']]
+  loaded.snapshot.relationships = typing.map(([from, to]) => ({ id: from + ':typing', kind: 'typing', sourceId: from!, targetId: to!, provenance: { authority: 'qualified-language-engine', extraction: 'pilot-emf-explicit-reference', engineMetaclass: 'FeatureTyping', features: ['type'] } })) as SemanticSnapshot['relationships']
+  return { loaded, source }
 }
