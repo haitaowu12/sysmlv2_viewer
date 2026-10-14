@@ -1,0 +1,57 @@
+name: Maintained Modeling Lab baseline
+on:
+  pull_request:
+    paths:
+      - 'modeling-lab/**'
+      - '.github/workflows/modeling-lab.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modeling-lab/**'
+      - '.github/workflows/modeling-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: modeling-lab/workbench/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare the pinned native runtime
+        run: |
+          command -v dot || { sudo apt-get update && sudo apt-get install -y graphviz; }
+          curl -fL --retry 2 https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation/releases/download/2025-09/jupyter-sysml-kernel-0.52.0.zip -o "$RUNNER_TEMP/runtime.zip"
+          python modeling-lab/scripts/sysml.py setup --archive "$RUNNER_TEMP/runtime.zip"
+      - name: Verify standalone source, runtime and Python contracts
+        run: |
+          python modeling-lab/scripts/sysml.py doctor
+          python modeling-lab/scripts/sysml.py test
+      - name: Verify Lab interface contracts
+        run: |
+          npm ci --prefix modeling-lab/workbench
+          npm test --prefix modeling-lab/workbench
+      - name: Qualify the completed brief and its semantic contract
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          project=json.loads(Path('modeling-lab/workbench/fixtures/authoring/alarm-review/reviewed.modeling.json').read_text())
+          out=Path(os.environ['RUNNER_TEMP'])
+          (out/'reviewed.sysml').write_text(project['source'])
+          (out/'reviewed-views.json').write_text(json.dumps(project['views']))
+          PY
+          python modeling-lab/scripts/sysml.py qualify --source "$RUNNER_TEMP/reviewed.sysml" --views "$RUNNER_TEMP/reviewed-views.json" --output "$RUNNER_TEMP/alarm-qualified"
+          python modeling-lab/scripts/sysml.py check --report "$RUNNER_TEMP/alarm-qualified/report.json" --contract modeling-lab/workbench/fixtures/authoring/alarm-review/contract.json --output "$RUNNER_TEMP/alarm-contract.json"
