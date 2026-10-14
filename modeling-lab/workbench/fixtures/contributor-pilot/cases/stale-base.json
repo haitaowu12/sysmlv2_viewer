@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "CP-NEG-STALE",
+  "kind": "stale-transaction",
+  "proposal": "cases/candidate-proposal.json",
+  "expectedBase": {
+    "path": "model.sysml",
+    "revision": "A",
+    "sha256": "bf67757fca15149cf839a0a339aabce2a32ab71d4d3871a5cb99b7c40cf6cc4e"
+  },
+  "workspaceAtApply": {
+    "path": "candidate-model.sysml",
+    "revision": "B",
+    "sha256": "bff2c4ae58519fc8267147101315c933daa53f4bc52d9aa69b96b4299388604b"
+  },
+  "expected": {
+    "status": "rejected-before-apply",
+    "reasonCode": "stale-expected-base",
+    "messageContains": ["base", "changed"],
+    "canonicalBaselineUnchanged": true,
+    "noPartialTokenEdits": true,
+    "openQuestionStill": "ACK-MEANING-01"
+  },
+  "explanation": "A proposal prepared against baseline A cannot apply after the workspace has moved to another source revision. The last accepted source remains available for recovery."
+}

@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Loopback-only modelling Lab. Explicit project downloads persist work; model files are never overwritten."""
+import argparse
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+from pathlib import Path
+import secrets
+import subprocess
+import tempfile
+import hashlib
+import sys
+from stakeholder import project, render_svg
+from view_scope import catalogue, compose
+from review_routes import prepare as prepare_reviews
+from report_integrity import load_report
+from change_summary import summarize
+from lab_project import candidate, views_for, digest
+from lab_delivery import browser_report, element_detail
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ('jar', 'library', 'source', 'views'):
+        parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--port', type=int, default=5196)
+    parser.add_argument('--reviews', type=Path, help='Optional revision-bound review routes')
+    args = parser.parse_args()
+    token = secrets.token_hex(24)
+    source = args.source.read_text()
+    presets = views_for(json.loads(args.views.read_text()))
+    reviews = json.loads(args.reviews.read_text()) if args.reviews else None
+    if reviews: prepare_reviews(reviews, digest(source), presets)
+    origin = f'http://127.0.0.1:{args.port}'
+    working = tempfile.TemporaryDirectory(prefix='sysml-reference-lab-')
+    current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None}
+    cache = {}
+
+    def render_model(draft, views):
+        key = digest(draft + json.dumps(views, sort_keys=True))
+        if key in cache:
+            return json.loads(json.dumps(cache[key]))
+        run = Path(working.name) / secrets.token_hex(8)
+        run.mkdir()
+        (run / 'draft.sysml').write_text(draft)
+        (run / 'views.json').write_text(json.dumps(views))
+        process = subprocess.run([sys.executable, '-B', str(ROOT / 'tools/reference-pilot/qualify.py'),
+            '--jar', str(args.jar.resolve()), '--library', str(args.library.resolve()),
+            '--source', str(run / 'draft.sysml'), '--views', str(run / 'views.json'), '--output', str(run / 'result')],
+            capture_output=True, text=True, timeout=200)
+        report_path = run / 'result/report.json'
+        if not report_path.exists():
+            raise RuntimeError('Reference runtime failed before reporting: ' + process.stderr[-1200:])
+        report = load_report(report_path, source=draft)
+        for view in report['views']:
+            if 'file' in view: view['svg'] = (run / 'result' / view['file']).read_text()
+            if 'rawFile' in view: view['rawSvg'] = (run / 'result' / view['rawFile']).read_text()
+        report['source'] = draft
+        if report.get('staticChecksPassed'):
+            for view, request in zip(report['views'], views):
+                try:
+                    if len(view['targets']) != 1: raise ValueError('Choose one model scope for a stakeholder view')
+                    view['stakeholder'] = project(report, view['targets'][0], request)
+                    view['stakeholderSvg'] = render_svg(view['stakeholder'])
+                    view['stakeholderPortraitSvg'] = render_svg({**view['stakeholder'], 'layoutDirection': 'TB'})
+                except ValueError as error:
+                    view['stakeholderError'] = str(error)
+            if reviews and all(any(v['id'] == s['viewId'] for v in views) for r in reviews['routes'] for s in r['steps']):
+                try: report['reviews'] = prepare_reviews(reviews, report['sourceSha256'], views)
+                except ValueError as error: report['reviewError'] = str(error)
+            try:
+                report['catalogue'] = catalogue(report)
+                report['catalogue']['reportSha256'] = report['reportIntegrity']['reportSha256']
+            except ValueError as error:
+                report['catalogueError'] = str(error)
+        # Small source/view cache avoids revalidating a prepared proposal on apply.
+        if len(cache) >= 4: cache.pop(next(iter(cache)))
+        cache[key] = json.loads(json.dumps(report))
+        return report
+
+    class Handler(BaseHTTPRequestHandler):
+        def reply(self, code, value, content_type='application/json'):
+            data = value.encode() if isinstance(value, str) else json.dumps(value).encode()
+            self.send_response(code)
+            self.send_header('Content-Type', content_type + '; charset=utf-8')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Content-Security-Policy', f"default-src 'self'; script-src 'nonce-{token}'; style-src 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def allowed(self):
+            return self.headers.get('Host') == origin.removeprefix('http://')
+
+        def do_GET(self):
+            if not self.allowed(): return self.reply(403, {'error': 'Host rejected'})
+            if self.path == '/':
+                page = (ROOT / 'tools/reference-pilot/lab.html').read_text()
+                for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js')]:
+                    page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
+                return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
+            if self.path == '/initial':
+                return self.reply(200, {'source': source, 'presets': presets, 'workspaceKey': digest(str(args.source.resolve()))[:20]})
+            self.reply(404, {'error': 'Not found'})
+
+        def do_POST(self):
+            if not self.allowed() or self.headers.get('Origin') != origin or self.headers.get('X-Session') != token:
+                return self.reply(403, {'error': 'Session or origin rejected'})
+            if self.path not in ('/render', '/compose', '/prepare', '/inspect', '/element') or self.headers.get('Content-Type') != 'application/json':
+                return self.reply(400, {'error': 'Expected JSON modelling request'})
+            try:
+                size = int(self.headers.get('Content-Length', '0'))
+                if not 0 < size <= 1_048_576: raise ValueError('Request exceeds 1 MiB')
+                data = json.loads(self.rfile.read(size))
+                if self.path == '/element':
+                    return self.reply(200, element_detail(current['report'], data))
+                if self.path == '/inspect':
+                    draft = data.get('source')
+                    if not isinstance(draft, str) or len(draft.encode()) > 262144:
+                        raise ValueError('Model source must be text, up to 256 KiB')
+                    views = views_for(data['views']) if data.get('views') else []
+                    report = render_model(draft, views)
+                    if data.get('baselineSource') is not None:
+                        baseline = data['baselineSource']
+                        if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
+                            raise ValueError('Invalid baseline source')
+                        # Source validation is independent of presentation recipes.
+                        # Reuse an exact-text qualification, including a known failure.
+                        base_report = report if baseline == draft else next(
+                            (cached for cached in cache.values() if cached.get('source') == baseline), None)
+                        if base_report is None:
+                            base_report = render_model(baseline, [])
+                        if not base_report.get('staticChecksPassed'):
+                            raise ValueError('The imported baseline does not pass language validation. Current project is unchanged.')
+                    return self.reply(200, browser_report(report))
+                if self.path == '/compose':
+                    catalog = current['catalogue']
+                    if (not catalog or data.get('sourceSha256') != catalog['sourceSha256']
+                            or data.get('reportSha256') != catalog['reportSha256']):
+                        raise ValueError('Source revision is no longer current; validate the draft first')
+                    return self.reply(200, {**compose(catalog, data.get('recipe')), 'reportSha256': catalog['reportSha256']})
+                if self.path == '/prepare':
+                    old = current['report']
+                    draft, proposal = candidate(old, old['source'] if old else '', data)
+                    views = json.loads(json.dumps(current['views']))
+                    if data['operation'] == 'scenario':
+                        views.append({'id': 'scenario-' + data['name'].lower().replace('_', '-')[:55], 'names': [data['target']+'::'+data['name']], 'view': 'ACTION', 'styles': ['LR'], 'renderer': 'behavior'})
+                    report = render_model(draft, views_for(views))
+                    if not report.get('staticChecksPassed'):
+                        return self.reply(400, {'error': 'The proposed edit failed language validation. Current model is unchanged.', 'diagnostics': report['diagnostics']})
+                    return self.reply(200, {'source': draft, 'views': views, 'proposal': proposal,
+                        'changeSummary': summarize(old, report), 'validated': True})
+                draft = data['source']
+                if not isinstance(draft, str) or len(draft.encode()) > 262144:
+                    raise ValueError('Model source must be text, up to 256 KiB')
+                if data.get('expectedBase') and data['expectedBase'] != (current['report'] or {}).get('sourceSha256'):
+                    raise ValueError('The model changed while this proposal was open. Reopen the task.')
+                views = views_for(data.get('views', presets))
+                if data.get('target'):
+                    view = data.get('view', 'DEFAULT')
+                    views = views_for([v for v in views if v['id'] != 'focused'] + [{'id': 'focused', 'names': [data['target']], 'view': 'INTERCONNECTION' if view == 'SUMMARY' else view, 'styles': ['LR'], 'renderer': 'summary' if view == 'SUMMARY' else ('engineering' if view == 'INTERCONNECTION' else 'pilot')}])
+                baseline = data.get('baselineSource', source)
+                if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
+                    raise ValueError('Invalid baseline source')
+                if not current['baseline'] or current['baseline']['sourceSha256'] != digest(baseline):
+                    # Initial baseline uses the same recipes except newly added scenarios.
+                    baseline_views = [v for v in views if not v['id'].startswith('scenario-')] or presets
+                    current['baseline'] = render_model(baseline, baseline_views)
+                    if not current['baseline'].get('staticChecksPassed'):
+                        current['baseline'] = None
+                        raise ValueError('The project baseline does not pass language validation.')
+                report = render_model(draft, views)
+                report['viewRecipes'] = views
+                report['changeSummary'] = summarize(current['baseline'], report)
+                for view in report['views']:
+                    if view.get('stakeholder'):
+                        target = next((e for e in report['elements'] if e.get('qualifiedName') == view['targets'][0]), {})
+                        concerns = {view['targets'][0]} | {r.get('qualifiedName') for r in target.get('semantics', {}).get('verifiedRequirement', [])}
+                        view['stakeholder']['changeSummary'] = [change for change in report['changeSummary'] if change['requirement'] in concerns]
+                current['catalogue'] = report.get('catalogue') if report.get('staticChecksPassed') else None
+                current['report'] = report if report.get('staticChecksPassed') else None
+                current['views'] = views
+                return self.reply(200, browser_report(report))
+            except Exception as error:
+                return self.reply(400, {'error': str(error)})
+
+    print(f'Modeling lab: {origin} (project-file save; input source unchanged)', flush=True)
+    try:
+        HTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
+    finally:
+        working.cleanup()
+
+if __name__ == '__main__': main()

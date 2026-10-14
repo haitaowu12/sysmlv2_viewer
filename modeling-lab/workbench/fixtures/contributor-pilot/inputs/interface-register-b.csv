@@ -1,0 +1,4 @@
+row_id,revision,message,source,target,unit,value,identity_hint,meaning
+IF-B-001,B,ControlRequest,controller.fieldALink,fieldA.control,ms,80,FIELD-A,Revised response provision for the selected field equipment
+IF-B-002,B,ControlAcknowledgement,fieldA.control,controller.fieldALink,ms,,FIELD-A,"Acknowledgement meaning remains unresolved: accepted dispatch or completed field action"
+IF-B-003,B,ControlRequest,controller.fieldBLink,fieldB.control,ms,80,FIELD-B,Revised response provision for the second field equipment

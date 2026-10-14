@@ -1,0 +1,27 @@
+[
+  {
+    "id": "overview",
+    "names": [
+      "AlarmReview::monitoringSystem"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "requirement",
+    "names": [
+      "AlarmReview::sampleRetention"
+    ],
+    "view": "TREE",
+    "styles": []
+  },
+  {
+    "id": "verification",
+    "names": [
+      "AlarmReview::CapacityVerification"
+    ],
+    "view": "TREE",
+    "styles": []
+  }
+]

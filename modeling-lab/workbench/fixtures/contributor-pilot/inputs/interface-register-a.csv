@@ -1,0 +1,4 @@
+row_id,revision,message,source,target,unit,value,identity_hint,meaning
+IF-A-001,A,ControlRequest,controller.fieldALink,fieldA.control,ms,120,FIELD-A,Request is sent to the selected field equipment
+IF-A-002,A,ControlAcknowledgement,fieldA.control,controller.fieldALink,ms,,FIELD-A,"Acknowledgement meaning unresolved: accepted dispatch or completed field action"
+IF-A-003,A,ControlRequest,controller.fieldBLink,fieldB.control,ms,120,FIELD-B,Request is sent to the second field equipment

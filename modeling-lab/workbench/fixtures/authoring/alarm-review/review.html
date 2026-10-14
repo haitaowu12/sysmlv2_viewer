@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cold-room alarm study · review</title><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'"><style>body{font:16px/1.6 system-ui;color:#203d4c;max-width:1100px;margin:40px auto;padding:0 24px}section{border-top:1px solid #d6e0e5;padding:24px 0;break-inside:avoid}svg{max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}.reader-notes{white-space:pre-wrap}details{margin:18px 0}summary{cursor:pointer;font-weight:600}h1,h2{line-height:1.25}.endpoint{display:grid;gap:5px}.endpoint-context,.endpoint-port{font-size:12px}.endpoint details{font-size:11px}.endpoint code{display:block;overflow-wrap:anywhere;white-space:normal}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:13px}td,th{border:1px solid #ccd;padding:8px;text-align:left;overflow-wrap:anywhere}</style></head><body><h1>Cold-room alarm study</h1><p>Frozen reader review · revision c9c5dd206aaf · static checks passed; execution and acceptance not assessed.</p><details><summary>Brief, decisions and engineering change record</summary><p>Full model revision: c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919</p><h2>Brief and source basis</h2><div class="reader-notes"># Cold-room alarm review: fictional training brief
+
+This is an authored evaluation case, not an operating specification, approved design or field evidence. Source labels below identify statements in this brief.
+
+- BR-1: Model a monitoring system containing Cold Room 0 and Cold Room 1, each using a probe head; a central controller receives their temperature readings. The controller sends an alarm command to an annunciator. These are declared connections/transfers, not evidence that equipment exists or works.
+- BR-2: The controller's declared sample capacity is two. The initial retention requirement is at least two samples. A capacity verification case is planned only; no test has run.
+- CR-1: For this exercise, revise the requirement to retain at least three samples, keeping the declared capacity of two unchanged. Record this change request as the basis. Do not invent a hardware change or a passing result.
+- CR-2: Add a maintenance panel inside Monitoring System. Only its existence is requested. No ports, relationships or performance allocation are supplied.
+- CR-3: Add a Review Temperature Alarm scenario with ordered steps: receive alarm, inspect temperature, notify operator. Assign the controller to perform the whole scenario. This does not allocate individual steps or define timing.
+- OPEN-1: A note says “acknowledge the alarm before restoring cooling.” The actor, acknowledgement conditions and restoration conditions are unspecified. Keep this unresolved in project notes; do not create a safeguard, timing rule or restoration behavior from it.
+
+Review questions: What changed? Does the declared design meet the new minimum? Which relationships and responsibilities were explicitly modeled? Which decisions and verification evidence remain missing?
+</div><h2>Assumptions, decisions and open questions</h2><div class="reader-notes">OPEN-1 remains unresolved: acknowledgement actor, acknowledgement conditions and cooling restoration conditions are unspecified. No safeguard, restoration behavior or timing rule has been inferred. CR-1 changes only the required minimum to three; declared sample capacity remains two. CR-2 adds maintenancePanel only. CR-3 adds the declared three-step scenario and whole-scenario Controller assignment. CapacityVerification remains planned and unexecuted.</div><p>Cold-room-alarm-study.review.html · revision c9c5dd206aaf · current basis</p><p>Cold-room-alarm-study.review.html · revision c9c5dd206aaf · current basis</p><p>AlarmReview::sampleRetention: required minimum becomes 3; the statement is updated. Design quantities stay unchanged. Basis: Fictional brief CR-1: revise the minimum to three samples, keeping declared capacity two unchanged.</p><p>Add component maintenancePanel inside AlarmReview::MonitoringSystem. No ports, safeguards or responsibility are inferred. Basis: Fictional brief CR-2: add a maintenance panel inside Monitoring System; only its existence is requested.</p><p>Add ordered scenario ReviewTemperatureAlarm with 3 declared steps. Conditions and execution remain unspecified. Basis: Fictional brief CR-3: receive alarm, inspect temperature, notify operator, in that order. OPEN-1 acknowledgement/restoration conditions remain unresolved.</p><p>AlarmReview::Controller performs AlarmReview::ReviewTemperatureAlarm. Shared definitions affect every use; no execution is claimed. Basis: Fictional brief CR-3: assign the controller to perform the whole Review Temperature Alarm scenario. Individual step allocation, timing and OPEN-1 restoration conditions are not supplied.</p></details><h2>Change for review</h2><p>Required minimum (samples): 2 → 3. Declared sample capacity (samples): 2 (unchanged). Count label quoted from requirement wording. Declared design shortfall. Physical verification: not evaluated.</p><section><h2>System context</h2><p>Scope</p><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model occurrence</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="833pt" height="347pt" viewBox="0.00 0.00 833.00 347.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 321.57)">
+<title>G</title>
+<!-- n1&#45;&gt;n3 -->
+<g id="relation-0" class="edge">
+<title>n1-&gt;n3</title>
+<g id="a_relation-0"><a xlink:title="Connection · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" d="M165.13,-157.1C236.98,-152.96 339.45,-147.06 339.45,-147.06 339.45,-147.06 358.64,-136.95 379.41,-126.01"></path>
+</a>
+</g>
+<g id="a_relation-0-label"><a xlink:title="Connection">
+<text xml:space="preserve" text-anchor="middle" x="281.7" y="-156.49" font-family="Arial" font-size="12.00" fill="#52645f">Connection</text>
+</a>
+</g>
+</g>
+<!-- n1&#45;&gt;n3 -->
+<g id="relation-3" class="edge">
+<title>n1-&gt;n3</title>
+<g id="a_relation-3"><a xlink:title="Temperature Reading · inspect source">
+<path fill="none" stroke="#147d91" stroke-width="2.5" d="M165.06,-143.17C195.24,-135.3 223.95,-127.81 223.95,-127.81 223.95,-127.81 300.94,-117.1 360.92,-108.75"></path>
+<polygon fill="#147d91" stroke="#147d91" stroke-width="2.5" points="361.09,-111.38 368.15,-107.74 360.36,-106.18 361.09,-111.38"></polygon>
+</a>
+</g>
+<g id="a_relation-3-label"><a xlink:title="Temperature Reading">
+<text xml:space="preserve" text-anchor="middle" x="281.7" y="-130.66" font-family="Arial" font-size="12.00" fill="#176274">Temperature Reading</text>
+</a>
+</g>
+</g>
+<!-- n2&#45;&gt;n3 -->
+<g id="relation-1" class="edge">
+<title>n2-&gt;n3</title>
+<g id="a_relation-1"><a xlink:title="Connection · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" d="M165.29,-49.04C226.22,-60.53 314.2,-77.12 371.86,-87.99"></path>
+</a>
+</g>
+<g id="a_relation-1-label"><a xlink:title="Connection">
+<text xml:space="preserve" text-anchor="middle" x="281.7" y="-83.29" font-family="Arial" font-size="12.00" fill="#52645f">Connection</text>
+</a>
+</g>
+</g>
+<!-- n2&#45;&gt;n3 -->
+<g id="relation-4" class="edge">
+<title>n2-&gt;n3</title>
+<g id="a_relation-4"><a xlink:title="Temperature Reading · inspect source">
+<path fill="none" stroke="#147d91" stroke-width="2.5" d="M165.13,-36.27C236.98,-36.49 339.45,-36.81 339.45,-36.81 339.45,-36.81 360.16,-50.96 381.83,-65.77"></path>
+<polygon fill="#147d91" stroke="#147d91" stroke-width="2.5" points="380.32,-67.92 388,-69.98 383.29,-63.58 380.32,-67.92"></polygon>
+</a>
+</g>
+<g id="a_relation-4-label"><a xlink:title="Temperature Reading">
+<text xml:space="preserve" text-anchor="middle" x="281.7" y="-39.66" font-family="Arial" font-size="12.00" fill="#176274">Temperature Reading</text>
+</a>
+</g>
+</g>
+<!-- n3&#45;&gt;n0 -->
+<g id="relation-2" class="edge">
+<title>n3-&gt;n0</title>
+<g id="a_relation-2"><a xlink:title="Connection · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" d="M491.08,-99.06C536.25,-99.06 598.8,-99.06 646.04,-99.06"></path>
+</a>
+</g>
+<g id="a_relation-2-label"><a xlink:title="Connection">
+<text xml:space="preserve" text-anchor="middle" x="568.65" y="-101.91" font-family="Arial" font-size="12.00" fill="#52645f">Connection</text>
+</a>
+</g>
+</g>
+<!-- n3&#45;&gt;n0 -->
+<g id="relation-5" class="edge">
+<title>n3-&gt;n0</title>
+<g id="a_relation-5"><a xlink:title="Alarm Command · inspect source">
+<path fill="none" stroke="#147d91" stroke-width="2.5" d="M491.28,-82.78C508.9,-77.9 523.65,-73.81 523.65,-73.81 523.65,-73.81 613.65,-73.81 613.65,-73.81 613.65,-73.81 622.66,-76.09 635.26,-79.28"></path>
+<polygon fill="#147d91" stroke="#147d91" stroke-width="2.5" points="634.44,-81.78 642.36,-81.08 635.73,-76.69 634.44,-81.78"></polygon>
+</a>
+</g>
+<g id="a_relation-5-label"><a xlink:title="Alarm Command">
+<text xml:space="preserve" text-anchor="middle" x="568.65" y="-76.66" font-family="Arial" font-size="12.00" fill="#176274">Alarm Command</text>
+</a>
+</g>
+</g>
+<!-- n0 -->
+<g id="node1" class="node">
+<title>n0</title>
+<g id="a_node1"><a xlink:title="Annunciator · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M770.1,-125.37C770.1,-125.37 658.65,-125.37 658.65,-125.37 652.65,-125.37 646.65,-119.37 646.65,-113.37 646.65,-113.37 646.65,-84.75 646.65,-84.75 646.65,-78.75 652.65,-72.75 658.65,-72.75 658.65,-72.75 770.1,-72.75 770.1,-72.75 776.1,-72.75 782.1,-78.75 782.1,-84.75 782.1,-84.75 782.1,-113.37 782.1,-113.37 782.1,-119.37 776.1,-125.37 770.1,-125.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="714.38" y="-92.66" font-family="Arial" font-size="17.00" fill="#243b36">Annunciator</text>
+</a>
+</g>
+</g>
+<!-- n1 -->
+<g id="node2" class="node">
+<title>n1</title>
+<g id="a_node2"><a xlink:title="Cold Room0
+Cold Room · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M152.7,-197.12C152.7,-197.12 38.25,-197.12 38.25,-197.12 32.25,-197.12 26.25,-191.12 26.25,-185.12 26.25,-185.12 26.25,-137 26.25,-137 26.25,-131 32.25,-125 38.25,-125 38.25,-125 152.7,-125 152.7,-125 158.7,-125 164.7,-131 164.7,-137 164.7,-137 164.7,-185.12 164.7,-185.12 164.7,-191.12 158.7,-197.12 152.7,-197.12"></path>
+<text xml:space="preserve" text-anchor="middle" x="95.48" y="-164.41" font-family="Arial" font-size="17.00" fill="#243b36">Cold Room0</text>
+<text xml:space="preserve" text-anchor="middle" x="95.48" y="-144.91" font-family="Arial" font-size="17.00" fill="#243b36">Cold Room</text>
+</a>
+</g>
+</g>
+<!-- n2 -->
+<g id="node3" class="node">
+<title>n2</title>
+<g id="a_node3"><a xlink:title="Cold Room1
+Cold Room · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M152.7,-72.12C152.7,-72.12 38.25,-72.12 38.25,-72.12 32.25,-72.12 26.25,-66.12 26.25,-60.12 26.25,-60.12 26.25,-12 26.25,-12 26.25,-6 32.25,0 38.25,0 38.25,0 152.7,0 152.7,0 158.7,0 164.7,-6 164.7,-12 164.7,-12 164.7,-60.12 164.7,-60.12 164.7,-66.12 158.7,-72.12 152.7,-72.12"></path>
+<text xml:space="preserve" text-anchor="middle" x="95.48" y="-39.41" font-family="Arial" font-size="17.00" fill="#243b36">Cold Room1</text>
+<text xml:space="preserve" text-anchor="middle" x="95.48" y="-19.91" font-family="Arial" font-size="17.00" fill="#243b36">Cold Room</text>
+</a>
+</g>
+</g>
+<!-- n3 -->
+<g id="node4" class="node">
+<title>n3</title>
+<g id="a_node4"><a xlink:title="Controller · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M478.65,-125.37C478.65,-125.37 384.45,-125.37 384.45,-125.37 378.45,-125.37 372.45,-119.37 372.45,-113.37 372.45,-113.37 372.45,-84.75 372.45,-84.75 372.45,-78.75 378.45,-72.75 384.45,-72.75 384.45,-72.75 478.65,-72.75 478.65,-72.75 484.65,-72.75 490.65,-78.75 490.65,-84.75 490.65,-84.75 490.65,-113.37 490.65,-113.37 490.65,-119.37 484.65,-125.37 478.65,-125.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="431.55" y="-92.66" font-family="Arial" font-size="17.00" fill="#243b36">Controller</text>
+</a>
+</g>
+</g>
+<!-- n4 -->
+<g id="node5" class="node">
+<title>n4</title>
+<g id="a_node5"><a xlink:title="Maintenance Panel · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M178.95,-296.37C178.95,-296.37 12,-296.37 12,-296.37 6,-296.37 0,-290.37 0,-284.37 0,-284.37 0,-255.75 0,-255.75 0,-249.75 6,-243.75 12,-243.75 12,-243.75 178.95,-243.75 178.95,-243.75 184.95,-243.75 190.95,-249.75 190.95,-255.75 190.95,-255.75 190.95,-284.37 190.95,-284.37 190.95,-290.37 184.95,-296.37 178.95,-296.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="95.48" y="-263.66" font-family="Arial" font-size="17.00" fill="#243b36">Maintenance Panel</text>
+</a>
+</g>
+</g>
+</g>
+</svg><p>Internal details, engineering symbols, attribute values and operating behaviour are outside this overview. Contact lines do not imply flow direction; only declared transfers use arrows.</p></section><section><h2>Required outcome</h2><p>Scope</p><div class="endpoint"><strong>Sample Retention</strong><span class="endpoint-context">Alarm Review</span><details><summary>Model path</summary><code>AlarmReview::sampleRetention</code></details></div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="901pt" height="203pt" viewBox="0.00 0.00 901.00 203.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 177.82)">
+<title>G</title>
+<!-- n0&#45;&gt;n1 -->
+<g id="relation-0" class="edge">
+<title>n0-&gt;n1</title>
+<g id="a_relation-0"><a xlink:title="Applies to · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" stroke-dasharray="5,2" d="M546.78,-76.31C580.96,-76.31 620.18,-76.31 655.4,-76.31"></path>
+<polygon fill="#99a8a2" stroke="#99a8a2" stroke-width="1.3" points="655.28,-78.94 662.78,-76.31 655.28,-73.69 655.28,-78.94"></polygon>
+</a>
+</g>
+<g id="a_relation-0-label"><a xlink:title="Applies to">
+<text xml:space="preserve" text-anchor="middle" x="605.78" y="-79.16" font-family="Arial" font-size="12.00" fill="#52645f">Applies to</text>
+</a>
+</g>
+</g>
+<!-- n2&#45;&gt;n0 -->
+<g id="relation-1" class="edge">
+<title>n2-&gt;n0</title>
+<g id="a_relation-1"><a xlink:title="Asserts satisfaction · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" stroke-dasharray="5,2" d="M191.85,-113.37C242.4,-106.26 305.12,-97.44 356.67,-90.18"></path>
+<polygon fill="#99a8a2" stroke="#99a8a2" stroke-width="1.3" points="356.83,-92.81 363.89,-89.17 356.09,-87.61 356.83,-92.81"></polygon>
+</a>
+</g>
+<g id="a_relation-1-label"><a xlink:title="Asserts satisfaction">
+<text xml:space="preserve" text-anchor="middle" x="282.08" y="-110.11" font-family="Arial" font-size="12.00" fill="#52645f">Asserts satisfaction</text>
+</a>
+</g>
+</g>
+<!-- n3&#45;&gt;n0 -->
+<g id="relation-2" class="edge">
+<title>n3-&gt;n0</title>
+<g id="a_relation-2"><a xlink:title="Planned check of · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" stroke-dasharray="5,2" d="M198.39,-40.17C247.81,-47.12 307.49,-55.52 356.89,-62.47"></path>
+<polygon fill="#99a8a2" stroke="#99a8a2" stroke-width="1.3" points="356.25,-65.03 364.05,-63.47 356.98,-59.83 356.25,-65.03"></polygon>
+</a>
+</g>
+<g id="a_relation-2-label"><a xlink:title="Planned check of">
+<text xml:space="preserve" text-anchor="middle" x="282.08" y="-61.56" font-family="Arial" font-size="12.00" fill="#52645f">Planned check of</text>
+</a>
+</g>
+</g>
+<!-- n0 -->
+<g id="node1" class="node">
+<title>n0</title>
+<g id="a_node1"><a xlink:title="Sample Retention · inspect source">
+<path fill="#fbf4e6" stroke="#ac8b4c" stroke-width="1.4" d="M534.15,-102.62C534.15,-102.62 378.45,-102.62 378.45,-102.62 372.45,-102.62 366.45,-96.62 366.45,-90.62 366.45,-90.62 366.45,-62 366.45,-62 366.45,-56 372.45,-50 378.45,-50 378.45,-50 534.15,-50 534.15,-50 540.15,-50 546.15,-56 546.15,-62 546.15,-62 546.15,-90.62 546.15,-90.62 546.15,-96.62 540.15,-102.62 534.15,-102.62"></path>
+<text xml:space="preserve" text-anchor="middle" x="456.3" y="-69.91" font-family="Arial" font-size="17.00" fill="#243b36">Sample Retention</text>
+</a>
+</g>
+</g>
+<!-- n1 -->
+<g id="node2" class="node">
+<title>n1</title>
+<g id="a_node2"><a xlink:title="System
+Monitoring System · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M838.35,-112.37C838.35,-112.37 677.4,-112.37 677.4,-112.37 671.4,-112.37 665.4,-106.37 665.4,-100.37 665.4,-100.37 665.4,-52.25 665.4,-52.25 665.4,-46.25 671.4,-40.25 677.4,-40.25 677.4,-40.25 838.35,-40.25 838.35,-40.25 844.35,-40.25 850.35,-46.25 850.35,-52.25 850.35,-52.25 850.35,-100.37 850.35,-100.37 850.35,-106.37 844.35,-112.37 838.35,-112.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="757.88" y="-79.66" font-family="Arial" font-size="17.00" fill="#243b36">System</text>
+<text xml:space="preserve" text-anchor="middle" x="757.88" y="-60.16" font-family="Arial" font-size="17.00" fill="#243b36">Monitoring System</text>
+</a>
+</g>
+</g>
+<!-- n2 -->
+<g id="node3" class="node">
+<title>n2</title>
+<g id="a_node3"><a xlink:title="Monitoring System · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M179.33,-152.62C179.33,-152.62 18.38,-152.62 18.38,-152.62 12.38,-152.62 6.38,-146.62 6.38,-140.62 6.38,-140.62 6.38,-112 6.38,-112 6.38,-106 12.38,-100 18.38,-100 18.38,-100 179.33,-100 179.33,-100 185.33,-100 191.33,-106 191.33,-112 191.33,-112 191.33,-140.62 191.33,-140.62 191.33,-146.62 185.33,-152.62 179.33,-152.62"></path>
+<text xml:space="preserve" text-anchor="middle" x="98.85" y="-119.91" font-family="Arial" font-size="17.00" fill="#243b36">Monitoring System</text>
+</a>
+</g>
+</g>
+<!-- n3 -->
+<g id="node4" class="node">
+<title>n3</title>
+<g id="a_node4"><a xlink:title="Capacity Verification · inspect source">
+<path fill="#edf1f7" stroke="#7485a0" stroke-width="1.4" d="M185.7,-52.62C185.7,-52.62 12,-52.62 12,-52.62 6,-52.62 0,-46.62 0,-40.62 0,-40.62 0,-12 0,-12 0,-6 6,0 12,0 12,0 185.7,0 185.7,0 191.7,0 197.7,-6 197.7,-12 197.7,-12 197.7,-40.62 197.7,-40.62 197.7,-46.62 191.7,-52.62 185.7,-52.62"></path>
+<text xml:space="preserve" text-anchor="middle" x="98.85" y="-19.91" font-family="Arial" font-size="17.00" fill="#243b36">Capacity Verification</text>
+</a>
+</g>
+</g>
+</g>
+</svg><blockquote>CR-1: The monitoring controller shall retain at least three samples.</blockquote><p>Constraint expressions, test setup, installed configuration, observations, deviations and sign-off are not translated or assessed. Consult Engineering mode for the exact model statements.</p></section><section><h2>Verification plan</h2><p>Scope</p><div class="endpoint"><strong>Capacity Verification</strong><span class="endpoint-context">Alarm Review · definition</span><details><summary>Model path</summary><code>AlarmReview::CapacityVerification</code></details></div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="591pt" height="222pt" viewBox="0.00 0.00 591.00 222.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 196.57)">
+<title>G</title>
+<!-- n0&#45;&gt;n1 -->
+<g id="relation-0" class="edge">
+<title>n0-&gt;n1</title>
+<g id="a_relation-0"><a xlink:title="Planned check of · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" stroke-dasharray="5,2" d="M198.06,-105.6C245.2,-113.06 301.56,-121.98 348.76,-129.45"></path>
+<polygon fill="#99a8a2" stroke="#99a8a2" stroke-width="1.3" points="348.32,-132.03 356.13,-130.61 349.14,-126.85 348.32,-132.03"></polygon>
+</a>
+</g>
+<g id="a_relation-0-label"><a xlink:title="Planned check of">
+<text xml:space="preserve" text-anchor="middle" x="276.82" y="-126.95" font-family="Arial" font-size="12.00" fill="#52645f">Planned check of</text>
+</a>
+</g>
+</g>
+<!-- n0&#45;&gt;n2 -->
+<g id="relation-1" class="edge">
+<title>n0-&gt;n2</title>
+<g id="a_relation-1"><a xlink:title="Checks subject · inspect source">
+<path fill="none" stroke="#99a8a2" stroke-width="1.3" stroke-dasharray="5,2" d="M198.06,-74.8C244.35,-67.61 299.54,-59.04 346.21,-51.78"></path>
+<polygon fill="#99a8a2" stroke="#99a8a2" stroke-width="1.3" points="346.47,-54.4 353.48,-50.66 345.67,-49.21 346.47,-54.4"></polygon>
+</a>
+</g>
+<g id="a_relation-1-label"><a xlink:title="Checks subject">
+<text xml:space="preserve" text-anchor="middle" x="276.82" y="-72.33" font-family="Arial" font-size="12.00" fill="#52645f">Checks subject</text>
+</a>
+</g>
+</g>
+<!-- n0 -->
+<g id="node1" class="node">
+<title>n0</title>
+<g id="a_node1"><a xlink:title="Capacity Verification · inspect source">
+<path fill="#edf1f7" stroke="#7485a0" stroke-width="1.4" d="M185.7,-116.37C185.7,-116.37 12,-116.37 12,-116.37 6,-116.37 0,-110.37 0,-104.37 0,-104.37 0,-75.75 0,-75.75 0,-69.75 6,-63.75 12,-63.75 12,-63.75 185.7,-63.75 185.7,-63.75 191.7,-63.75 197.7,-69.75 197.7,-75.75 197.7,-75.75 197.7,-104.37 197.7,-104.37 197.7,-110.37 191.7,-116.37 185.7,-116.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="98.85" y="-83.66" font-family="Arial" font-size="17.00" fill="#243b36">Capacity Verification</text>
+</a>
+</g>
+</g>
+<!-- n1 -->
+<g id="node2" class="node">
+<title>n1</title>
+<g id="a_node2"><a xlink:title="Sample Retention · inspect source">
+<path fill="#fbf4e6" stroke="#ac8b4c" stroke-width="1.4" d="M526.27,-171.37C526.27,-171.37 370.57,-171.37 370.57,-171.37 364.57,-171.37 358.57,-165.37 358.57,-159.37 358.57,-159.37 358.57,-130.75 358.57,-130.75 358.57,-124.75 364.57,-118.75 370.57,-118.75 370.57,-118.75 526.27,-118.75 526.27,-118.75 532.27,-118.75 538.27,-124.75 538.27,-130.75 538.27,-130.75 538.27,-159.37 538.27,-159.37 538.27,-165.37 532.27,-171.37 526.27,-171.37"></path>
+<text xml:space="preserve" text-anchor="middle" x="448.42" y="-138.66" font-family="Arial" font-size="17.00" fill="#243b36">Sample Retention</text>
+</a>
+</g>
+</g>
+<!-- n2 -->
+<g id="node3" class="node">
+<title>n2</title>
+<g id="a_node3"><a xlink:title="System
+Monitoring System · inspect source">
+<path fill="#f0f6f4" stroke="#47796e" stroke-width="1.4" d="M528.9,-72.12C528.9,-72.12 367.95,-72.12 367.95,-72.12 361.95,-72.12 355.95,-66.12 355.95,-60.12 355.95,-60.12 355.95,-12 355.95,-12 355.95,-6 361.95,0 367.95,0 367.95,0 528.9,0 528.9,0 534.9,0 540.9,-6 540.9,-12 540.9,-12 540.9,-60.12 540.9,-60.12 540.9,-66.12 534.9,-72.12 528.9,-72.12"></path>
+<text xml:space="preserve" text-anchor="middle" x="448.42" y="-39.41" font-family="Arial" font-size="17.00" fill="#243b36">System</text>
+<text xml:space="preserve" text-anchor="middle" x="448.42" y="-19.91" font-family="Arial" font-size="17.00" fill="#243b36">Monitoring System</text>
+</a>
+</g>
+</g>
+</g>
+</svg><blockquote>BR-2: Planned capacity verification only. No execution occurred.</blockquote><p>Constraint expressions, test setup, installed configuration, observations, deviations and sign-off are not translated or assessed. Consult Engineering mode for the exact model statements.</p></section><section><h2>Review Temperature Alarm</h2><p>Scope</p><div class="endpoint"><strong>Review Temperature Alarm</strong><span class="endpoint-context">Alarm Review · definition</span><details><summary>Model path</summary><code>AlarmReview::ReviewTemperatureAlarm</code></details></div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="454pt" height="355pt" viewBox="0.00 0.00 454.00 355.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 332.9)">
+<title>G</title>
+<polygon fill="white" stroke="none" points="-21.6,21.6 -21.6,-332.9 432.6,-332.9 432.6,21.6 -21.6,21.6"></polygon>
+<g id="clust1" class="cluster">
+<title>cluster_n0</title>
+<polygon fill="white" stroke="#607687" points="8,-8 8,-303.3 403,-303.3 403,-8 8,-8"></polygon>
+<text xml:space="preserve" text-anchor="middle" x="205.5" y="-284.1" font-family="Arial" font-size="16.00">ReviewTemperatureAlarm</text>
+</g>
+<!-- n0 -->
+<g id="node1" class="node">
+<title>n0</title>
+<g id="a_node1"><a xlink:title="ReviewTemperatureAlarm">
+<text xml:space="preserve" text-anchor="middle" x="124" y="-242.55" font-family="Arial" font-size="16.00">ReviewTemperatureAlarm</text>
+</a>
+</g>
+</g>
+<!-- n1 -->
+<g id="node2" class="node">
+<title>n1</title>
+<g id="a_node2"><a xlink:title="receiveAlarm">
+<path fill="none" stroke="black" d="M383.09,-268.55C383.09,-268.55 280.91,-268.55 280.91,-268.55 274.91,-268.55 268.91,-262.55 268.91,-256.55 268.91,-256.55 268.91,-240.2 268.91,-240.2 268.91,-234.2 274.91,-228.2 280.91,-228.2 280.91,-228.2 383.09,-228.2 383.09,-228.2 389.09,-228.2 395.09,-234.2 395.09,-240.2 395.09,-240.2 395.09,-256.55 395.09,-256.55 395.09,-262.55 389.09,-268.55 383.09,-268.55"></path>
+<text xml:space="preserve" text-anchor="middle" x="332" y="-242.55" font-family="Arial" font-size="16.00">receiveAlarm</text>
+</a>
+</g>
+</g>
+<!-- n2 -->
+<g id="node3" class="node">
+<title>n2</title>
+<g id="a_node3"><a xlink:title="inspectTemperature">
+<path fill="none" stroke="black" d="M378.09,-162.45C378.09,-162.45 227.91,-162.45 227.91,-162.45 221.91,-162.45 215.91,-156.45 215.91,-150.45 215.91,-150.45 215.91,-134.1 215.91,-134.1 215.91,-128.1 221.91,-122.1 227.91,-122.1 227.91,-122.1 378.09,-122.1 378.09,-122.1 384.09,-122.1 390.09,-128.1 390.09,-134.1 390.09,-134.1 390.09,-150.45 390.09,-150.45 390.09,-156.45 384.09,-162.45 378.09,-162.45"></path>
+<text xml:space="preserve" text-anchor="middle" x="303" y="-136.45" font-family="Arial" font-size="16.00">inspectTemperature</text>
+</a>
+</g>
+</g>
+<!-- n1&#45;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1-&gt;n2</title>
+<g id="a_edge1"><a xlink:title="R1: succession">
+<path fill="none" stroke="black" d="M326.55,-227.79C322.13,-211.95 315.85,-189.41 310.89,-171.59"></path>
+<polygon fill="black" stroke="black" points="313.68,-171.18 308.84,-164.23 308.29,-172.68 313.68,-171.18"></polygon>
+</a>
+</g>
+<g id="a_edge1-label"><a xlink:title="R1: succession">
+<text xml:space="preserve" text-anchor="middle" x="364.99" y="-189.9" font-family="Arial" font-size="14.00">R1: succession</text>
+</a>
+</g>
+</g>
+<!-- n3 -->
+<g id="node4" class="node">
+<title>n3</title>
+<g id="a_node4"><a xlink:title="notifyOperator">
+<path fill="none" stroke="black" d="M358.22,-56.35C358.22,-56.35 247.78,-56.35 247.78,-56.35 241.78,-56.35 235.78,-50.35 235.78,-44.35 235.78,-44.35 235.78,-28 235.78,-28 235.78,-22 241.78,-16 247.78,-16 247.78,-16 358.22,-16 358.22,-16 364.22,-16 370.22,-22 370.22,-28 370.22,-28 370.22,-44.35 370.22,-44.35 370.22,-50.35 364.22,-56.35 358.22,-56.35"></path>
+<text xml:space="preserve" text-anchor="middle" x="303" y="-30.35" font-family="Arial" font-size="16.00">notifyOperator</text>
+</a>
+</g>
+</g>
+<!-- n2&#45;&gt;n3 -->
+<g id="edge2" class="edge">
+<title>n2-&gt;n3</title>
+<g id="a_edge2"><a xlink:title="R2: succession">
+<path fill="none" stroke="black" d="M303,-121.69C303,-105.99 303,-83.72 303,-65.99"></path>
+<polygon fill="black" stroke="black" points="305.8,-66.18 303,-58.18 300.2,-66.18 305.8,-66.18"></polygon>
+</a>
+</g>
+<g id="a_edge2-label"><a xlink:title="R2: succession">
+<text xml:space="preserve" text-anchor="middle" x="348.75" y="-83.8" font-family="Arial" font-size="14.00">R2: succession</text>
+</a>
+</g>
+</g>
+</g>
+</svg><p>Only explicitly owned state/action trees and resolved binary relationships are projected. Inherited behavior and unsupported controls are not expanded; warnings are not proof of absence. Ordinary flows are transfers, not an inferred schedule; succession flows retain their separate kind. Exact source excerpts are quotations, not evaluated expressions.</p></section><section><h2>Cold-room interface review</h2><p>8 elements · 8 interface records · scope and omissions are recorded in the interface register below</p><table class="model-table"><caption>Interface register</caption><thead><tr><th scope="col">Relationship</th><th scope="col">Endpoint A / source</th><th scope="col">Endpoint B / target</th><th scope="col">Payload / direction</th><th scope="col">Evidence</th></tr></thead><tbody><tr><td>connection · Room 0 Observations</td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 0 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room0Readings</code></details></div></td><td>Not directional</td><td><span>See source register below</span></td></tr><tr><td>flow · Room 0 Observations</td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 0 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room0Readings</code></details></div></td><td>Temperature Reading →</td><td><span>See source register below</span></td></tr><tr><td>connection · Room 1 Observations</td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 1 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room1Readings</code></details></div></td><td>Not directional</td><td><span>See source register below</span></td></tr><tr><td>flow · Room 1 Observations</td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 1 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room1Readings</code></details></div></td><td>Temperature Reading →</td><td><span>See source register below</span></td></tr><tr><td>connection · Alarm Commands</td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / alarm</code></details></div></td><td><div class="endpoint"><strong>Annunciator</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/annunciator / alarm</code></details></div></td><td>Not directional</td><td><span>See source register below</span></td></tr><tr><td>flow · Alarm Commands</td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / alarm</code></details></div></td><td><div class="endpoint"><strong>Annunciator</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/annunciator / alarm</code></details></div></td><td>Alarm Command →</td><td><span>See source register below</span></td></tr><tr><td>binding · Observations</td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Probe Head</strong><span class="endpoint-context">Monitoring System / Cold Room 0</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0/probeHead / readings</code></details></div></td><td>Not directional</td><td><span>See source register below</span></td></tr><tr><td>binding · Observations</td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Probe Head</strong><span class="endpoint-context">Monitoring System / Cold Room 1</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1/probeHead / readings</code></details></div></td><td>Not directional</td><td><span>See source register below</span></td></tr></tbody></table></section><section><h2>Interface register</h2><p>8 elements · 8 interface records · 0 elements outside view · 0 crossing records not shown · 0 filtered records · 0 extraction limitations</p><table><tr><th>Kind</th><th>Scope</th><th>Endpoint A / source</th><th>Endpoint B / target</th><th>Direction / payload</th><th>Source witness</th></tr><tr><td>connection</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 0 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room0Readings</code></details></div></td><td>Not directional</td><td>
+        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;</td></tr><tr><td>flow</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 0 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room0Readings</code></details></div></td><td>→ Temperature Reading</td><td>
+        flow of TemperatureReading from sender.observation to receiver.observation;</td></tr><tr><td>connection</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 1 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room1Readings</code></details></div></td><td>Not directional</td><td>
+        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;</td></tr><tr><td>flow</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Room 1 Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / room1Readings</code></details></div></td><td>→ Temperature Reading</td><td>
+        flow of TemperatureReading from sender.observation to receiver.observation;</td></tr><tr><td>connection</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / alarm</code></details></div></td><td><div class="endpoint"><strong>Annunciator</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/annunciator / alarm</code></details></div></td><td>Not directional</td><td>
+        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;</td></tr><tr><td>flow</td><td><div class="endpoint"><strong>Monitoring System</strong><span class="endpoint-context">Alarm Review · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem</code></details></div></td><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/controller / alarm</code></details></div></td><td><div class="endpoint"><strong>Annunciator</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Alarm</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/annunciator / alarm</code></details></div></td><td>→ Alarm Command</td><td>
+        flow of AlarmCommand from sender.command to receiver.command;</td></tr><tr><td>binding</td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0</code></details></div></td><td><div class="endpoint"><strong>Cold Room 0</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0 / readings</code></details></div></td><td><div class="endpoint"><strong>Probe Head</strong><span class="endpoint-context">Monitoring System / Cold Room 0</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom0/probeHead / readings</code></details></div></td><td>Not directional</td><td>
+        binding observations bind readings = probeHead.readings;</td></tr><tr><td>binding</td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System · model scope</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1</code></details></div></td><td><div class="endpoint"><strong>Cold Room 1</strong><span class="endpoint-context">Monitoring System</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1 / readings</code></details></div></td><td><div class="endpoint"><strong>Probe Head</strong><span class="endpoint-context">Monitoring System / Cold Room 1</span><span class="endpoint-port">Port · Readings</span><details><summary>Model path</summary><code>AlarmReview::monitoringSystem/coldRoom1/probeHead / readings</code></details></div></td><td>Not directional</td><td>
+        binding observations bind readings = probeHead.readings;</td></tr></table></section><section><h2>Declared responsibilities</h2><p>Source-defined performance assignments, not inferred allocation or execution evidence.</p><table><tr><th>Component / definition</th><th>Performs scenario</th><th>Assignment scope</th><th>Source witness</th></tr><tr><td><div class="endpoint"><strong>Controller</strong><span class="endpoint-context">Alarm Review · component definition</span><details><summary>Model path</summary><code>AlarmReview::Controller</code></details></div></td><td><div class="endpoint"><strong>Review Temperature Alarm</strong><span class="endpoint-context">Alarm Review · scenario definition</span><details><summary>Model path</summary><code>AlarmReview::ReviewTemperatureAlarm</code></details></div></td><td>Whole scenario; this statement does not assign individual steps.</td><td>
+        perform action reviewTemperatureAlarm : AlarmReview::ReviewTemperatureAlarm;</td></tr></table></section><section><h2>Requirements register</h2><h3>AlarmReview::sampleRetention</h3><pre>
+    requirement sampleRetention {
+        doc /* CR-1: The monitoring controller shall retain at least three samples. */
+        subject system : MonitoringSystem;
+        require constraint { system.controller.sampleCapacity &gt;= 3 }
+    }</pre></section><details><summary>Saved custom view definitions and scope</summary><pre>[
+  {
+    "name": "Controller responsibility review",
+    "recipe": {
+      "schemaVersion": 1,
+      "root": "AlarmReview::monitoringSystem",
+      "focus": "AlarmReview::monitoringSystem",
+      "depth": 2,
+      "neighbors": 1,
+      "kinds": [
+        "connection",
+        "binding",
+        "flow"
+      ],
+      "pinned": [],
+      "hidden": []
+    },
+    "surface": "responsibilities",
+    "savedSourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919"
+  },
+  {
+    "name": "Cold-room interface review",
+    "recipe": {
+      "schemaVersion": 1,
+      "root": "AlarmReview::monitoringSystem",
+      "focus": "AlarmReview::monitoringSystem",
+      "depth": 2,
+      "neighbors": 1,
+      "kinds": [
+        "connection",
+        "binding",
+        "flow"
+      ],
+      "pinned": [],
+      "hidden": []
+    },
+    "surface": "register",
+    "savedSourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919"
+  }
+]</pre></details></body></html>
