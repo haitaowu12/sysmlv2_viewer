@@ -710,7 +710,7 @@ describe('readable endpoints and explicit view lifecycle', () => {
   })
   it('keeps repeated endpoint context, port and exact paths available without raw primary labels', async () => {
     const h = await harness()
-    const nodes = ['area0', 'area1'].map((area, i) => ({ key: `Study::plant/${area}/temperatureConditioningUnit_00`, parent: `Study::plant/${area}`, root: 'Study::plant', name: 'temperatureConditioningUnit_00', elementId: 'shared', depth: 2 }))
+    const nodes = ['area0', 'area1'].map(area => ({ key: `Study::plant/${area}/temperatureConditioningUnit_00`, parent: `Study::plant/${area}`, root: 'Study::plant', name: 'temperatureConditioningUnit_00', elementId: 'shared', depth: 2 }))
     const relation = { ...scopeRelations[0], name: 'primary_0_1', source: { node: nodes[0].key, port: 'outReading' }, target: { node: nodes[1].key, port: 'input' } }
     await h.answer(0, true, { catalogue: { ...scopeCatalog, roots: ['Study::plant'], nodes, relations: [relation] } })
     document.getElementById('customize')!.click(); document.getElementById('apply-scope')!.click()
