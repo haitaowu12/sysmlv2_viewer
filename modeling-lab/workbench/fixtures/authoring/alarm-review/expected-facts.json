@@ -1,0 +1,26 @@
+{
+  "basis": "Independent expectations from BR-1/BR-2/CR-1/CR-2/CR-3/OPEN-1, before rendering",
+  "baseline": {
+    "declaredCapacity": 2,
+    "minimum": 2,
+    "rooms": 2,
+    "probeHeadOccurrences": 2,
+    "contextConnections": 3,
+    "contextTransfers": 3
+  },
+  "reviewed": {
+    "declaredCapacity": 2,
+    "minimum": 3,
+    "shortfall": 1,
+    "newComponent": "maintenancePanel",
+    "scenario": "ReviewTemperatureAlarm",
+    "orderedSteps": [
+      "receiveAlarm",
+      "inspectTemperature",
+      "notifyOperator"
+    ],
+    "wholeScenarioPerformer": "Controller",
+    "verification": "planned only; not executed",
+    "unresolved": "OPEN-1; no restoration behavior inferred"
+  }
+}

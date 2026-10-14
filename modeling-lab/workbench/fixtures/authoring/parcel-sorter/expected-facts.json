@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "actuator-A",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::sorter::diverterA::actuator"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "types": [
+          "ParcelSortingStudy::RotaryActuator"
+        ]
+      }
+    },
+    {
+      "id": "actuator-B",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::sorter::diverterB::actuator"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "types": [
+          "ParcelSortingStudy::RotaryActuator"
+        ]
+      }
+    },
+    {
+      "id": "asset-A",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::sorter::diverterA::actuator::assetTag"
+      },
+      "expect": {
+        "literalValues": [
+          "QA-DA-01"
+        ]
+      }
+    },
+    {
+      "id": "asset-B",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::sorter::diverterB::actuator::assetTag"
+      },
+      "expect": {
+        "literalValues": [
+          "QA-DB-02"
+        ]
+      }
+    },
+    {
+      "id": "functions",
+      "select": {
+        "metaclass": "ActionDefinition"
+      },
+      "count": 5,
+      "candidateCount": 5
+    },
+    {
+      "id": "no-invented-allocation",
+      "select": {
+        "metaclass": "PerformActionUsage"
+      },
+      "count": 0
+    },
+    {
+      "id": "no-satisfaction-claim",
+      "select": {
+        "metaclass": "SatisfyRequirementUsage"
+      },
+      "count": 0
+    },
+    {
+      "id": "ack-r1-bound",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::sorter::acknowledgementBoundMilliseconds"
+      },
+      "expect": {
+        "literalValues": [
+          120
+        ]
+      }
+    },
+    {
+      "id": "resume-conjunction",
+      "select": {
+        "qualifiedName": "ParcelSortingStudy::JamRecoveryStory::resumeSorting"
+      },
+      "expect": {
+        "transition": {
+          "source": "ParcelSortingStudy::JamRecoveryStory::recoveryPending",
+          "target": "ParcelSortingStudy::JamRecoveryStory::resumedSorting",
+          "triggerTypes": [
+            [
+              "ParcelSortingStudy::ResumeAuthorisation"
+            ]
+          ],
+          "guardCount": 1,
+          "effectCount": 0
+        }
+      }
+    }
+  ]
+}

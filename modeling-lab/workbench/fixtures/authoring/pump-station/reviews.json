@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 2,
+  "reviewedSourceSha256": "67ce68bf0e6614b13abd10a98b0b77a982a4d1aab49c9ceaa6f8f7c2041b4bf2",
+  "routes": [
+    {
+      "id": "understand",
+      "title": "Understand the system",
+      "audience": "Project stakeholders",
+      "objective": "Agree the boundary and responsibilities before discussing detailed design.",
+      "steps": [
+        {
+          "viewId": "context",
+          "targets": [
+            "PumpStationStudy::context"
+          ],
+          "question": "Which actors and exchanges are inside this review?",
+          "reviewedViewRecipeSha256": "1d5fefb2dbcc79c66451c49ad9bcea7a1140aadee21511897a38dd1c7df531b6"
+        },
+        {
+          "viewId": "station-decomposition",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "Are these responsibilities divided at the right level?",
+          "reviewedViewRecipeSha256": "861c3613818bca81111afd0c0e1892a86cb2c97707695abf2bd2e204af01a858"
+        },
+        {
+          "viewId": "exchange-summary",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "Which declared exchanges need an interface agreement?",
+          "reviewedViewRecipeSha256": "32b30135032a7a01f7e0b52dad8a931b74f648855fdbfbb9fda00a0256e05d6c"
+        }
+      ]
+    },
+    {
+      "id": "operate",
+      "title": "Review operating behavior",
+      "audience": "Operators and maintainers",
+      "objective": "Review the declared motor states and their subsystem context; recovery procedures remain to be supplied.",
+      "steps": [
+        {
+          "viewId": "context",
+          "targets": [
+            "PumpStationStudy::context"
+          ],
+          "question": "Who can initiate the declared request?",
+          "reviewedViewRecipeSha256": "1d5fefb2dbcc79c66451c49ad9bcea7a1140aadee21511897a38dd1c7df531b6"
+        },
+        {
+          "viewId": "motor-states",
+          "targets": [
+            "PumpStationStudy::MotorStates"
+          ],
+          "question": "Which events cause state changes, and what recovery conditions remain unspecified?",
+          "reviewedViewRecipeSha256": "fab4853c47cb24344b777dbf23470c18767a727fbf63d3688ba883eb6a6cb34e"
+        },
+        {
+          "viewId": "skid-detail",
+          "targets": [
+            "PumpStationStudy::PumpSkid"
+          ],
+          "question": "What does this subsystem expose to the wider system?",
+          "reviewedViewRecipeSha256": "f334ac7eb3dd4472840a6c9a75802d6e30d4af3972f9dada048000265df38013"
+        }
+      ]
+    },
+    {
+      "id": "assure",
+      "title": "Review design assurance",
+      "audience": "Design, verification and commissioning reviewers",
+      "objective": "Review the capacity obligation, design structure and planned check without implying test execution.",
+      "steps": [
+        {
+          "viewId": "capacity-requirement",
+          "targets": [
+            "PumpStationStudy::installedCapacity"
+          ],
+          "question": "Is the capacity obligation agreed for this configuration?",
+          "reviewedViewRecipeSha256": "4a39e68edb0389b14482ec5b2273b1590d4322ab17d5f1da82c6365838d4c649"
+        },
+        {
+          "viewId": "station-decomposition",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "What design information supports the declared capacity, and what needs physical confirmation?",
+          "reviewedViewRecipeSha256": "861c3613818bca81111afd0c0e1892a86cb2c97707695abf2bd2e204af01a858"
+        },
+        {
+          "viewId": "capacity-verification",
+          "targets": [
+            "PumpStationStudy::InstalledCapacityVerification"
+          ],
+          "question": "What independent acceptance criteria, procedure and configuration evidence are still needed?",
+          "reviewedViewRecipeSha256": "ba7f0be00b9cad4952738f0cc0ad371786c143247852222fd8f585311f6b6e41"
+        }
+      ]
+    }
+  ]
+}

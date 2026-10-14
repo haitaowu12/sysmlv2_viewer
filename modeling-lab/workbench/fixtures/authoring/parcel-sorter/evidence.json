@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "model": {
+    "path": "model.sysml",
+    "sha256": "c19a75be458794654a23b864f0f142656490d7f1ec2042f6a9960ecc4db5aab1"
+  },
+  "sources": [
+    {
+      "id": "B1",
+      "path": "sources/brief.md",
+      "sha256": "4e7a6a6c49f46f5e03ccdbf8d21dd6d20ce27d3b6ae7022851d792f4cdf21663"
+    },
+    {
+      "id": "ICD-R1",
+      "path": "sources/interfaces-r1.csv",
+      "sha256": "0b10c99639affcd44e8d2c274abc970b08dde552b536c039baf5e065d228b0e5"
+    },
+    {
+      "id": "D1",
+      "path": "sources/dialogue.md",
+      "sha256": "b1ad0f88fcb733ed1eb06945f44921922248d8093f6257997cf6310ba5c602ee"
+    }
+  ],
+  "claims": [
+    {
+      "id": "boundary",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::sorter",
+        "ParcelSortingStudy::warehouseControl",
+        "ParcelSortingStudy::operator",
+        "ParcelSortingStudy::context"
+      ],
+      "interpretation": "Model context references named study equipment and external participants; view aliases are modeling scaffolding, not extra equipment.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "[B1:boundary] East Quay Parcel Hub wants a sorting station called `sorter` to direct each identified parcel to its assigned outbound lane and to retain the parcel identity and intended lane when a jam interrupts the journey. The warehouse-control system, `warehouseControl`, is outside the station boundary. The operator is an external participant."
+        },
+        {
+          "source": "B1",
+          "startLine": 15,
+          "endLine": 15,
+          "quote": "[B1:interfaces] The station endpoint is `sorter.controlLink`; the external endpoint is `warehouseControl.sorterLink`. They are opposite roles of the same station/warehouse exchange: route dispatch and resume authorisation enter the station, while route acknowledgement and jam reports leave it. The interface table specifies exchanged messages; endpoint connectivity alone is not evidence that every exchange occurs."
+        }
+      ]
+    },
+    {
+      "id": "functions",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::IdentifyParcel",
+        "ParcelSortingStudy::SelectRoute",
+        "ParcelSortingStudy::DivertParcel",
+        "ParcelSortingStudy::ReportRouteAcknowledgement",
+        "ParcelSortingStudy::ManageJamRecovery"
+      ],
+      "interpretation": "Five responsibility definitions are distinct and deliberately have no physical performance/allocation assignments.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 5,
+          "endLine": 5,
+          "quote": "[B1:functions] For this study, the required functional responsibilities are IdentifyParcel, SelectRoute, DivertParcel, ReportRouteAcknowledgement and ManageJamRecovery. These are responsibilities to model, not an agreed logical decomposition. The supplied documents do not allocate those responsibilities to physical parts."
+        }
+      ]
+    },
+    {
+      "id": "physical",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::sorter::scanner",
+        "ParcelSortingStudy::sorter::conveyor",
+        "ParcelSortingStudy::sorter::supervisorController",
+        "ParcelSortingStudy::sorter::diverterA",
+        "ParcelSortingStudy::sorter::diverterB",
+        "ParcelSortingStudy::RotaryActuator"
+      ],
+      "interpretation": "Selected physical composition and reusable supplier actuator definition; payload and timing of position feedback are unknown.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 7,
+          "endLine": 7,
+          "quote": "[B1:physical] The selected physical arrangement contains one scanner, one conveyor, one station supervisor controller, and two diverter modules named `diverterA` and `diverterB`. Each diverter module contains its own actuator occurrence named `actuator`; both actuator occurrences use the same `RotaryActuator` definition. The shared definition is described as a supplier rotary actuator with a position-feedback interface. Two usages do not mean two different definitions or the same physical actuator."
+        }
+      ]
+    },
+    {
+      "id": "actuatorA",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::sorter::diverterA::actuator"
+      ],
+      "interpretation": "Own actuator occurrence, 12 degree home default and QA-DA-01 asset tag; engineering units stated by input.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 9,
+          "endLine": 9,
+          "quote": "[B1:A] `diverterA::actuator` has the occurrence setting homeAngle = 12 degrees and asset tag QA-DA-01. Its outbound lane is Lane-A."
+        },
+        {
+          "source": "D1",
+          "startLine": 11,
+          "endLine": 11,
+          "quote": "[D1:04] Maintenance representative: For the review, select the actuator inside diverterB. Its asset tag is QA-DB-02 and its home angle is minus eight degrees. The actuator inside diverterA has a different home setting even though the supplier definition is shared. I have not supplied installation or calibration evidence."
+        }
+      ]
+    },
+    {
+      "id": "actuatorB",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::sorter::diverterB::actuator"
+      ],
+      "interpretation": "Own actuator occurrence, unary-minus 8 degree home default and QA-DB-02 asset tag; no accepted calibration inferred.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 11,
+          "endLine": 11,
+          "quote": "[B1:B] `diverterB::actuator` has the occurrence setting homeAngle = -8 degrees and asset tag QA-DB-02. Its outbound lane is Lane-B. No calibration certificate or accepted calibration status has been supplied for this occurrence."
+        },
+        {
+          "source": "D1",
+          "startLine": 11,
+          "endLine": 11,
+          "quote": "[D1:04] Maintenance representative: For the review, select the actuator inside diverterB. Its asset tag is QA-DB-02 and its home angle is minus eight degrees. The actuator inside diverterA has a different home setting even though the supplier definition is shared. I have not supplied installation or calibration evidence."
+        }
+      ]
+    },
+    {
+      "id": "exchange",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::StationWarehouseExchange",
+        "ParcelSortingStudy::RouteDispatch",
+        "ParcelSortingStudy::RouteAcknowledgement",
+        "ParcelSortingStudy::JamReport",
+        "ParcelSortingStudy::ResumeAuthorisation"
+      ],
+      "interpretation": "Four explicit typed flows preserve directions and supplied payload fields. Messages and timing are declarations, not observed exchanges.",
+      "citations": [
+        {
+          "source": "ICD-R1",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "ICD-R1:dispatch,PS-ICD,R1,RouteDispatch,warehouseControl.sorterLink,sorter.controlLink,\"commandId; parcelId; intendedLane\",No timing bound supplied,Dispatch requests a route for the identified parcel"
+        },
+        {
+          "source": "ICD-R1",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "ICD-R1:ack,PS-ICD,R1,RouteAcknowledgement,sorter.controlLink,warehouseControl.sorterLink,\"commandId; acknowledged\",\"Acknowledgement shall be returned within 120 ms of RouteDispatch receipt\",Acknowledgement meaning unresolved between accepted message and completed physical diversion"
+        },
+        {
+          "source": "ICD-R1",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "ICD-R1:jam,PS-ICD,R1,JamReport,sorter.controlLink,warehouseControl.sorterLink,\"parcelId; affectedDiverter\",No timing bound supplied,Reports the jam location and retained parcel identity"
+        },
+        {
+          "source": "ICD-R1",
+          "startLine": 5,
+          "endLine": 5,
+          "quote": "ICD-R1:resume,PS-ICD,R1,ResumeAuthorisation,warehouseControl.sorterLink,sorter.controlLink,\"authorisationId; stationId\",No timing bound supplied,An input to the declared recovery story; not a commissioning authorisation"
+        }
+      ]
+    },
+    {
+      "id": "jam-story",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::JamRecoveryStory"
+      ],
+      "interpretation": "Intended state sequence, auth trigger and operator-clearance guard. Reporting/routing/actuator/protection mechanisms and executable procedure remain unspecified.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 13,
+          "endLine": 13,
+          "quote": "[B1:jam] The declared operational story has normal sorting, a jam-reported condition, recovery-pending, and resumed-sorting. A jam report identifies the affected diverter and the parcel, and new route dispatches for the station are held while recovery is pending. Resume is expected only after an operator reports the jam condition cleared and warehouseControl supplies a resume authorisation. This story does not specify actuator movements, protective functions, event routing inside the controller, or an executable recovery sequence."
+        },
+        {
+          "source": "D1",
+          "startLine": 17,
+          "endLine": 17,
+          "quote": "[D1:C2] Operations lead: The jam/recovery story in the brief is our intended operating outcome. The supplied story and planned check do not demonstrate recovery, completed diversion or permission to commission equipment. No physical-component allocation decision has been made in this clarification."
+        }
+      ]
+    },
+    {
+      "id": "required-outcome",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::assignedLaneOutcome"
+      ],
+      "interpretation": "Declared physical outcome and retention obligation, without satisfaction assertion.",
+      "citations": [
+        {
+          "source": "B1",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "[B1:boundary] East Quay Parcel Hub wants a sorting station called `sorter` to direct each identified parcel to its assigned outbound lane and to retain the parcel identity and intended lane when a jam interrupts the journey. The warehouse-control system, `warehouseControl`, is outside the station boundary. The operator is an external participant."
+        }
+      ]
+    },
+    {
+      "id": "ack-dispute",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::acknowledgementTiming",
+        "ParcelSortingStudy::sorter::acknowledgementBoundMilliseconds"
+      ],
+      "interpretation": "120 milliseconds declared from dispatch receipt; milestone remains explicitly disputed. Neither interpretation is selected.",
+      "citations": [
+        {
+          "source": "ICD-R1",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "ICD-R1:ack,PS-ICD,R1,RouteAcknowledgement,sorter.controlLink,warehouseControl.sorterLink,\"commandId; acknowledged\",\"Acknowledgement shall be returned within 120 ms of RouteDispatch receipt\",Acknowledgement meaning unresolved between accepted message and completed physical diversion"
+        },
+        {
+          "source": "D1",
+          "startLine": 5,
+          "endLine": 5,
+          "quote": "[D1:01] Operations lead: The required outcome is that an identified parcel reaches its assigned outbound lane. When I say the route is acknowledged, I mean the parcel has actually been diverted. I expect acknowledgement within the interface timing bound."
+        },
+        {
+          "source": "D1",
+          "startLine": 7,
+          "endLine": 7,
+          "quote": "[D1:02] Controls engineer: Our use of acknowledgement is that the supervisor has accepted the dispatch message. Completion of the physical diversion is later, and we have not supplied a measured bound for that. The ICD does not define the acknowledgement milestone clearly enough to settle the disagreement."
+        },
+        {
+          "source": "D1",
+          "startLine": 9,
+          "endLine": 9,
+          "quote": "[D1:03] Interface coordinator: Use PS-ICD R1 for the initial study. The current bound is 120 ms from station receipt of RouteDispatch. Do not assume which of the two milestones it constrains. I can confirm the bound and endpoints, but I cannot approve the disputed meaning on behalf of both teams."
+        },
+        {
+          "source": "D1",
+          "startLine": 15,
+          "endLine": 15,
+          "quote": "[D1:C1] Interface coordinator: I asked both teams. Operations still means completed physical diversion and Controls still means accepted message. Neither team has authorised changing the other meaning. Please keep ACK-MEANING-01 open, show both interpretations and identify the owner decision needed. A valid syntax check or the old mock-link observation will not answer the question."
+        }
+      ]
+    },
+    {
+      "id": "planned-check",
+      "status": "source-backed",
+      "modelTargets": [
+        "ParcelSortingStudy::PlannedJourneyCheck"
+      ],
+      "interpretation": "Model planning artifact only, not a supplied procedure or observation; readiness remains unassessed.",
+      "citations": [
+        {
+          "source": "D1",
+          "startLine": 17,
+          "endLine": 17,
+          "quote": "[D1:C2] Operations lead: The jam/recovery story in the brief is our intended operating outcome. The supplied story and planned check do not demonstrate recovery, completed diversion or permission to commission equipment. No physical-component allocation decision has been made in this clarification."
+        },
+        {
+          "source": "B1",
+          "startLine": 17,
+          "endLine": 17,
+          "quote": "[B1:limits] Supplier response time, parcel travel time, throughput, timing margins, completed-diversion evidence, and commissioning readiness are not established by these inputs. Physical performance and delivery acceptance remain unassessed."
+        }
+      ]
+    }
+  ],
+  "protocolDeviation": "Line-bounded read unintentionally included D1:C1/C2 before question and candidate freeze; strict clarification-blind claim unavailable.",
+  "limits": "Source trace ledger and interpretations; not declaration-coverage gate, source-entailment certification, approval or execution evidence."
+}

@@ -1,0 +1,73 @@
+{
+  "schema": "parcel-sorter-fictional-lifecycle-input/1",
+  "fictional": true,
+  "source_id": "LC1",
+  "revision": "L1",
+  "change": {
+    "anchor": "LC1:change",
+    "id": "CH-ACK-01",
+    "artifact_id": "PS-ICD",
+    "old_revision": "R1",
+    "old_file": "interfaces-r1.csv",
+    "old_anchor": "ICD-R1:ack",
+    "old_provision": "Acknowledgement shall be returned within 120 ms of RouteDispatch receipt",
+    "new_revision": "R2",
+    "new_file": "interfaces-r2.csv",
+    "new_anchor": "ICD-R2:ack",
+    "new_provision": "Acknowledgement shall be returned within 80 ms of RouteDispatch receipt",
+    "changed_characteristic": "acknowledgement timing bound",
+    "unchanged": ["endpoint identities", "message directions", "payload fields", "two diverter actuator occurrences", "occurrence home angles", "unresolved acknowledgement meaning"],
+    "authority": "Fictional interface coordinator issued an ICD provision revision for modeling review only.",
+    "design_change_authorised": false,
+    "human_disposition": "pending",
+    "promotion": "Candidate requires explicit local disposition and expected-base verification; no promotion is recorded in this input fixture.",
+    "analysis_limit": "No applicable tested timing/physical-behavior analysis profile is supplied. An equipment-count profile cannot establish timing compliance."
+  },
+  "artifacts": [
+    {"id": "ACK-BOUND", "anchor": "LC1:assertion", "kind": "modeled-assertion-intent", "description": "Source-linked timing provision with acknowledgement milestone explicitly unresolved."},
+    {"id": "TP-ACK-R1", "anchor": "LC1:testplan", "kind": "planned-check", "revision": "P1", "description": "Proposed station/warehouse acknowledgement check; references R1 timing provision and ACK-MEANING-01.", "execution_state": "not_executed", "acceptance_oracle": "blocked pending acknowledgement milestone agreement"},
+    {"id": "VIEW-INTERFACE-R1", "anchor": "LC1:view", "kind": "review-view-basis", "revision": "V1", "description": "Prepared interface review basis references the R1 timing provision. No participant review outcome supplied."},
+    {"id": "DEC-RECOVERY", "anchor": "LC1:recovery-decision", "kind": "pending-decision", "description": "Whether warehouseControl waits for acknowledgement before treating recovery as resumed is not specified."},
+    {"id": "ACTUATOR-SUPPLIER", "anchor": "LC1:unlinked", "kind": "unavailable-artifact", "description": "No supplier response-time or calibration document is supplied; no timing dependency witness can be asserted."}
+  ],
+  "dependencies": [
+    {"id": "DEP-01", "from": "PS-ICD@R1#ICD-R1:ack", "to": "ACK-BOUND", "classification": "direct", "witness": "LC1:assertion", "meaning": "Assertion intent quotes the ICD provision."},
+    {"id": "DEP-02", "from": "ACK-BOUND", "to": "TP-ACK-R1", "classification": "direct", "witness": "LC1:testplan", "meaning": "Planned check uses the provision as its proposed timing criterion."},
+    {"id": "DEP-03", "from": "ACK-BOUND", "to": "VIEW-INTERFACE-R1", "classification": "direct", "witness": "LC1:view", "meaning": "Prepared view basis includes the R1 bound."},
+    {"id": "DEP-04", "from": "ACK-BOUND", "to": "DEC-RECOVERY", "classification": "possible", "witness": "LC1:recovery-decision", "meaning": "Acknowledgement semantics could affect resumed status; neither that dependency nor timing effect is agreed."},
+    {"id": "DEP-05", "from": "ACK-BOUND", "to": "ACTUATOR-SUPPLIER", "classification": "unlinked_unknown", "witness": "LC1:unlinked", "meaning": "Artifact is absent; do not fabricate a supplier dependency or assume no impact."}
+  ],
+  "link_history": {
+    "anchor": "LC1:link-history",
+    "proposed_retirements": [{"id": "DEP-03", "reason": "R1 view basis would be superseded on an approved R2 review refresh.", "status": "proposed_removed_link_preserved_for_review"}],
+    "proposed_additions": [{"id": "DEP-03-R2", "from": "PS-ICD@R2#ICD-R2:ack", "to": "VIEW-INTERFACE-R2", "status": "candidate_only"}],
+    "instructional_boundary": "These are fictional dependency inputs for evaluation, not an executed impact report or approved link deletion."
+  },
+  "historical_observation": {
+    "anchor": "LC1:observation",
+    "id": "OBS-MOCK-01",
+    "fictional": true,
+    "observed_at": "2026-09-28T10:00:00-07:00",
+    "configuration_id": "PS-MOCK-01",
+    "model_revision": "pre-authoring-not-supplied",
+    "source_artifact": "PS-ICD",
+    "source_revision": "R1",
+    "source_anchor": "ICD-R1:ack",
+    "test_reference": "MOCK-LINK-CHECK@M1",
+    "setup": "Fictional loopback exchange between station message stub and warehouse message stub; no conveyor or actuator installed.",
+    "measured_event": "dispatch receipt to stub message-acceptance reply",
+    "observed_value": 95,
+    "unit": "ms",
+    "criterion_used_at_observation": "mock message-acceptance reply within 120 ms",
+    "reported_result": "reported_pass_against_mock_R1_criterion",
+    "limitations": ["Does not resolve ICD acknowledgement semantics", "Does not demonstrate physical diversion", "Does not demonstrate jam recovery", "Does not demonstrate current R2 compliance"],
+    "on_source_change": "Preserve configuration, R1 source revision, value, criterion and reported result. Reassess applicability separately."
+  },
+  "commissioning_planning": {
+    "anchor": "LC1:commissioning",
+    "status": "blocked_planning_draft",
+    "missing": ["integrated equipment configuration and setup", "agreed acknowledgement milestone and acceptance oracle", "instrument identities and calibration applicability", "approved recovery/stop conditions", "commissioning execution authorisation"],
+    "provided": "The mock-link setup belongs only to OBS-MOCK-01; it is not the missing integrated commissioning setup.",
+    "boundary": "No executable commissioning sequence, physical actuation instructions or readiness declaration is supplied."
+  }
+}

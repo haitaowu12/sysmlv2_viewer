@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "CP-NEG-UNIT",
+  "kind": "invalid-contributor-input",
+  "base": "model.sysml",
+  "target": "ContributorPilot::ControlController::responseLimitMs",
+  "input": {
+    "value": 80,
+    "unit": "seconds"
+  },
+  "expected": {
+    "status": "rejected-before-apply",
+    "reasonCode": "typed-unit-mismatch",
+    "messageContains": ["ms", "unit"],
+    "canonicalBaselineUnchanged": true,
+    "historicalObservationStill": 95,
+    "advancedContentPreserved": true
+  },
+  "explanation": "The contributor field is a millisecond scalar. A seconds-labelled value must not be silently converted or stored as if it were milliseconds."
+}

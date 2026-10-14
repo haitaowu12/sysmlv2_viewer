@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "positive-assertion",
+      "select": {
+        "metaclass": "SatisfyRequirementUsage"
+      },
+      "candidateCount": 2,
+      "expect": {
+        "polarity": "positive",
+        "semanticFields": {
+          "isNegated": false
+        }
+      }
+    },
+    {
+      "id": "negative-assertion",
+      "select": {
+        "metaclass": "SatisfyRequirementUsage"
+      },
+      "candidateCount": 2,
+      "expect": {
+        "polarity": "negative",
+        "semanticFields": {
+          "isNegated": true
+        }
+      }
+    }
+  ]
+}

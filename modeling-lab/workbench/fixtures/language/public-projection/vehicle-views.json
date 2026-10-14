@@ -1,0 +1,47 @@
+[
+  {
+    "id": "vehicle-structure",
+    "names": [
+      "SimpleVehicleModel::VehicleConfigurations::VehicleConfiguration_b::PartsTree::vehicle_b"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "parallel-states",
+    "names": [
+      "SimpleVehicleModel::Definitions::PartDefinitions::Vehicle::vehicleStates"
+    ],
+    "view": "STATE",
+    "styles": [],
+    "renderer": "behavior"
+  },
+  {
+    "id": "power-flow",
+    "names": [
+      "SimpleVehicleModel::VehicleConfigurations::VehicleConfiguration_b::ActionTree::providePower"
+    ],
+    "view": "ACTION",
+    "styles": [],
+    "renderer": "behavior"
+  },
+  {
+    "id": "mass-requirement",
+    "names": [
+      "SimpleVehicleModel::VehicleConfigurations::VehicleConfiguration_b::Requirements::vehicleSpecification::vehicleMassRequirement"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "mass-test",
+    "names": [
+      "SimpleVehicleModel::VehicleVerification::VerificationCases1::massTests"
+    ],
+    "view": "ACTION",
+    "styles": [],
+    "renderer": "pilot"
+  }
+]

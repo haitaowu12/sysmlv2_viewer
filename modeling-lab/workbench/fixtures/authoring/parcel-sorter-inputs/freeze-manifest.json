@@ -1,0 +1,93 @@
+{
+  "schema": "parcel-sorter-input-freeze/1",
+  "fixture_id": "parcel-sorter-inputs-2026-10-04",
+  "frozen_at_utc": "2026-10-04T15:44:12.851963+00:00",
+  "classification": "author-independent fictional input fixture; not blind real-user benchmark",
+  "input_author_role": "independent input/oracle author; no producer model inspected; no SysML authored; no engine run",
+  "self_hash_policy": "This manifest excludes itself to avoid a self-referential digest. All other fixture files are hashed.",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2152,
+      "sha256": "c9c48e38283ed7d7e6bbaf86b58712c22dadbd0e1cd549236c19df820eb76042"
+    },
+    {
+      "path": "brief.md",
+      "bytes": 2807,
+      "sha256": "4e7a6a6c49f46f5e03ccdbf8d21dd6d20ce27d3b6ae7022851d792f4cdf21663"
+    },
+    {
+      "path": "dialogue.md",
+      "bytes": 2012,
+      "sha256": "b1ad0f88fcb733ed1eb06945f44921922248d8093f6257997cf6310ba5c602ee"
+    },
+    {
+      "path": "evaluation.json",
+      "bytes": 10467,
+      "sha256": "21fac8b7040977b5041daf8c320693c94f3d9c5236a869984039a4807c23cb06"
+    },
+    {
+      "path": "interfaces-r1.csv",
+      "bytes": 998,
+      "sha256": "0b10c99639affcd44e8d2c274abc970b08dde552b536c039baf5e065d228b0e5"
+    },
+    {
+      "path": "interfaces-r2.csv",
+      "bytes": 997,
+      "sha256": "dcc1df82a218a62d306595ec85fd53b10f14093ff724ce47fdea03a446166577"
+    },
+    {
+      "path": "lifecycle.json",
+      "bytes": 5886,
+      "sha256": "7ca7d6a43ccaa55fccf4eb6c95c7380524a372973a17e1bd9202d2febcaff154"
+    }
+  ],
+  "phases": {
+    "initial": [
+      "brief.md",
+      "interfaces-r1.csv",
+      "dialogue.md#Initial-intake"
+    ],
+    "one_clarification": [
+      "dialogue.md#One-clarification-response"
+    ],
+    "change": [
+      "interfaces-r2.csv",
+      "lifecycle.json"
+    ],
+    "withheld_oracle": [
+      "evaluation.json"
+    ]
+  },
+  "source_change_bytes": {
+    "old": {
+      "artifact": "PS-ICD",
+      "revision": "R1",
+      "path": "interfaces-r1.csv",
+      "sha256": "0b10c99639affcd44e8d2c274abc970b08dde552b536c039baf5e065d228b0e5",
+      "anchor": "ICD-R1:ack"
+    },
+    "new": {
+      "artifact": "PS-ICD",
+      "revision": "R2",
+      "path": "interfaces-r2.csv",
+      "sha256": "dcc1df82a218a62d306595ec85fd53b10f14093ff724ce47fdea03a446166577",
+      "anchor": "ICD-R2:ack"
+    }
+  },
+  "checks_completed": [
+    "JSON parse",
+    "CSV parse and only bound/revision/anchor changed",
+    "every oracle source anchor resolves",
+    "historical observation basis retained",
+    "no SysML model file present"
+  ],
+  "not_established": [
+    "model fidelity",
+    "language-engine validation",
+    "timing compliance",
+    "physical execution",
+    "real participant usability",
+    "commissioning readiness"
+  ]
+}

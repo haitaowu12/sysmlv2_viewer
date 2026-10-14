@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "contractId": "CP-CONTRACT-01",
+  "kind": "typed-requirement-interface-contributor-pilot",
+  "status": "fixture-contract-only",
+  "authority": "independently frozen test expectations; no human or project acceptance is recorded",
+  "inputs": {
+    "baseline": "model.sysml",
+    "candidate": "candidate-model.sysml",
+    "brief": "inputs/brief.md",
+    "interfaceRegisterA": "inputs/interface-register-a.csv",
+    "interfaceRegisterB": "inputs/interface-register-b.csv",
+    "expectedFacts": "expected-facts.json"
+  },
+  "roles": [
+    {
+      "id": "reader",
+      "objective": "Answer what changed and what remains uncertain without opening source grammar.",
+      "tasks": [
+        "Identify the current response provision for baseline A.",
+        "Locate the historical 95 ms observation at FIELD-A and distinguish it from verification evidence.",
+        "State both open interpretations of acknowledgement meaning."
+      ],
+      "expected": [
+        "currentProvisionMilliseconds=120",
+        "historicalObservationAtA=95",
+        "acknowledgementMeaning=status:open"
+      ]
+    },
+    {
+      "id": "contributor",
+      "objective": "Complete a typed requirement/interface update through one reviewable transaction.",
+      "tasks": [
+        "Import the ambiguous acknowledgement row from interface-register-a.csv.",
+        "Confirm the read-only qualified identity as FIELD-A and resolve the editable latency unit to milliseconds.",
+        "Change the response provision from 120 ms to 80 ms.",
+        "Link the planned acknowledgement timing check without marking it executed or accepted.",
+        "Submit one candidate transaction against the exact baseline."
+      ],
+      "expected": [
+        "candidateProvisionMilliseconds=80",
+        "resolvedIdentity=FIELD-A (read-only reference)",
+        "resolvedUnit=ms",
+        "verificationStatus=planned-not-executed",
+        "acknowledgementMeaning=status:open"
+      ]
+    },
+    {
+      "id": "reviewer",
+      "objective": "Understand the engineering consequence of the candidate without reading source code.",
+      "tasks": [
+        "Identify the changed requirement statement and interface provision.",
+        "Identify the linked planned check and the historical observation affected by applicability review.",
+        "See that acknowledgement meaning remains unresolved and that no 95 ms result has been rewritten."
+      ],
+      "expected": [
+        "change=120->80",
+        "historicalObservationAtA=95-preserved",
+        "staleApplicability=review-required",
+        "acknowledgementMeaning=status:open"
+      ]
+    },
+    {
+      "id": "model-steward",
+      "objective": "Control exact-base editing, rejection, acceptance and recovery.",
+      "tasks": [
+        "Reject the invalid unit proposal before apply.",
+        "Reject the invalid reference proposal before apply.",
+        "Reject a candidate based on a stale source base.",
+        "Accept the corrected candidate only after exact-base and semantic checks pass.",
+        "Undo the accepted draft and reopen baseline A; then reopen candidate B and verify the expected facts."
+      ],
+      "expected": [
+        "invalidUnit=status:rejected",
+        "invalidReference=status:rejected",
+        "staleBase=status:rejected",
+        "acceptedCandidate=baseline-preserved-until-apply",
+        "undoAndReopen=baseline-A-restored",
+        "candidateReopen=baseline-B-facts-restored"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "valid-candidate",
+      "input": "candidate-model.sysml",
+      "expectedStatus": "accepted-after-review",
+      "changedFacts": [
+        "responseLimitMs:120->80",
+        "responseWithinBound.documentation:120 ms->80 ms"
+      ],
+      "preservedFacts": [
+        "historicalObservedResponseMillisecondsAtA=95",
+        "ControllerFieldExchange request and acknowledgement flows",
+        "UnrelatedAdvancedLifecycle",
+        "UNRELATED-ADVANCED-01",
+        "ACK-MEANING-01 remains open"
+      ],
+      "limitations": [
+        "No physical timing execution is performed.",
+        "No verification result or project acceptance is created.",
+        "The candidate is a fixture change, not an authorized engineering baseline."
+      ]
+    },
+    {
+      "id": "invalid-unit",
+      "input": "cases/invalid-unit.json",
+      "expectedStatus": "rejected-before-apply",
+      "reasonCode": "typed-unit-mismatch",
+      "baselineMustRemain": "model.sysml"
+    },
+    {
+      "id": "invalid-reference",
+      "input": "cases/invalid-reference.json",
+      "expectedStatus": "rejected-before-apply",
+      "reasonCode": "unknown-reference",
+      "baselineMustRemain": "model.sysml"
+    },
+    {
+      "id": "stale-base",
+      "input": "cases/stale-base.json",
+      "expectedStatus": "rejected-before-apply",
+      "reasonCode": "stale-expected-base",
+      "baselineMustRemain": "model.sysml"
+    },
+    {
+      "id": "undo-reopen",
+      "input": "cases/undo-reopen.json",
+      "expectedStatus": "recovery-check-passed",
+      "outcomes": [
+        "undo restores 120 ms and the 95 ms historical observation",
+        "reopen of baseline restores the baseline source identity and unrelated advanced content",
+        "reopen of candidate restores 80 ms while preserving the 95 ms observation and open acknowledgement question"
+      ]
+    }
+  ],
+  "releaseGates": [
+    "The canonical baseline remains unchanged after every rejected proposal.",
+    "A candidate cannot apply against a changed source base.",
+    "Typed unit and reference errors are explained before apply.",
+    "Accepted candidate and baseline facts are distinguishable after undo and reopen.",
+    "Historical observations remain immutable and separately marked for applicability review.",
+    "Unresolved acknowledgement meaning remains visible in reader, contributor, reviewer and steward views.",
+    "Unrelated advanced content and comments survive targeted editing.",
+    "No fixture result is presented as human usability acceptance or project approval."
+  ],
+  "nonClaims": [
+    "No real infrastructure requirement is represented.",
+    "No participant completed the role tasks by virtue of this file.",
+    "No general SysML language conformance, performance benchmark, interoperability result or commissioning evidence is established."
+  ]
+}

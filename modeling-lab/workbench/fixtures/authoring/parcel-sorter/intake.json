@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "B1",
+      "path": "sources/brief.md",
+      "sha256": "4e7a6a6c49f46f5e03ccdbf8d21dd6d20ce27d3b6ae7022851d792f4cdf21663"
+    },
+    {
+      "id": "ICD-R1",
+      "path": "sources/interfaces-r1.csv",
+      "sha256": "0b10c99639affcd44e8d2c274abc970b08dde552b536c039baf5e065d228b0e5"
+    },
+    {
+      "id": "D1",
+      "path": "sources/dialogue.md",
+      "sha256": "b1ad0f88fcb733ed1eb06945f44921922248d8093f6257997cf6310ba5c602ee"
+    }
+  ]
+}

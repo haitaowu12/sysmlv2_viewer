@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "required-membership",
+      "select": {
+        "metaclass": "ConstraintUsage",
+        "owner": "CapacityMembership::required"
+      },
+      "candidateCount": 1,
+      "expect": {
+        "constraintKind": "requirement"
+      }
+    },
+    {
+      "id": "assumed-membership",
+      "select": {
+        "metaclass": "ConstraintUsage",
+        "owner": "CapacityMembership::assumed"
+      },
+      "candidateCount": 1,
+      "expect": {
+        "constraintKind": "assumption"
+      }
+    }
+  ]
+}
