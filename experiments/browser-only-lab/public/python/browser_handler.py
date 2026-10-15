@@ -1,10 +1,11 @@
 """Experimental in-browser adapter over maintained projection/workflow functions."""
 def normalized(checked):
+    diagnostics=[dict(d,line=(d.get('span') or {}).get('startLine',d.get('line'))) for d in checked['diagnostics']]
     if not checked['valid']:
-        return {'source':checked['source'],'sourceSha256':hashlib.sha256(checked['source'].encode()).hexdigest(),'staticChecksPassed':False,'diagnostics':checked['diagnostics'],'elements':[],'views':[]}
+        return {'source':checked['source'],'sourceSha256':hashlib.sha256(checked['source'].encode()).hexdigest(),'staticChecksPassed':False,'diagnostics':diagnostics,'elements':[],'views':[]}
     report=normalize(checked['raw'],checked['source'])
     report['source']=checked['source']
-    report['diagnostics']=[dict(d,line=d.get('startLine')) for d in checked['diagnostics']]
+    report['diagnostics']=diagnostics
     report['authorityLimit']='OpenSysML browser validation and analytical views; Pilot parity and engineering acceptance are not established.'
     return report
 
