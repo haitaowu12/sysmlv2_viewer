@@ -48,3 +48,11 @@ test('an unsendable request clears its timer without stopping the healthy worker
  worker.failSend=false;const pending=request('/initial',{});worker.onmessage({data:{id:2,result:{ok:true}}});
  assert.equal((await pending).ok,true);assert.equal(worker.terminated,false);
 });
+
+test('malformed and unknown replies do not consume pending work; an empty matching reply is an error',async()=>{
+ const {worker,request,timers}=transport();const pending=request('/render',{});
+ for(const data of [null,{}, {id:'1',result:{ok:true}}, {id:99,result:{ok:true}}])worker.onmessage({data});
+ assert.equal(timers.size,1);
+ worker.onmessage({data:{id:1}});
+ assert.match((await pending).error,/no result/);assert.equal(timers.size,0);
+});

@@ -39,7 +39,9 @@ The actual in-app browser ran the production static build, not just the developm
 
 The migration experiment was stopped at the demonstrated view-parity failure, before spending the remaining detour budget on a broader semantic-export rewrite. A review/download landing page is not the selected product direction.
 
-The transport has five deterministic failure-path tests. A timeout or worker failure now settles queued requests, clears their timers and immediately reports the reload recovery for later requests. Successful and out-of-order responses and unsendable requests are also covered. The rebuilt static application was opened successfully in the actual in-app browser; automatic worker restart is not implemented.
+The transport has six deterministic tests; normalization has three. A timeout or worker failure settles queued requests, clears timers and immediately reports recovery for later requests. Preserve source and unsaved notes before reload; automatic restart/recovery is not implemented. Normalization rejects duplicate identities and indexes explicit ownership once; the captured alarm output is unchanged. These checks are not browser performance qualification.
+
+The  records additional reproduced failures, candidate shared-owner repairs and their local replay. In particular, the retained reader has three SVGs and an unavailable action section; downloading it did not establish complete view/export parity. The action view, state/trace fields, atomic project recovery and broader release gates remain open. Candidate fixes are not silently promoted to the maintained owner.
 
 ## Dependencies and provenance
 

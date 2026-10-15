@@ -2,7 +2,22 @@ import hashlib
 
 def normalize(raw, source):
     lines=source.splitlines(keepends=True)
-    ix={e['@id']:e for e in raw}
+    if not isinstance(raw, list):
+        raise ValueError('Expected an engine element array')
+    ix = {}
+    children_by_owner = {}
+    for e in raw:
+        if (not isinstance(e, dict) or not isinstance(e.get('@id'), str)
+                or not e['@id'] or not isinstance(e.get('@type'), str) or not e['@type']):
+            raise ValueError('Engine element requires nonempty string @id and @type')
+        if e['@id'] in ix:
+            raise ValueError('Duplicate engine element identity: ' + e['@id'])
+        ix[e['@id']] = e
+        owner = e.get('owner')
+        if owner is not None:
+            if not isinstance(owner, dict) or not isinstance(owner.get('@id'), str):
+                raise ValueError('Engine owner requires an @id reference')
+            children_by_owner.setdefault(owner['@id'], []).append(e['@id'])
     def reference(value):
         if isinstance(value,list): return [reference(v) for v in value]
         if isinstance(value,dict) and '@id' in value:
@@ -12,7 +27,7 @@ def normalize(raw, source):
     es=[]
     for e in raw:
         s={k:reference(v) for k,v in e.items() if not k.startswith(('@','sysx:'))}
-        s['ownedElement']=[reference({'@id':c['@id']}) for c in raw if c.get('owner',{}).get('@id')==e['@id']]
+        s['ownedElement']=[reference({'@id':child_id}) for child_id in children_by_owner.get(e['@id'], [])]
         if e['@type'] in ['OperatorExpression','FeatureChainExpression'] and 'argument' in s:s['operand']=s['argument']
         start,end=e.get('sysx:sourceLine'),e.get('sysx:sourceEndLine')
         text=e.get('sysx:sourceText','')
