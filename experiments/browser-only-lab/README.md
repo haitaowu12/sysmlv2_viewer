@@ -10,6 +10,7 @@ Install Node, Python and Go 1.27.1, then run in this directory:
 
 ```sh
 npm ci
+npm test
 npm run build:engine
 npm run build
 npm run preview
@@ -37,6 +38,8 @@ The actual in-app browser ran the production static build, not just the developm
 4. Only after those gates pass, update the existing Pages build to publish this app, review/merge the exact head and verify the deployed workflow. Until then PR #14 stays draft and the old site remains live.
 
 The migration experiment was stopped at the demonstrated view-parity failure, before spending the remaining detour budget on a broader semantic-export rewrite. A review/download landing page is not the selected product direction.
+
+The transport has five deterministic failure-path tests. A timeout or worker failure now settles queued requests, clears their timers and immediately reports the reload recovery for later requests. Successful and out-of-order responses and unsendable requests are also covered. The rebuilt static application was opened successfully in the actual in-app browser; automatic worker restart is not implemented.
 
 ## Dependencies and provenance
 

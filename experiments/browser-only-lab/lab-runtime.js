@@ -1,6 +1,19 @@
 const worker=new Worker(new URL('./lab-worker.js',import.meta.url),{type:'module'});
-let next=0;const waiting=new Map();
+let next=0,stopped=null;const waiting=new Map();
+function stop(message){
+ stopped=message;worker.terminate();
+ for(const entry of waiting.values()){clearTimeout(entry.timer);entry.resolve({error:message});}
+ waiting.clear();
+}
 worker.onmessage=({data})=>{const entry=waiting.get(data.id);if(!entry)return;waiting.delete(data.id);clearTimeout(entry.timer);entry.resolve(data.result??{error:data.error});};
-worker.onerror=event=>{for(const e of waiting.values()){clearTimeout(e.timer);e.resolve({error:event.message||'The browser worker stopped. Reload to retry.'});}waiting.clear();};
-const request=(path,data)=>new Promise(resolve=>{const id=++next;const timer=setTimeout(()=>{worker.terminate();for(const e of waiting.values())e.resolve({error:'Browser processing exceeded 60 seconds. Your source is retained; reload to restart.'});waiting.clear();},60000);waiting.set(id,{resolve,timer});worker.postMessage({id,path,data});});
+worker.onerror=event=>stop((event.message||'The browser worker stopped.')+' Your source is retained; reload to restart.');
+worker.onmessageerror=()=>stop('The browser response could not be read. Your source is retained; reload to restart.');
+const request=(path,data)=>new Promise(resolve=>{
+ if(stopped){resolve({error:stopped});return;}
+ const id=++next;
+ const timer=setTimeout(()=>stop('Browser processing exceeded 60 seconds. Your source is retained; reload to restart.'),60000);
+ waiting.set(id,{resolve,timer});
+ try{worker.postMessage({id,path,data});}
+ catch(error){waiting.delete(id);clearTimeout(timer);resolve({error:error.message||'The request could not be sent.'});}
+});
 window.browserLabResolve(request);
