@@ -22,11 +22,12 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
   const receipts: Array<{ payload: any; resolve: (r: unknown) => void }> = []
   const protocol: Array<{ url: string; payload: any }> = []
   let delayAccept = false
+  const rollbackReplies: Array<() => Promise<Record<string, unknown>>> = []
   const mocks = {
     fetch: (url: string, options?: { body: string }) => url === '/initial'
       ? Promise.resolve({ json: async () => ({ source: 'baseline', presets: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], ...initialMetadata }) })
       : url === '/accept' ? (delayAccept ? new Promise(resolve => receipts.push({ payload: JSON.parse(options!.body), resolve })) : Promise.resolve({ json: async () => ({ accepted: true, ...JSON.parse(options!.body) }) }))
-      : url === '/rollback' ? (protocol.push({ url, payload: JSON.parse(options!.body) }), Promise.resolve({ json: async () => ({ rolledBack: true, ...JSON.parse(options!.body) }) }))
+      : url === '/rollback' ? (protocol.push({ url, payload: JSON.parse(options!.body) }), Promise.resolve({ json: rollbackReplies.shift() || (async () => ({ rolledBack: true, ...JSON.parse(options!.body) })) }))
       : new Promise(resolve => calls.push({ source: JSON.parse(options!.body).source, url, payload: JSON.parse(options!.body), resolve })),
     setTimeout: (callback: () => void) => { timers.push(callback); return timers.length },
     requestAnimationFrame: (callback: () => void) => { timers.push(callback); return timers.length },
@@ -42,7 +43,7 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
   }
   const edit = (text: string) => { const input = dom.window.document.getElementById('source') as HTMLTextAreaElement; input.value = text; input.dispatchEvent(new dom.window.Event('input')) }
   await flush()
-  return { dom, calls, answer, edit, flush, receipts, protocol, holdAcceptance: () => { delayAccept = true }, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
+  return { dom, calls, answer, edit, flush, receipts, protocol, holdAcceptance: () => { delayAccept = true }, resumeAcceptance: () => { delayAccept = false }, rollbackReplies, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
 }
 
 describe('reference lab automatic propagation', () => {
@@ -1142,5 +1143,76 @@ describe('typed state entry condition evidence', () => {
     const evidence=document.querySelector('.behavior-evidence')!.textContent!
     if(entry){for(const label of ['Trigger','Guard','Effect'])expect(evidence).toContain(label+': evidence unavailable; do not infer absence.');expect(evidence).not.toContain('No explicit trigger, guard or effect declared.')}
     else expect(evidence).toContain('No explicit trigger, guard or effect declared.')
+  })
+})
+
+
+describe('bounded model navigation failure message', () => {
+  it('explains the catalogue limit and keeps configured diagrams available without injecting error markup',async()=>{
+    const h=await harness(true),error='Model exceeds the 2000-occurrence exploration budget; split the source package. No partial catalogue returned. <script>untrusted()</script>'
+    const views=[{id:'context',targets:['Pump'],svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Scoped unit 0 diagram</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'},{id:'saved-review',targets:['Pump'],svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Saved focused diagram</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'}]
+    await h.answer(0,true,{catalogueError:error,views})
+    document.getElementById('nav-model')!.click()
+    const note=document.getElementById('model-navigation-note')!
+    expect(note.hidden).toBe(false);expect(note.closest<HTMLElement>('#model-browser')!.hidden).toBe(false)
+    expect(note.textContent).toContain('Model browsing and new custom views are unavailable')
+    expect(note.textContent).toContain('2000-occurrence');expect(note.textContent).toContain('Configured diagrams remain available in Views')
+    expect(note.querySelector('script')).toBeNull()
+    expect((document.getElementById('model-search') as HTMLInputElement).disabled).toBe(true)
+    expect((document.getElementById('customize') as HTMLButtonElement).disabled).toBe(true)
+    expect(document.getElementById('customize')!.title).toContain('New custom views unavailable')
+    document.getElementById('nav-views')!.click()
+    expect(document.querySelectorAll('#views button')).toHaveLength(2)
+    ;(document.querySelectorAll('#views button')[1] as HTMLButtonElement).click()
+    expect(document.getElementById('canvas')!.textContent).toContain('Saved focused diagram')
+    expect((window as any).labWorkflow.snapshot().source).toBe('baseline')
+    h.edit('smaller revised model');h.tick();await h.answer(1,true,{catalogue:scopeCatalog,views})
+    expect(document.getElementById('model-navigation-note')!.hidden).toBe(true)
+    expect((document.getElementById('model-search') as HTMLInputElement).disabled).toBe(false)
+    expect((document.getElementById('customize') as HTMLButtonElement).disabled).toBe(false)
+    expect(document.getElementById('customize')!.title).toBe('')
+  })
+})
+
+
+describe('retryable project acceptance compensation', () => {
+  async function uncertain(){
+    const h=await harness(true);await h.answer(0);h.holdAcceptance()
+    h.edit('candidate with lost acceptance');h.tick();await h.answer(1)
+    const token=h.receipts[0].payload.transactionId
+    h.rollbackReplies.push(async()=>{throw Error('Rollback response unavailable')})
+    h.receipts[0].resolve({json:async()=>{throw Error('Acceptance receipt lost')}});await h.flush()
+    expect(document.getElementById('status')!.textContent).toContain('Project recovery pending')
+    expect((window as any).labWorkflow.snapshot().source).toBe('candidate with lost acceptance')
+    expect(h.protocol).toEqual([{url:'/rollback',payload:{transactionId:token}}])
+    h.resumeAcceptance();return {...h,token}
+  }
+  it('retries the same uncertain token before a later render and permits validation after confirmed rollback',async()=>{
+    const h=await uncertain();h.edit('latest retained draft');h.tick();await h.flush()
+    expect(h.protocol).toEqual([{url:'/rollback',payload:{transactionId:h.token}},{url:'/rollback',payload:{transactionId:h.token}}])
+    expect(h.calls).toHaveLength(3);expect(h.calls[2].source).toBe('latest retained draft');expect(h.calls[2].payload.expectedBase).toBe('a'.repeat(64))
+    await h.answer(2,true,{sourceSha256:'c'.repeat(64)})
+    expect(document.getElementById('status')!.textContent).toContain('Static checks passed')
+    expect((window as any).labWorkflow.snapshot().source).toBe('latest retained draft')
+    document.getElementById('validate')!.click();await h.flush();expect(h.protocol).toHaveLength(2)
+    await h.answer(3,true,{sourceSha256:'c'.repeat(64)})
+  })
+  it('retains the token after an incorrect rollback receipt and blocks new rendering until confirmed',async()=>{
+    const h=await uncertain();h.rollbackReplies.push(async()=>({rolledBack:true,transactionId:'wrong-project-token'}))
+    document.getElementById('validate')!.click();await h.flush()
+    expect(h.calls).toHaveLength(2);expect(document.getElementById('status')!.textContent).toContain('Project recovery pending')
+    expect(document.getElementById('diagnostics')!.textContent).toContain('does not match')
+    document.getElementById('validate')!.click();await h.flush()
+    expect(h.protocol.map(p=>p.payload.transactionId)).toEqual([h.token,h.token,h.token]);expect(h.calls).toHaveLength(3)
+    await h.answer(2)
+  })
+  it('keeps edits arriving during a compensation retry and validates only the newer draft',async()=>{
+    const h=await uncertain();let confirm!: (r: Record<string,unknown>)=>void
+    h.rollbackReplies.push(()=>new Promise(resolve=>{confirm=resolve}))
+    document.getElementById('validate')!.click();await h.flush()
+    h.edit('edited during recovery');confirm({rolledBack:true,transactionId:h.token});await h.flush()
+    expect(h.calls).toHaveLength(2);expect((window as any).labWorkflow.snapshot().source).toBe('edited during recovery')
+    h.tick();await h.flush();expect(h.calls[2].source).toBe('edited during recovery');await h.answer(2)
+    expect(h.protocol).toHaveLength(2)
   })
 })

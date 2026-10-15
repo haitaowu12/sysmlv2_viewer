@@ -75,6 +75,63 @@ class BrowserAcceptedContext(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'match'): self.accept(candidate)
         self.assertEqual(self.env['current_report']['sourceSha256'], 'different accepted project')
 
+    def rollback(self, token='project-1'):
+        return self.env['rollback_current']({'transactionId': token})
+
+    def test_rollback_confirmation_can_be_retried_after_a_lost_response(self):
+        self.accept(self.stage())
+        expected = {'rolledBack': True, 'transactionId': 'project-1'}
+        self.assertEqual(self.rollback(), expected)
+        self.assertEqual(self.rollback(), expected)
+        self.assertEqual(self.env['current_report'], self.original)
+        self.assertIsNone(self.env['previous_report'])
+
+    def test_unaccepted_staged_abort_is_confirmed_without_changing_context(self):
+        candidate = self.stage()
+        expected = {'rolledBack': True, 'transactionId': 'project-1'}
+        self.assertEqual(self.rollback(), expected)
+        self.assertEqual(self.rollback(), expected)
+        self.assertEqual(self.env['current_report'], self.original)
+        self.assertIsNone(self.env['staged_report'])
+        with self.assertRaises(ValueError): self.accept(candidate)
+
+    def test_unknown_and_stale_tokens_preserve_other_transactions(self):
+        self.stage('project-1')
+        candidate = self.stage('project-2')
+        staged = self.env['staged_report']
+        for token in ('unknown-1', 'project-1', None):
+            with self.subTest(token=token), self.assertRaises(ValueError): self.rollback(token)
+            self.assertIs(self.env['staged_report'], staged)
+            self.assertEqual(self.env['current_report'], self.original)
+        self.accept(candidate, 'project-2')
+        previous = self.env['previous_report']
+        with self.assertRaises(ValueError): self.rollback('project-1')
+        self.assertIs(self.env['previous_report'], previous)
+        self.assertEqual(self.env['current_report'], candidate)
+
+    def test_new_acceptance_clears_the_single_retained_rollback_receipt(self):
+        self.accept(self.stage())
+        self.rollback()
+        candidate = self.stage('project-2', 'newer')
+        self.accept(candidate, 'project-2')
+        self.assertIsNone(self.env['last_rolled_back'])
+        with self.assertRaises(ValueError): self.rollback('project-1')
+        self.assertEqual(self.env['current_report'], candidate)
+        self.rollback('project-2')
+        self.assertEqual(self.env['last_rolled_back'], 'project-2')
+        with self.assertRaises(ValueError): self.rollback('project-1')
+        self.assertEqual(self.env['current_report'], self.original)
+
+    def test_unaccepted_abort_does_not_erase_prior_acceptance_rollback(self):
+        candidate = self.stage(); self.accept(candidate)
+        previous = self.env['previous_report']
+        self.env['render_report'](request('newer', stage=True, transactionId='project-2', expectedBase=candidate['sourceSha256'], expectedReport=candidate['reportIntegrity']['reportSha256']))
+        self.rollback('project-2')
+        self.assertEqual(self.env['current_report'], candidate)
+        self.assertIs(self.env['previous_report'], previous)
+        self.rollback('project-1')
+        self.assertEqual(self.env['current_report'], self.original)
+
 
 if __name__ == '__main__': unittest.main()
 

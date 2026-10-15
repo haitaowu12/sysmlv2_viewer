@@ -39,8 +39,9 @@ self.onmessage=({data:message})=>{queue=queue.then(async()=>{try{
   if(!staged||staged.transactionId!==data.transactionId)throw Error('Project transaction is no longer current.');
   result=py('accept_current',data);previous={transactionId:data.transactionId,report:current};current=staged.report;staged=null;
  }else if(path==='/rollback'){
-  if(!previous||previous.transactionId!==data.transactionId)throw Error('Project acceptance can no longer be rolled back.');
-  result=py('rollback_current',data);current=previous.report;previous=null;
+  result=py('rollback_current',data);
+  if(previous?.transactionId===data.transactionId){current=previous.report;previous=null;}
+  if(staged?.transactionId===data.transactionId)staged=null;
  }else if(path==='/prepare'){
   if(!current)throw Error('Validate this model before preparing a change.');
   const proposed=py('prepare_candidate',{report:current,request:data});const checked=await inspect(proposed.source);
