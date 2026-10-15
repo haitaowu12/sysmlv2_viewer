@@ -104,27 +104,50 @@ def _refs(value):
     return [ref for ref in values if isinstance(ref, dict) and isinstance(ref.get('id'), str)]
 
 
-def multiplicity(element, index):
+def cardinality(element, index):
+    """Describe exported bounds without evaluating symbolic expressions.
+
+    Unknown bounds are distinct from a known single-valued feature. A value
+    binding is classified separately by part_features; it cannot supply bounds.
+    """
     semantic = element.get('semantics', {})
     refs = _refs(semantic.get('multiplicity'))
+    evidence = [ref['id'] for ref in refs]
+    unknown = lambda reason: {'status': 'unknown', 'label': '[?]' if refs else '',
+                              'evidenceIds': evidence[:], 'reason': reason}
     if len(refs) != 1 or refs[0]['id'] not in index:
-        return '', False
+        return unknown('Multiplicity evidence is absent or unresolved; cardinality is unknown.')
+    range_element = index[refs[0]['id']]
+    if range_element.get('metaclass') not in {'MultiplicityRange', 'Multiplicity'}:
+        return unknown('Multiplicity evidence has an unsupported kind; cardinality is unknown.')
     bounds = []
-    for ref in _refs(index[refs[0]['id']].get('semantics', {}).get('bound')):
+    for ref in _refs(range_element.get('semantics', {}).get('bound')):
+        evidence.append(ref['id'])
         bound = index.get(ref['id'], {})
         if bound.get('metaclass') == 'LiteralInfinity':
             bounds.append('*')
         elif bound.get('metaclass') == 'LiteralInteger':
             value = bound.get('semantics', {}).get('value')
-            if isinstance(value, int) and not isinstance(value, bool) or isinstance(value, str) and value.isdigit():
-                bounds.append(str(value))
+            if (type(value) is int and value >= 0
+                    or isinstance(value, str) and value.isdigit() and len(value) <= 16):
+                bounds.append(str(int(value)))
             else:
-                return '', False
+                return unknown('Multiplicity bound is not a supported nonnegative literal; cardinality is unknown.')
         else:
-            return '', False
+            return unknown('Multiplicity bound is symbolic or unresolved; cardinality is unknown and is not evaluated.')
     if not 1 <= len(bounds) <= 2:
-        return '', False
-    return '[' + '..'.join(bounds) + ']', bounds != ['1'] and bounds != ['1', '1']
+        return unknown('Multiplicity bounds are unavailable or ambiguous; cardinality is unknown.')
+    if len(bounds) == 2 and (bounds[0] == '*' or bounds[-1] != '*' and int(bounds[0]) > int(bounds[-1])):
+        return unknown('Multiplicity bounds are inconsistent; cardinality is unknown.')
+    return {'status': 'known-multi' if bounds[-1] == '*' or int(bounds[-1]) > 1 else 'known-single',
+            'label': '[' + '..'.join(bounds) + ']', 'evidenceIds': evidence,
+            'reason': 'Literal multiplicity bounds only; no installed instance population is inferred.'}
+
+
+def multiplicity(element, index):
+    """Compatibility label/collection pair; use cardinality for uncertainty."""
+    result = cardinality(element, index)
+    return result['label'] if result['status'] != 'unknown' else '', result['status'] == 'known-multi'
 
 
 def part_features(root, index):
@@ -163,7 +186,8 @@ def part_features(root, index):
                 if membership.get('metaclass') == 'FeatureValue' and any(s['id'] == part['sessionElementId'] for s in _refs(semantic(membership).get('source'))):
                     values += _refs(semantic(membership).get('value'))
         value_ids = list(dict.fromkeys(ref['id'] for ref in values))
-        mult, is_collection = multiplicity(part, index)
+        cardinal = cardinality(part, index)
+        mult, is_collection = cardinal['label'], cardinal['status'] == 'known-multi'
         subset = list(dict.fromkeys(subset_members.get(part['sessionElementId'], [])))
         if len(value_ids) != 1 or value_ids[0] not in index:
             if is_collection and subset and not value_ids:
@@ -171,6 +195,11 @@ def part_features(root, index):
                     'multiplicity': mult, 'kind': 'subset-collection', 'memberIds': subset,
                     'memberNames': [display_name(index[eid]) for eid in subset], 'evidenceIds': subset,
                     'reason': 'Collection with explicitly subsetted occurrences; listed members do not establish its complete population.'})
+            elif cardinal['status'] == 'unknown' and value_ids:
+                collections.append({'elementId': part['sessionElementId'], 'name': display_name(part), 'qualifiedName': part.get('qualifiedName'),
+                    'multiplicity': mult or '[?]', 'cardinality': 'unknown', 'kind': 'unresolved-collection',
+                    'memberIds': [], 'memberNames': [], 'evidenceIds': list(dict.fromkeys(cardinal['evidenceIds'] + value_ids)),
+                    'reason': cardinal['reason'] + ' Explicit value binding is unresolved or ambiguous; component membership and count are not inferred.'})
             else:
                 ordinary.append(part)
             continue
@@ -202,6 +231,13 @@ def part_features(root, index):
             return result
         bound_members = members(value, set()) if value.get('metaclass') == 'OperatorExpression' else None
         null_collection = is_collection and value.get('metaclass') == 'NullExpression'
+        if cardinal['status'] == 'unknown':
+            collections.append({'elementId': part['sessionElementId'], 'name': display_name(part), 'qualifiedName': part.get('qualifiedName'),
+                'multiplicity': mult or '[?]', 'cardinality': 'unknown', 'kind': 'unresolved-collection',
+                'memberIds': [], 'memberNames': [],
+                'evidenceIds': list(dict.fromkeys(cardinal['evidenceIds'] + [value_ids[0]] + evidence)),
+                'reason': cardinal['reason'] + ' Explicit value binding is retained; component membership and count are not inferred.'})
+            continue
         if not is_collection:
             ordinary.append(part); continue
         label = display_name(part)

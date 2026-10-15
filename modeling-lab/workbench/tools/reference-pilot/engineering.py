@@ -234,9 +234,12 @@ def interconnection(report, target):
     for n, collection in enumerate(collections):
         feature = index[collection['elementId']]
         detail = ', '.join(collection['memberNames']) if collection['memberNames'] else collection['reason']
-        label = 'Collection feature · ' + collection['name'] + ' ' + collection['multiplicity'] + ' · ' + detail
-        svg.extend([link_open(feature, target + '/collection'), text(50, height-55-24*(len(collections)-n-1), label), '</a>'])
-    svg.extend([text(30,height-15,f'SysML 2.0 part/port profile · {len(parts)} component usages · {len(collections)} collection features · {len(links)} connectors · {len(flow_marks)} flows · {len(excluded)} unsupported relations reported',size=11),'</svg>'])
+        label = ('Bound feature · cardinality unknown · ' + collection['name'] + ' ' + collection['multiplicity'] if collection.get('cardinality') == 'unknown' else 'Collection feature · ' + collection['name'] + ' ' + collection['multiplicity'] + ' · ' + detail)
+        svg.extend([link_open(feature, target + '/collection'), '<desc>'+escape(collection['reason'])+'</desc>', text(50, height-55-24*(len(collections)-n-1), label), '</a>'])
+    unknown_bounds = sum(c.get('cardinality') == 'unknown' for c in collections)
+    known_collections = len(collections)-unknown_bounds
+    feature_summary = f'{known_collections} collection feature' + ('s' if known_collections != 1 else '') + (f' · {unknown_bounds} bound feature'+('s' if unknown_bounds != 1 else '')+' with unknown cardinality' if unknown_bounds else '')
+    svg.extend([text(30,height-15,f'SysML 2.0 part/port profile · {len(parts)} component usages · {feature_summary} · {len(links)} connectors · {len(flow_marks)} flows · {len(excluded)} unsupported relations reported',size=11),'</svg>'])
     return {'svg': ''.join(svg), 'notationProfile':'sysml-2.0-parts-ports-binary-connectors-v1',
             'authority':'Pilot EMF facts; custom presentation', 'marks':marks,'connectors':paths,
             'flows':flow_marks,'collections':collections,'excluded':excluded,'partBounds':positions,'layoutRows':rows,'layoutColumns':columns,'sourceUnchanged':True,

@@ -14,7 +14,7 @@ from view_scope import catalogue_for_views, compose
 from review_routes import prepare as prepare_reviews
 from report_integrity import load_report
 from change_summary import summarize
-from lab_project import candidate, views_for, digest, scenario_view, exploration_views
+from lab_project import minimum_edit_options, candidate, views_for, digest, scenario_view, exploration_views
 from lab_delivery import browser_report, element_detail
 from source_intake import SOURCE_LIMIT, admit_source_set
 
@@ -197,6 +197,9 @@ def main():
                 for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__SOURCE_INTAKE_SCRIPT__', 'source_intake.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js')]:
                     page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
                 return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
+            if self.path == '/examples/apollo-11.modeling.json':
+                example = ROOT / 'tools/reference-pilot/examples/apollo-11.modeling.json'
+                return self.reply(200, json.loads(example.read_text()))
             if self.path == '/initial':
                 return self.reply(200, initial_payload(current, source, presets, workspace_key))
             self.reply(404, {'error': 'Not found'})
@@ -246,6 +249,10 @@ def main():
                     return self.reply(200, {**compose(catalog, data.get('recipe')), 'reportSha256': catalog['reportSha256']})
                 if self.path == '/prepare':
                     old = current['report']
+                    if data.get('operation') == 'minimum-options':
+                        if not old or data.get('baseSourceSha256') != old.get('sourceSha256'):
+                            raise ValueError('The model changed. Reopen the editing task.')
+                        return self.reply(200, {'sourceSha256': old['sourceSha256'], 'options': minimum_edit_options(old)})
                     draft, proposal = candidate(old, old['source'] if old else '', data)
                     if len(draft.encode()) > SOURCE_LIMIT:
                         raise ValueError('Proposed model source exceeds 512 KiB')
@@ -274,7 +281,9 @@ def main():
                 baseline_report = current['baseline']
                 if not baseline_report or baseline_report['sourceSha256'] != digest(baseline):
                     # Initial baseline uses the same recipes except newly added scenarios.
-                    baseline_views = [v for v in views if not v['id'].startswith('scenario-')] or presets
+                    baseline_views = [v for v in views if not v['id'].startswith('scenario-')]
+                    if not baseline_views and project_views:
+                        baseline_views = presets
                     baseline_report = render_model(baseline, baseline_views)
                     if not baseline_report.get('staticChecksPassed'):
                         raise ValueError('The project baseline does not pass language validation.')

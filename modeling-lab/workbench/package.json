@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tools/reference-pilot/source_intake.test.cjs && vitest run --config vitest.config.ts"
+    "test": "node --test tools/reference-pilot/source_intake.test.cjs tools/reference-pilot/workflow_open.test.cjs && vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "jsdom": "29.0.2",

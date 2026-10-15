@@ -12,6 +12,7 @@ for name in ['engineering','stakeholder','behavior','check_contract','receipts',
     shutil.copy2(LAB/'tools/reference-pilot'/f'{name}.py',PUBLIC/'python'/f'{name}.py')
 for name in ['pyodide.asm.js','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip']:
     shutil.copy2(ROOT/'node_modules/pyodide'/name,PUBLIC/'pyodide'/name)
+shutil.copytree(LAB/'tools/reference-pilot/examples',PUBLIC/'examples',dirs_exist_ok=True)
 project=json.loads((LAB/'fixtures/authoring/alarm-review/reviewed.modeling.json').read_text())
 (PUBLIC/'initial.json').write_text(json.dumps({'source':project['source'],'presets':project['views'],'workspaceKey':'browser-alarm-trial',
     'title':project['title'],'brief':project['brief'],'questions':project['questions']}))
@@ -25,6 +26,7 @@ page=page.replace('<body>','<body>'+bootstrap).replace('Full qualified model ret
 page=page.replace('</body>',"<script>document.getElementById('reference').style.display='none';</script></body>")
 # Digest includes generated owner copies and runtime inputs, including uncommitted work.
 paths=[p for p in (PUBLIC/'python').glob('*.py')]+[ROOT/name for name in ['lab-runtime.js','lab-worker.js','package-lock.json','opensysml-browser.patch','browser-engine.wasm','wasm_exec.js']]
+paths += sorted((PUBLIC/'examples').glob('*'))
 paths += [ROOT/'prepare.py',ROOT/'vite.config.js',PUBLIC/'initial.json']
 paths += [LAB/'tools/reference-pilot'/name for name in ['lab.html','scope.js','workflow.js','source_intake.js']]
 source_digest=hashlib.sha256()

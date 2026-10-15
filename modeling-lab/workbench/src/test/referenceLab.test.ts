@@ -4,6 +4,8 @@ import { createHash, webcrypto } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 afterEach(() => vi.unstubAllGlobals())
 
+const toolbarClick=(label:string)=>[...document.querySelectorAll<HTMLButtonElement>('.project-toolbar button')].find(b=>b.textContent===label)!.click()
+
 async function harness(workflow = false, initialMetadata: Record<string, unknown> = {}) {
   vi.stubGlobal('crypto', webcrypto)
   delete (window as any).labWorkflow
@@ -21,11 +23,13 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
   const timers: Array<() => void> = []
   const receipts: Array<{ payload: any; resolve: (r: unknown) => void }> = []
   const protocol: Array<{ url: string; payload: any }> = []
+  let minimumOptions: Array<{target:string;currentValue:number;statement:string}>=[]
   let delayAccept = false
   const rollbackReplies: Array<() => Promise<Record<string, unknown>>> = []
   const mocks = {
     fetch: (url: string, options?: { body: string }) => url === '/initial'
       ? Promise.resolve({ json: async () => ({ source: 'baseline', presets: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], ...initialMetadata }) })
+      : url === '/prepare' && JSON.parse(options!.body).operation==='minimum-options' ? Promise.resolve({json:async()=>({sourceSha256:'a'.repeat(64),options:minimumOptions})})
       : url === '/accept' ? (delayAccept ? new Promise(resolve => receipts.push({ payload: JSON.parse(options!.body), resolve })) : Promise.resolve({ json: async () => ({ accepted: true, ...JSON.parse(options!.body) }) }))
       : url === '/rollback' ? (protocol.push({ url, payload: JSON.parse(options!.body) }), Promise.resolve({ json: rollbackReplies.shift() || (async () => ({ rolledBack: true, ...JSON.parse(options!.body) })) }))
       : new Promise(resolve => calls.push({ source: JSON.parse(options!.body).source, url, payload: JSON.parse(options!.body), resolve })),
@@ -38,6 +42,7 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
   const flush = async () => { for (let i = 0; i < 64; i++) await Promise.resolve() }
   const answer = async (index: number, valid = true, extra: Record<string, unknown> = {}) => {
     await vi.waitFor(() => expect(calls[index]).toBeDefined(), { interval: 1, timeout: 1000 })
+    minimumOptions=((extra.elements||[]) as any[]).filter(e=>e.metaclass?.startsWith('Requirement')&&e.qualifiedName).map(e=>({target:e.qualifiedName,currentValue:2,statement:'Two units.'}));
     calls[index]!.resolve({ json: async () => ({ source: calls[index]!.source, transactionId: calls[index]!.payload.transactionId, sourceSha256: 'a'.repeat(64), reportIntegrity: { status: 'verified-managed', reportSha256: 'b'.repeat(64) }, staticChecksPassed: valid,
       viewRecipes: calls[index]!.payload.views || [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], diagnostics: [], elements: [{ sessionElementId: 'motor', name: 'motor', qualifiedName: 'Pump::motor', metaclass: 'PartUsage', line: 1, source: 'part motor;' }], views: [{ id: 'context', view: 'DEFAULT', targets: ['Pump'], svg: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400"><a href="psysml:motor"><text>MODEL</text></a></svg>', stakeholder: { title: 'System overview', scopeLabel: 'Pump', omissions: ['Internal details hidden.'] }, stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"><text>PLAIN MODEL</text></svg>' }], ...(Array.isArray(extra.views) && !extra.viewRecipes ? { viewRecipes: extra.views.map((v: any) => ({ id: v.id, names: v.targets, view: v.view || 'TREE', styles: [] })) } : {}), ...extra }) }); await flush()
   }
@@ -284,16 +289,16 @@ describe('browse-first interaction refinements', () => {
     await h.composed(2)
     expect(document.querySelector('[data-surface="interfaces"]')!.getAttribute('aria-pressed')).toBe('true')
   })
-  it('focuses a searched occurrence while preserving the presentation and contextual identity', async () => {
+  it('opens a searched occurrence explicitly with its own analytical presentation and contextual identity', async () => {
     const h = await perspectiveHarness(); await h.composed()
     document.querySelector<HTMLButtonElement>('[data-surface="interfaces"]')!.click()
     document.getElementById('nav-model')!.click()
     const search = document.getElementById('model-search') as HTMLInputElement
     search.value='motor'; search.dispatchEvent(new Event('input'))
-    document.querySelector<HTMLButtonElement>('[aria-label="Focus Pump/motor"]')!.click()
+    document.querySelector<HTMLButtonElement>('[aria-label="Select Pump/motor"]')!.click();document.getElementById('model-open-component-view')!.click()
     expect((h.calls[2]!.payload.recipe as { focus: string }).focus).toBe('Pump/motor')
     await h.composed(2)
-    expect(document.querySelector('[data-surface="interfaces"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('[data-surface="diagram"]')!.getAttribute('aria-pressed')).toBe('true')
   })
   it('offers arrow-key matrix navigation and Enter evidence inspection with return focus', async () => {
     const h = await perspectiveHarness(); await h.composed()
@@ -486,7 +491,7 @@ describe('complete local project workflow', () => {
   const requirement = { sessionElementId: 'req', name: 'capacity', qualifiedName: 'Pump::capacity', metaclass: 'RequirementUsage', line: 1, source: 'requirement capacity { doc /* Two units. */ require constraint { count >= 2 } }' }
   it('stages a validated proposal, applies it once against its exact base, records its basis, and undoes it', async () => {
     const h = await harness(true); await h.answer(0, true, { elements: [requirement] })
-    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(2)')!.click()
+    toolbarClick('Develop model');await h.flush()
     ;(document.querySelector('[aria-label="Required minimum"]') as HTMLInputElement).value = '3'
     ;(document.querySelector('[aria-label="Complete requirement statement"]') as HTMLTextAreaElement).value = 'Three units.'
     ;(document.querySelector('[aria-label="Source quotation or decision supporting this change"]') as HTMLTextAreaElement).value = 'Decision from the brief.'
@@ -500,7 +505,7 @@ describe('complete local project workflow', () => {
     expect(h.calls[2].payload.expectedBase).toBe(currentHash)
     await h.answer(2, true, { sourceSha256: nextHash, elements: [requirement] })
     expect((window as any).labWorkflow.snapshot().history).toHaveLength(1)
-    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(3)')!.click()
+    toolbarClick('Review changes')
     expect(document.getElementById('project-dialog')!.textContent).toContain('design retains two units')
     Array.from(document.querySelectorAll<HTMLButtonElement>('#project-dialog button')).find(b => b.textContent === 'Undo last engineering change')!.click()
     await h.answer(3, true, { elements: [requirement] })
@@ -561,7 +566,7 @@ describe('reader artifact integrity', () => {
       { sessionElementId:'req',qualifiedName:'Pump::Capacity',metaclass:'RequirementUsage',source:'requirement capacity { doc /* Three units. */ }' },
       { sessionElementId:'alias',qualifiedName:'Pump::Check::ObjectiveAlias',metaclass:'RequirementUsage',source:'verify capacity;' },
     ] })
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     const title = document.querySelector<HTMLInputElement>('[aria-label="Project name"]')!
     title.value = 'Study → review'; title.dispatchEvent(new Event('input'))
     const brief = document.querySelector<HTMLTextAreaElement>('[aria-label="Brief and source basis"]')!
@@ -619,7 +624,7 @@ describe('larger-model working navigation', () => {
     search.value='unit';search.dispatchEvent(new Event('input'))
     expect(document.getElementById('model-tree')!.textContent).toContain('1–60 of 125 matches')
     document.querySelector<HTMLButtonElement>('[aria-label="Next components"]')!.click()
-    expect(document.querySelector('[aria-label="Focus Pump/unit095"]')).not.toBeNull()
+    expect(document.querySelector('[aria-label="Select Pump/unit095"]')).not.toBeNull()
     document.getElementById('customize')!.click()
     document.querySelector<HTMLButtonElement>('[aria-label="Next subjects"]')!.click()
     expect([...document.querySelectorAll<HTMLOptionElement>('#scope-focus option')].some(o=>o.value==='Pump/unit095')).toBe(true)
@@ -641,7 +646,7 @@ describe('larger-model working navigation', () => {
     }
     expect((window as any).scopeWorkbench.export()).toHaveLength(1)
     expect((window as any).scopeWorkbench.export()[0].recipe).toEqual(original[0].recipe)
-    expect(document.getElementById('canvas')!.textContent).toContain('Interface register')
+    expect(document.querySelector('[data-surface="diagram"]')!.getAttribute('aria-pressed')).toBe('true')
     ;(document.getElementById('perspective-name') as HTMLInputElement).value='Saved unit detail'
     document.getElementById('save-perspective')!.click()
     expect((window as any).scopeWorkbench.export().map((v:any)=>v.name)).toContain('Saved unit detail')
@@ -789,7 +794,7 @@ describe('subject choices preserve occurrence versus definition', () => {
     const nodes = [{key:'Study::System',root:'Study::System',parent:null,elementId:'definition',name:'System',depth:0},{key:'Study::system',root:'Study::system',parent:null,elementId:'occurrence',name:'system',depth:0}]
     await h.answer(0, true, { catalogue: {...scopeCatalog, roots:['Study::System','Study::system'],nodes}, elements:[{sessionElementId:'definition',metaclass:'PartDefinition',qualifiedName:'Study::System',name:'System'},{sessionElementId:'occurrence',metaclass:'PartUsage',qualifiedName:'Study::system',name:'system'}] })
     document.getElementById('customize')!.click()
-    expect([...document.querySelectorAll('#scope-focus option')].map(o=>o.textContent)).toEqual(['System · definition','System · model occurrence'])
+    expect([...document.querySelectorAll('#scope-focus option')].map(o=>o.textContent)).toEqual(['System · definition · Study','System · model occurrence · Study'])
   })
 })
 
@@ -820,7 +825,7 @@ describe('readable responsibilities and reader scope', () => {
     const click=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
     try {
       const h=await harness(true);await h.answer(0,true,{elements,catalogue:{...scopeCatalog,relations:[{...scopeRelations[0],scope:'Study::system/coldRoom0'}]}})
-      document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+      toolbarClick('Project')
       ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
       const doc=new DOMParser().parseFromString(await output!.text(),'text/html')
       const responsibilities=[...doc.querySelectorAll('section')].find(s=>s.querySelector('h2')?.textContent==='Declared responsibilities')!
@@ -840,7 +845,7 @@ describe('accepted project transactions and recovery', () => {
   const workflow = () => (window as any).labWorkflow
   const click = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b => b.textContent === label)!.click()
   async function proposed(h: Awaited<ReturnType<typeof harness>>) {
-    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(2)')!.click()
+    toolbarClick('Develop model');await h.flush()
     ;(document.querySelector('[aria-label="Required minimum"]') as HTMLInputElement).value = '3'
     click('Prepare change')
     h.calls.at(-1)!.resolve({ json: async () => ({ source: 'candidate', views: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], proposal: { description: 'Change with retained basis', reason: 'Declared decision', baseSourceSha256: 'a'.repeat(64), candidateSourceSha256: 'c'.repeat(64) }, changeSummary: [], validated: true }) })
@@ -870,7 +875,7 @@ describe('accepted project transactions and recovery', () => {
     expect(h.calls).toHaveLength(2)
   })
   it('never gives a failed proposal a later unrelated successful receipt', async () => {
-    const h = await harness(true); await h.answer(0); await proposed(h)
+    const h = await harness(true); await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacity',metaclass:'RequirementUsage',source:'requirement capacity { doc /* Two units. */ require constraint { count >= 2 } }'}]}); await proposed(h)
     click('Apply to project'); await h.answer(2, false)
     expect(workflow().snapshot().source).toBe('baseline')
     expect(workflow().snapshot().history).toEqual([])
@@ -879,17 +884,17 @@ describe('accepted project transactions and recovery', () => {
     expect(workflow().snapshot().history).toEqual([])
   })
   it('rejects a same-source candidate with the wrong prepared hash', async () => {
-    const h = await harness(true); await h.answer(0); await proposed(h)
+    const h = await harness(true); await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacity',metaclass:'RequirementUsage',source:'requirement capacity { doc /* Two units. */ require constraint { count >= 2 } }'}]}); await proposed(h)
     click('Apply to project'); await h.answer(2, true, { sourceSha256: 'd'.repeat(64) })
     expect(workflow().snapshot().source).toBe('baseline')
     expect(workflow().snapshot().history).toEqual([])
     expect(document.getElementById('diagnostics')!.textContent).toContain('does not match the prepared change')
   })
   it('retains source, recipes and history when undo validation fails', async () => {
-    const h = await harness(true); await h.answer(0); await proposed(h)
+    const h = await harness(true); await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacity',metaclass:'RequirementUsage',source:'requirement capacity { doc /* Two units. */ require constraint { count >= 2 } }'}]}); await proposed(h)
     click('Apply to project'); await h.answer(2, true, { sourceSha256: 'c'.repeat(64) })
     const before = structuredClone(workflow().snapshot())
-    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(3)')!.click()
+    toolbarClick('Review changes')
     click('Undo last engineering change'); await h.answer(3, false)
     expect(workflow().snapshot()).toEqual(before)
   })
@@ -918,7 +923,7 @@ describe('accepted project transactions and recovery', () => {
     vi.stubGlobal('Blob', NodeBlob); vi.stubGlobal('URL', { createObjectURL: (blob: Blob) => { output = blob; return 'blob:recovery' }, revokeObjectURL() {} })
     const anchor = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const h = await harness(true); await h.answer(0, true, { sourceSha256: createHash('sha256').update('baseline').digest('hex') })
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     const notes = document.querySelector<HTMLTextAreaElement>('[aria-label="Assumptions, decisions and open questions"]')!; notes.value = 'Keep this unresolved decision'; notes.dispatchEvent(new Event('input'))
     workflow().snapshot().history.push({ operation: 'component', target: 'Pump', description: 'Earlier accepted decision', reason: 'Retained decision basis', baseSource: 'before', before: 'before', after: 'baseline', baseSourceSha256: createHash('sha256').update('before').digest('hex'), candidateSourceSha256: createHash('sha256').update('baseline').digest('hex'), baseViews: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }] })
     ;(window as any).scopeWorkbench.import([{ name: 'Retained custom view', recipe: { schemaVersion: 1, root: 'Pump', focus: 'Pump', depth: 1, neighbors: 0, kinds: ['flow'], pinned: [], hidden: [] }, surface: 'register' }])
@@ -983,7 +988,7 @@ describe('bounded project record admission', () => {
     await h.answer(1); await h.flush(); await h.answer(2, true, { sourceSha256: digest(fixture.source), viewRecipes: fixture.views, views: fixture.views.map((v: any) => ({ id: v.id, targets: v.names, view: v.view, svg: '<svg xmlns="http://www.w3.org/2000/svg"/>', stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })) }); await opening
     const actual = (window as any).labWorkflow.snapshot()
     expect(actual.history).toEqual(fixture.history); expect(actual.customViews).toEqual(fixture.customViews); expect(actual.artifacts).toEqual(fixture.artifacts)
-    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(3)')!.click()
+    toolbarClick('Review changes')
     expect(document.getElementById('project-dialog')!.textContent).toContain(fixture.history[0].reason)
   })
 })
@@ -1014,7 +1019,7 @@ describe('project metadata export admission', () => {
     vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{output=blob;return 'blob:metadata'},revokeObjectURL(){}})
     const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
     const h=await harness(true);await h.answer(0,true,{sourceSha256:createHash('sha256').update('baseline').digest('hex')})
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     const input=document.querySelector<HTMLInputElement|HTMLTextAreaElement>(`[aria-label="${label}"]`)!,text='界'.repeat(size);input.value=text;input.dispatchEvent(new Event('input'))
     if(mode==='recovery')await (window as any).labWorkflow.recovery()
     else{document.querySelector<HTMLButtonElement>('.project-context button')!.click();await h.flush()}
@@ -1032,7 +1037,7 @@ describe('saved project equality with admitted custom recipes', () => {
     const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
     const h=await perspectiveHarness(true);await h.composed()
     ;(document.getElementById('perspective-name') as HTMLInputElement).value='Alarm interface register';document.getElementById('save-perspective')!.click()
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     const title=document.querySelector<HTMLInputElement>('[aria-label="Project name"]')!;title.value='Alarm review proxy';title.dispatchEvent(new Event('input',{bubbles:true}))
     const workflow=(window as any).labWorkflow,before=structuredClone(workflow.snapshot())
     document.querySelector<HTMLButtonElement>('.project-context button')!.click();await vi.waitFor(()=>expect(output).toBeDefined(),{interval:1})
@@ -1059,7 +1064,7 @@ describe('frozen reader retains declared facts and behavior conditions', () => {
     const behavior={coverage:'partial',boundary:'Declared behavior only: no execution, timing, satisfaction or acceptance result.',nodes:[{id:'state',name:'MotorStates',kind:'StateDefinition',parallel:false,subactions:{entryAction:[{elementId:'entry',text:'entry initialize;',textTruncated:false}]},constraints:[]},{id:'idle',name:'idle',kind:'StateUsage',parallel:false,subactions:{},constraints:[]},{id:'running',name:'running',kind:'StateUsage',parallel:false,subactions:{},constraints:[]}],relations:[{elementId:'transition',source:'idle',target:'running',kind:'TransitionUsage',triggers:[{elementId:'trigger',text:'accept Start();',textTruncated:false}],guards:[],effects:[],conditionStatus:{triggers:'resolved',guards:'unknown',effects:'unavailable'},declaration:'transition idle accept Start() then running;',declarationTruncated:false}],evidence:[{elementId:'transition',qualifiedName:'Pump::MotorStates::start',excerpt:'transition idle accept Start() then running;',excerptTruncated:false}],warnings:[{elementId:'transition',reason:'Guard evidence unavailable; do not infer absence'}],limits:['Ordinary flows do not establish an execution schedule.']}
     const h=await harness(true);await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacityRequirement',metaclass:'RequirementUsage',source:'requirement capacity { doc /* At least three samples. */ }'},{sessionElementId:'capacity',qualifiedName:'Pump::controller::sampleCapacity',metaclass:'AttributeUsage',source:'attribute sampleCapacity : Integer = 2;'}],views:[{id:'requirement',targets:['Pump::capacityRequirement'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Required outcome',question:'Does the declared capacity cover the minimum?',statement:'At least three samples.',takeaway:'One bounded declared comparison',rows:[comparison],warnings:[],omissions:['Physical verification has not been performed.'],acceptance:'Not assessed'}},{id:'state',targets:['Pump::MotorStates'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Motor states',statement:'',rows:[condition],behavior,warnings:[],omissions:[],acceptance:'Not assessed'},behavior}]})
     expect(document.getElementById('status')!.textContent+' '+document.getElementById('diagnostics')!.textContent).not.toContain('Unable')
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
     const html=await output!.text(),doc=new DOMParser().parseFromString(html,'text/html')
     expect(doc.querySelectorAll('.reader-facts > div')).toHaveLength(2)
@@ -1104,7 +1109,7 @@ describe('frozen reader retains declared facts and behavior conditions', () => {
       const behavior={coverage:'partial',nodes:[],relations:[],warnings,limits:['Declared conditions do not establish execution.']}
       const h=await harness(true);await h.answer(0,true,{elements,catalogue:{...scopeCatalog,requirements,relations},views:[{id:'context',targets:['Study'],svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Core model</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Core model</text></svg>',stakeholder:{title:'System overview',question:'What needs review?',takeaway:'Review the declared conditions.',rows:[{title:'A retained fact',body:'Secondary fact remains available.',elementIds:['warning-47']}],warnings,omissions:['This is a source-derived review.'],acceptance:'Not assessed',behavior},behavior}]})
       expect(document.getElementById('status')!.textContent+' '+document.getElementById('diagnostics')!.textContent).not.toContain('Unable')
-      document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+      toolbarClick('Project')
       ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
       const doc=new DOMParser().parseFromString(await output!.text(),'text/html'),view=doc.querySelector('.reader-view')!
       expect(view.querySelector('h3')!.textContent).toBe('What needs review?')
@@ -1164,7 +1169,7 @@ describe('prepared file download retry', () => {
     vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{files.push(blob);return 'blob:prepared-'+files.length},revokeObjectURL:(url: string)=>revoked.push(url)})
     const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
     const h=await harness(true);await h.answer(0,true,{sourceSha256:createHash('sha256').update('baseline').digest('hex')})
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    toolbarClick('Project')
     const title=document.querySelector<HTMLInputElement>('[aria-label="Project name"]')!;title.value='Browser Lab completion acceptance';title.dispatchEvent(new Event('input',{bubbles:true}))
     ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Save project file')!.click()
     await vi.waitFor(()=>expect(files).toHaveLength(1),{interval:1})
@@ -1382,26 +1387,26 @@ describe('quiet working surface retains meaningful evidence',()=>{
 describe('explicit source-file intake',()=>{
   const file=(name:string,source:string)=>({name,webkitRelativePath:'',size:new TextEncoder().encode(source).length,arrayBuffer:async()=>new TextEncoder().encode(source).buffer});
   async function choose(h:Awaited<ReturnType<typeof harness>>,index=1){
-    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click();
-    const input=document.querySelector<HTMLInputElement>('[aria-label="Import model source"]')!;
+    toolbarClick('Open model');
+    const input=document.querySelector<HTMLInputElement>('[aria-label="Choose SysML files"]')!;
     Object.defineProperty(input,'files',{value:[file('Study.sysml','part def Study;'),file('Other.sysml','part def Other;')],configurable:true});
     input.dispatchEvent(new Event('change'));
     await vi.waitFor(()=>expect(h.calls[index]?.url).toBe('/inspect'),{interval:1});
     const source=h.calls[index].source;
-    await h.answer(index,true,{elements:[{sessionElementId:'study',qualifiedName:'Study',name:'Study',metaclass:'PartDefinition',line:2,source:'part def Study;'}]});
+    await h.answer(index,true,{elements:[{sessionElementId:'study',qualifiedName:'Study',name:'Study',metaclass:'PartDefinition',line:2,source:'part def Study;'},{sessionElementId:'other',qualifiedName:'Other',name:'Other',metaclass:'PartDefinition',line:1,source:'part def Other;'}]});
     return source;
   }
   it('requires an explicit target, can cancel, and starts a new model with its own blank notes',async()=>{
     const h=await harness(true);await h.answer(0);const workflow=(window as any).labWorkflow;
     const before=structuredClone(workflow.snapshot());await choose(h);
-    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Starting point"]')).not.toBeNull(),{interval:1});
     const click=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent===name)!.click();
     expect([...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Open selected model')!.disabled).toBe(true);
     expect(workflow.snapshot()).toEqual(before);click('Cancel import');expect(workflow.snapshot()).toEqual(before);
     document.querySelector<HTMLButtonElement>('#project-dialog .dialog-heading button')!.click();
     const source=await choose(h,2);
-    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
-    const target=document.querySelector<HTMLSelectElement>('[aria-label="Open at model scope"]')!;target.value='Study';target.dispatchEvent(new Event('change'));
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Starting point"]')).not.toBeNull(),{interval:1});
+    const target=document.querySelector<HTMLSelectElement>('[aria-label="Starting point"]')!;target.value='Study';target.dispatchEvent(new Event('change'));
     click('Open selected model');await h.answer(3);
     const view={id:'overview',targets:['Study'],view:'INTERCONNECTION',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'};
     await h.answer(4,true,{sourceSha256:createHash('sha256').update(source).digest('hex'),views:[view]});
@@ -1480,7 +1485,7 @@ describe('reader configured catalogue coverage',()=>{
       const coverage={mode:'configured-part-scopes',globalAvailable:false,configuredRoots:['Pump'],excludedRootCount:3,globalUnavailableReason:'Complete expansion exceeds the configured occurrence budget',traceabilityLimit}
       const h=await harness(true);await h.answer(0,true,{catalogue:{...scopeCatalog,coverage,relations:[],requirements:[],warnings:[{scope:'traceability',reason:traceabilityLimit}]}})
       if(custom)(window as any).scopeWorkbench.review=()=>({nodes:[],relations:[],hiddenCount:2,crossing:[],filteredRelations:0,warnings:[]})
-      document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+      toolbarClick('Project')
       ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
       const doc=new DOMParser().parseFromString(await output!.text(),'text/html'),qualification=doc.querySelector('.reader-coverage')!
       expect(qualification.closest('details')).toBeNull()
@@ -1636,4 +1641,54 @@ it('opens an assertion source witness and explores only its exact typed occurren
   jump.click()
   expect(h.calls[1]!.url).toBe('/compose')
   expect(h.calls[1]!.payload.recipe).toMatchObject({root:'Reference',focus:'Reference/stage1'})
+})
+
+describe('explicit SysML sheets and honest notation',()=>{
+  const core={id:'context',names:['Pump'],view:'TREE',styles:[]}
+  const view=(id:string,target:string,profile='sysml-2.0-parts-ports-binary-connectors-v1')=>({id,targets:[target],notationProfile:profile,svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>ENGINEERING</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"><text>STAKEHOLDER</text></svg>'})
+  it('switches explicitly to engineering and retains the original audience and durable return destination across sheet hops',async()=>{
+    const h=await harness(true);await h.answer(0,true,{views:[view('context','Pump')],viewRecipes:[core]})
+    const audience=document.getElementById('audience') as HTMLSelectElement
+    audience.value='stakeholder';audience.dispatchEvent(new Event('change'))
+    const first=(window as any).openSysmlComponent('Pump::a')
+    expect(h.calls[1].payload.target).toBe('Pump::a');expect(h.calls[1].payload.view).toBe('INTERCONNECTION')
+    await h.answer(1,true,{views:[view('context','Pump'),view('focused','Pump::a')],viewRecipes:[core]});await first
+    expect(audience.value).toBe('engineering');expect(document.getElementById('canvas')!.textContent).toContain('ENGINEERING')
+    const second=(window as any).openSysmlComponent('Pump::b')
+    await h.answer(2,true,{views:[view('context','Pump'),view('focused','Pump::b')],viewRecipes:[core]});await second
+    audience.value='stakeholder';audience.dispatchEvent(new Event('change'))
+    expect(document.getElementById('return-view')!.hidden).toBe(false)
+    document.getElementById('return-view')!.click()
+    expect(document.querySelector('#views [aria-current=true]')!.getAttribute('data-view-index')).toBe('0')
+    expect(audience.value).toBe('stakeholder');expect(document.getElementById('return-view')!.hidden).toBe(true)
+    expect((window as any).labWorkflow.snapshot().views).toEqual([core])
+  })
+  it('does not claim Pilot notation for behavior or unknown renderer profiles',async()=>{
+    const h=await harness();await h.answer(0,true,{views:[view('context','Pump','declared-behavior-v1')]})
+    expect(document.getElementById('view-notation')!.textContent).toBe('Declared behavior projection · limited notation')
+    h.edit('another');h.tick();await h.answer(1,true,{views:[view('context','Pump','experimental-browser-analytical')]})
+    expect(document.getElementById('view-notation')!.textContent).toBe('Projection · notation not classified')
+  })
+  it('accepts a validated model with no configured diagrams and retains its source for editing and saving',async()=>{
+    const h=await harness(true);await h.answer(0)
+    const workflow=(window as any).labWorkflow,project={...workflow.snapshot(),id:'source-only',title:'Own attribute model',source:'package Values { attribute count; }',baselineSource:'package Values { attribute count; }',views:[],customViews:[],history:[]};delete project.baselineHash
+    const opening=workflow.openProject(project)
+    await h.answer(1,true,{views:[],viewRecipes:[]});
+    await h.answer(2,true,{sourceSha256:createHash('sha256').update(project.source).digest('hex'),views:[],viewRecipes:[],catalogue:{roots:[],nodes:[],warnings:[],requirements:[],traces:[],limits:{}}});await opening
+    expect(workflow.snapshot().source).toBe(project.source);expect(workflow.snapshot().views).toEqual([])
+    expect(document.getElementById('model-navigation-note')!.textContent).toContain('No component hierarchy')
+    expect((document.getElementById('customize') as HTMLButtonElement).disabled).toBe(true)
+    expect(document.getElementById('view-title')!.textContent).toBe('Model loaded')
+    expect(document.getElementById('scope')!.textContent).toMatch(/^Revision /)
+    expect((document.getElementById('editor') as HTMLDetailsElement).open).toBe(true)
+  })
+})
+
+
+describe('authored SysML view disclosure',()=>{
+  it('identifies source-owned view declarations without treating library views as imported views',async()=>{
+    const h=await harness(true);await h.answer(0,true,{elements:[{sessionElementId:'view',qualifiedName:'Own::overview',metaclass:'ViewUsage',line:1,source:'baseline'},{sessionElementId:'library-view',qualifiedName:'Library::view',metaclass:'ViewDefinition',source:'other file',line:1}]})
+    expect(document.getElementById('source-view-note')!.hidden).toBe(false)
+    expect(document.getElementById('source-view-note')!.textContent).toBe('1 source view declaration retained in source. Displayed views are Lab projections.')
+  })
 })
