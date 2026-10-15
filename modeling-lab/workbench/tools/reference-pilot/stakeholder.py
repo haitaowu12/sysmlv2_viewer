@@ -94,6 +94,7 @@ def project(report, target, viewpoint=None):
                     and owner.get('id') == root['sessionElementId']):
                 entry_declarations[membership['sessionElementId']] = membership
                 node(membership, 'boundary')
+                nodes[membership['sessionElementId']]['label'] = 'Entry'
             else:
                 warnings.append('Entry declaration is not a resolved StateSubactionMembership owned by this state.')
         for state in owned_states:

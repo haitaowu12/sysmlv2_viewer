@@ -233,7 +233,7 @@ function behaviorEvidence(p){
     for(const [key,label] of [['triggers','Trigger'],['guards','Guard'],['effects','Effect']]){
       for(const q of r[key]||[])clauses.push(label+': '+q.text+(q.textTruncated?' [excerpt truncated; open source]':''));
       const status=r.conditionStatus?.[key];
-      if(r.kind==='TransitionUsage'&&(['unknown','unavailable'].includes(status)||(!status&&!(r[key]||[]).length)))clauses.push(label+': evidence unavailable; do not infer absence.');
+      if((r.kind==='TransitionUsage'||r.entryDeclaration)&&(['unknown','unavailable'].includes(status)||(!status&&!(r[key]||[]).length)))clauses.push(label+': evidence unavailable; do not infer absence.');
     }
     if(r.declaration)clauses.push(r.declaration+(r.declarationTruncated?' [excerpt truncated; open source]':''));
     add('R'+(i+1)+': '+nodes.get(r.source).name+' → '+nodes.get(r.target).name,clauses.join(' | ')||'No explicit trigger, guard or effect declared.',r.elementId);
