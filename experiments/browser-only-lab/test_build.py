@@ -1,6 +1,6 @@
 import hashlib,json,tempfile,unittest
 from pathlib import Path
-from audit_build import audit
+from audit_build import audit,remove_python_caches
 
 class ReleaseLayoutTests(unittest.TestCase):
     def fixture(self, root):
@@ -23,6 +23,20 @@ class ReleaseLayoutTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'paired'):audit(root)
             (root/'initial.json').unlink()
             with self.assertRaisesRegex(ValueError,'Missing'):audit(root)
+    def test_bytecode_caches_are_removed_without_touching_python_sources(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);self.fixture(root)
+            source_before={name:(root/'python'/name).read_bytes() for name in ['normalize.py','browser_handler.py']}
+            cache=root/'python/__pycache__';cache.mkdir()
+            (cache/'normalize.cpython-313.pyc').write_bytes(b'host-specific cache')
+            with self.assertRaisesRegex(ValueError,'bytecode cache'):audit(root)
+            remove_python_caches(root/'python')
+            self.assertFalse(cache.exists())
+            for name,data in source_before.items():self.assertEqual((root/'python'/name).read_bytes(),data)
+            self.assertEqual(audit(root)['revision'],'abc')
+            (root/'python/legacy.pyc').write_bytes(b'old standalone cache')
+            with self.assertRaisesRegex(ValueError,'bytecode cache'):audit(root)
+
     def test_root_relative_paths_are_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);self.fixture(root)

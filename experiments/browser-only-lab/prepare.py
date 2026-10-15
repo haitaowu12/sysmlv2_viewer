@@ -1,10 +1,12 @@
 """Generate trial assets from the maintained owner instead of forking its UI."""
 import hashlib,json,shutil,subprocess
 from pathlib import Path
+from audit_build import remove_python_caches
 ROOT=Path(__file__).resolve().parent
 LAB=ROOT.parents[1]/'modeling-lab/workbench'
 PUBLIC=ROOT/'public'
 (PUBLIC/'python').mkdir(parents=True,exist_ok=True)
+remove_python_caches(PUBLIC/'python')
 (PUBLIC/'pyodide').mkdir(exist_ok=True)
 for name in ['engineering','stakeholder','behavior','check_contract','receipts','view_scope','capacity_analysis','change_summary','report_integrity','lab_project','lab_delivery']:
     shutil.copy2(LAB/'tools/reference-pilot'/f'{name}.py',PUBLIC/'python'/f'{name}.py')

@@ -1,9 +1,18 @@
 """Validate the static release layout; record exact bytes for artifact promotion."""
-import hashlib,json,re
+import hashlib,json,re,shutil
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 
+def remove_python_caches(directory):
+    """Remove only generated cache directories beneath the Python asset root."""
+    for cache in directory.rglob('__pycache__'):
+        if cache.is_symlink():cache.unlink()
+        elif cache.is_dir():shutil.rmtree(cache)
+
 def audit(dist):
+    for path in dist.rglob('*'):
+        if '__pycache__' in path.relative_to(dist).parts or path.suffix.lower() in {'.pyc','.pyo'}:
+            raise ValueError('Python bytecode cache is not a release asset: '+path.relative_to(dist).as_posix())
     for name in ['index.html','lab.html','probe.html','initial.json','build-info.json','engine-build.json','RUNTIME-NOTICES.txt','opensysml-browser.patch','pyodide/pyodide.asm.wasm','pyodide/python_stdlib.zip','python/normalize.py','python/browser_handler.py','licenses/catalogue.json','licenses/go/go-catalogue.json']:
         if not (dist/name).is_file(): raise ValueError('Missing release asset: '+name)
     for catalogue,prefix in [('catalogue.json',''),('go/go-catalogue.json','go/')]:
