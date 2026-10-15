@@ -79,6 +79,37 @@ class BrowserAcceptedContext(unittest.TestCase):
 if __name__ == '__main__': unittest.main()
 
 class RequiredBrowserViews(unittest.TestCase):
+    def test_exploration_budget_failure_keeps_small_required_views_and_valid_inspection(self):
+        import runpy
+        delivery=runpy.run_path(str(Path(__file__).resolve().parents[2]/'modeling-lab/workbench/tools/reference-pilot/lab_delivery.py'))
+        for operation in ['inspect','staged-render','legacy-render']:
+            with self.subTest(operation=operation):
+                env=context()
+                old=env['render_report'](request('old',accept=True))
+                budget_error='Model exceeds the 2000-occurrence exploration budget; split the source package. No partial catalogue returned.'
+                def over_budget(report):raise ValueError(budget_error)
+                env.update(catalogue=over_budget,browser_report=delivery['browser_report'],
+                           project=lambda *args:{'subject':'Study::SmallScope'},
+                           render_svg=lambda projection:'<svg>Small scoped view</svg>')
+                data=request('large valid source')
+                data['views']=[{'id':'small-scope','names':['Study::SmallScope'],'view':'TREE'}]
+                if operation=='staged-render':
+                    data.update(stage=True,transactionId='large-model',expectedBase=old['sourceSha256'],expectedReport=old['reportIntegrity']['reportSha256'])
+                elif operation=='legacy-render':data['accept']=True
+                report=env['render_report'](data)
+                self.assertTrue(report['staticChecksPassed'])
+                self.assertEqual(report['catalogueError'],budget_error)
+                self.assertNotIn('catalogue',report)
+                self.assertEqual(report['views'][0]['svg'],'<svg>Small scoped view</svg>')
+                self.assertEqual(report['views'][0]['stakeholderSvg'],'<svg>Small scoped view</svg>')
+                if operation=='inspect':self.assertEqual(env['current_report'],old)
+                elif operation=='staged-render':
+                    self.assertEqual(env['current_report'],old)
+                    receipt=env['accept_current']({'transactionId':'large-model','sourceSha256':report['sourceSha256'],'reportSha256':report['reportIntegrity']['reportSha256']})
+                    self.assertTrue(receipt['accepted'])
+                    self.assertEqual(env['current_report']['catalogueError'],budget_error)
+                else:self.assertEqual(env['current_report']['source'],'large valid source')
+
     def test_failed_required_projection_cannot_stage_or_receive_acceptance(self):
         env = context()
         old = env['render_report'](request('old', accept=True))
