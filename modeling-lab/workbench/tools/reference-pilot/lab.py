@@ -10,12 +10,13 @@ import tempfile
 import hashlib
 import sys
 from stakeholder import project, render_svg
-from view_scope import catalogue, compose
+from view_scope import catalogue_for_views, compose
 from review_routes import prepare as prepare_reviews
 from report_integrity import load_report
 from change_summary import summarize
 from lab_project import candidate, views_for, digest, scenario_view, exploration_views
 from lab_delivery import browser_report, element_detail
+from source_intake import SOURCE_LIMIT, admit_source_set
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -58,7 +59,8 @@ def initial_payload(current, source, presets, workspace_key):
                'presets': current.get('views', presets) if report else presets,
                'baselineSource': baseline_source,
                'baselineHash': baseline.get('sourceSha256') or digest(baseline_source),
-               'acceptedReport': accepted_identity, 'workspaceKey': current.get('workspaceKey', workspace_key)}
+               'acceptedReport': accepted_identity, 'workspaceKey': current.get('workspaceKey', workspace_key),
+               'sourceSet': current.get('sourceSet')}
     # A bootstrap caller receives a snapshot, never aliases into accepted state.
     return json.loads(json.dumps(payload))
 
@@ -127,7 +129,7 @@ def main():
     origin = f'http://127.0.0.1:{args.port}'
     working = tempfile.TemporaryDirectory(prefix='sysml-reference-lab-')
     workspace_key = digest(str(args.source.resolve()))[:20]
-    current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None, 'workspaceKey': workspace_key}
+    current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None, 'workspaceKey': workspace_key, 'sourceSet': None}
     transactions = AcceptedState(current)
     cache = {}
 
@@ -164,7 +166,7 @@ def main():
                 try: report['reviews'] = prepare_reviews(reviews, report['sourceSha256'], views)
                 except ValueError as error: report['reviewError'] = str(error)
             try:
-                report['catalogue'] = catalogue(report)
+                report['catalogue'] = catalogue_for_views(report, views)
                 report['catalogue']['reportSha256'] = report['reportIntegrity']['reportSha256']
             except ValueError as error:
                 report['catalogueError'] = str(error)
@@ -192,7 +194,7 @@ def main():
             if not self.allowed(): return self.reply(403, {'error': 'Host rejected'})
             if self.path == '/':
                 page = (ROOT / 'tools/reference-pilot/lab.html').read_text()
-                for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js')]:
+                for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__SOURCE_INTAKE_SCRIPT__', 'source_intake.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js')]:
                     page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
                 return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
             if self.path == '/initial':
@@ -206,23 +208,26 @@ def main():
                 return self.reply(400, {'error': 'Expected JSON modelling request'})
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if not 0 < size <= 1_048_576: raise ValueError('Request exceeds 1 MiB')
+                if not 0 < size <= 12_582_912: raise ValueError('Request exceeds 12 MiB')
                 data = json.loads(self.rfile.read(size))
                 if self.path == '/accept':
                     return self.reply(200, transactions.accept(data))
                 if self.path == '/rollback':
                     return self.reply(200, transactions.rollback(data.get('transactionId')))
                 if self.path == '/element':
-                    return self.reply(200, element_detail(current['report'], data))
+                    return self.reply(200, element_detail(current['report'], data, current.get('sourceSet')))
                 if self.path == '/inspect':
                     draft = data.get('source')
-                    if not isinstance(draft, str) or len(draft.encode()) > 262144:
-                        raise ValueError('Model source must be text, up to 256 KiB')
+                    if not isinstance(draft, str) or len(draft.encode()) > SOURCE_LIMIT:
+                        raise ValueError('Model source must be text, up to 512 KiB')
+                    metadata = data.get('sourceSet')
+                    if metadata is not None:
+                        metadata = admit_source_set(metadata, data.get('baselineSource', draft))['sourceSet']
                     views = views_for(data['views']) if data.get('views') else []
                     report = render_model(draft, views)
                     if data.get('baselineSource') is not None:
                         baseline = data['baselineSource']
-                        if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
+                        if not isinstance(baseline, str) or len(baseline.encode()) > SOURCE_LIMIT:
                             raise ValueError('Invalid baseline source')
                         # Source validation is independent of presentation recipes.
                         # Reuse an exact-text qualification, including a known failure.
@@ -232,7 +237,7 @@ def main():
                             base_report = render_model(baseline, [])
                         if not base_report.get('staticChecksPassed'):
                             raise ValueError('The imported baseline does not pass language validation. Current project is unchanged.')
-                    return self.reply(200, browser_report(report))
+                    return self.reply(200, browser_report(report, metadata))
                 if self.path == '/compose':
                     catalog = current['catalogue']
                     if (not catalog or data.get('sourceSha256') != catalog['sourceSha256']
@@ -242,6 +247,8 @@ def main():
                 if self.path == '/prepare':
                     old = current['report']
                     draft, proposal = candidate(old, old['source'] if old else '', data)
+                    if len(draft.encode()) > SOURCE_LIMIT:
+                        raise ValueError('Proposed model source exceeds 512 KiB')
                     views = json.loads(json.dumps(current['views']))
                     if data['operation'] == 'scenario':
                         views.append(scenario_view(views, data['target'], data['name']))
@@ -251,16 +258,19 @@ def main():
                     return self.reply(200, {'source': draft, 'views': views, 'proposal': proposal,
                         'changeSummary': summarize(old, report), 'validated': True})
                 draft = data['source']
-                if not isinstance(draft, str) or len(draft.encode()) > 262144:
-                    raise ValueError('Model source must be text, up to 256 KiB')
+                if not isinstance(draft, str) or len(draft.encode()) > SOURCE_LIMIT:
+                    raise ValueError('Model source must be text, up to 512 KiB')
                 if data.get('expectedBase') and data['expectedBase'] != (current['report'] or {}).get('sourceSha256'):
                     raise ValueError('The model changed while this proposal was open. Reopen the task.')
                 candidate_workspace_key = workspace_key_for(data, current, workspace_key)
                 project_views = views_for(data.get('views', presets))
                 views = exploration_views(project_views, data.get('target'), data.get('view', 'DEFAULT'))
                 baseline = data.get('baselineSource', source)
-                if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
+                if not isinstance(baseline, str) or len(baseline.encode()) > SOURCE_LIMIT:
                     raise ValueError('Invalid baseline source')
+                metadata = data.get('sourceSet', current.get('sourceSet'))
+                if metadata is not None:
+                    metadata = admit_source_set(metadata, baseline)['sourceSet']
                 baseline_report = current['baseline']
                 if not baseline_report or baseline_report['sourceSha256'] != digest(baseline):
                     # Initial baseline uses the same recipes except newly added scenarios.
@@ -279,7 +289,7 @@ def main():
                 if report.get('staticChecksPassed'):
                     require_complete_views(report, views)
                 state = {'catalogue': report.get('catalogue'), 'report': report, 'views': project_views, 'baseline': baseline_report,
-                         'workspaceKey': candidate_workspace_key}
+                         'workspaceKey': candidate_workspace_key, 'sourceSet': metadata}
                 if data.get('stage'):
                     if report.get('staticChecksPassed'):
                         transactions.stage(data.get('transactionId'), state, (data.get('expectedBase'), data.get('expectedReport')))
@@ -288,7 +298,7 @@ def main():
                     # Existing native callers retain the immediate-render protocol.
                     current.update(state if report.get('staticChecksPassed') else {'catalogue': None, 'report': None, 'views': project_views, 'baseline': baseline_report})
                     transactions.staged = transactions.previous = transactions.last_rolled_back = None
-                return self.reply(200, browser_report(report))
+                return self.reply(200, browser_report(report, metadata))
             except Exception as error:
                 return self.reply(400, {'error': str(error)})
 

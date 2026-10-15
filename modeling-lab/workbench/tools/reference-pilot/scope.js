@@ -13,7 +13,7 @@
   let draftPins=new Set(),draftHidden=new Set(),expanded=new Set(),childPages=new Map(),lastEvidence=null,workingViews=[],loadedWorkspace=null,scopeHistory=[],creatingNew=false,modelPage=0,subjectPage=0,rulePage=0,transient=false,restoreContext=null,activeViewName=null;
   function newViewName(base){const names=new Set([...saved,...workingViews].map(v=>v.name));let name=base,index=2;while(names.has(name)){name=base+' ('+index+')';index++}return name}
   const friendlyPath=value=>value.split('/').map(x=>human(x.split('::').pop())).join(' / ');
-  const displayLabel=id=>stakeholderMode()?human(label(id).split('::').pop()):label(id);
+  const displayLabel=id=>{const name=label(id),leaf=name.split('::').pop();const peers=report.elements.filter(e=>(e.qualifiedName||e.name||'').split('::').pop()===leaf);return readableName(peers.length>1?name.split('::').slice(-2).join(' / '):leaf)};
   const traceLabel=t=>t.kind==='verify'?'V · planned':t.polarity==='positive'?'S · asserted':t.polarity==='negative'?'Not satisfied · asserted':'Satisfaction polarity unknown';
   const customStatus=s=>{const kept=saved.find(v=>v.name===s.name);return 'Custom view · '+(!kept?'session view':JSON.stringify(kept.recipe)===JSON.stringify(s.recipe)&&kept.surface===s.surface?'saved recipe':'unsaved view changes')};
   function savedNavigation(){
@@ -141,7 +141,7 @@
       const t=table('Interfaces · selected component occurrences',['From / to',...cols.map(shortKey)]);
       for(const a of rows){const tr=node('tr');td(tr,sourceButton(a.elementId,shortKey(a)));for(const b of cols){const links=result.relations.filter(r=>(r.source.node===a.key&&r.target.node===b.key)||(r.kind!=='flow'&&r.source.node===b.key&&r.target.node===a.key));let content='—';if(links.length){const counts=['connection','binding','flow'].map(k=>{const count=links.filter(r=>r.kind===k).length;return count?(stakeholderMode()?`${count} ${k==='flow'?'transfer':k}${count>1?'s':''}`:`${k[0].toUpperCase()} ${count}`):''}).filter(Boolean).join(' · ');content=button(counts,event=>{lastInspectionTrigger=event.currentTarget;evidence(links,`${human(a.name)} / ${human(b.name)}`)});content.setAttribute('aria-label',`${a.key} to ${b.key}: ${counts}`)}td(tr,content,'matrix-cell')}t.body.append(tr)}container.append(t.wrap);matrixKeyboard(t.body);
     }else if(surface==='register'){
-      container.append(node('p','One row per contextual connection, binding or declared transfer. Connections have no inferred direction. Owner, ICD approval and acceptance are not supplied by this model projection.','table-caption'));
+      container.append(node('p','One row per declared interface record · connections are not directional.','table-caption'));tableHelp(container,'Owner, ICD approval and acceptance are not supplied by this model projection. Select Inspect source for the exact model statement.');
       const rows=result.relations.filter(r=>matches(relationLabel(r)+' '+r.kind+' '+r.name+' '+readableName(r.name)+' '+readableName(r.item)+' '+readablePath(r.source.node)+' '+readablePath(r.target.node)+' '+readableName(r.source.port)+' '+readableName(r.target.port),rowFilter));const t=table('Interface register',['Relationship','Endpoint A / source','Endpoint B / target','Payload / direction','Evidence']);container.append(t.wrap);
       paged(rows,t.body,(r,body)=>{const tr=node('tr');td(tr,r.kind+' · '+readableName(r.name));td(tr,endpointCard(r.source,catalog.nodes));td(tr,endpointCard(r.target,catalog.nodes));td(tr,r.kind==='flow'?readableName(r.item)+' →':'Not directional');td(tr,sourceButton(r.elementId,'Inspect source'));body.append(tr)},container);
     }else if(surface==='requirements'){
@@ -158,13 +158,13 @@
       const t=table(kind==='satisfy'?'Requirement satisfaction · scoped targets':'Requirement verification · model-wide plans',['Requirement',...ids.map(columnLabel),'Link visibility']);
       rows.forEach(r=>{const tr=node('tr');td(tr,sourceButton(r.elementId,stakeholderMode()?human(r.name||r.qualifiedName.split('::').pop()):r.qualifiedName));ids.forEach(id=>{const hits=links.filter(t=>t.column===id&&t.targetId===r.elementId);const cell=td(tr,'');if(!hits.length)cell.textContent='—';else hits.forEach(t=>cell.append(sourceButton(t.elementId,traceLabel(t))))});const global=allLinks.filter(t=>t.targetId===r.elementId),shown=links.filter(t=>t.targetId===r.elementId);td(tr,shown.length?`${shown.length} in scope${ids.length<new Set(links.map(t=>t.column)).size?' · column filter active':''}`:global.length?`${global.length} outside component scope${kind==='satisfy'&&global.some(t=>!occurrences(t).length)?' · occurrence unresolved':''}`:'No extracted '+kind+' link');t.body.append(tr)});container.append(t.wrap);
     }else if(surface==='responsibilities'){
-      container.append(node('p','Declared performance assignments in this component scope. A shared definition can appear in several occurrences. These are model assertions, not executed behaviour or inferred allocations.','table-caption'));
+      container.append(node('p','Declared performance assignments in this component scope.','table-caption'));tableHelp(container,'A shared definition can appear in several occurrences. These are model assertions, not executed behaviour or inferred allocations.');
       const rows=[];
       for(const n of result.nodes){const model=entry(n.elementId),ids=new Set((model?.semantics?.feature||[]).map(r=>r.id));for(const e of report.elements.filter(e=>e.metaclass==='PerformActionUsage'&&ids.has(e.sessionElementId))){for(const target of e.semantics?.type||[])if(target.metaclass==='ActionDefinition')rows.push({node:n,element:e,target})}}
       const filtered=rows.filter(r=>matches(r.node.key+' '+r.target.qualifiedName+' '+readablePath(r.node.key)+' '+readableName(r.target.name),rowFilter));const t=table('Responsibilities · selected component occurrences',['Component','Performs scenario','Assignment scope','Source witness']);container.append(t.wrap);paged(filtered,t.body,(r,body)=>{const tr=node('tr'),component=modelCard(r.node.key,'model occurrence'),scenario=modelCard(r.target.qualifiedName,'scenario definition');component.append(sourceButton(r.node.elementId,'Inspect component'));scenario.append(sourceButton(r.target.id,'Inspect scenario'));td(tr,component);td(tr,scenario);td(tr,assignmentScope);td(tr,sourceButton(r.element.sessionElementId,'Inspect assignment'));body.append(tr)},container);
       if(!rows.length)container.append(node('p','No performance assignments extracted in this scope. This does not establish that the system has no responsibilities.'));
     }else if(surface==='traces'){
-      container.append(node('p','Direct model-wide links with exact source witnesses. No transitive relationship is asserted. Source selection drills back to the model. Parent requirements, external design artifacts and executed evidence are not covered by this bounded extractor.','table-caption'));
+      container.append(node('p','Explicit links across the model · source witnesses available for every row.','table-caption'));tableHelp(container,'No transitive relationship is asserted. Source selection drills back to the model. Parent requirements, external design artifacts and executed evidence are not covered by this bounded extractor.');
       const rows=catalog.traces.filter(t=>matches(label(t.sourceId)+' '+label(t.targetId)+' '+t.kind+' '+traceLabel(t),rowFilter));const t=table('Traceability links · explicit model evidence',['From','Relationship','To','Source witness']);container.append(t.wrap);paged(rows,t.body,(r,body)=>{const tr=node('tr');td(tr,sourceButton(r.sourceId));td(tr,traceLabel(r));td(tr,sourceButton(r.targetId));td(tr,sourceButton(r.elementId,'Inspect statement'));body.append(tr)},container);
     }
   }
@@ -180,9 +180,12 @@
     if(scopeHistory.length)trail.append(button('Back to previous scope',()=>{const prior=scopeHistory.pop();el('perspective-name').value=prior.name;surface=prior.surface;transient=prior.transient;activeViewName=prior.activeViewName;apply(prior.recipe)}));
     const parent=result.nodes.find(n=>n.key===recipe.focus)?.parent||catalog.nodes.find(n=>n.key===recipe.focus)?.parent;
     if(parent)trail.append(button('Up one level',()=>{const n=catalog.nodes.find(n=>n.key===parent);if(n)focusNode(n)}));
-    trail.append(node('span',friendlyPath(recipe.focus)));el('scope-trail').replaceChildren(trail);
-    el('scope-summary').textContent=`${result.nodes.length} elements · ${result.relations.length} interface records · ${result.hiddenCount} elements outside view · ${result.crossing.length} crossing records not shown · ${result.filteredRelations} filtered records · ${result.warnings.length} extraction limitations`;
-    el('scope-brief').textContent=`${result.nodes.length} elements · ${result.relations.length} interface records`+(result.crossing.length?` · ${result.crossing.length} crossing records not shown`:'')+(result.filteredRelations?` · ${result.filteredRelations} filtered`:'')+(result.warnings.length?` · ${result.warnings.length} extraction limits`:'');
+    el('scope-trail').replaceChildren(...(trail.childNodes.length?[trail]:[]));
+    const selectedKeys=new Set(result.nodes.map(n=>n.key)),selectedIds=new Set([...result.nodes.map(n=>n.elementId),...result.relations.map(r=>r.elementId)]);
+    const selectedWarnings=result.warnings.filter(w=>selectedKeys.has(w.scope)||(w.elementId&&selectedIds.has(w.elementId)));
+    const otherWarnings=result.warnings.filter(w=>!selectedWarnings.includes(w));
+    el('scope-summary').textContent=`${result.nodes.length} elements · ${result.relations.length} interface records · ${result.hiddenCount} elements outside view · ${result.crossing.length} crossing records not shown · ${result.filteredRelations} filtered records · ${selectedWarnings.length} limitations tied to shown elements · ${otherWarnings.length} other model extraction limitations`;
+    el('scope-brief').textContent=`${result.nodes.length} elements · ${result.relations.length} interface records`+(result.crossing.length?` · ${result.crossing.length} crossing`:'')+(result.filteredRelations?` · ${result.filteredRelations} filtered`:'')+(selectedWarnings.length?` · ${selectedWarnings.length} scope limits`:'');
     modelBrowser();const stored=saved.find(s=>s.name===el('perspective-name').value);el('save-label').textContent=stored?(JSON.stringify(stored.recipe)===JSON.stringify(recipe)&&stored.surface===surface?'View options':'Save view changes'):'Save view';
     el('scope-brief').title='Inspect full scope and omissions';
     Array.from(el('views').children).forEach(b=>{const chosen=b.dataset.custom===el('perspective-name').value;b.classList.toggle('active',chosen);if(chosen){b.setAttribute('aria-current','true');b.title=customStatus({name:activeViewName||el('perspective-name').value,recipe,surface})}else b.removeAttribute('aria-current')});
@@ -191,11 +194,11 @@
     el('reference').disabled=true;el('canvas').replaceChildren();
     el('explanation').replaceChildren(node('div','Analytical projection · source unchanged · acceptance not assessed'));
     const details=node('details'),summary=node('summary','Scope and extraction limitations');details.append(summary,node('p','Component hierarchy is contextual expansion of resolved features, not physical inventory. Multiplicity instances, arbitrary nested connector chains, native SysML view declarations and inferred indirect links are not represented.'));
-    result.warnings.forEach(w=>details.append(node('p',w.scope+': '+w.reason)));
+    for(const [title,warnings] of [['Limitations tied to shown elements',selectedWarnings],['Other model extraction limitations',otherWarnings]]){if(!warnings.length)continue;const group=node('details');group.append(node('summary',title+' ('+warnings.length+')'));for(const w of warnings){const item=node('p',w.scope+': '+w.reason);if(w.elementId)item.append(document.createTextNode(' '),sourceButton(w.elementId,'Inspect source'));group.append(item)}details.append(group)}
     if(result.crossing.length){details.append(node('p',`${result.crossing.length} explicit relationship records cross the selected boundary.`));const list=node('ul');for(const r of result.crossing)list.append(node('li',relationLabel(r)));el('scope-summary').append(list,button('Show crossing endpoints',()=>{el('scope-info').open=false;const endpoints=[...new Set(result.crossing.flatMap(r=>[r.source.node,r.target.node]))];apply({...recipe,pinned:[...new Set([...recipe.pinned,...endpoints])],hidden:recipe.hidden.filter(k=>!endpoints.includes(k))})}));}el('explanation').append(details);
-    if(surface==='diagram'){if(result.svg){mountSvg(stakeholderMode()&&narrowReview()?result.portraitSvg||result.svg:result.svg,result.graphSources);if(stakeholderMode())storyView({viewKind:'custom',title:el('view-title').textContent,takeaway:`${result.nodes.length} components and ${result.relations.length} interface records are included in this perspective.`,discussion:'Does this selection give us the context needed to discuss the component?',scopeElementId:result.nodes.find(n=>n.key===recipe.focus)?.elementId,legendItems:['Lines: connections','Arrows: declared transfers','Dashed lines: same-value bindings','Dotted lines: component hierarchy'],rows:result.nodes.map(n=>({title:human(n.name),elementIds:[n.elementId]})),warnings:result.warnings},true)}else empty('Narrow the diagram',result.diagramError)}else controlsForTable();
+    if(surface==='diagram'){if(result.svg){mountSvg(stakeholderMode()&&narrowReview()?result.portraitSvg||result.svg:result.svg,result.graphSources);if(stakeholderMode())storyView({viewKind:'custom',title:el('view-title').textContent,takeaway:`${result.nodes.length} components and ${result.relations.length} interface records are included in this perspective.`,discussion:'Does this selection give us the context needed to discuss the component?',scopeElementId:result.nodes.find(n=>n.key===recipe.focus)?.elementId,legendItems:['Lines: connections','Arrows: declared transfers','Dashed lines: same-value bindings','Dotted lines: component hierarchy'],rows:result.nodes.map(n=>({title:human(n.name),elementIds:[n.elementId]})),warnings:selectedWarnings},true)}else empty('Narrow the diagram',result.diagramError)}else controlsForTable();
     if(surface!=='diagram')renderTableBody();
-    for(const id of ['fit','minus','plus','actual'])el(id).disabled=surface!=='diagram'||!result.svg;window.labWorkflow?.refreshState();
+    for(const id of ['fit','minus','plus','readable','actual'])el(id).disabled=surface!=='diagram'||!result.svg;window.labWorkflow?.refreshState();
   }
   el('nav-model').addEventListener('click',()=>navigation('model'));el('nav-views').addEventListener('click',()=>navigation('views'));el('model-search').addEventListener('input',()=>{modelPage=0;modelBrowser()});
   el('customize').addEventListener('click',()=>{creatingNew=true;open()});el('edit-perspective').addEventListener('click',()=>{creatingNew=false;open()});
@@ -219,7 +222,36 @@
   el('save-perspective').addEventListener('click',()=>saveView());
   el('save-view-copy').addEventListener('click',()=>saveView(true));
   window.scopeWorkbench={
-    active:()=>!!recipe,capture:()=>{restoreContext={transient,surface,activeViewName,name:el('perspective-name').value};return recipe},review:()=>result,appendNavigation:savedNavigation,export:()=>[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))],import(views){el('view-save-feedback').textContent='';saved=views;workingViews=[];scopeHistory=[];restoreContext=null;activeViewName=null;modelPage=0;childPages.clear();expanded.clear();savedNavigation()},selection(id){el('explore-selection').replaceChildren();if(!catalog)return;const choices=(result?.nodes||catalog.nodes).filter(n=>n.elementId===id);for(const n of choices.slice(0,8))el('explore-selection').append(button('Explore '+friendlyPath(n.key),()=>{focusNode(n);closeInspector()}))},refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog},
+    active:()=>!!recipe,capture:()=>{restoreContext={transient,surface,activeViewName,name:el('perspective-name').value};return recipe},review:()=>result,appendNavigation:savedNavigation,export:()=>[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))],import(views){el('view-save-feedback').textContent='';saved=views;workingViews=[];scopeHistory=[];restoreContext=null;activeViewName=null;modelPage=0;childPages.clear();expanded.clear();savedNavigation()},selection(id){
+      const panel=el('explore-selection');panel.replaceChildren();
+      const model=entry(id),basis=report,sourceSha=basis?.sourceSha256,reportSha=basis?.reportIntegrity?.reportSha256;
+      const current=()=>report===basis&&report?.sourceSha256===sourceSha&&report?.reportIntegrity?.reportSha256===reportSha;
+      if(model?.metaclass==='RequirementUsage'){
+        const seen=new Set();
+        for(const ref of Array.isArray(model.semantics?.type)?model.semantics.type:[]){
+          if(ref?.metaclass!=='RequirementDefinition'||typeof ref.id!=='string'||!ref.id.trim()||ref.id===id||seen.has(ref.id))continue;
+          const loaded=entry(ref.id);if(loaded&&loaded.metaclass!=='RequirementDefinition')continue;
+          seen.add(ref.id);
+          const action=button('Read requirement definition · '+readableName(ref.name||ref.qualifiedName||'Requirement definition'),event=>{if(current())inspect(ref.id,event.currentTarget)});
+          action.title=ref.qualifiedName||ref.id;panel.append(action);
+        }
+      }
+      if(!catalog)return;
+      const basisCatalog=catalog;
+      const choices=(result?.nodes||catalog.nodes).filter(n=>n.elementId===id);
+      for(const n of choices.slice(0,8))panel.append(button('Explore '+friendlyPath(n.key),()=>{focusNode(n);closeInspector()}));
+      const links=(Array.isArray(catalog.traces)?catalog.traces:[]).filter(t=>t.kind==='satisfy'&&(t.elementId===id||(['RequirementUsage','RequirementDefinition'].includes(model?.metaclass)&&t.targetId===id)));
+      const seenLinks=new Set();
+      for(const trace of links){
+        const keys=trace.sourceOccurrences;
+        const destinations=Array.isArray(keys)&&keys.length===1?catalog.nodes.filter(n=>n.key===keys[0]):[];
+        if(destinations.length!==1||destinations[0].elementId!==trace.sourceId){panel.append(node('p','Linked target occurrence is unavailable or ambiguous · '+traceLabel(trace)+'. No target has been inferred.','note'));continue}
+        const destination=destinations[0],identity=trace.elementId+'|'+destination.key;
+        if(seenLinks.has(identity))continue;seenLinks.add(identity);
+        const action=button('Explore linked target · '+friendlyPath(destination.key)+' · '+traceLabel(trace),()=>{if(current()&&catalog===basisCatalog){focusNode(destination);closeInspector()}});
+        action.title=destination.key;panel.append(action);
+      }
+    },refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog},
     leave(){el('canvas').closest('.workspace').classList.remove('table-mode');epoch++;recipe=null;result=null;transient=false;activeViewName=null;el('scope-surfaces').hidden=true;el('apply-scope').disabled=false},
     invalidate(){epoch++;result=null;catalog=null;el('model-tree').replaceChildren();el('customize').disabled=true;el('scope-surfaces').hidden=true;el('scope-dialog').close()},
     load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}

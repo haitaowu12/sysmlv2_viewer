@@ -5,6 +5,7 @@ connections never become flow arrows. Reference renderer remains available.
 """
 from html import escape
 import hashlib
+from presentation import display_name, element_order, resolve_target, part_features, multiplicity
 
 PARTS = {'PartUsage'}
 LINKS = {'InterfaceUsage', 'ConnectionUsage', 'BindingConnectorAsUsage', 'FlowUsage'}
@@ -24,7 +25,7 @@ def features(element, index):
 
 
 def types(element):
-    return [r.get('name', r.get('qualifiedName', '?')) for r in sem(element, 'type', [])]
+    return [display_name(r, r.get('qualifiedName') or 'Unknown type') for r in (sem(element, 'type', []) or []) if isinstance(r, dict)]
 
 
 def endpoint(reference, index):
@@ -51,6 +52,8 @@ def interface_flows(connection, index):
                 source = index.get(role.get('id'), role)
                 chain = sem(source, 'chainingFeature', [])
                 role_name = chain[0].get('name') if chain else source.get('name')
+                if not isinstance(role_name, str) or not role_name:
+                    raise ValueError('Interface flow role has no resolved name; no binding inferred')
                 ends = [index[r['id']] for r in sem(connection,'connectorEnd',[])
                         if r['id'] in index and index[r['id']].get('name') == role_name]
                 if len(ends) != 1: raise ValueError('Interface flow role is ambiguous')
@@ -87,16 +90,14 @@ def interconnection(report, target):
     if not report.get('staticChecksPassed'):
         raise ValueError('A successful static validation result is required')
     index = index_report(report)
-    matches = [e for e in report['elements'] if e.get('qualifiedName') == target]
-    if len(matches) != 1 or matches[0]['metaclass'] not in {'PartDefinition', 'PartUsage'}:
-        raise ValueError('Select exactly one part definition or usage for interconnection')
-    root = matches[0]
+    root = resolve_target(report, target, {'PartDefinition', 'PartUsage'})
     fs = features(root, index)
-    parts = sorted([e for e in fs if e['metaclass'] in PARTS], key=lambda e: e.get('name', ''))
+    parts, collections = part_features(root, index)
+    parts.sort(key=element_order)
     ports = [e for e in fs if e['metaclass'] == 'PortUsage']
     if len(parts) > 12:
         raise ValueError('Focus on a smaller scope: this sheet supports up to 12 part usages')
-    if not parts and not ports:
+    if not parts and not ports and not collections:
         raise ValueError('No source-backed parts or ports in this scope')
     part_ports = {p['sessionElementId']: [e for e in features(p, index) if e['metaclass'] == 'PortUsage'] for p in parts}
     valid_endpoints = {(p['sessionElementId'], q['sessionElementId']) for p in parts for q in part_ports[p['sessionElementId']]}
@@ -125,15 +126,15 @@ def interconnection(report, target):
     ordered = []
     remaining = {p['sessionElementId']: p for p in parts}
     while remaining:
-        key = min(remaining, key=lambda k: (len(neighbours[k] & remaining.keys()), remaining[k].get('name', '')))
+        key = min(remaining, key=lambda k: (len(neighbours[k] & remaining.keys()), element_order(remaining[k])))
         while key in remaining:
             ordered.append(remaining.pop(key))
             candidates = neighbours[key] & remaining.keys()
             if not candidates: break
-            key = min(candidates, key=lambda k: remaining[k].get('name', ''))
+            key = min(candidates, key=lambda k: element_order(remaining[k]))
     parts = ordered
-    widths = {p['sessionElementId']: max(260, 9 * len(p.get('name', '') + ': ' + ', '.join(types(p))) + 40,
-              max([9 * len(q.get('name', '') + ': ' + ', '.join(types(q))) + 40 for q in part_ports[p['sessionElementId']]] or [0])) for p in parts}
+    widths = {p['sessionElementId']: max(260, 9 * len(display_name(p) + ': ' + ', '.join(types(p))) + 40,
+              max([9 * len(display_name(q) + ': ' + ', '.join(types(q))) + 40 for q in part_ports[p['sessionElementId']]] or [0])) for p in parts}
     positions, x = {}, 90
     max_ports = max([len(v) for v in part_ports.values()] + [1])
     box_h = max(155, 70 + 60 * max_ports)
@@ -147,7 +148,7 @@ def interconnection(report, target):
         py = 135 + row * (box_h + row_gap)
         positions[p['sessionElementId']] = (px, py, widths[p['sessionElementId']], box_h)
     width = max(600, 180 + sum(column_widths) + (columns-1)*160, len(ports) * 230 + 100)
-    height = rows * box_h + (rows-1)*row_gap + 270 + max(0, len(links) - 1) * 36
+    height = rows * box_h + (rows-1)*row_gap + 270 + max(0, len(links) - 1) * 36 + (55 + 24*len(collections) if collections else 0)
     root_box = (30, 35, width - 60, height - 90)
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="xMinYMin meet"><rect width="100%" height="100%" fill="white"/>']
     marks = []
@@ -155,7 +156,7 @@ def interconnection(report, target):
         locator = e.get('qualifiedName') or ('anonymous:' + e['metaclass'] + ':' + str(e.get('line','')) + ':' + ' '.join(e.get('source','').split()))
         key = hashlib.sha256((target + '|' + context + '|' + locator).encode()).hexdigest()[:20]
         marks.append({'presentationId': key, 'elementId': e['sessionElementId'], 'usageContext': context, 'semanticLocator': locator})
-        return f'<a xlink:href="psysml:{escape(e["sessionElementId"])}" data-presentation-id="{key}"><title>{escape(e.get("qualifiedName", e["metaclass"]))}</title>'
+        return f'<a xlink:href="psysml:{escape(e["sessionElementId"])}" data-presentation-id="{key}"><title>{escape(e.get("qualifiedName") or display_name(e))}</title>'
     def text(x, y, content, anchor='start', size=14):
         return f'<text x="{x}" y="{y}" text-anchor="{anchor}" font-family="Arial,sans-serif" font-size="{size}" fill="#17242e" stroke="white" stroke-width="4" paint-order="stroke">{escape(content)}</text>'
     def box(e, rect, context):
@@ -163,25 +164,25 @@ def interconnection(report, target):
         definition = e['metaclass'] == 'PartDefinition'
         composite = sem(e, 'isComposite', False) in (True, 'true')
         dash = '' if definition or composite else ' stroke-dasharray="7 4"'
-        label = e.get('name', '?') + ((': ' + ', '.join(types(e))) if types(e) else '')
-        svg.extend([link_open(e, context), f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{0 if definition else 12}" fill="white" stroke="#263945" stroke-width="1.5"{dash}/>', text(x+w/2,y+22,'«part def»' if definition else '«part»','middle',12), text(x+w/2,y+43,label,'middle'), f'<path d="M{x} {y+54}H{x+w}" fill="none" stroke="#263945"/>', '</a>'])
+        label = display_name(e) + (multiplicity(e, index)[0] if e['metaclass'] == 'PartUsage' else '') + ((': ' + ', '.join(types(e))) if types(e) else '')
+        svg.extend([link_open(e, context), f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{0 if definition else 12}" fill="white" stroke="#263945" stroke-width="1.5"{dash}/>', text(x+w/2,y+22,'«part def»' if definition else '«part»','middle',12).replace('<text ', '<text data-component-kind="true" '), text(x+w/2,y+43,label,'middle').replace('<text ', '<text data-component-label="true" data-label-height="54" data-overview-label="'+escape(display_name(e), quote=True)+'" data-full-label="'+escape(label, quote=True)+'" data-label-width="'+str(w*.9)+'" '), f'<path d="M{x} {y+54}H{x+w}" fill="none" stroke="#263945"/>', '</a>'])
     box(root, root_box, target)
-    for p in parts: box(p, positions[p['sessionElementId']], target + '/' + p.get('name', '?'))
+    for p in parts: box(p, positions[p['sessionElementId']], target + '/' + display_name(p))
     docks = {}
     for p in parts:
         pid = p['sessionElementId']; px, py, pw, ph = positions[pid]
-        pps = sorted(part_ports[pid], key=lambda e:e.get('name',''))
+        pps = sorted(part_ports[pid], key=element_order)
         for n, port in enumerate(pps):
             key = (pid, port['sessionElementId'])
             peers = [b if a == key else a for _,a,b in links if key in (a,b)]
             right = not peers or any(peer[0] is None or positions[peer[0]][0] > px for peer in peers)
             dx = px + pw if right else px; dy = py + 88 + n*60
             docks[key] = (dx,dy,right)
-            svg.extend([link_open(port,target+'/'+p.get('name','?')), f'<rect x="{dx-6}" y="{dy-6}" width="12" height="12" fill="white" stroke="#263945" stroke-width="1.5"/>', text(dx-14 if right else dx+14,dy-14,port.get('name','?')+': '+', '.join(types(port)), 'end' if right else 'start'), '</a>'])
-    for n,port in enumerate(sorted(ports,key=lambda e:e.get('name',''))):
+            svg.extend([link_open(port,target+'/'+display_name(p)), f'<rect x="{dx-6}" y="{dy-6}" width="12" height="12" fill="white" stroke="#263945" stroke-width="1.5"/>', text(dx-14 if right else dx+14,dy-14,display_name(port)+': '+', '.join(types(port)), 'end' if right else 'start'), '</a>'])
+    for n,port in enumerate(sorted(ports,key=element_order)):
         dx = 90 + n*230; dy = root_box[1]+root_box[3]
         docks[(None,port['sessionElementId'])] = (dx,dy,False)
-        svg.extend([link_open(port,target),f'<rect x="{dx-6}" y="{dy-6}" width="12" height="12" fill="white" stroke="#263945" stroke-width="1.5"/>',text(dx+14,dy-12,port.get('name','?')+': '+', '.join(types(port))),'</a>'])
+        svg.extend([link_open(port,target),f'<rect x="{dx-6}" y="{dy-6}" width="12" height="12" fill="white" stroke="#263945" stroke-width="1.5"/>',text(dx+14,dy-12,display_name(port)+': '+', '.join(types(port))),'</a>'])
     paths=[]; flow_marks=[]; parallel_seen={}
     for n,(e,a,b) in enumerate(links):
         ax,ay,ar=docks[a]; bx,by,br=docks[b]
@@ -208,8 +209,8 @@ def interconnection(report, target):
             tx,ty=mid,max(ay,by)+26+n*18
         path='M'+' L'.join(f'{px},{py}' for px,py in points)
         binding=e['metaclass']=='BindingConnectorAsUsage'
-        label='=' if binding else e.get('name','') + ((': '+', '.join(types(e))) if types(e) else '')
-        label_lines = [label] if binding else [e.get('name', 'connection'), ', '.join(types(e))]
+        label='=' if binding else display_name(e) + ((': '+', '.join(types(e))) if types(e) else '')
+        label_lines = [label] if binding else [display_name(e, 'Unnamed connection'), ', '.join(types(e))]
         svg.extend([link_open(e,target),f'<path d="{path}" fill="none" stroke="#263945" stroke-width="{1.5 if binding else 2.5}"/>'])
         svg.extend(text(tx,ty+i*16,line,'middle',12) for i,line in enumerate(label_lines) if line)
         svg.append('</a>')
@@ -225,15 +226,20 @@ def interconnection(report, target):
             tip=(px+8*vx,py+8*vy);base=(px-6*vx,py-6*vy)
             triangle=[tip,(base[0]-6*vy,base[1]+6*vx),(base[0]+6*vy,base[1]-6*vx)]
             flow_element=index[flow['elementId']]
-            svg.extend([link_open(flow_element,target+'/'+e.get('name',e['sessionElementId'])),
+            svg.extend([link_open(flow_element,target+'/'+display_name(e)),
                 '<polygon points="'+' '.join(f'{x},{y}' for x,y in triangle)+'" fill="#263945"/>',
                 text(px,py-40,'«flow»','middle',12),text(px,py-24,flow['item'],'middle',12),'</a>'])
             flow_marks.append(dict(flow,source=list(flow['source']),target=list(flow['target']),connectionId=e['sessionElementId']))
         paths.append({'elementId':e['sessionElementId'],'endpoints':[list(a),list(b)],'points':points,'kind':e['metaclass']})
-    svg.extend([text(30,height-15,f'SysML 2.0 part/port profile · {len(parts)} part usages · {len(links)} connectors · {len(flow_marks)} flows · {len(excluded)} unsupported relations reported',size=11),'</svg>'])
+    for n, collection in enumerate(collections):
+        feature = index[collection['elementId']]
+        detail = ', '.join(collection['memberNames']) if collection['memberNames'] else collection['reason']
+        label = 'Collection feature · ' + collection['name'] + ' ' + collection['multiplicity'] + ' · ' + detail
+        svg.extend([link_open(feature, target + '/collection'), text(50, height-55-24*(len(collections)-n-1), label), '</a>'])
+    svg.extend([text(30,height-15,f'SysML 2.0 part/port profile · {len(parts)} component usages · {len(collections)} collection features · {len(links)} connectors · {len(flow_marks)} flows · {len(excluded)} unsupported relations reported',size=11),'</svg>'])
     return {'svg': ''.join(svg), 'notationProfile':'sysml-2.0-parts-ports-binary-connectors-v1',
             'authority':'Pilot EMF facts; custom presentation', 'marks':marks,'connectors':paths,
-            'flows':flow_marks,'excluded':excluded,'partBounds':positions,'layoutRows':rows,'layoutColumns':columns,'sourceUnchanged':True,
+            'flows':flow_marks,'collections':collections,'excluded':excluded,'partBounds':positions,'layoutRows':rows,'layoutColumns':columns,'sourceUnchanged':True,
             'limits':['Direct part.port chains and explicitly resolved flows on binary typed interfaces; no behavioral equivalence claim',
                       'Inherited library features excluded; source-defined inherited ports included']}
 
@@ -247,7 +253,7 @@ def exchange_summary(report, target):
         key=(a,b,flow['item'])
         group=groups.setdefault(key,{'sources':[],'connections':[],'source':a,'target':b,'item':flow['item']})
         group['sources'].append(flow['elementId']);group['connections'].append(flow['connectionId'])
-    visible=set(v for k in groups for v in k[:2]);ordered=sorted(visible,key=lambda x:index[x].get('name','') if x else '')
+    visible=set(v for k in groups for v in k[:2]);ordered=sorted(visible,key=lambda x:element_order(index[x]) if x else ('', '', -1, ''))
     width=max(620,len(ordered)*290+100);height=300+len(groups)*65
     positions={node:(60+i*290,80) for i,node in enumerate(ordered)}
     svg=[f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="xMinYMin meet"><rect width="100%" height="100%" fill="white"/><defs><marker id="summary-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#49667b"/></marker></defs>']
@@ -255,8 +261,8 @@ def exchange_summary(report, target):
     svg.append(txt(30,30,'Analytical exchange summary · '+target))
     svg.append(txt(30,53,'Ports hidden; arrows summarize explicit flows. No direct connection is asserted.'))
     for node,(x,y) in positions.items():
-        label=index[node].get('name','?') if node else 'System boundary'
-        eid=node or next(e['sessionElementId'] for e in report['elements'] if e.get('qualifiedName')==target)
+        label=display_name(index[node]) if node else 'System boundary'
+        eid=node or resolve_target(report, target)['sessionElementId']
         svg.extend([f'<a xlink:href="psysml:{escape(eid)}"><rect x="{x}" y="{y}" width="220" height="70" rx="6" fill="#f5f8fa" stroke="#49667b"/>',txt(x+15,y+30,label),txt(x+15,y+51,', '.join(types(index[node])) if node else target.split('::')[-1]),'</a>'])
     for n,group in enumerate(groups.values()):
         ax,ay=positions[group['source']];bx,by=positions[group['target']];ax+=110;bx+=110;ay+=70;by+=70
