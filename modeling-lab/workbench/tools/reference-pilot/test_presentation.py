@@ -1,7 +1,7 @@
 """Independent projection cases for names, target notation and collection counts."""
 import copy
 import unittest
-from presentation import resolve_target, part_features, cardinality, multiplicity
+from presentation import resolve_target, part_features, cardinality, multiplicity, scalar_alias_evidence
 from engineering import interconnection
 from stakeholder import project
 from view_scope import catalogue
@@ -82,6 +82,66 @@ class TargetNotationTests(unittest.TestCase):
 
 
 class ProjectionPresentationTests(unittest.TestCase):
+    def scalar_alias_fixture(self):
+        target=element('target','PartUsage','deployedModule',isComposite=True,feature=[])
+        implicit=element('implicit','Multiplicity',None)
+        value=element('alias-value','FeatureReferenceExpression',None,referent=ref(target))
+        alias=element('alias','PartUsage','displayModule','root',isComposite=False,
+                      multiplicity=ref(implicit),value=ref(value),feature=[])
+        alias['source']='ref part displayModule : Unit = Study::deployedModule;'
+        root=element('root','PartDefinition','Overview',feature=[ref(alias)])
+        return root,alias,value,target,implicit
+
+    def test_resolved_scalar_alias_retains_feature_without_promoting_unknown_cardinality(self):
+        root,alias,value,target,implicit=self.scalar_alias_fixture()
+        for retained in (False,True):
+            index={e['sessionElementId']:e for e in (root,alias,value,target)}
+            if retained:index[implicit['sessionElementId']]=implicit
+            before=copy.deepcopy(index)
+            with self.subTest(implicitRetained=retained):
+                self.assertEqual(cardinality(alias,index)['status'],'unknown')
+                proof=scalar_alias_evidence(alias,value,index)
+                self.assertEqual(proof['cardinality'],'unknown')
+                self.assertEqual(proof['evidenceIds'],['alias','alias-value','target'])
+                self.assertIn('population are not inferred',proof['reason'])
+                ordinary,collections=part_features(root,index)
+                self.assertEqual([e['sessionElementId'] for e in ordinary],['alias'])
+                self.assertEqual(collections,[])
+                self.assertEqual(index,before)
+
+    def test_direct_scalar_alias_does_not_bypass_symbolic_or_inherited_range(self):
+        for uncertain in ('alias','target'):
+            root,alias,value,target,_=self.scalar_alias_fixture()
+            symbolic=element('symbol','FeatureReferenceExpression',None,referent={'id':'population'})
+            bound=element('range','MultiplicityRange',None,bound=[ref(symbolic)])
+            index={e['sessionElementId']:e for e in (root,alias,value,target,symbolic,bound)}
+            index[uncertain]['semantics']['multiplicity']=ref(bound)
+            if uncertain=='alias':alias['source']='ref part displayModule : Unit [population] = Study::deployedModule;'
+            with self.subTest(uncertain=uncertain):
+                self.assertIsNone(scalar_alias_evidence(alias,value,index))
+                ordinary,collections=part_features(root,index)
+                self.assertEqual(ordinary,[])
+                self.assertEqual(collections[0]['cardinality'],'unknown')
+                self.assertEqual(collections[0]['memberIds'],[])
+        root,alias,value,target,_=self.scalar_alias_fixture()
+        index={e['sessionElementId']:e for e in (root,alias,value,target)}
+        alias['semantics']['ownedSubsetting']=[{'id':'inherited-cardinality'}]
+        self.assertIsNone(scalar_alias_evidence(alias,value,index))
+
+    def test_scalar_alias_requires_exact_declaration_and_unique_typed_referent(self):
+        root,alias,value,target,_=self.scalar_alias_fixture()
+        index={e['sessionElementId']:e for e in (root,alias,value,target)}
+        for source in ('ref part displayModule : Unit [population] = Study::deployedModule;',
+                       'ref part displayModule : Unit = (Study::deployedModule, Study::other);',
+                       'ref part displayModule : Unit = Study::other;',
+                       'ref part displayModule :> inherited = Study::deployedModule;',
+                       '/* ref part displayModule : Unit = Study::deployedModule; */'):
+            alias['source']=source
+            with self.subTest(source=source):self.assertIsNone(scalar_alias_evidence(alias,value,index))
+        alias['source']='ref part displayModule : Unit = Study::deployedModule;'
+        value['semantics']['referent']=[ref(target),{'id':'other'}]
+        self.assertIsNone(scalar_alias_evidence(alias,value,index))
+
     def test_symbolic_cardinality_keeps_binding_unknown_with_specific_witnesses(self):
         report=collections_fixture()
         index={e['sessionElementId']:e for e in report['elements']}
