@@ -314,7 +314,7 @@ function overviewLabels(svg,enabled){
     label.textContent=label.dataset.fullLabel;label.style.fontSize='';
     const kind=label.parentElement?.querySelector('[data-component-kind]');if(kind)kind.style.display='';
     if(!enabled)continue;const transform=label.getScreenCTM?.(),scale=transform?Math.hypot(transform.a,transform.b):0;
-    const original=Number(label.getAttribute('font-size'))||14;if(!(scale>0)||original*scale>=12)continue;
+    const original=Number(label.getAttribute('font-size'))||14,headerHeight=Number(label.dataset.labelHeight);if(!(scale>0)||original*scale>=12||!(headerHeight*scale>=16))continue;
     const size=12/scale,width=Number(label.dataset.labelWidth);label.style.fontSize=size+'px';
     let value=label.dataset.overviewLabel||label.dataset.fullLabel;label.textContent=value;
     const length=()=>label.getComputedTextLength?.()||label.textContent.length*size*.6;

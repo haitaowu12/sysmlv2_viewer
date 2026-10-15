@@ -1377,11 +1377,36 @@ describe('bounded source scope picker',()=>{
 });
 
 describe('overview identities and scrollable detail',()=>{
+  it('retains original labels and stereotypes when repeated zoom-out leaves no readable header height',async()=>{
+    const h=await harness(),originalCTM=(SVGElement.prototype as any).getScreenCTM,originalRect=SVGElement.prototype.getBoundingClientRect;
+    const currentWidth=(element:SVGElement)=>parseFloat((element.closest('svg') as SVGElement)?.style.width)||648;
+    (SVGElement.prototype as any).getScreenCTM=function(){return {a:currentWidth(this)/1800,b:0}};
+    SVGElement.prototype.getBoundingClientRect=function(){const width=currentWidth(this);return {width,height:width*500/1800,x:0,y:192,top:192,left:0,right:width,bottom:192+width*500/1800,toJSON(){}}};
+    try{
+      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><rect x="30" y="35" width="1740" height="54"/><text y="57" data-component-kind="true">«part»</text><text y="78" font-size="14" data-component-label="true" data-label-height="54" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
+      await h.answer(0,true,{views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]});
+      const label=document.querySelector<SVGTextElement>('[data-component-label]')!,kind=document.querySelector<SVGElement>('[data-component-kind]')!;
+      // The ordinary Saturn-sized overview still has room for a 12px identity.
+      expect(label.textContent).toBe('stage1');expect(parseFloat(label.style.fontSize)*.36).toBeCloseTo(12);expect(kind.style.display).toBe('none');
+      for(let i=0;i<8;i++)document.getElementById('minus')!.click();
+      expect((document.querySelector('#canvas svg') as SVGElement).style.width).toBe('160px');
+      const scale=160/1800,headerHeight=54*scale;
+      expect(headerHeight).toBeLessThan(16);expect(label.style.fontSize).toBe('');expect(label.textContent).toBe('stage1: S-IC');expect(kind.style.display).toBe('');
+      // With the original 14-unit label, its font box remains within the header;
+      // forcing a 12px screen label here would extend above the SVG itself.
+      const baseline=192+78*scale,headerTop=192+35*scale;
+      expect(baseline-14*scale).toBeGreaterThanOrEqual(headerTop);
+      expect(baseline-12).toBeLessThan(192);
+    }finally{
+      if(originalCTM)(SVGElement.prototype as any).getScreenCTM=originalCTM;else delete (SVGElement.prototype as any).getScreenCTM;
+      SVGElement.prototype.getBoundingClientRect=originalRect;
+    }
+  });
   it('retains readable component identity in overview and restores complete detail labels',async()=>{
     const h=await harness(),original=(SVGElement.prototype as any).getScreenCTM;
     (SVGElement.prototype as any).getScreenCTM=()=>({a:.3,b:0});
     try{
-      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><text data-component-kind="true">«part»</text><text font-size="14" data-component-label="true" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
+      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><text data-component-kind="true">«part»</text><text font-size="14" data-component-label="true" data-label-height="54" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
       await h.answer(0,true,{views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]});
       const label=document.querySelector<SVGTextElement>('[data-component-label]')!;
       expect(label.textContent).toBe('stage1');expect(parseFloat(label.style.fontSize)*.3).toBeGreaterThanOrEqual(12);
