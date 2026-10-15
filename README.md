@@ -2,6 +2,8 @@
 
 The maintained **[Modeling Lab](https://haitaowu12.github.io/sysmlv2_viewer/)** runs directly in the browser. Open the link, allow the modeling runtime to initialize, and choose Engineering or Stakeholder. It works from static GitHub Pages assets without a companion service or local installation.
 
+The online page starts with the complete Apollo 11 example: 28 source files, five core views and two custom views.
+
 Use **Open model** to select your own SysML v2 `.sysml` files, a source folder, or an editable `.modeling.json` project. A unique source-owned starting component opens directly; ambiguous models offer a starting-point choice. Valid source can be retained and edited even when a diagram is unsupported. Authored SysML view declarations remain in source; Lab views are generated projections. **Develop model** offers bounded guided changes; **Review changes** shows their basis and consequences before applying. Save the editable project file and keep your downloaded copy. **Export reader review** produces a frozen HTML review for sharing. Files are processed in the browser; this application does not provide shared accounts or cloud project storage.
 
 The current import format is **SysML v2 text**. SysML 1/XMI and vendor binary project files are not supported. Successful language validation does not mean every construct has a supported diagram; unsupported projections are reported explicitly.
