@@ -1,6 +1,6 @@
 """Accepted model context protocol: rejected/stale candidates never replace it."""
 import unittest
-from lab import AcceptedState
+from lab import AcceptedState, initial_payload
 
 
 def state(source, report='report', baseline='baseline'):
@@ -135,3 +135,56 @@ class RequiredNativeViews(unittest.TestCase):
         from lab import require_complete_views
         recipe = {'id': 'state', 'names': ['Study::State']}
         require_complete_views({'views': [{'id': 'state', 'targets': recipe['names'], 'svg': '<svg/>', 'stakeholderSvg': '<svg/>', 'behavior': {'warnings': ['Guard evidence unavailable']}}]}, [recipe])
+
+
+class NativeInitialPayload(unittest.TestCase):
+    def test_fresh_context_bootstraps_startup_source_views_and_empty_identity(self):
+        from lab_project import digest
+        presets = [{'id': 'startup'}]
+        current = {'report': None, 'catalogue': None, 'views': presets, 'baseline': None}
+        payload = initial_payload(current, 'startup source', presets, 'original workspace')
+        self.assertEqual(payload, {'source': 'startup source', 'presets': presets,
+            'baselineSource': 'startup source', 'baselineHash': digest('startup source'),
+            'acceptedReport': None, 'workspaceKey': 'original workspace'})
+        payload['presets'].append({'id': 'client edit'})
+        self.assertEqual(current['views'], [{'id': 'startup'}])
+
+    def test_resumed_context_retains_baseline_saved_views_and_exact_identity(self):
+        current = state('accepted hash', report='accepted report hash')
+        current['report']['source'] = 'accepted changed source'
+        current['baseline'] = {'source': 'original baseline source', 'sourceSha256': 'original baseline hash'}
+        current['views'] = [{'id': 'saved view'}]
+        payload = initial_payload(current, 'obsolete startup source', [{'id': 'obsolete'}], 'original workspace')
+        self.assertEqual(payload['source'], 'accepted changed source')
+        self.assertEqual(payload['presets'], [{'id': 'saved view'}])
+        self.assertEqual(payload['baselineSource'], 'original baseline source')
+        self.assertEqual(payload['baselineHash'], 'original baseline hash')
+        self.assertEqual(payload['acceptedReport'], {'sourceSha256': 'accepted hash', 'reportIntegrity': {'reportSha256': 'accepted report hash'}})
+        self.assertEqual(payload['workspaceKey'], 'original workspace')
+        protocol = AcceptedState(current)
+        identity = payload['acceptedReport']
+        expected = (identity['sourceSha256'], identity['reportIntegrity']['reportSha256'])
+        protocol.stage('resumed-1', state('next'), expected)
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            protocol.stage('stale-000', state('wrong'), ('obsolete hash', 'obsolete report'))
+        self.assertEqual(protocol.staged[0], 'resumed-1')
+
+    def test_bootstrap_does_not_clear_or_change_any_transaction_state(self):
+        import copy
+        current = state('old')
+        current['report']['source'] = 'old source'
+        current['baseline'] = {'source': 'baseline source', 'sourceSha256': 'baseline hash'}
+        protocol = AcceptedState(current)
+        protocol.stage('project-1', state('new'), ('old', 'report'))
+        protocol.accept({'transactionId': 'project-1', 'sourceSha256': 'new', 'reportSha256': 'report'})
+        protocol.stage('project-2', state('candidate'), ('new', 'report'))
+        protocol.rollback('project-2')
+        protocol.stage('project-3', state('candidate'), ('new', 'report'))
+        before = copy.deepcopy(protocol.__dict__)
+        staged, previous, accepted = protocol.staged, protocol.previous, protocol.current
+        initial_payload(current, 'startup', [], 'workspace')
+        self.assertEqual(protocol.__dict__, before)
+        self.assertIs(protocol.staged, staged)
+        self.assertIs(protocol.previous, previous)
+        self.assertIs(protocol.current, accepted)
+        self.assertEqual(protocol.last_rolled_back, 'project-2')

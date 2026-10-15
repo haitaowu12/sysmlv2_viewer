@@ -33,6 +33,28 @@ def require_complete_views(report, recipes):
             raise ValueError('Required view '+str(view.get('id', '(unnamed)'))+' could not be built: '+str(failure or 'A required audience drawing is missing')+'. Current project is retained.')
 
 
+def initial_payload(current, source, presets, workspace_key):
+    """Resume the accepted context without accepting or discarding any work."""
+    report = current.get('report') or {}
+    baseline = current.get('baseline') or {}
+    if not isinstance(baseline, dict):
+        baseline = {}
+    baseline_source = baseline.get('source')
+    if not isinstance(baseline_source, str):
+        baseline_source = source
+    accepted_identity = None
+    if report:
+        accepted_identity = {'sourceSha256': report.get('sourceSha256'),
+                             'reportIntegrity': {'reportSha256': report.get('reportIntegrity', {}).get('reportSha256')}}
+    payload = {'source': report.get('source', source) if report else source,
+               'presets': current.get('views', presets) if report else presets,
+               'baselineSource': baseline_source,
+               'baselineHash': baseline.get('sourceSha256') or digest(baseline_source),
+               'acceptedReport': accepted_identity, 'workspaceKey': workspace_key}
+    # A bootstrap caller receives a snapshot, never aliases into accepted state.
+    return json.loads(json.dumps(payload))
+
+
 class AcceptedState:
     """One staged candidate and one reversible acceptance; no model history cache."""
     def __init__(self, current):
@@ -165,7 +187,7 @@ def main():
                     page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
                 return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
             if self.path == '/initial':
-                return self.reply(200, {'source': source, 'presets': presets, 'workspaceKey': digest(str(args.source.resolve()))[:20]})
+                return self.reply(200, initial_payload(current, source, presets, digest(str(args.source.resolve()))[:20]))
             self.reply(404, {'error': 'Not found'})
 
         def do_POST(self):
