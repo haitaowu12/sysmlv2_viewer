@@ -1,19 +1,19 @@
 /* One local project, one language model. Project downloads are explicit user actions. */
 (() => {
-  let project=null, pending=null, importedViews=null, lastSaved=null,opening=false,preparedUrl=null;
+  let project=null, pending=null, importedViews=null, lastSaved=null,opening=false,preparedUrl=null,panelRevision=0;
   const el=id=>document.getElementById(id);
   const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n};
   const button=(label,action)=>{const n=node('button',label);n.type='button';n.addEventListener('click',action);return n};
   const dialog=node('dialog');dialog.id='project-dialog';dialog.setAttribute('aria-label','Project workspace');document.body.append(dialog);
   const toolbar=node('div');toolbar.className='project-toolbar';
-  toolbar.append(button('Project',()=>projectPanel()),button('Develop model',()=>develop()),button('Review changes',()=>review()));
+  toolbar.append(button('Open model',()=>openPanel()),button('Project',()=>projectPanel()),button('Develop model',()=>develop()),button('Review changes',()=>review()));
   document.querySelector('.app-header').insertBefore(toolbar,document.querySelector('.audience'));
   const context=node('div');context.className='project-context';context.setAttribute('aria-label','Current project');
   const projectName=node('strong','Opening study…'),fileState=node('span','Checking model…');fileState.setAttribute('role','status');fileState.id='project-file-state';
   context.append(projectName,fileState,button('Save project file',save));document.querySelector('.app-header').after(context);context.querySelector('button').disabled=true;
   const downloadPanel=node('div');downloadPanel.id='prepared-download';downloadPanel.className='note';downloadPanel.hidden=true;downloadPanel.setAttribute('aria-label','Prepared file');downloadPanel.style.cssText='min-width:0;overflow-wrap:anywhere';
   const downloadLink=node('a');downloadLink.id='prepared-file-link';downloadLink.title='Prepared snapshot. Select to download or retry; prepare a new file after further edits.';
-  downloadPanel.append(downloadLink);context.append(downloadPanel);dialog.addEventListener('close',()=>context.append(downloadPanel));
+  downloadPanel.append(downloadLink);context.append(downloadPanel);dialog.addEventListener('close',()=>context.append(downloadPanel));dialog.addEventListener('cancel',event=>{if(dialog.getAttribute('aria-busy')==='true')event.preventDefault()});
   function refreshState(){
     if(!project)return;projectName.textContent=project.title;
     const changed=stateKey(snapshot())!==lastSaved;fileState.dataset.dirty=String(changed);
@@ -21,12 +21,12 @@
     context.querySelector('button').disabled=!report||busy;document.title=project.title+' · '+el('view-title').textContent+' · Modeling lab';
   }
   document.addEventListener('input',refreshState);document.addEventListener('change',refreshState);
-  function start(title){if(downloadPanel.parentElement===dialog)context.append(downloadPanel);dialog.replaceChildren();const head=node('div');head.className='dialog-heading';head.append(node('h2',title),button('Close',()=>dialog.close()));dialog.append(head);dialog.showModal();return dialog}
+  function start(title){panelRevision++;if(downloadPanel.parentElement===dialog)context.append(downloadPanel);dialog.replaceChildren();const head=node('div');head.className='dialog-heading';head.append(node('h2',title),button('Close',()=>dialog.close()));dialog.append(head);dialog.showModal();return dialog}
   function field(parent,label,type='input',value=''){const wrap=node('label',label),input=node(type);input.setAttribute('aria-label',label);input.value=value;wrap.append(input);parent.append(wrap);return input}
   function message(parent,text){const n=node('p',text);n.className='note';parent.append(n);return n}
   function error(parent,value){
     if(parent===dialog&&!dialog.open)start('Project needs attention');const full=String(value),technical=full.includes('\n')||full.length>400;
-    let message=full;if(technical){const last=full.trim().split('\n').at(-1).replace(/^(?:Error|ValueError|RuntimeError|TypeError):\s*/,'');const viewLine=full.split('\n').find(line=>line.includes('Required view ')),view=viewLine?viewLine.split('Traceback')[0].replace(/^Error:\s*/,'').trim():'';message=last.length<=240&&!/Traceback|wasm-function|syscall\/js/.test(last)?(view&&view!==last?view+' '+last:last):'This step could not be completed. Open technical details for the runtime message.'}
+    let message=full.replace(/^(?:Error|ValueError|RuntimeError|TypeError):\s*/,'');if(technical){const last=full.trim().split('\n').at(-1).replace(/^(?:Error|ValueError|RuntimeError|TypeError):\s*/,'');const viewLine=full.split('\n').find(line=>line.includes('Required view ')),view=viewLine?viewLine.split('Traceback')[0].replace(/^(?:Error|ValueError|RuntimeError|TypeError):\s*/,'').trim():'';message=last.length<=240&&!/Traceback|wasm-function|syscall\/js/.test(last)?(view&&view!==last?view+' '+last:last):'This step could not be completed. Open technical details for the runtime message.'}
     const n=node('p',message);n.setAttribute('role','alert');n.className='workflow-error';parent.append(n);
     if(technical){const details=node('details');details.append(node('summary','Technical details'),node('pre',full));parent.append(details)}
   }
@@ -41,7 +41,7 @@
   }
   function snapshot(){if(!project)return null;return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value}}
   function stateKey(data){return JSON.stringify(data,(_key,value)=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)}
-  async function inspectSource(source,views,baselineSource){const response=await fetch('/inspect',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({source,views,baselineSource})}),data=await response.json();if(data.error)throw Error(data.error);if(!data.staticChecksPassed)throw Error('Imported model failed language validation: '+data.diagnostics.map(d=>d.message).join(' '));return data}
+  async function inspectSource(source,views,baselineSource,sourceSet){const response=await fetch('/inspect',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({source,views,baselineSource,...(sourceSet?{sourceSet}:{})})}),data=await response.json();if(data.error)throw Error(data.error);if(!data.staticChecksPassed)throw Error('Imported model failed language validation: '+data.diagnostics.map((d,index)=>{const original=data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;const location=original?.path?original.path+(original.line?':'+original.line:''):d.line?'Line '+d.line:'';return (location?location+': ':'')+d.message}).join(' '));return data}
   function filename(){return (project.title||'modeling-project').replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,70)}
   function projectPanel(){
     const p=start('Project');if(!project){message(p,'Wait for the initial model to finish validation.');return}
@@ -52,11 +52,36 @@
     p.append(button('Export recovery project',()=>{retain();recovery()}));
     p.append(button('Export model source',()=>{retain();download(filename()+'.sysml',el('source').value,'text/plain')}));
     p.append(button('Keep notes',()=>{retain();dialog.close()}),button('Save project file',()=>{retain();save()}),button('Export reader review',()=>{retain();exportReview()}));
-    const upload=field(p,'Open project file','input');upload.type='file';upload.accept='.json';
-    upload.addEventListener('change',async()=>{try{const file=upload.files[0];if(!file)return;if(file.size>8_388_608)throw Error('Project exceeds 8 MiB.');await openProject(JSON.parse(await file.text()));dialog.close()}catch(e){error(p,String(e))}});
-
-    const source=field(p,'Import model source','input');source.type='file';source.accept='.sysml';source.multiple=true;
-    const folder=field(p,'Import source folder','input');folder.type='file';folder.setAttribute('webkitdirectory','');folder.multiple=true;
+  }
+  function openPanel(){
+    const p=start('Open model');
+    message(p,'Opening a model replaces this project. Save your current project first if you want to return to it.');
+    const feedback=node('div');feedback.id='open-model-feedback';p.append(feedback);
+    let loading=false;
+    async function load(label,action,closeOnSuccess=true){
+      if(loading)return;loading=true;feedback.replaceChildren();
+      const progress=message(feedback,label);progress.setAttribute('role','status');
+      const controls=[...p.querySelectorAll('button,input,select')].map(control=>[control,control.disabled]);
+      for(const [control] of controls)control.disabled=true;p.setAttribute('aria-busy','true');
+      try{await action();if(closeOnSuccess)dialog.close();else feedback.replaceChildren()}
+      catch(e){feedback.replaceChildren();error(feedback,String(e));message(feedback,'Your current project is retained. Choose another file or try again.')}
+      finally{loading=false;p.removeAttribute('aria-busy');for(const [control,disabled] of controls)control.disabled=disabled}
+    }
+    const sources=node('section');sources.className='open-model-option';sources.append(node('h3','Open your SysML v2 model'));
+    message(sources,'Choose .sysml files or a folder. The Lab opens the main component when it is clear, or lets you choose a starting point. Authored SysML view declarations are retained in source; the Lab generates its own review views.');
+    const source=field(sources,'Choose SysML files','input');source.type='file';source.accept='.sysml';source.multiple=true;
+    const folder=field(sources,'Choose SysML folder','input');folder.type='file';folder.setAttribute('webkitdirectory','');folder.multiple=true;p.append(sources);
+    const saved=node('section');saved.className='open-model-option';saved.append(node('h3','Continue a saved project'));
+    message(saved,'A Modeling Lab project (.modeling.json) includes source, views, notes and change history.');
+    const upload=field(saved,'Open project file','input');upload.type='file';upload.accept='.modeling.json,.json';
+    upload.addEventListener('change',async()=>{const file=upload.files[0];if(!file)return;await load('Opening project · validating the model and saved views…',async()=>{if(file.size>8_388_608)throw Error('Project exceeds 8 MiB.');await openProject(JSON.parse(await file.text()))});upload.value=''});p.append(saved);
+    const example=node('details');example.className='open-model-option';example.append(node('summary','Try an example'));
+    message(example,'Apollo 11 research model · 28 source files · 7 saved views. Illustrative and incomplete; not approved engineering evidence.');
+    example.append(button('Open Apollo 11',()=>load('Opening Apollo 11 · validating the model and saved views…',async()=>{
+      const response=await fetch('./examples/apollo-11.modeling.json');
+      if(!response.ok)throw Error('The Apollo 11 example could not be loaded ('+response.status+').');
+      await openProject(await response.json());
+    })));p.append(example);
     const intake=node('div');intake.id='source-intake';p.append(intake);let ticket=0;
     const selectedFiles=async(files,directory=false)=>{
       const current=++ticket,revision=editRevision,basis=acceptedReport;intake.replaceChildren();
@@ -65,31 +90,50 @@
         const all=Array.from(files||[]),eligible=directory?all.filter(f=>f.name.toLowerCase().endsWith('.sysml')):all;if(!eligible.length)throw Error('Select at least one .sysml source file.');
         const showExcluded=()=>{if(all.length!==eligible.length){const omitted=node('details');omitted.append(node('summary',(all.length-eligible.length)+' other files not imported (.sysml only)'));const names=node('ul');for(const f of all.filter(f=>!eligible.includes(f)))names.append(node('li',f.webkitRelativePath||f.name));omitted.append(names);intake.append(omitted)}};
         const checking=message(intake,'Checking '+eligible.length+' source file'+(eligible.length===1?'':'s')+'…');checking.setAttribute('role','status');intake.setAttribute('aria-busy','true');showExcluded();
-        const prepared=await window.sourceSetIntake.fromFiles(eligible);const discovered=await inspectSource(prepared.source);
+        const prepared=await window.sourceSetIntake.fromFiles(eligible);const discovered=await inspectSource(prepared.source,undefined,undefined,prepared.sourceSet);
         if(current!==ticket)return;if(revision!==editRevision||basis!==acceptedReport)throw Error('Current work changed during import. Select the source files again.');
-        const targets=sourceTargets(discovered);if(!targets.length)throw Error('The source is valid, but no supported drawing scope was found. Current project is retained.');intake.replaceChildren();
+        const targets=sourceTargets(discovered,prepared.source);intake.replaceChildren();
+        const openSource=async(chosen,withoutDiagram=false)=>{if(current!==ticket)throw Error('Source selection was cancelled. Choose files again.');if(revision!==editRevision||basis!==acceptedReport)throw Error('Current work changed. Select the source files again.');const title=chosen?human(chosen.name||chosen.qualifiedName):prepared.sourceSet.files.length===1?prepared.sourceSet.files[0].path.split('/').at(-1).replace(/\.sysml$/i,''):'Imported model';await openProject({schemaVersion:1,id:crypto.randomUUID(),title,brief:'',questions:'',source:prepared.source,baselineSource:prepared.source,baselineHash:prepared.sourceSet.assembledSourceSha256,sourceSet:prepared.sourceSet,views:withoutDiagram?[]:[sourceRecipe(chosen)],customViews:[],history:[]});lastSaved=null;refreshState()};
+        const offerSourceOnly=()=>{if(intake.querySelector('.source-only-open'))return;message(intake,'The source is valid. A supported diagram is a separate step; you can open the model to browse elements and edit source.');const fallback=button('Open model without diagram',()=>load('Opening the validated model without a diagram…',()=>openSource(null,true)));fallback.className='source-only-open';intake.append(fallback)};
+        const openWithDiagram=async chosen=>{try{await openSource(chosen)}catch(e){offerSourceOnly();throw e}};
+        if(!targets.length){offerSourceOnly();return}
+        const initialTarget=sourceInitialTarget(targets);if(initialTarget){const progress=feedback.querySelector('[role=status]');if(progress)progress.textContent='Opening '+human(initialTarget.name||initialTarget.qualifiedName)+' · validating its view…';await openWithDiagram(initialTarget);dialog.close();return}
+        message(intake,'Choose what you want to work on first; the rest of the model stays available.');
         const details=node('details');details.append(node('summary',prepared.sourceSet.files.length+' source file'+(prepared.sourceSet.files.length===1?'':'s')));const list=node('ul');for(const file of prepared.sourceSet.files)list.append(node('li',file.path));details.append(list);intake.append(details);
         showExcluded();
-        const find=field(intake,'Find a model scope to open','input');find.type='search';find.placeholder='Search names or model paths…';
-        const target=select(intake,'Open at model scope',[]),count=message(intake,''),pages=node('div');count.id='intake-scope-count';count.setAttribute('role','status');pages.id='intake-scope-pages';pages.className='choice-pagination';pages.style.display='flex';intake.append(pages);let page=0;
+        const find=field(intake,'Find a component or behavior','input');find.type='search';find.placeholder='Search by name, e.g. pump or inspection…';
+        const target=select(intake,'Starting point',[]),count=message(intake,''),pages=node('div');count.id='intake-scope-count';count.setAttribute('role','status');pages.id='intake-scope-pages';pages.className='choice-pagination';pages.style.display='flex';intake.append(pages);let page=0;
         function choices(){
-          const state=sourceScopePage(targets,find.value,page);page=state.page;target.replaceChildren();const blank=node('option','Choose a model scope…');blank.value='';target.append(blank);
+          const state=sourceScopePage(targets,find.value,page);page=state.page;target.replaceChildren();const blank=node('option','Choose a starting point…');blank.value='';target.append(blank);
           for(const e of state.items){const path=e.qualifiedName.split('::'),leaf=human(e.name||path.pop()),namespace=e.name?path.slice(0,-1).join('::'):path.join('::'),context=namespace.length>96?'…'+namespace.slice(-95):namespace;const option=node('option',leaf+(context?' · '+context:'')+' · '+(e.metaclass.endsWith('Definition')?'definition':'model usage'));option.value=e.qualifiedName;option.title=e.qualifiedName;target.append(option)}
-          count.textContent=state.total?'Showing '+(page*40+1)+'–'+(page*40+state.items.length)+' of '+state.total+(state.defaultDefinitions?' source-backed part definitions. Search all '+targets.length+' scopes.':' matching model scopes.'):'No matching model scopes.';
-          pages.replaceChildren();pages.hidden=state.total<=40;if(!pages.hidden){const previous=button('Previous scopes',()=>{page--;choices()}),next=button('Next scopes',()=>{page++;choices()});previous.disabled=page===0;next.disabled=(page+1)*40>=state.total;pages.append(previous,next)}
+          count.textContent=state.total?'Showing '+(page*40+1)+'–'+(page*40+state.items.length)+' of '+state.total+(state.defaultDefinitions?' components. Search all '+targets.length+' model elements.':' matching model elements.'):'No matching components or behaviors.';
+          pages.replaceChildren();pages.hidden=state.total<=40;if(!pages.hidden){const previous=button('Previous results',()=>{page--;choices()}),next=button('Next results',()=>{page++;choices()});previous.disabled=page===0;next.disabled=(page+1)*40>=state.total;pages.append(previous,next)}
           target.title='';open.disabled=true;
         }
 
-        let submitting=false;const cancel=button('Cancel import',()=>{if(submitting)return;ticket++;intake.replaceChildren();source.value='';folder.value=''});
-        const open=button('Open selected model',async()=>{if(submitting||!target.value)return;submitting=true;open.disabled=true;cancel.disabled=true;target.disabled=true;find.disabled=true;pages.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(current!==ticket)throw Error('Source selection was cancelled. Choose files again.');if(revision!==editRevision||basis!==acceptedReport)throw Error('Current work changed. Select the source files again.');const chosen=targets.find(e=>e.qualifiedName===target.value),recipe=sourceRecipe(chosen);await openProject({schemaVersion:1,id:crypto.randomUUID(),title:human(chosen.name||chosen.qualifiedName),brief:'',questions:'',source:prepared.source,baselineSource:prepared.source,baselineHash:prepared.sourceSet.assembledSourceSha256,sourceSet:prepared.sourceSet,views:[recipe],customViews:[],history:[]});lastSaved=null;refreshState();dialog.close()}catch(e){error(intake,String(e))}finally{submitting=false;open.disabled=!target.value;cancel.disabled=false;target.disabled=false;find.disabled=false;const total=sourceScopePage(targets,find.value,page).total;pages.querySelectorAll('button').forEach((b,i)=>b.disabled=i===0?page===0:(page+1)*40>=total)}});open.disabled=true;target.addEventListener('change',()=>{open.disabled=submitting||!target.value;target.title=target.value});find.addEventListener('input',()=>{page=0;choices()});choices();
+        const cancel=button('Cancel import',()=>{if(loading)return;ticket++;intake.replaceChildren();source.value='';folder.value=''});
+        const open=button('Open selected model',()=>{if(!target.value)return;return load('Opening selected model · validating the model and view…',()=>openWithDiagram(targets.find(e=>e.qualifiedName===target.value)))});open.disabled=true;target.addEventListener('change',()=>{open.disabled=loading||!target.value;target.title=target.value});find.addEventListener('input',()=>{page=0;choices()});choices();
         intake.append(open,cancel);
       }catch(e){if(current===ticket){intake.querySelector('[role=status]')?.remove();error(intake,String(e).replace('The project baseline does not pass browser validation.','The selected source files do not pass validation. Your current project was retained.'))}}finally{if(current===ticket)intake.removeAttribute('aria-busy')}
     };
-    source.addEventListener('change',()=>selectedFiles(source.files));folder.addEventListener('change',()=>selectedFiles(folder.files,true));
+    source.addEventListener('change',()=>load('Checking selected SysML files…',()=>selectedFiles(source.files),false));folder.addEventListener('change',()=>load('Checking selected SysML folder…',()=>selectedFiles(folder.files,true),false));
 
   }
-  function sourceTargets(data){const kinds=new Set(['PartDefinition','PartUsage','ActionDefinition','ActionUsage','PerformActionUsage','StateDefinition','StateUsage','ExhibitStateUsage','RequirementDefinition','RequirementUsage','VerificationCaseDefinition','VerificationCaseUsage']);const seen=new Set();return(data.elements||[]).filter(e=>e.qualifiedName&&kinds.has(e.metaclass)&&!seen.has(e.qualifiedName)&&seen.add(e.qualifiedName)).sort((a,b)=>a.qualifiedName.localeCompare(b.qualifiedName))}
-  function sourceScopePage(targets,query='',page=0){const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean),definitions=targets.filter(e=>e.metaclass==='PartDefinition'&&Number.isInteger(e.line)&&e.line>0&&typeof e.source==='string'&&e.source.trim()),defaultDefinitions=!terms.length&&definitions.length>0,pool=defaultDefinitions?definitions:targets,matched=terms.length?pool.filter(e=>{const haystack=(e.qualifiedName+' '+(e.name||'')+' '+human(e.name||e.qualifiedName)+' '+e.metaclass).toLowerCase();return terms.every(term=>haystack.includes(term))}):pool,total=matched.length,last=Math.max(0,Math.ceil(total/40)-1),current=Math.max(0,Math.min(page,last));return{items:matched.slice(current*40,current*40+40),total,page:current,defaultDefinitions}}
+  function sourceWitness(e,source){
+    if(!Number.isInteger(e.line)||e.line<1||typeof e.source!=='string'||!e.source.trim())return false;
+    if(typeof source!=='string')return true;
+    const lines=source.replace(/\r\n/g,'\n').split('\n'),excerpt=e.source.replace(/\r\n/g,'\n').trim();
+    if(e.line>lines.length)return false;
+    const end=Number.isInteger(e.endLine)&&e.endLine>=e.line?e.endLine:e.line+excerpt.split('\n').length;
+    return lines.slice(Math.max(0,e.line-2),end).join('\n').includes(excerpt);
+  }
+  function sourceTargets(data,source){const kinds=new Set(['PartDefinition','PartUsage','ActionDefinition','ActionUsage','PerformActionUsage','StateDefinition','StateUsage','ExhibitStateUsage','RequirementDefinition','RequirementUsage','VerificationCaseDefinition','VerificationCaseUsage']);const seen=new Set();return(data.elements||[]).filter(e=>e.qualifiedName&&kinds.has(e.metaclass)&&(source===undefined||sourceWitness(e,source))&&!seen.has(e.qualifiedName)&&seen.add(e.qualifiedName)).sort((a,b)=>a.qualifiedName.localeCompare(b.qualifiedName))}
+  function sourceStartingPoints(targets){
+    const own=targets.filter(e=>sourceWitness(e)),roots=own.filter(e=>e.metaclass==='PartUsage'&&['Package','Namespace'].includes(e.semantics?.owner?.metaclass));
+    const definitions=own.filter(e=>e.metaclass==='PartDefinition');return {roots,definitions,preferred:roots.length||definitions.length?[...roots,...definitions]:own};
+  }
+  function sourceInitialTarget(targets){const {roots,definitions}=sourceStartingPoints(targets);return roots.length===1?roots[0]:roots.length===0&&definitions.length===1?definitions[0]:null}
+  function sourceScopePage(targets,query='',page=0){const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean),preferred=sourceStartingPoints(targets).preferred,defaultDefinitions=!terms.length&&preferred.length>0,pool=defaultDefinitions?preferred:targets,matched=terms.length?pool.filter(e=>{const haystack=(e.qualifiedName+' '+(e.name||'')+' '+human(e.name||e.qualifiedName)+' '+e.metaclass).toLowerCase();return terms.every(term=>haystack.includes(term))}):pool,total=matched.length,last=Math.max(0,Math.ceil(total/40)-1),current=Math.max(0,Math.min(page,last));return{items:matched.slice(current*40,current*40+40),total,page:current,defaultDefinitions}}
   function sourceRecipe(e){const behavior=/^(Action|PerformAction|State|ExhibitState)/.test(e.metaclass);return{id:'overview',names:[e.qualifiedName],view:/^(State|ExhibitState)/.test(e.metaclass)?'STATE':behavior?'ACTION':e.metaclass.startsWith('Part')?'INTERCONNECTION':'TREE',styles:[],...(behavior?{renderer:'behavior'}:e.metaclass.startsWith('Part')?{renderer:'engineering'}:{})}}
   async function validateCandidate(data,payload,future){
     const next=structuredClone(future||(project?snapshot():{schemaVersion:1,id:crypto.randomUUID(),title:'System study',brief:'',questions:'',baselineSource:initial.baselineSource??initial.source,views:initial.presets,customViews:[],history:[],...(initial.sourceSet?{sourceSet:initial.sourceSet}:{})}));
@@ -110,7 +154,7 @@
     catch(e){error(dialog,String(e)+' Your entered work is retained. Copy the affected notes or source before shortening them.');status('Recovery file not exported · entered work retained','error')}
   }
   function admitFields(data){
-    if(!data||data.schemaVersion!==1||typeof data.source!=='string'||typeof data.baselineSource!=='string'||!Array.isArray(data.views)||!data.views.length||data.views.length>32||!Array.isArray(data.customViews)||data.customViews.length>30||!Array.isArray(data.history)||data.history.length>100)throw Error('Unsupported project file. Expected a complete Modeling Lab project.');
+    if(!data||data.schemaVersion!==1||typeof data.source!=='string'||typeof data.baselineSource!=='string'||!Array.isArray(data.views)||data.views.length>32||!Array.isArray(data.customViews)||data.customViews.length>30||!Array.isArray(data.history)||data.history.length>100)throw Error('Unsupported project file. Expected a complete Modeling Lab project.');
     for(const key of ['title','brief','questions'])if(typeof data[key]!=='string'||data[key].length>20000)throw Error(({title:'Project name',brief:'Brief and source basis',questions:'Assumptions, decisions and open questions'})[key]+' must contain at most 20,000 characters.');
     if([data.source,data.baselineSource].some(value=>new TextEncoder().encode(value).length>524288))throw Error('Model source and baseline must each fit within 512 KiB.');
     if(new TextEncoder().encode(JSON.stringify(data,null,2)+'\n').length>8_388_608)throw Error('Project exceeds the supported 8 MiB file size.');
@@ -122,7 +166,7 @@
   async function sourceHash(source){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(source)))].map(n=>n.toString(16).padStart(2,'0')).join('')}
   function admitViews(views,label){
     const ids=new Set();
-    if(!Array.isArray(views)||views.length<1||views.length>32)throw Error(label+' needs 1–32 view recipes.');
+    if(!Array.isArray(views)||views.length>32)throw Error(label+' supports 0–32 view recipes.');
     for(const v of views){
       if(!record(v)||typeof v.id!=='string'||!/^[a-z][a-z0-9-]{0,63}$/.test(v.id)||ids.has(v.id)||!Array.isArray(v.names)||v.names.length!==1||!text(v.names[0],500)||!v.names[0]||!['DEFAULT','TREE','INTERCONNECTION','ACTION','STATE','SEQUENCE','MIXED'].includes(v.view)||!['pilot','engineering','summary','behavior'].includes(optional(v.renderer,'pilot'))||!Array.isArray(optional(v.styles,[]))||(optional(v.styles,[])).some(s=>!['LR','TB','POLYLINE','ORTHOLINE'].includes(s)))throw Error(label+' contains an unsupported or repeated view recipe.');
       ids.add(v.id);
@@ -171,28 +215,41 @@
     opening=true;status('Opening project · checking model and baseline…');dialog.setAttribute('aria-busy','true');
     try{
       await admitRecords(candidate);
-      await inspectSource(checkedSource,candidate.views,candidate.baselineSource);
+      await inspectSource(checkedSource,candidate.views,candidate.baselineSource,candidate.sourceSet);
       if(revision!==editRevision||basis!==acceptedReport)throw Error('Draft changed while opening the project. Current work is retained.');
       const accepted=await render(false,{source:checkedSource,project:candidate,payload:{views:candidate.views,baselineSource:candidate.baselineSource,workspaceKey:candidate.id,sourceSet:candidate.sourceSet??null},commit(){
         project=candidate;delete project.recovery;pending=null;importedViews=candidate.customViews;initial.workspaceKey=project.id;initial.source=project.baselineSource;
         el('source').value=checkedSource;el('audience').value=data.audience==='stakeholder'?'stakeholder':'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.leave();el('view-search').value='';el('model-search').value='';
       }});
-      if(!accepted){const reason=el('diagnostics').textContent.trim();throw Error('Project was not opened. Current project and draft are retained.'+(reason?'\n'+reason:''))}
+      if(!accepted){const reason=(el('diagnostics').dataset.runtimeError||el('diagnostics').textContent).trim();throw Error('Project was not opened. Current project and draft are retained.'+(reason?'\n'+reason:''))}
       if(recoveryDraft!==null){el('source').value=recoveryDraft;invalidateDraft();el('editor').open=true;lastSaved=null;status('Recovery draft and project restored · validate the draft before normal saving','valid')}else lastSaved=stateKey(snapshot());refreshState();
     }catch(error){status('Project not opened · current project retained','error');throw error}
     finally{opening=false;dialog.removeAttribute('aria-busy')}
   }
-  function supportedTargets(operation){const kinds={minimum:['RequirementUsage','RequirementDefinition'],component:['PartDefinition','PartUsage','Package'],scenario:['Package'],responsibility:['PartDefinition','PartUsage']}[operation];return report.elements.filter(e=>e.qualifiedName&&kinds.includes(e.metaclass)&&(operation!=='minimum'||(/\bdoc\s*\/\*/.test(e.source||'')&&(e.source.match(/>=\s*-?\d+/g)||[]).length===1))&&(!['component','responsibility'].includes(operation)||e.source?.trim().endsWith('}'))).map(e=>[e.qualifiedName,human(e.name||e.qualifiedName)+' · '+e.qualifiedName])}
-  function develop(){
+  function supportedTargets(operation){const kinds={component:['PartDefinition','PartUsage','Package'],scenario:['Package'],responsibility:['PartDefinition','PartUsage']}[operation];return report.elements.filter(e=>e.qualifiedName&&kinds.includes(e.metaclass)&&sourceWitness(e,report.source)&&(!['component','responsibility'].includes(operation)||e.source?.trim().endsWith('}'))).map(e=>[e.qualifiedName,human(e.name||e.qualifiedName)+' · '+e.qualifiedName])}
+  async function develop(){
     if(!report||busy){start('Develop model');message(dialog,'Validate the current model before developing it.');return}
-    const p=start('Develop model');message(p,'Make a small, explicit engineering change. Review and validate it before applying it to this project.');
-    const task=select(p,'Engineering task',[['minimum','Revise an integer requirement minimum'],['scenario','Add an ordered operational scenario'],['responsibility','Assign a scenario to a component'],['component','Add a component']]);
+    const p=start('Develop model'),panel=panelRevision,revision=report.sourceSha256,source=report.source,projectId=project.id;
+    message(p,'Make a small, explicit engineering change. Review and validate it before applying it to this project.');
+    const checking=message(p,'Checking supported requirement edits…');checking.setAttribute('role','status');let minimumOptions=[];
+    try{
+      const response=await fetch('/prepare',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({operation:'minimum-options',baseSourceSha256:revision})}),data=await response.json();
+      if(panel!==panelRevision||!p.open)return;
+      if(report?.sourceSha256!==revision||report.source!==source||project.id!==projectId)throw Error('The model changed. Reopen Develop model to use the current revision.');
+      if(data.error)throw Error(data.error);
+      if(data.sourceSha256!==revision||!Array.isArray(data.options)||data.options.some(option=>!record(option)||typeof option.target!=='string'||!report.elements.some(e=>e.qualifiedName===option.target)||!Number.isInteger(option.currentValue)||typeof option.statement!=='string'))throw Error('Supported requirement edits could not be checked for this model revision.');
+      minimumOptions=data.options;
+    }catch(e){if(panel!==panelRevision||!p.open)return;error(p,String(e)+' Requirement minimum tasks are unavailable. Use the source editor for other requirement constructs.')}
+    checking.remove();
+    if(!minimumOptions.length)message(p,'No supported integer minimum task is available for this model. Other requirement changes use the source editor.');
+    p.append(button('Edit SysML source',()=>{dialog.close();el('editor').open=true;syncEditor();el('source').focus()}));
+    const task=select(p,'Engineering task',[...(minimumOptions.length?[['minimum','Revise an integer requirement minimum']]:[]),['scenario','Add an ordered operational scenario'],['responsibility','Assign a scenario to a component'],['component','Add a component']]);
     const fields=node('div');fields.className='workflow-fields';p.append(fields);
     function form(){
-      pending=null;fields.replaceChildren();const op=task.value,target=select(fields,'In this scope',supportedTargets(op));if(selected?.qualifiedName&&[...target.options].some(o=>o.value===selected.qualifiedName))target.value=selected.qualifiedName;
+      pending=null;fields.replaceChildren();const op=task.value,target=select(fields,'In this scope',op==='minimum'?minimumOptions.map(option=>[option.target,human(report.elements.find(e=>e.qualifiedName===option.target)?.name||option.target)+' · '+option.target]):supportedTargets(op));if(selected?.qualifiedName&&[...target.options].some(o=>o.value===selected.qualifiedName))target.value=selected.qualifiedName;
       let value,statement,name,description,steps,action;
-      if(op==='minimum'){value=field(fields,'Required minimum');value.type='number';value.min='0';value.max='1000000';statement=field(fields,'Complete requirement statement','textarea');const fill=()=>{const e=report.elements.find(e=>e.qualifiedName===target.value);statement.value=e?.source?.match(/\bdoc\s*\/\*([\s\S]*?)\*\//)?.[1].trim()||'';value.value=e?.source?.match(/>=\s*(-?\d+)/)?.[1]||''};fill();target.addEventListener('change',fill)}
-      else{name=field(fields,'Short model name');name.maxLength=64;name.placeholder=op==='component'?'maintenancePanel':op==='scenario'?'reviewAlarm':'performAlarmReview';const nameHint=message(fields,'Start with a letter or underscore; use letters, numbers or underscores, with no spaces (up to 64 characters). Display labels add spaces automatically.');nameHint.id='model-name-hint';name.setAttribute('aria-describedby',nameHint.id);if(op==='responsibility')action=select(fields,'Scenario to perform',report.elements.filter(e=>e.metaclass==='ActionDefinition'&&e.qualifiedName).map(e=>[e.qualifiedName,human(e.name)+' · '+e.qualifiedName]));else description=field(fields,'Engineering description','textarea');if(op==='scenario'){steps=field(fields,'Ordered steps: shortName | engineering description, one per line','textarea');steps.placeholder='request | Operator requests service\nrespond | System responds to the request';message(fields,'This creates an abstract declared sequence. Conditions, timing, safeguards and successful execution are not inferred.')}}
+      if(op==='minimum'){value=field(fields,'Required minimum');value.type='number';value.min='0';value.max='1000000';statement=field(fields,'Complete requirement statement','textarea');const fill=()=>{const option=minimumOptions.find(option=>option.target===target.value);statement.value=option?.statement||'';value.value=option?.currentValue??''};fill();target.addEventListener('change',fill)}
+      else{name=field(fields,'Short model name');name.maxLength=64;name.placeholder=op==='component'?'maintenancePanel':op==='scenario'?'reviewAlarm':'performAlarmReview';const nameHint=message(fields,'Start with a letter or underscore; use letters, numbers or underscores, with no spaces (up to 64 characters). Display labels add spaces automatically.');nameHint.id='model-name-hint';name.setAttribute('aria-describedby',nameHint.id);if(op==='responsibility')action=select(fields,'Scenario to perform',report.elements.filter(e=>e.metaclass==='ActionDefinition'&&e.qualifiedName&&sourceWitness(e,report.source)).map(e=>[e.qualifiedName,human(e.name)+' · '+e.qualifiedName]));else description=field(fields,'Engineering description','textarea');if(op==='scenario'){steps=field(fields,'Ordered steps: shortName | engineering description, one per line','textarea');steps.placeholder='request | Operator requests service\nrespond | System responds to the request';message(fields,'This creates an abstract declared sequence. Conditions, timing, safeguards and successful execution are not inferred.')}}
       const reason=field(fields,'Source quotation or decision supporting this change','textarea');
       message(fields,'Edits to a shared definition affect all its uses. Unsupported constructs remain available in the source editor.');
       fields.append(button('Prepare change',async()=>{
@@ -209,9 +266,9 @@
   function proposalPanel(){
     const p=start('Review proposed change');p.append(node('p',pending.proposal.description));message(p,'Basis: '+pending.proposal.reason);
     for(const change of pending.changeSummary||[]){p.append(node('p',change.text),node('p',change.consequence))}
-    message(p,'Potentially affected information follows explicit model references. This is not a complete causal or safety impact analysis.');
+    const impact=node('details');impact.append(node('summary','Linked model elements'));message(impact,'These are explicit model references, not a complete causal or safety impact analysis.');
     const target=report.elements.find(e=>e.qualifiedName===pending.proposal.target);const linked=target?report.elements.filter(e=>e!==target&&e.qualifiedName&&/^(Part|Action|Requirement|VerificationCase|Interface|Connection|Perform)/.test(e.metaclass)&&Object.entries(e.semantics||{}).some(([role,value])=>!/^(owner|ownedElement|ownedFeature|feature|inheritedFeature)$/.test(role)&&JSON.stringify(value).includes(target.sessionElementId))):[];
-    const list=node('ul');for(const e of linked.slice(0,20))list.append(node('li',e.qualifiedName||e.name||e.metaclass));p.append(list);if(linked.length>20)message(p,`${linked.length-20} additional references omitted; steward review required.`);if(!linked.length)message(p,'No direct references extracted by this bounded check; absence is not proof of no impact.');
+    const list=node('ul');for(const e of linked.slice(0,20))list.append(node('li',e.qualifiedName||e.name||e.metaclass));impact.append(list);p.append(impact);if(linked.length>20)message(impact,`${linked.length-20} additional references omitted; steward review required.`);if(!linked.length)message(impact,'No direct references extracted by this bounded check; absence is not proof of no impact.');
     const details=node('details');details.append(node('summary','Inspect exact source change'),node('pre',pending.proposal.before+'\n→\n'+pending.proposal.after));p.append(details);
     p.append(button('Apply to project',async()=>{if(!report||report.sourceSha256!==pending.proposal.baseSourceSha256){error(p,'The model changed. Reopen the task.');return}const proposed=pending,entry={...proposed.proposal,baseSource:proposed.baseSource,baseViews:proposed.baseViews,...(proposed.baseSourceSet?{baseSourceSet:proposed.baseSourceSet}:{})},future={...snapshot(),source:proposed.source,views:proposed.views,history:[...project.history,entry].slice(-100)};try{admitFields(future)}catch(e){error(p,String(e));return}const accepted=await render(false,{source:proposed.source,project:future,payload:{views:proposed.views,baselineSource:project.baselineSource,workspaceKey:initial.workspaceKey,sourceSet:project.sourceSet??null},validate(data){if(data.source!==proposed.source||data.sourceSha256!==proposed.proposal.candidateSourceSha256)throw Error('Validated result does not match the prepared change.');},commit(){project.views=proposed.views;project.history.push(entry);if(project.history.length>100)project.history.shift();el('source').value=proposed.source;pending=null;}});if(accepted){dialog.close();el('editor').open=false;syncEditor()}}),button('Discard proposal',()=>{pending=null;dialog.close()}));
   }
@@ -279,10 +336,12 @@
     onReport(data){
       if(!project)project={schemaVersion:1,id:initial.acceptedReport&&typeof initial.workspaceKey==='string'&&initial.workspaceKey.trim()&&initial.workspaceKey.length<=200?initial.workspaceKey:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.baselineSource??initial.source,baselineHash:hash(initial.baselineHash)?initial.baselineHash:(!initial.baselineSource||initial.baselineSource===initial.source?data.sourceSha256:undefined),views:initial.presets,history:[],...(initial.sourceSet?{sourceSet:initial.sourceSet}:{})};
       if(data.viewRecipes)project.views=data.viewRecipes;
+      const authored=(data.elements||[]).filter(e=>['ViewDefinition','ViewUsage'].includes(e.metaclass)&&sourceWitness(e,data.source));
+      el('source-view-note').hidden=!authored.length;el('source-view-note').textContent=authored.length?authored.length+' source view declaration'+(authored.length===1?'':'s')+' retained in source. Displayed views are Lab projections.':'';
       if(importedViews){window.scopeWorkbench.import(importedViews);importedViews=null}
       toolbar.querySelectorAll('button').forEach(b=>b.disabled=false);refreshState();
     },
-    snapshot,openProject,refreshState,recovery,validateCandidate,sourceSetStatus,sourceTargets,sourceScopePage,sourceRecipe,
+    snapshot,openProject,refreshState,recovery,validateCandidate,sourceSetStatus,sourceTargets,sourceInitialTarget,sourceScopePage,sourceRecipe,
     capture(){return {project:structuredClone(project),pending:structuredClone(pending),lastSaved,source:el('source').value,audience:el('audience').value,initialSource:initial.source,workspaceKey:initial.workspaceKey,customViews:window.scopeWorkbench.export()}},
     restore(state){if(!state)return;project=state.project;pending=state.pending;lastSaved=state.lastSaved;importedViews=null;el('source').value=state.source;el('audience').value=state.audience;initial.source=state.initialSource;initial.workspaceKey=state.workspaceKey;document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.import(state.customViews);refreshState()},
     dirty(){return project&&stateKey(snapshot())!==lastSaved},

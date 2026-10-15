@@ -104,6 +104,56 @@ class StakeholderTests(unittest.TestCase):
         self.assertNotIn('ActionUsage',row['body'])
         self.assertEqual(next(node for node in p['nodes'] if node['id']=='entryMembership')['role'],'boundary')
         self.assertIn('Entry declaration',graph_dot(p))
+        self.assertEqual(p['scope'],'P::States')
+        self.assertEqual(p['scopeElementId'],'root')
+        self.assertEqual(p['edges'][0]['entryDeclaration'],'entryMembership')
+        self.assertEqual(p['takeaway'],'0 declared state transitions and 1 state are shown. 1 initial entry succession shown separately.')
+
+    def test_legacy_state_counts_only_states_and_transitions_not_entry_witnesses(self):
+        root=element('root','StateDefinition','States')
+        membership=element('entryMembership','StateSubactionMembership','entry','root')
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']=ref(membership)
+        states=[element(name,'StateUsage',name,'root') for name in ('waiting','moving','holding')]
+        initial=element('initial','SuccessionAsUsage','initial','root',source=ref(membership),target=ref(states[0]))
+        transitions=[element('change'+str(i),'TransitionUsage','change'+str(i),'root',
+                             source=ref(states[a]),target=ref(states[b]))
+                     for i,(a,b) in enumerate(((0,1),(0,2),(2,0)))]
+        report={'staticChecksPassed':True,'elements':[root,membership,*states,initial,*transitions]}
+        before=copy.deepcopy(report)
+        projection=project(report,'P::States')
+        self.assertEqual(projection['scope'],'P::States')
+        self.assertEqual(projection['scopeElementId'],'root')
+        self.assertEqual(len(projection['nodes']),4)
+        self.assertEqual(len(projection['edges']),4)
+        self.assertEqual(projection['takeaway'],'3 declared state transitions and 3 states are shown. 1 initial entry succession shown separately.')
+        self.assertEqual({e['elementId'] for e in projection['edges']},{'initial','change0','change1','change2'})
+        self.assertEqual(report,before)
+        report['elements'].reverse()
+        self.assertEqual(project(report,'P::States')['takeaway'],projection['takeaway'])
+
+    def test_legacy_state_action_endpoint_is_not_counted_as_a_state(self):
+        root=element('root','StateDefinition','States')
+        entry=element('entry','ActionUsage','initialize','root')
+        ready=element('ready','StateUsage','ready','root')
+        transition=element('start','TransitionUsage','start','root',source=ref(entry),target=ref(ready))
+        projection=project({'staticChecksPassed':True,'elements':[root,entry,ready,transition]},'P::States')
+        self.assertEqual({n['id']:n['role'] for n in projection['nodes']},{'entry':'action','ready':'state'})
+        self.assertEqual(projection['takeaway'],'1 declared state transition and 1 state are shown.')
+
+    def test_legacy_unresolved_entry_does_not_replace_requested_scope(self):
+        root=element('root','StateDefinition','States')
+        membership=element('entryMembership','StateSubactionMembership','entry','root')
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']=ref(membership)
+        initial=element('initial','SuccessionAsUsage','initial','root',source=ref(membership),target={'id':'missing'})
+        projection=project({'staticChecksPassed':True,'elements':[root,membership,initial]},'P::States')
+        self.assertEqual(projection['scope'],'P::States')
+        self.assertEqual(projection['scopeLabel'],'States')
+        self.assertEqual(projection['scopeElementId'],'root')
+        self.assertEqual(projection['takeaway'],'0 declared state transitions and 0 states are shown.')
+        self.assertEqual(projection['edges'],[])
+        self.assertTrue(any('unresolved' in warning for warning in projection['warnings']))
 
     def test_null_entry_membership_name_uses_human_boundary_label(self):
         root=element('root','StateDefinition','States')
@@ -147,6 +197,34 @@ class StakeholderTests(unittest.TestCase):
         self.assertNotIn('<script>',s);self.assertIn('&lt;script&gt;',s)
 
 class StakeholderViewpointTests(unittest.TestCase):
+    def test_part_usage_internal_connections_do_not_imply_external_context(self):
+        report=fixture()
+        report['elements'][0]['metaclass']='PartUsage'
+        projection=project(report,'P::Root')
+        self.assertEqual(projection['viewKind'],'connections')
+        self.assertEqual(projection['title'],'Root overview')
+        self.assertEqual(projection['question'],'Which components and connections are declared?')
+        self.assertEqual(projection['discussion'],'Are the shown components and connections the ones we need to review?')
+        self.assertFalse(any(n['role']=='boundary' for n in projection['nodes']))
+        self.assertEqual([(e['source'],e['target']) for e in projection['edges']],[('a','b')])
+
+    def test_part_usage_explicit_scope_contact_keeps_context_wording(self):
+        report=fixture()
+        root=report['elements'][0]
+        root['metaclass']='PartUsage'
+        contact=element('boundaryContact','PortUsage','serviceContact','Root')
+        report['elements'].append(contact)
+        root['semantics']['feature'].append(ref(contact))
+        link=next(e for e in report['elements'] if e['sessionElementId']=='c')
+        link['semantics']['relatedFeature'][0]=ref(contact)
+        projection=project(report,'P::Root')
+        self.assertEqual(projection['viewKind'],'context')
+        self.assertEqual(projection['title'],'System context')
+        self.assertIn('across which boundary',projection['question'])
+        self.assertTrue(any(n['role']=='boundary' for n in projection['nodes']))
+        self.assertEqual([(e['source'],e['target']) for e in projection['edges']],[('Root','b')])
+        self.assertEqual(projection['rows'][0]['elementIds'],['c','boundaryContact','port'])
+
     def test_decomposition_is_hierarchy_not_an_interconnection_copy(self):
         r=fixture();p=project(r,'P::Root',{'view':'TREE'})
         self.assertEqual(p['viewKind'],'decomposition')
