@@ -263,6 +263,9 @@ function storyView(p,custom=false){
   if(route){notes.append(make('h3',route.audience),make('p',route.objective,'review-objective'));if(report.reviews.status==='review-view-basis-missing')notes.append(make('p','This legacy review route has no recorded view recipe. Recheck its scope and questions.','review-basis-warning'));if(report.reviews.status==='review-basis-changed')notes.append(make('p','Model or view changed since this review route was prepared. Recheck its scope and questions.','review-basis-warning'))}
   notes.append(make('h3','What this view shows'),make('p',p.takeaway,'takeaway'));
   if(p.statement){notes.append(make('h3','From the model'),make('blockquote',p.statement))}
+  for(const row of p.rows||[])if(row.kind==='declared-capacity-comparison'){
+    notes.append(make('h3',row.title),make('p',row.body,row.status==='declared-design-shortfall'?'story-warning':'takeaway'));
+  }
   notes.append(make('h3','For discussion'),make('p',(!custom&&routeStep()?.question)||p.discussion,'discussion-prompt'));
   if(p.warnings?.length)notes.append(make('p',`${p.warnings.length} extraction limitation${p.warnings.length===1?'':'s'} — review model details.`,'story-warning'));
   const source=make('button','View source evidence');source.type='button';source.className='evidence-action';source.addEventListener('click',()=>inspect(p.scopeElementId,source));notes.append(source);

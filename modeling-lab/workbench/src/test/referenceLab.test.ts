@@ -1078,6 +1078,14 @@ describe('frozen reader retains declared facts and behavior conditions', () => {
 
 
 describe('initial authored project context', () => {
+  it('keeps the current declared comparison visible without opening an evidence drawer or requiring a baseline change', async () => {
+    const h=await harness(true)
+    await h.answer(0,true,{changeSummary:[],views:[{id:'capacity',targets:['Pump'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{viewKind:'requirement',title:'Required outcome',takeaway:'One obligation',scopeElementId:'motor',omissions:[],legendItems:[],rows:[{kind:'declared-capacity-comparison',title:'Required minimum 3 vs declared sample capacity 2',body:'Declared design shortfall. Physical verification: not evaluated.',status:'declared-design-shortfall'}]}}]})
+    const audience=document.getElementById('audience') as HTMLSelectElement;audience.value='stakeholder';audience.dispatchEvent(new Event('change'))
+    expect(document.querySelector('.story-notes')!.textContent).toContain('Required minimum 3 vs declared sample capacity 2')
+    expect(document.querySelector('.story-notes')!.textContent).toContain('Physical verification: not evaluated.')
+    expect(document.querySelector('#inspector')?.getAttribute('hidden')).not.toBeNull()
+  })
   it('shows supplied fictional study metadata without inferring history or custom views', async () => {
     const initial={title:'Fictional cold-room alarm study',brief:'Fictional BR-2 model for workflow review.',questions:'Does the declared capacity cover the required minimum?'}
     const h=await harness(true,initial);await h.answer(0)
