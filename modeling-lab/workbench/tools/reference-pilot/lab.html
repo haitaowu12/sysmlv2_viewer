@@ -151,7 +151,7 @@ function status(text,state='pending'){$('status').textContent=text;$('status').d
 function empty(title,description){$('view-notation').textContent='';resetStory();$('canvas').replaceChildren();const box=document.createElement('div');box.className='empty-state';const head=document.createElement('strong'),body=document.createElement('p');head.textContent=title;body.textContent=description;box.append(head,body);$('canvas').append(box)}
 function controls(){
   for(const id of ['validate','reload','undo-restore','audience','target','target-find','mode'])$(id).disabled=busy;
-  $('review-route').disabled=busy||!report;
+  $('review-route').disabled=busy||!report;if($('return-view'))$('return-view').disabled=busy;
   $('focus').disabled=busy||!$('target').options.length;
   for(const id of ['fit','minus','plus','readable','actual','reference'])$(id).disabled=!report||busy;
   if(window.scopeWorkbench?.active())$('reference').disabled=true;
@@ -237,12 +237,32 @@ function show(index,useRaw=false){
 let sysmlReturn=null;
 window.openSysmlComponent=async function(target){
   if(busy||!report||$('source').value!==report.source)return false;
-  const basis=report,priorViewId=report.views[active]?.id,priorPreferred=preferredView,context=window.scopeWorkbench?.captureContext(),audience=$('audience').value;const returnContext=priorViewId==='focused'&&!window.scopeWorkbench?.active()&&sysmlReturn?.sourceSha256===report.sourceSha256?sysmlReturn:{context,viewId:priorViewId||priorPreferred,sourceSha256:report.sourceSha256,audience};preferredView='focused';
+  const basis=report,priorViewId=report.views[active]?.id,priorPreferred=preferredView,context=window.scopeWorkbench?.captureContext(),audience=$('audience').value;const returnContext=priorViewId==='focused'&&!window.scopeWorkbench?.active()&&sysmlReturn?.sourceSha256===report.sourceSha256?sysmlReturn:{context,viewId:priorViewId||priorPreferred,sourceSha256:report.sourceSha256,audience,sourceOnlyPayload:!context&&!basis.views.length?structuredClone(window.labWorkflow.payload()):null};preferredView='focused';
   const ok=await render(false,{source:report.source,payload:{...window.labWorkflow.payload(),target,view:'INTERCONNECTION'},preserveScope:false,commit(){$('audience').value='engineering';document.body.classList.remove('stakeholder')}});
   if(ok){sysmlReturn=returnContext;syncSysmlReturn();$('view-purpose').textContent='Selected element and its direct features · custom scope filters do not apply';}
   else preferredView=priorPreferred;return ok;
 };
-function syncSysmlReturn(){let back=$('return-view');if(!back){back=document.createElement('button');back.id='return-view';back.textContent='Return to previous view';$('edit-toggle').before(back);back.addEventListener('click',()=>{if(report?.sourceSha256!==sysmlReturn?.sourceSha256)return;const previous=sysmlReturn;sysmlReturn=null;back.hidden=true;$('audience').value=previous.audience||'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());buildNavigation();if(previous.context)window.scopeWorkbench.returnToScope(previous.context);else{const index=report.views.findIndex(v=>v.id===previous.viewId);if(index>=0)show(index)}})}back.hidden=!sysmlReturn||sysmlReturn.sourceSha256!==report?.sourceSha256||report?.views[active]?.id!=='focused'}
+function syncSysmlReturn(){
+  let back=$('return-view');
+  if(!back){
+    back=document.createElement('button');back.id='return-view';back.textContent='Return to previous view';$('edit-toggle').before(back);
+    back.addEventListener('click',async()=>{
+      if(busy||report?.sourceSha256!==sysmlReturn?.sourceSha256)return;
+      const previous=sysmlReturn;
+      if(previous.sourceOnlyPayload){
+        const priorPreferred=preferredView;
+        const ok=await render(false,{source:report.source,payload:{...previous.sourceOnlyPayload,views:[]},preserveScope:false,commit(){
+          preferredView=null;$('audience').value=previous.audience||'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());
+        }});
+        if(ok)sysmlReturn=null;else preferredView=priorPreferred;
+        syncSysmlReturn();return;
+      }
+      sysmlReturn=null;back.hidden=true;$('audience').value=previous.audience||'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());buildNavigation();
+      if(previous.context)window.scopeWorkbench.returnToScope(previous.context);else{const index=report.views.findIndex(v=>v.id===previous.viewId);if(index>=0)show(index)}
+    });
+  }
+  back.hidden=!sysmlReturn||sysmlReturn.sourceSha256!==report?.sourceSha256||report?.views[active]?.id!=='focused';back.disabled=busy;
+}
 function notationLabel(profile){if(profile?.startsWith('sysml-2.0-parts-ports'))return 'SysML part/port sheet';if(profile?.startsWith('declared-behavior'))return 'Declared behavior projection · limited notation';if(profile?.startsWith('analytical-exchange'))return 'Analytical exchange summary';if(profile?.startsWith('analytical'))return 'Analytical diagram';if(profile?.startsWith('pilot')||profile?.startsWith('sysml-reference'))return 'SysML Pilot diagram';return 'Projection · notation not classified'}
 function concernChanges(view){
   // Bind the displayed consequence to the current qualified report, including cached/reopened views.
@@ -393,7 +413,7 @@ function displayReport(data,focused=false,payload={},preserveScope=true){
       targetPage=0;$('target-find').value='';modelScopeOptions(focused?payload.target:undefined);
       $('delivery-note').textContent=data.delivery?'Full qualified model retained locally. Additional source details load when selected.':'';
       const restoreScope=preserveScope?window.scopeWorkbench?.capture():null;
-      if(data.views.length){const preferred=data.views.findIndex(v=>v.id===preferredView);show(routeIndices().includes(preferred)?preferred:routeIndices()[0])}else{$('view-title').textContent='Model loaded';$('view-purpose').textContent='Source validated · no diagram configured';$('scope').textContent='Revision '+data.sourceSha256.slice(0,12);$('scope').title='Validated source · no diagram configured';empty('No diagram configured','The model passed source validation. Its complete source is available in the editor.');}
+      if(data.views.length){const preferred=data.views.findIndex(v=>v.id===preferredView);show(routeIndices().includes(preferred)?preferred:routeIndices()[0])}else{window.scopeWorkbench?.leave();active=-1;preferredView=null;raw=false;$('explanation').replaceChildren();$('view-title').textContent='Model loaded';$('view-purpose').textContent='Source validated · no diagram configured';$('scope').textContent='Revision '+data.sourceSha256.slice(0,12);$('scope').title='Validated source · no diagram configured';empty('No diagram configured','The model passed source validation. Its complete source is available in the editor.');}
       window.scopeWorkbench?.load(data,restoreScope);
       const unavailable=!data.catalogue||!data.catalogue.roots?.length,navigationNote=$('model-navigation-note');navigationNote.hidden=!unavailable;$('model-search').disabled=unavailable;
       const bounded=data.catalogue?.coverage?.mode==='configured-part-scopes';navigationNote.hidden=!unavailable&&!bounded;navigationNote.textContent=unavailable&&data.catalogue?'No component hierarchy is available for this model. The source is validated and retained; use the source editor.':unavailable?'Model browsing and new custom views are unavailable for this model. '+(data.catalogueError||'The model navigation catalogue could not be built.')+' Configured diagrams remain available in Views. Project source and saved view recipes are retained.':bounded?'Browsing configured component scopes. Other model roots are outside this navigation. The full source is retained.':'';

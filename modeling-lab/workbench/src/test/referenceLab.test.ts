@@ -1663,6 +1663,47 @@ describe('explicit SysML sheets and honest notation',()=>{
     expect(audience.value).toBe('stakeholder');expect(document.getElementById('return-view')!.hidden).toBe(true)
     expect((window as any).labWorkflow.snapshot().views).toEqual([core])
   })
+  it.each(['none','validation','display'])('returns a source-only project through an accepted empty-view render (failure: %s)',async(failure)=>{
+    const h=await harness(true);await h.answer(0)
+    const workflow=(window as any).labWorkflow
+    const source='package Pump { part def Pump { part motor; } }',baselineSource='package Pump { part def Pump; }'
+    const project={...workflow.snapshot(),id:'source-only-part-project',title:'Own source study',source,baselineSource,views:[],customViews:[],history:[],audience:'stakeholder'};delete project.baselineHash
+    const sourceSha256=createHash('sha256').update(source).digest('hex')
+    const catalogue={...scopeCatalog,roots:['Pump'],nodes:[{key:'Pump',root:'Pump',parent:null,name:'Pump',elementId:'pump',depth:0}]}
+    const elements=[{sessionElementId:'pump',metaclass:'PartDefinition',qualifiedName:'Pump',name:'Pump',source:'part def Pump { part motor; }'}]
+    const opening=workflow.openProject(project)
+    await h.answer(1,true,{views:[],viewRecipes:[]})
+    await h.answer(2,true,{sourceSha256,views:[],viewRecipes:[],catalogue,elements});await opening
+    const before=structuredClone(workflow.snapshot())
+    expect(before.views).toEqual([]);expect(before.audience).toBe('stakeholder')
+    const sheet=(window as any).openSysmlComponent('Pump')
+    await h.answer(3,true,{sourceSha256,views:[view('focused','Pump')],viewRecipes:[],catalogue,elements});await sheet
+    expect(document.getElementById('canvas')!.textContent).toContain('ENGINEERING')
+    expect((document.getElementById('audience') as HTMLSelectElement).value).toBe('engineering')
+    let returnIndex=4
+    document.getElementById('return-view')!.click();await h.flush()
+    expect(h.calls[returnIndex]?.url).toBe('/render')
+    expect(h.calls[returnIndex]?.payload).toMatchObject({source,baselineSource,workspaceKey:project.id,views:[]})
+    expect(h.calls[returnIndex]?.payload).not.toHaveProperty('target')
+    if(failure!=='none'){
+      if(failure==='display')vi.spyOn(workflow,'onReport').mockImplementationOnce(()=>{throw Error('Temporary display failure')})
+      await h.answer(returnIndex,failure==='display',{sourceSha256,views:[],viewRecipes:[],catalogue,elements,diagnostics:failure==='validation'?[{message:'Temporary renderer failure'}]:[]})
+      expect(document.getElementById('return-view')!.hidden).toBe(false)
+      expect((document.getElementById('return-view') as HTMLButtonElement).disabled).toBe(false)
+      expect(document.getElementById('canvas')!.textContent).toContain('ENGINEERING')
+      expect((document.getElementById('audience') as HTMLSelectElement).value).toBe('engineering')
+      expect(workflow.snapshot()).toMatchObject({...before,audience:'engineering'})
+      document.getElementById('return-view')!.click();await h.flush();returnIndex++
+      expect(h.calls[returnIndex]?.payload).toMatchObject({source,baselineSource,workspaceKey:project.id,views:[]})
+    }
+    await h.answer(returnIndex,true,{sourceSha256,views:[],viewRecipes:[],catalogue,elements})
+    expect(document.getElementById('return-view')!.hidden).toBe(true)
+    expect(document.getElementById('view-title')!.textContent).toBe('Model loaded')
+    expect(document.getElementById('canvas')!.textContent).toContain('No diagram configured')
+    expect(document.querySelector('#canvas svg')).toBeNull()
+    expect(workflow.snapshot()).toEqual(before)
+    expect((document.getElementById('source') as HTMLTextAreaElement).value).toBe(source)
+  })
   it('does not claim Pilot notation for behavior or unknown renderer profiles',async()=>{
     const h=await harness();await h.answer(0,true,{views:[view('context','Pump','declared-behavior-v1')]})
     expect(document.getElementById('view-notation')!.textContent).toBe('Declared behavior projection · limited notation')

@@ -12,6 +12,8 @@ Source validation is independent of diagram support. Invalid source cannot repla
 
 Selecting a component inspects it without replacing the current drawing. Open component view starts a neutral analytical scope. Open SysML part/port sheet uses the selected element's direct features, explicitly enters Engineering, and can return to the earlier view and audience. Inspection occupies space beside or below the model. Packages distinguish otherwise identical component and subject names.
 
+For projects opened without a diagram, returning from a temporary component sheet restores the validated workspace with no configured views. A failed return retains the temporary sheet and a retryable return action.
+
 Analytical diagrams/tables, bounded SysML part/port sheets and declared-behavior projections are labeled separately. Authored SysML view declarations remain in source; they are not automatically translated into Lab selector entries. Guided minimum edits use one producer capability profile and check the exact formal change. Linked-element detail in proposals starts closed.
 
 ## Evidence and limits
