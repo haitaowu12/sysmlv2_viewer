@@ -164,7 +164,7 @@ class ProducerProjectionIntegrationTests(unittest.TestCase):
         report=normalize(raw,'')
         target="TechnicalComponentsPackage::'S-IC'"
         engineering=interconnection(report,target);stakeholder=project(report,target)
-        self.assertIn('2 component usages · 1 collection features',engineering['svg'])
+        self.assertIn('2 component usages · 1 collection feature',engineering['svg'])
         self.assertEqual(engineering['collections'][0]['kind'],'null-collection')
         self.assertEqual(stakeholder['scopeElementId'],'root')
         self.assertNotIn('Subcomponents',stakeholder['takeaway'])

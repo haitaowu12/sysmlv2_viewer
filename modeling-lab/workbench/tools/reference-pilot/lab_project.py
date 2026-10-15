@@ -38,6 +38,112 @@ def replace_anchor(source, selected, after):
     return source.replace(before, after, 1)
 
 
+def minimum_edit_profile(source):
+    """Locate one simple, direct required predicate and its statement.
+
+    This is a conservative edit profile, not a SysML parser. A fresh valid engine
+    report remains mandatory. Token offsets keep comments and quoted text out of
+    the predicate selection and permit changing only the selected integer span.
+    """
+    if not isinstance(source, str):
+        return None
+    token_pattern = re.compile(r'/\*[\s\S]*?\*/|//[^\r\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|[A-Za-z_]\w*|\d+|>=|::|[^\s]')
+    tokens, comments = [], {}
+    for match in token_pattern.finditer(source):
+        value = match.group()
+        if value.startswith(('/*', '//')):
+            comments[match.start()] = match
+        else:
+            tokens.append((value, match.start(), match.end()))
+    if not tokens or tokens[0][0] != 'requirement':
+        return None
+    depth, depths = 0, []
+    for value, _, _ in tokens:
+        depths.append(depth)
+        depth += (value == '{') - (value == '}')
+        if depth < 0:
+            return None
+    if depth or tokens[-1][0] != '}':
+        return None
+    # Only the requirement's own statement and obligation are in this profile.
+    # Nested constraints or several statements need deliberate source editing.
+    docs = [i for i, token in enumerate(tokens) if token[0] == 'doc']
+    constraints = [i for i, token in enumerate(tokens) if token[0] == 'constraint']
+    requirements = [i for i, token in enumerate(tokens) if token[0] == 'require']
+    if len(docs) != 1 or len(constraints) != 1 or len(requirements) != 1:
+        return None
+    doc, constraint, required = docs[0], constraints[0], requirements[0]
+    if depths[doc] != 1 or depths[required] != 1 or constraint != required + 1:
+        return None
+    statement = re.match(r'\s*(/\*[\s\S]*?\*/)', source[tokens[doc][2]:])
+    if not statement:
+        return None
+    comment_start = tokens[doc][2] + statement.start(1)
+    block = comments.get(comment_start)
+    if block is None:
+        return None
+    start = constraint + 1
+    if start >= len(tokens) or tokens[start][0] != '{':
+        return None
+    end = start + 1
+    while end < len(tokens) and depths[end] > 1:
+        end += 1
+    # The matching close has depth 2; the next token returns to depth 1.
+    close = end - 1
+    if close <= start or tokens[close][0] != '}':
+        return None
+    body = tokens[start + 1:close]
+    if body and body[-1][0] == ';':
+        body = body[:-1]
+    values = [token[0] for token in body]
+    try:
+        operator = values.index('>=')
+    except ValueError:
+        return None
+    path = values[:operator]
+    if (not path or len(path) % 2 != 1
+            or any(not re.fullmatch(r'[A-Za-z_]\w*', value) for value in path[::2])
+            or any(value not in ('.', '::') for value in path[1::2])):
+        return None
+    literal = body[operator + 1:]
+    if len(literal) == 2 and literal[0][0] == '-':
+        span = (literal[0][1], literal[1][2])
+        number = '-' + literal[1][0]
+    elif len(literal) == 1:
+        span = (literal[0][1], literal[0][2])
+        number = literal[0][0]
+    else:
+        return None
+    if not re.fullmatch(r'-?\d+', number) or len(number) > 16:
+        return None
+    return {'currentValue': int(number), 'statement': block.group()[2:-2].strip(),
+            'integerSpan': span, 'statementSpan': (tokens[doc][1], block.end()),
+            'path': path}
+
+
+def minimum_edit_options(report):
+    """Revision-bound eligible targets for the same profile used by candidate."""
+    source = report.get('source', '') if isinstance(report, dict) else ''
+    if (not isinstance(source, str) or not source or not report.get('staticChecksPassed')
+            or report.get('sourceSha256') != digest(source)):
+        return []
+    options, counts = [], {}
+    for selected in report.get('elements', []):
+        target = selected.get('qualifiedName')
+        counts[target] = counts.get(target, 0) + 1
+    for selected in report.get('elements', []):
+        target = selected.get('qualifiedName')
+        if (not target or selected.get('metaclass') not in ('RequirementUsage', 'RequirementDefinition')
+                or counts[target] != 1):
+            continue
+        before = selected.get('source', '')
+        profile = minimum_edit_profile(before)
+        if profile is not None and source.count(before) == 1:
+            options.append({'target': target, 'currentValue': profile['currentValue'],
+                            'statement': profile['statement']})
+    return options
+
+
 def candidate(report, source, request):
     if not report or not report.get('staticChecksPassed') or report.get('sourceSha256') != digest(source):
         raise ValueError('Validate the current model before preparing a change.')
@@ -49,20 +155,22 @@ def candidate(report, source, request):
     if operation == 'minimum':
         selected = element(report, target, ('RequirementUsage', 'RequirementDefinition'))
         before = selected.get('source', '')
-        # Only a single literal integer lower-bound obligation is in this edit profile.
-        hits = list(re.finditer(r'(?<![><=])>=\s*(-?\d+)(?![\w.])', before))
+        profile = minimum_edit_profile(before)
         value = request.get('value')
-        if type(value) is not int or not 0 <= value <= 1000000 or len(hits) != 1:
-            raise ValueError('This task supports one literal integer minimum, between 0 and 1000000.')
+        if type(value) is not int or not 0 <= value <= 1000000 or profile is None:
+            raise ValueError('This task supports one direct required constraint with a literal integer minimum between 0 and 1000000 and one statement; use the source editor for other forms.')
+        if value == profile['currentValue']:
+            raise ValueError('The required minimum is unchanged. Use the source editor to revise only the statement.')
         statement = comment(request.get('statement'))
-        docs = list(re.finditer(r'\bdoc\s*/\*[\s\S]*?\*/', before))
-        if len(docs) != 1:
-            raise ValueError('This requirement needs one explicit statement; use the source editor for other forms.')
-        edits = [(hits[0].start(1), hits[0].end(1), str(value)),
-                 (docs[0].start(), docs[0].end(), 'doc /* '+statement+' */')]
+        edits = [(*profile['integerSpan'], str(value)),
+                 (*profile['statementSpan'], 'doc /* '+statement+' */')]
         after = before
         for start, end, text in sorted(edits, reverse=True):
             after = after[:start] + text + after[end:]
+        changed = minimum_edit_profile(after)
+        if (changed is None or changed['currentValue'] != value
+                or changed['path'] != profile['path'] or changed['statement'] != statement):
+            raise ValueError('The required constraint could not be changed unambiguously. Use the source editor.')
         description = f'{target}: required minimum becomes {value}; the statement is updated. Design quantities stay unchanged.'
     elif operation == 'component':
         selected = element(report, target, ('PartDefinition', 'PartUsage', 'Package'))
@@ -118,8 +226,8 @@ def candidate(report, source, request):
 
 
 def views_for(value):
-    if not isinstance(value, list) or not 1 <= len(value) <= 32:
-        raise ValueError('A project requires 1–32 view recipes.')
+    if not isinstance(value, list) or not 0 <= len(value) <= 32:
+        raise ValueError('A project requires 0–32 view recipes.')
     ids = set()
     for view in value:
         if (not isinstance(view, dict) or not isinstance(view.get('id'), str)

@@ -13,7 +13,7 @@ def audit(dist):
     for path in dist.rglob('*'):
         if '__pycache__' in path.relative_to(dist).parts or path.suffix.lower() in {'.pyc','.pyo'}:
             raise ValueError('Python bytecode cache is not a release asset: '+path.relative_to(dist).as_posix())
-    for name in ['index.html','lab.html','probe.html','initial.json','build-info.json','engine-build.json','RUNTIME-NOTICES.txt','opensysml-browser.patch','pyodide/pyodide.asm.wasm','pyodide/python_stdlib.zip','python/normalize.py','python/browser_handler.py','licenses/catalogue.json','licenses/go/go-catalogue.json']:
+    for name in ['examples/apollo-11.modeling.json','examples/APOLLO-LICENSE.md','index.html','lab.html','probe.html','initial.json','build-info.json','engine-build.json','RUNTIME-NOTICES.txt','opensysml-browser.patch','pyodide/pyodide.asm.wasm','pyodide/python_stdlib.zip','python/normalize.py','python/browser_handler.py','licenses/catalogue.json','licenses/go/go-catalogue.json']:
         if not (dist/name).is_file(): raise ValueError('Missing release asset: '+name)
     for catalogue,prefix in [('catalogue.json',''),('go/go-catalogue.json','go/')]:
         for component in json.loads((dist/'licenses'/catalogue).read_text()):

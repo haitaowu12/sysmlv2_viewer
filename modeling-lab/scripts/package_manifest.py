@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 # Register a reviewed maintained file here before regenerating its integrity hash.
 # Exact paths are intentional: a new file beside a fixture is not an export choice.
 SOURCE_PATHS = (
+    'workbench/src/test/referenceComponentSelection.test.ts',
+    'workbench/tools/reference-pilot/workflow_open.test.cjs',
+    'workbench/tools/reference-pilot/examples/apollo-11.modeling.json',
+    'workbench/tools/reference-pilot/examples/README.md',
+    'workbench/tools/reference-pilot/examples/APOLLO-LICENSE.md',
     'LOCAL-HANDOFF.md',
     'workbench/fixtures/authoring/alarm-review/reviewed.modeling.json',
     'workbench/fixtures/authoring/alarm-review/review.html',

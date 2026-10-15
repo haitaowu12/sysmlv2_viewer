@@ -10,7 +10,8 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'modeling-lab/workbenc
 def context():
     def normalize(raw, source):
         return {'sourceSha256': hashlib.sha256(source.encode()).hexdigest(), 'staticChecksPassed': True, 'elements': [], 'views': []}
-    env = {'json': json, 'hashlib': hashlib, 'normalize': normalize, 'views_for': lambda views: views,
+    from lab_project import views_for
+    env = {'json': json, 'hashlib': hashlib, 'normalize': normalize, 'views_for': views_for,
            'exploration_views': lambda views, target, view: views, 'summarize': lambda old, new: [],
            'catalogue': lambda report: {'nodes': [], 'relations': []}, 'browser_report': lambda report, metadata=None: report}
     env['catalogue_for_views']=lambda report,views:env['catalogue'](report)
@@ -222,3 +223,18 @@ class BrowserSourceSetTransactions(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'revision do not match'):
             env['render_report'](request(assembled['source'],sourceSet=tampered))
         self.assertEqual(env['current_report'],original)
+
+
+class BrowserMinimumOptions(unittest.TestCase):
+    def test_capability_is_bound_to_current_source_and_ignores_documentation_examples(self):
+        from lab_project import minimum_edit_options
+        env=context();env['minimum_edit_options']=minimum_edit_options
+        source='requirement r { doc /* Example count >= 2. */ require constraint { count > 1 } }'
+        sha=hashlib.sha256(source.encode()).hexdigest()
+        env['current_report']={'source':source,'sourceSha256':sha,'staticChecksPassed':True,'elements':[{'metaclass':'RequirementUsage','qualifiedName':'r','source':source}]}
+        self.assertEqual(env['minimum_options_current']({'request':{'baseSourceSha256':sha}}),{'sourceSha256':sha,'options':[]})
+        with self.assertRaisesRegex(ValueError,'model changed'):
+            env['minimum_options_current']({'request':{'baseSourceSha256':'stale'}})
+        supported=source.replace('count > 1','count >= 1');sha2=hashlib.sha256(supported.encode()).hexdigest()
+        env['current_report']={'source':supported,'sourceSha256':sha2,'staticChecksPassed':True,'elements':[{'metaclass':'RequirementUsage','qualifiedName':'r','source':supported}]}
+        self.assertEqual(env['minimum_options_current']({'request':{'baseSourceSha256':sha2}})['options'],[{'target':'r','currentValue':1,'statement':'Example count >= 2.'}])

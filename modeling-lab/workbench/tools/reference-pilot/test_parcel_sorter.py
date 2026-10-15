@@ -13,6 +13,7 @@ from agent_model import context, serialized_context
 from check_contract import check_contract, expression_fact, facts, references, documentation_facts
 from engineering import index_report, interconnection, sem
 from report_integrity import load_report
+from presentation import cardinality, part_features, scalar_alias_evidence
 from stakeholder import project
 from view_scope import catalogue
 
@@ -76,6 +77,22 @@ class ParcelSorterSemanticTests(unittest.TestCase):
             self.assertEqual(own, fields)
         self.assertTrue(sem(self.named('warehouseControl'), 'isReference'))
         self.assertTrue(sem(self.named('operator'), 'isReference'))
+
+    def test_context_scalar_aliases_remain_references_with_unknown_exported_cardinality(self):
+        root=self.named('context')
+        ordinary,collections=part_features(root,self.index)
+        self.assertEqual({e['name'] for e in ordinary},{'station','warehouse','operator'})
+        self.assertEqual(collections,[])
+        for name in ('station','warehouse','operator'):
+            alias=self.named('context::'+name)
+            self.assertFalse(sem(alias,'isComposite'))
+            self.assertEqual(cardinality(alias,self.index)['status'],'unknown')
+            values=[self.index[r['id']] for r in references(sem(alias,'ownedElement'))
+                    if self.index.get(r['id'],{}).get('metaclass')=='FeatureReferenceExpression']
+            self.assertEqual(len(values),1)
+            proof=scalar_alias_evidence(alias,values[0],self.index)
+            self.assertEqual(proof['cardinality'],'unknown')
+            self.assertIn(alias['sessionElementId'],proof['evidenceIds'])
 
     def test_human_agent_and_stakeholder_share_exact_occurrence(self):
         c = catalogue(self.report)

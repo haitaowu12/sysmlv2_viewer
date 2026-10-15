@@ -4,7 +4,7 @@ from audit_build import audit,remove_python_caches
 
 class ReleaseLayoutTests(unittest.TestCase):
     def fixture(self, root):
-        names=['index.html','lab.html','probe.html','initial.json','build-info.json','engine-build.json','RUNTIME-NOTICES.txt','opensysml-browser.patch','pyodide/pyodide.asm.wasm','pyodide/python_stdlib.zip','python/normalize.py','python/browser_handler.py','licenses/catalogue.json','licenses/go/go-catalogue.json','assets/browser-engine-a.wasm','assets/wasm_exec-b.js']
+        names=['examples/apollo-11.modeling.json','examples/APOLLO-LICENSE.md','index.html','lab.html','probe.html','initial.json','build-info.json','engine-build.json','RUNTIME-NOTICES.txt','opensysml-browser.patch','pyodide/pyodide.asm.wasm','pyodide/python_stdlib.zip','python/normalize.py','python/browser_handler.py','licenses/catalogue.json','licenses/go/go-catalogue.json','assets/browser-engine-a.wasm','assets/wasm_exec-b.js']
         for name in names:
             p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('fixture')
         (root/'index.html').write_text('<textarea id="source"></textarea><span id="browser-build"></span><script src="./assets/app.js"></script>')
@@ -23,6 +23,12 @@ class ReleaseLayoutTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'paired'):audit(root)
             (root/'initial.json').unlink()
             with self.assertRaisesRegex(ValueError,'Missing'):audit(root)
+    def test_missing_openable_example_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);self.fixture(root);(root/'examples/apollo-11.modeling.json').unlink()
+            with self.assertRaisesRegex(ValueError,'Missing release asset: examples/apollo'):
+                audit(root)
+
     def test_bytecode_caches_are_removed_without_touching_python_sources(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);self.fixture(root)

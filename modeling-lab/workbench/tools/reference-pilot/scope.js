@@ -8,10 +8,11 @@
   const entry=id=>report?.elements.find(e=>e.sessionElementId===id);
   const label=id=>entry(id)?.qualifiedName||entry(id)?.name||entry(id)?.metaclass||id;
   const shortKey=n=>{const value=n.key===n.root?n.name:n.key.slice(n.root.length+1);return stakeholderMode()?value.split('/').map(human).join(' / '):value};
-  const matches=(value,query)=>value.toLowerCase().includes(query.toLowerCase());
+  const matches=(value,query)=>{const text=(value+' '+human(value)).toLowerCase();return query.trim().toLowerCase().split(/\s+/).every(term=>text.includes(term))};
   const key=()=>`sysml-perspectives-v1:${initial?.workspaceKey||'unassigned'}`;
-  let draftPins=new Set(),draftHidden=new Set(),expanded=new Set(),childPages=new Map(),lastEvidence=null,workingViews=[],loadedWorkspace=null,scopeHistory=[],creatingNew=false,modelPage=0,subjectPage=0,rulePage=0,transient=false,restoreContext=null,activeViewName=null;
+  let draftPins=new Set(),draftHidden=new Set(),expanded=new Set(),childPages=new Map(),lastEvidence=null,workingViews=[],loadedWorkspace=null,scopeHistory=[],creatingNew=false,modelPage=0,subjectPage=0,rulePage=0,transient=false,restoreContext=null,activeViewName=null,modelSelection=null;
   function newViewName(base){const names=new Set([...saved,...workingViews].map(v=>v.name));let name=base,index=2;while(names.has(name)){name=base+' ('+index+')';index++}return name}
+  const subjectLabel=n=>{const context=entry(n.elementId)?.qualifiedName?.split('::').slice(0,-1).map(human).join(' / ');return friendlyPath(n.key)+' · '+scopeKind(n)+(context?' · '+context:'')};
   const friendlyPath=value=>value.split('/').map(x=>human(x.split('::').pop())).join(' / ');
   const displayLabel=id=>{const name=label(id),leaf=name.split('::').pop();const peers=report.elements.filter(e=>(e.qualifiedName||e.name||'').split('::').pop()===leaf);return readableName(peers.length>1?name.split('::').slice(-2).join(' / '):leaf)};
   const traceLabel=t=>t.kind==='verify'?'V · planned':t.polarity==='positive'?'S · asserted':t.polarity==='negative'?'Not satisfied · asserted':'Satisfaction polarity unknown';
@@ -37,18 +38,37 @@
     subjectPage=Math.min(subjectPage,Math.max(0,Math.ceil(matchesAll.length/60)-1));
     const nodes=matchesAll.slice(subjectPage*60,subjectPage*60+60);
     el('scope-match-count').replaceChildren(pageNavigation(matchesAll.length,subjectPage,value=>{subjectPage=value;rootOptions()},'subjects'));
-    el('scope-focus').replaceChildren(...nodes.map(n=>option(friendlyPath(n.key)+' · '+scopeKind(n),n.key)));
+    el('scope-focus').replaceChildren(...nodes.map(n=>option(subjectLabel(n),n.key)));
     if(nodes.some(n=>n.key===focus))el('scope-focus').value=focus;
     const chosen=catalog.nodes.find(n=>n.key===el('scope-focus').value);if(chosen)el('scope-root').value=chosen.root;
     draftHidden.delete(el('scope-focus').value);renderExceptions();
   }
   function navigation(mode){el('model-browser').hidden=mode!=='model';el('view-browser').hidden=mode==='model';el('nav-model').setAttribute('aria-pressed',String(mode==='model'));el('nav-views').setAttribute('aria-pressed',String(mode!=='model'))}
+  function selectedModelNode(){return catalog?.nodes.find(n=>n.key===modelSelection?.key&&n.root===modelSelection?.root&&n.elementId===modelSelection?.elementId)}
+  function modelSelectionActions(){
+    const panel=el('model-selection-actions');if(!panel)return;
+    const chosen=selectedModelNode();panel.replaceChildren();panel.hidden=!chosen;if(!chosen)return;
+    const name=node('p','Selected · '+friendlyPath(chosen.key),'model-selection-path');name.title=chosen.key;
+    const open=button('Open component view',()=>{const current=selectedModelNode();if(current){focusNode(current);closeInspector()}});open.id='model-open-component-view';open.disabled=busy;
+    panel.append(name,open);
+    const model=entry(chosen.elementId);
+    if(['PartDefinition','PartUsage'].includes(model?.metaclass)&&model.qualifiedName){
+      const sheet=button('Open SysML part/port sheet',()=>{const current=selectedModelNode(),part=current&&entry(current.elementId);if(part?.qualifiedName&&['PartDefinition','PartUsage'].includes(part.metaclass))window.openSysmlComponent?.(part.qualifiedName)});
+      sheet.id='model-open-sysml-sheet';sheet.title='Selected element and its direct features; custom scope filters do not apply.';sheet.disabled=busy||typeof window.openSysmlComponent!=='function';panel.append(sheet);
+    }
+  }
+  function selectModelNode(n,trigger){
+    if(!catalog||!report||busy)return;
+    modelSelection={key:n.key,root:n.root,elementId:n.elementId};revealModelPath(n.key);
+    el('model-tree').querySelectorAll('.focus-node').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.key===n.key&&b.dataset.root===n.root&&b.dataset.elementId===n.elementId)));
+    modelSelectionActions();inspect(n.elementId,trigger);
+  }
   function focusNode(n){
     if(!catalog||!report||busy)return;
     if(recipe)scopeHistory.push({recipe:structuredClone(recipe),name:el('perspective-name').value,surface,transient,activeViewName});if(scopeHistory.length>20)scopeHistory.shift();
     transient=true;el('view-save-feedback').textContent='';activeViewName=null;el('perspective-name').value=newViewName(human(n.name)+' review');
-    const sameRoot=recipe?.root===n.root;
-    apply({schemaVersion:1,root:n.root,focus:n.key,depth:recipe?.depth??1,neighbors:recipe?.neighbors??0,kinds:recipe?.kinds||['connection','binding','flow'],pinned:sameRoot?recipe.pinned:[],hidden:sameRoot?recipe.hidden.filter(k=>k!==n.key):[]});
+    surface='diagram';
+    apply({schemaVersion:1,root:n.root,focus:n.key,depth:1,neighbors:0,kinds:['connection','binding','flow'],pinned:[],hidden:[]});
   }
   function revealModelPath(focus){
     let n=catalog?.nodes.find(n=>n.key===focus);const seen=new Set();
@@ -57,6 +77,7 @@
   function modelBrowser(){
     el('model-tree').replaceChildren();if(!catalog)return;
     const query=el('model-search').value,all=catalog.nodes;
+    const actions=node('div',undefined,'model-selection-actions');actions.id='model-selection-actions';el('model-tree').append(actions);modelSelectionActions();
     const list=node('ul');el('model-tree').append(list);
     function childrenPage(children,parent,key,page=childPages.get(key)||0){
       page=Math.min(page,Math.max(0,Math.ceil(children.length/60)-1));childPages.set(key,page);
@@ -66,7 +87,8 @@
     function add(n,parent,search=false){
       const li=node('li'),row=node('div',undefined,'model-branch'),children=all.filter(c=>c.parent===n.key&&c.root===n.root),sub=node('ul');li.append(row);parent.append(li);
       if(children.length&&!search){const toggle=button(expanded.has(n.key)?'−':'+',()=>{if(expanded.has(n.key))expanded.delete(n.key);else expanded.add(n.key);toggle.textContent=expanded.has(n.key)?'−':'+';toggle.setAttribute('aria-expanded',String(expanded.has(n.key)));sub.replaceChildren();sub.hidden=!expanded.has(n.key);if(!sub.hidden)childrenPage(children,sub,n.key)});toggle.className='expand-node';toggle.setAttribute('aria-label','Expand '+friendlyPath(n.key));toggle.setAttribute('aria-expanded',String(expanded.has(n.key)));row.append(toggle);sub.hidden=!expanded.has(n.key);li.append(sub);if(!sub.hidden)childrenPage(children,sub,n.key)}else row.append(node('span',undefined,'leaf-space'));
-      const focus=button(human(n.name)+(!n.parent?' · '+scopeKind(n):''),()=>focusNode(n));focus.className='focus-node';focus.title=n.key;focus.setAttribute('aria-label','Focus '+n.key);if(recipe?.focus===n.key)focus.setAttribute('aria-current','true');if(search)focus.append(node('span',friendlyPath(n.key)+' · '+scopeKind(n),'model-search-path'));row.append(focus);
+      const context=entry(n.elementId)?.qualifiedName?.split('::').slice(0,-1).map(human).join(' / ');
+      const focus=button(human(n.name)+(!n.parent?' · '+scopeKind(n):''),event=>selectModelNode(n,event.currentTarget));focus.className='focus-node';focus.title=n.key;focus.dataset.key=n.key;focus.dataset.root=n.root;focus.dataset.elementId=n.elementId;focus.setAttribute('aria-label','Select '+n.key);focus.setAttribute('aria-pressed',String(n.key===modelSelection?.key&&n.root===modelSelection?.root&&n.elementId===modelSelection?.elementId));if(recipe?.focus===n.key&&recipe?.root===n.root)focus.setAttribute('aria-current','true');if(search||!n.parent)focus.append(node('span',(search?friendlyPath(n.key):context||friendlyPath(n.key))+' · '+scopeKind(n),'model-search-path'));row.append(focus);
     }
     const hits=query?all.filter(n=>matches(n.key,query)):all.filter(n=>!n.parent).sort((a,b)=>Number(entry(a.elementId)?.metaclass==='PartDefinition')-Number(entry(b.elementId)?.metaclass==='PartDefinition'));
     modelPage=Math.min(modelPage,Math.max(0,Math.ceil(hits.length/60)-1));hits.slice(modelPage*60,modelPage*60+60).forEach(n=>add(n,list,!!query));
@@ -169,11 +191,12 @@
     }
   }
   function draw(){
+    if(el('return-view'))el('return-view').hidden=true;
     if(!result||!report||result.sourceSha256!==report.sourceSha256)return;
     if(!transient&&!activeViewName)activeViewName=el('perspective-name').value;
       const name=activeViewName||el('perspective-name').value;if(!transient){workingViews=workingViews.filter(v=>v.name!==name);workingViews.push({name,recipe:structuredClone(recipe),surface,savedSourceSha256:result.sourceSha256})}
     resetStory();lastEvidence=null;clearSelection();el('scope-surfaces').hidden=false;el('canvas').closest('.workspace').classList.toggle('table-mode',surface!=='diagram');
-    el('view-title').textContent=activeViewName||el('perspective-name').value||'Custom perspective';el('view-purpose').textContent=recipe.focus.split('/').map(x=>human(x.split('::').pop())).join(' › ')+' · '+scopeKind({root:recipe.root})+' · analytical view';el('view-purpose').title=recipe.focus;document.title=el('view-title').textContent+' · Modeling lab';
+    el('view-title').textContent=activeViewName||el('perspective-name').value||'Custom perspective';el('view-purpose').textContent=recipe.focus.split('/').map(x=>human(x.split('::').pop())).join(' › ')+' · '+scopeKind({root:recipe.root})+' · analytical view';el('view-purpose').title=recipe.focus;document.title=el('view-title').textContent+' · Modeling lab';el('view-notation').textContent=surface==='diagram'?'Analytical diagram':'Analytical table';
     el('scope').textContent='Revision '+result.sourceSha256.slice(0,12);
     el('scope').title=recipe.focus;
     const trail=node('div');trail.className='scope-trail';
@@ -222,6 +245,11 @@
   el('save-perspective').addEventListener('click',()=>saveView());
   el('save-view-copy').addEventListener('click',()=>saveView(true));
   window.scopeWorkbench={
+    captureContext:()=>recipe?{recipe:structuredClone(recipe),surface,transient,activeViewName,name:el('perspective-name').value,sourceSha256:report?.sourceSha256,workspaceKey:key(),history:structuredClone(scopeHistory)}:null,
+    returnToScope(context){
+      if(!context?.recipe||!catalog||!report||busy||context.sourceSha256!==report.sourceSha256||context.workspaceKey!==key()||context.recipe.schemaVersion!==1||!catalog.nodes.some(n=>n.root===context.recipe.root&&n.key===context.recipe.focus))return false;
+      transient=context.transient;surface=context.surface;activeViewName=context.activeViewName;el('perspective-name').value=context.name;scopeHistory=structuredClone(context.history||[]);apply(context.recipe);return true;
+    },
     active:()=>!!recipe,capture:()=>{restoreContext={transient,surface,activeViewName,name:el('perspective-name').value};return recipe},review:()=>result,appendNavigation:savedNavigation,export:()=>[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))],import(views){el('view-save-feedback').textContent='';saved=views;workingViews=[];scopeHistory=[];restoreContext=null;activeViewName=null;modelPage=0;childPages.clear();expanded.clear();savedNavigation()},selection(id){
       const panel=el('explore-selection');panel.replaceChildren();
       const model=entry(id),basis=report,sourceSha=basis?.sourceSha256,reportSha=basis?.reportIntegrity?.reportSha256;
@@ -251,9 +279,9 @@
         const action=button('Explore linked target · '+friendlyPath(destination.key)+' · '+traceLabel(trace),()=>{if(current()&&catalog===basisCatalog){focusNode(destination);closeInspector()}});
         action.title=destination.key;panel.append(action);
       }
-    },refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog},
-    leave(){el('canvas').closest('.workspace').classList.remove('table-mode');epoch++;recipe=null;result=null;transient=false;activeViewName=null;el('scope-surfaces').hidden=true;el('apply-scope').disabled=false},
-    invalidate(){epoch++;result=null;catalog=null;el('model-tree').replaceChildren();el('customize').disabled=true;el('scope-surfaces').hidden=true;el('scope-dialog').close()},
-    load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
+    },refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog?.roots?.length;if(el('model-open-component-view'))el('model-open-component-view').disabled=value;if(el('model-open-sysml-sheet'))el('model-open-sysml-sheet').disabled=value||typeof window.openSysmlComponent!=='function'},
+    leave(){el('canvas').closest('.workspace').classList.remove('table-mode');epoch++;recipe=null;result=null;transient=false;activeViewName=null;el('model-tree').querySelectorAll('[aria-current]').forEach(b=>b.removeAttribute('aria-current'));el('scope-surfaces').hidden=true;el('apply-scope').disabled=false},
+    invalidate(){epoch++;result=null;catalog=null;modelSelection=null;el('model-tree').replaceChildren();el('customize').disabled=true;el('scope-surfaces').hidden=true;el('scope-dialog').close()},
+    load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog?.roots?.length;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelSelection=null;modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
   };
 })();

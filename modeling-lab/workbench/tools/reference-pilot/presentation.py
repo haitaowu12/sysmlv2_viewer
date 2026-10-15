@@ -104,27 +104,97 @@ def _refs(value):
     return [ref for ref in values if isinstance(ref, dict) and isinstance(ref.get('id'), str)]
 
 
-def multiplicity(element, index):
+def cardinality(element, index):
+    """Describe exported bounds without evaluating symbolic expressions.
+
+    Unknown bounds are distinct from a known single-valued feature. A value
+    binding is classified separately by part_features; it cannot supply bounds.
+    """
     semantic = element.get('semantics', {})
     refs = _refs(semantic.get('multiplicity'))
+    evidence = [ref['id'] for ref in refs]
+    unknown = lambda reason: {'status': 'unknown', 'label': '[?]' if refs else '',
+                              'evidenceIds': evidence[:], 'reason': reason}
     if len(refs) != 1 or refs[0]['id'] not in index:
-        return '', False
+        return unknown('Multiplicity evidence is absent or unresolved; cardinality is unknown.')
+    range_element = index[refs[0]['id']]
+    if range_element.get('metaclass') not in {'MultiplicityRange', 'Multiplicity'}:
+        return unknown('Multiplicity evidence has an unsupported kind; cardinality is unknown.')
     bounds = []
-    for ref in _refs(index[refs[0]['id']].get('semantics', {}).get('bound')):
+    for ref in _refs(range_element.get('semantics', {}).get('bound')):
+        evidence.append(ref['id'])
         bound = index.get(ref['id'], {})
         if bound.get('metaclass') == 'LiteralInfinity':
             bounds.append('*')
         elif bound.get('metaclass') == 'LiteralInteger':
             value = bound.get('semantics', {}).get('value')
-            if isinstance(value, int) and not isinstance(value, bool) or isinstance(value, str) and value.isdigit():
-                bounds.append(str(value))
+            if (type(value) is int and value >= 0
+                    or isinstance(value, str) and value.isdigit() and len(value) <= 16):
+                bounds.append(str(int(value)))
             else:
-                return '', False
+                return unknown('Multiplicity bound is not a supported nonnegative literal; cardinality is unknown.')
         else:
-            return '', False
+            return unknown('Multiplicity bound is symbolic or unresolved; cardinality is unknown and is not evaluated.')
     if not 1 <= len(bounds) <= 2:
-        return '', False
-    return '[' + '..'.join(bounds) + ']', bounds != ['1'] and bounds != ['1', '1']
+        return unknown('Multiplicity bounds are unavailable or ambiguous; cardinality is unknown.')
+    if len(bounds) == 2 and (bounds[0] == '*' or bounds[-1] != '*' and int(bounds[0]) > int(bounds[-1])):
+        return unknown('Multiplicity bounds are inconsistent; cardinality is unknown.')
+    return {'status': 'known-multi' if bounds[-1] == '*' or int(bounds[-1]) > 1 else 'known-single',
+            'label': '[' + '..'.join(bounds) + ']', 'evidenceIds': evidence,
+            'reason': 'Literal multiplicity bounds only; no installed instance population is inferred.'}
+
+
+def multiplicity(element, index):
+    """Compatibility label/collection pair; use cardinality for uncertainty."""
+    result = cardinality(element, index)
+    return result['label'] if result['status'] != 'unknown' else '', result['status'] == 'known-multi'
+
+
+def scalar_alias_evidence(part, value, index):
+    """Recognize a bounded scalar reference declaration, not its population.
+
+    Native reports may reference an omitted implicit Multiplicity. That absence
+    remains unknown cardinality, but does not turn a plain resolved alias into a
+    collection. Explicit, inherited or unresolved range evidence is not bypassed.
+    """
+    ps = part.get('semantics', {})
+    if (ps.get('isComposite') is not False or value.get('metaclass') != 'FeatureReferenceExpression'
+            or any(_refs(ps.get(field)) for field in ('ownedRedefinition', 'ownedSubsetting', 'ownedReferenceSubsetting'))):
+        return None
+    referents = _refs(value.get('semantics', {}).get('referent'))
+    if len(referents) != 1 or referents[0]['id'] not in index:
+        return None
+    target = index[referents[0]['id']]
+    if target.get('metaclass') != 'PartUsage' or target['sessionElementId'] == part['sessionElementId']:
+        return None
+    for feature in (part, target):
+        semantic = feature.get('semantics', {})
+        if any(_refs(semantic.get(field)) for field in ('ownedRedefinition', 'ownedSubsetting', 'ownedReferenceSubsetting')):
+            return None
+        refs = _refs(semantic.get('multiplicity'))
+        if len(refs) > 1:
+            return None
+        # A range can be symbolic, inherited or outside the retained index. Only
+        # explicitly known single-valued ranges are safe for this narrow alias.
+        if refs:
+            mult = index.get(refs[0]['id'], refs[0])
+            if mult.get('metaclass') != 'Multiplicity' and cardinality(feature, index)['status'] != 'known-single':
+                return None
+            if _refs(mult.get('semantics', {}).get('bound')) and cardinality(feature, index)['status'] != 'known-single':
+                return None
+    # This exact declaration witness deliberately supports no specialization,
+    # brackets, body, computed value or comment. Source does not establish bounds.
+    name = r"(?:[A-Za-z_][A-Za-z0-9_]*|'(?:\\['\\]|[^'\\])*')"
+    qualified = name + r'(?:\s*::\s*' + name + r')*'
+    match = re.fullmatch(r'\s*ref\s+part\s+(' + name + r')\s*:\s*' + qualified
+                         + r'\s*=\s*(' + qualified + r')\s*;\s*', part.get('source', ''))
+    if (not match or qualified_segments(match[1]) != (ps.get('declaredName') or part.get('name'),)
+            or qualified_segments(re.sub(r'\s*::\s*', '::', match[2])) != qualified_segments(target.get('qualifiedName'))):
+        return None
+    return {'profile': 'source-witnessed-scalar-alias-v1', 'cardinality': cardinality(part, index)['status'],
+            'declaration': part['source'].strip(),
+            'evidenceIds': [part['sessionElementId'], value['sessionElementId'], target['sessionElementId']],
+            'reason': 'Resolved direct scalar reference feature retained; cardinality and installed instance population are not inferred.'}
 
 
 def part_features(root, index):
@@ -163,7 +233,8 @@ def part_features(root, index):
                 if membership.get('metaclass') == 'FeatureValue' and any(s['id'] == part['sessionElementId'] for s in _refs(semantic(membership).get('source'))):
                     values += _refs(semantic(membership).get('value'))
         value_ids = list(dict.fromkeys(ref['id'] for ref in values))
-        mult, is_collection = multiplicity(part, index)
+        cardinal = cardinality(part, index)
+        mult, is_collection = cardinal['label'], cardinal['status'] == 'known-multi'
         subset = list(dict.fromkeys(subset_members.get(part['sessionElementId'], [])))
         if len(value_ids) != 1 or value_ids[0] not in index:
             if is_collection and subset and not value_ids:
@@ -171,6 +242,11 @@ def part_features(root, index):
                     'multiplicity': mult, 'kind': 'subset-collection', 'memberIds': subset,
                     'memberNames': [display_name(index[eid]) for eid in subset], 'evidenceIds': subset,
                     'reason': 'Collection with explicitly subsetted occurrences; listed members do not establish its complete population.'})
+            elif cardinal['status'] == 'unknown' and value_ids:
+                collections.append({'elementId': part['sessionElementId'], 'name': display_name(part), 'qualifiedName': part.get('qualifiedName'),
+                    'multiplicity': mult or '[?]', 'cardinality': 'unknown', 'kind': 'unresolved-collection',
+                    'memberIds': [], 'memberNames': [], 'evidenceIds': list(dict.fromkeys(cardinal['evidenceIds'] + value_ids)),
+                    'reason': cardinal['reason'] + ' Explicit value binding is unresolved or ambiguous; component membership and count are not inferred.'})
             else:
                 ordinary.append(part)
             continue
@@ -202,6 +278,16 @@ def part_features(root, index):
             return result
         bound_members = members(value, set()) if value.get('metaclass') == 'OperatorExpression' else None
         null_collection = is_collection and value.get('metaclass') == 'NullExpression'
+        if cardinal['status'] == 'unknown':
+            if scalar_alias_evidence(part, value, index):
+                ordinary.append(part)
+                continue
+            collections.append({'elementId': part['sessionElementId'], 'name': display_name(part), 'qualifiedName': part.get('qualifiedName'),
+                'multiplicity': mult or '[?]', 'cardinality': 'unknown', 'kind': 'unresolved-collection',
+                'memberIds': [], 'memberNames': [],
+                'evidenceIds': list(dict.fromkeys(cardinal['evidenceIds'] + [value_ids[0]] + evidence)),
+                'reason': cardinal['reason'] + ' Explicit value binding is retained; component membership and count are not inferred.'})
+            continue
         if not is_collection:
             ordinary.append(part); continue
         label = display_name(part)

@@ -39,15 +39,15 @@ function expandSecondPage() {
 }
 describe('large-model tree navigation', () => {
   it('retains the child page after focus, Up, Back and view redraw', async () => {
-    await harness(); expandSecondPage(); click('Focus Site/segment9/unit95'); await flush()
+    await harness(); expandSecondPage(); click('Select Site/segment9/unit95');document.getElementById('model-open-component-view')!.click(); await flush()
     expect(pager()).toContain('61–100 of 100 matches')
-    expect(document.querySelector('[aria-label="Focus Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
+    expect(document.querySelector('[aria-label="Select Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
     document.querySelector<HTMLButtonElement>('[data-surface="register"]')!.click()
     expect(pager()).toContain('61–100 of 100 matches')
     Array.from(document.querySelectorAll<HTMLButtonElement>('#scope-trail button')).find(b => b.textContent === 'Up one level')!.click(); await flush()
     expect(pager()).toContain('61–100 of 100 matches')
     Array.from(document.querySelectorAll<HTMLButtonElement>('#scope-trail button')).find(b => b.textContent === 'Back to previous scope')!.click(); await flush()
-    expect(document.querySelector('[aria-label="Focus Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
+    expect(document.querySelector('[aria-label="Select Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
     click('Expand Site / Segment9'); click('Expand Site / Segment9')
     expect(pager()).toContain('61–100 of 100 matches')
     expect(document.querySelectorAll('#model-tree .focus-node').length).toBe(42)
@@ -55,10 +55,10 @@ describe('large-model tree navigation', () => {
   it('reveals the selected search result in its hierarchy after search is cleared', async () => {
     await harness(); search('unit95')
     expect(document.querySelectorAll('#model-tree .focus-node').length).toBe(1)
-    click('Focus Site/segment9/unit95'); await flush(); search('')
+    click('Select Site/segment9/unit95');document.getElementById('model-open-component-view')!.click(); await flush(); search('')
     expect(pager()).toContain('61–100 of 100 matches')
-    expect(document.querySelector('[aria-label="Focus Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
-    expect(document.querySelector('[aria-label="Focus Site/segment9/unit0"]')).toBeNull()
+    expect(document.querySelector('[aria-label="Select Site/segment9/unit95"]')!.getAttribute('aria-current')).toBe('true')
+    expect(document.querySelector('[aria-label="Select Site/segment9/unit0"]')).toBeNull()
   })
   it('keeps broad search bounded and returns its first page when the query changes', async () => {
     await harness(); search('unit')
@@ -66,6 +66,6 @@ describe('large-model tree navigation', () => {
     click('Next components'); expect(document.querySelectorAll('#model-tree .focus-node').length).toBe(40)
     search('unit9'); expect(document.querySelectorAll('#model-tree .focus-node').length).toBe(11)
     search('unit'); expect(document.querySelectorAll('#model-tree .focus-node').length).toBe(60)
-    expect(document.querySelector('[aria-label="Focus Site/segment9/unit0"]')).not.toBeNull()
+    expect(document.querySelector('[aria-label="Select Site/segment9/unit0"]')).not.toBeNull()
   })
 })
