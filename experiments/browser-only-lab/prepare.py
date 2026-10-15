@@ -13,14 +13,22 @@ for name in ['engineering','stakeholder','behavior','check_contract','receipts',
 for name in ['pyodide.asm.js','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip']:
     shutil.copy2(ROOT/'node_modules/pyodide'/name,PUBLIC/'pyodide'/name)
 shutil.copytree(LAB/'tools/reference-pilot/examples',PUBLIC/'examples',dirs_exist_ok=True)
+startup_project=json.loads((LAB/'tools/reference-pilot/examples/apollo-11.modeling.json').read_text())
+(PUBLIC/'initial.json').write_text(json.dumps({'source':startup_project['source'],'presets':startup_project['views'],'workspaceKey':startup_project['id'],
+    'title':startup_project['title'],'brief':startup_project['brief'],'questions':startup_project['questions'],'project':startup_project}))
+# Keep the compatibility probe's positive and negative controls independent of
+# the online page's starting project.
 project=json.loads((LAB/'fixtures/authoring/alarm-review/reviewed.modeling.json').read_text())
-(PUBLIC/'initial.json').write_text(json.dumps({'source':project['source'],'presets':project['views'],'workspaceKey':'browser-alarm-trial',
-    'title':project['title'],'brief':project['brief'],'questions':project['questions']}))
 cases=[{'id':'valid-baseline','expectedErrors':False,'source':(LAB/'fixtures/authoring/alarm-review/model.sysml').read_text()},{'id':'valid-reviewed','expectedErrors':False,'source':project['source']},{'id':'undefined-type','expectedErrors':True,'source':project['source'].replace('part coldRoom0 : ColdRoom;','part coldRoom0 : NoSuchRoomType;')},{'id':'undefined-endpoint','expectedErrors':True,'source':project['source'].replace('connect coldRoom0.readings','connect coldRoom0.missingReadings')},{'id':'broken-syntax','expectedErrors':True,'source':project['source']+'\npart def Broken {'},{'id':'same-name-in-two-packages','expectedErrors':False,'source':'package A { part def Unit; } package B { part def Unit; }'}]
 (ROOT/'cases.json').write_text(json.dumps(cases))
 page=(LAB/'tools/reference-pilot/lab.html').read_text().replace('__SCOPE_SCRIPT__',(LAB/'tools/reference-pilot/scope.js').read_text()).replace('__SOURCE_INTAKE_SCRIPT__',(LAB/'tools/reference-pilot/source_intake.js').read_text()).replace('__WORKFLOW_SCRIPT__',(LAB/'tools/reference-pilot/workflow.js').read_text()).replace('__TOKEN__','browser-local')
 bootstrap='''<script>window.browserLabReady=new Promise((resolve,reject)=>{window.browserLabResolve=resolve;window.browserLabReject=reject});const originalBrowserFetch=window.fetch.bind(window);window.fetch=async (url,options)=>{if(typeof url==='string'&&['/initial','/render','/compose','/prepare','/inspect','/element','/accept','/rollback'].includes(url)){const request=await window.browserLabReady;const data=await request(url,options?.body?JSON.parse(options.body):{});return {json:async()=>data};}return originalBrowserFetch(url,options)};</script><script type="module" src="/lab-runtime.js"></script>'''
 page=page.replace('<body>','<body>'+bootstrap).replace('Full qualified model retained locally. Additional source details load when selected.','Browser engine snapshot. Additional source details load when selected.').replace('Modeling lab','Modeling Lab')
+# Start the complete saved example through ordinary project admission so custom
+# views, baseline and original file locations survive the initial page load.
+startup="$('source').value=data.source;render()"
+if page.count(startup)!=1:raise ValueError('The maintained startup hook changed; review browser project admission.')
+page=page.replace(startup,"$('source').value=data.source;return window.labWorkflow.openProject(data.project)")
 
 # No Pilot renderer runs in this profile. Hide its inherited comparison control.
 page=page.replace('</body>',"<script>document.getElementById('reference').style.display='none';</script></body>")
