@@ -42,8 +42,11 @@ def render_report(data):
     report['viewRecipes']=recipes
     report['changeSummary']=summarize(normalized(data['baseChecked']),report)
     report['reportIntegrity']={'reportSha256':hashlib.sha256(json.dumps(report,sort_keys=True).encode()).hexdigest()}
-    report['catalogue']=catalogue(report)
-    report['catalogue']['reportSha256']=report['reportIntegrity']['reportSha256']
+    try:
+        report['catalogue']=catalogue(report)
+        report['catalogue']['reportSha256']=report['reportIntegrity']['reportSha256']
+    except ValueError as error:
+        report['catalogueError']=str(error)
     if data.get('stage') or data.get('accept'):
         for v in report['views']:
             failure=v.get('error') or v.get('stakeholderError')
