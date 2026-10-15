@@ -1243,3 +1243,50 @@ describe('native accepted context bootstrap', () => {
     expect((window as any).labWorkflow.snapshot().baselineHash).toBe('a'.repeat(64))
   })
 })
+
+
+describe('accepted project workspace namespace', () => {
+  const custom=(name: string)=>({name,surface:'register',recipe:{schemaVersion:1,root:'Pump',focus:'Pump/motor',depth:1,neighbors:0,kinds:['flow'],pinned:[],hidden:[]}})
+  it('stages an imported namespace without leaking it before acceptance, then keeps it on later requests',async()=>{
+    const h=await harness(true,{workspaceKey:'startup-key'});await h.answer(0,true,{catalogue:scopeCatalog})
+    const workflow=(window as any).labWorkflow,before=workflow.snapshot(),candidate={...before,id:'imported-project-key',title:'Imported project',customViews:[custom('Imported view')]}
+    expect(before.id).not.toBe('startup-key');expect(typeof before.id).toBe('string');expect(h.calls[0].payload.workspaceKey).toBe('startup-key')
+    const opening=workflow.openProject(candidate);await h.answer(1);await h.flush()
+    expect(h.calls[2].payload.workspaceKey).toBe('imported-project-key');expect(workflow.snapshot().id).toBe(before.id)
+    expect(document.querySelector('#views [data-custom]')).toBeNull()
+    await h.answer(2,true,{catalogue:scopeCatalog});await opening
+    expect(workflow.snapshot().id).toBe('imported-project-key');expect(document.querySelector('#views [data-custom]')!.textContent).toBe('Imported view')
+    document.getElementById('validate')!.click();expect(h.calls[3].payload.workspaceKey).toBe('imported-project-key');await h.answer(3,true,{catalogue:scopeCatalog})
+  })
+  it('retains the prior namespace when an imported acceptance response is lost and rollback fails before retry',async()=>{
+    const h=await harness(true,{workspaceKey:'prior-project-key'});await h.answer(0,true,{catalogue:scopeCatalog});h.holdAcceptance()
+    const workflow=(window as any).labWorkflow,before=structuredClone(workflow.snapshot())
+    const opening=workflow.openProject({...before,id:'unconfirmed-project-key',customViews:[custom('Unconfirmed view')]})
+    const rejected=expect(opening).rejects.toThrow('not opened');await h.answer(1);await h.flush();await h.answer(2,true,{catalogue:scopeCatalog})
+    h.rollbackReplies.push(async()=>{throw Error('Temporary rollback failure')});h.receipts[0].resolve({json:async()=>{throw Error('Lost acceptance')}});await h.flush();await rejected
+    expect(workflow.snapshot()).toEqual(before);expect(workflow.payload().workspaceKey).toBe('prior-project-key');expect(document.querySelector('#views [data-custom]')).toBeNull()
+    h.resumeAcceptance();document.getElementById('validate')!.click();await h.flush()
+    expect(h.protocol).toHaveLength(2);expect(h.calls[3].payload.workspaceKey).toBe('prior-project-key');await h.answer(3,true,{catalogue:scopeCatalog})
+  })
+  it('loads browser-saved custom recipes from the resumed namespace and preserves project identity',async()=>{
+    const h=await harness(true,{workspaceKey:'resumed-import-id',acceptedReport:{sourceSha256:'a'.repeat(64),reportIntegrity:{reportSha256:'b'.repeat(64)}}})
+    localStorage.setItem('sysml-perspectives-v1:startup-key',JSON.stringify([custom('Wrong startup view')]))
+    localStorage.setItem('sysml-perspectives-v1:resumed-import-id',JSON.stringify([custom('Saved imported custom view')]))
+    await h.answer(0,true,{catalogue:scopeCatalog})
+    expect((window as any).labWorkflow.snapshot().id).toBe('resumed-import-id')
+    expect(h.calls[0].payload.workspaceKey).toBe('resumed-import-id')
+    expect(document.getElementById('views')!.textContent).toContain('Saved imported custom view');expect(document.getElementById('views')!.textContent).not.toContain('Wrong startup view')
+    expect((window as any).labWorkflow.snapshot().customViews[0].name).toBe('Saved imported custom view')
+  })
+  it('keeps a fresh browser project identity unique even when its initial context has a fixed workspace key',async()=>{
+    const h=await harness(true,{workspaceKey:'browser-authored-study'});await h.answer(0)
+    expect((window as any).labWorkflow.snapshot().id).not.toBe('browser-authored-study')
+    expect((window as any).labWorkflow.snapshot().id).toMatch(/^[a-f0-9-]{36}$/)
+    expect(h.calls[0].payload.workspaceKey).toBe('browser-authored-study')
+  })
+  it('rejects an unusable explicit namespace without replacing the project',async()=>{
+    const h=await harness(true);await h.answer(0);const workflow=(window as any).labWorkflow,before=workflow.snapshot()
+    await expect(workflow.openProject({...before,id:'x'.repeat(201)})).rejects.toThrow('Project identity must contain 1–200 characters')
+    expect(workflow.snapshot()).toEqual(before);expect(h.calls).toHaveLength(1)
+  })
+})
