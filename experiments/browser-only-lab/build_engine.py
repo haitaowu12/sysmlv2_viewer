@@ -11,9 +11,9 @@ if not SOURCE.exists():
 head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=SOURCE,text=True).strip()
 if head!=PIN:raise SystemExit('The engine source does not match the reviewed pin.')
 patch=ROOT/'opensysml-browser.patch'
-if subprocess.run(['git','apply','--reverse','--check',str(patch)],cwd=SOURCE,capture_output=True).returncode:
-    run('git','apply','--check',str(patch),cwd=SOURCE)
-    run('git','apply',str(patch),cwd=SOURCE)
+if subprocess.run(['git','apply','--unidiff-zero','--reverse','--check',str(patch)],cwd=SOURCE,capture_output=True).returncode:
+    run('git','apply','--unidiff-zero','--check',str(patch),cwd=SOURCE)
+    run('git','apply','--unidiff-zero',str(patch),cwd=SOURCE)
 go=os.environ.get('LAB_GO','go')
 version=subprocess.check_output([go,'version'],text=True)
 if 'go1.27.1 ' not in version:raise SystemExit('Reproduce this trial with Go 1.27.1 (LAB_GO can name an isolated SDK).')
