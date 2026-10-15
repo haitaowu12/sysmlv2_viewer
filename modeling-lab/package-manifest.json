@@ -152,7 +152,7 @@
     "workbench/tools/reference-pilot/check_evidence.py": "9a665f3838d67c2bbcdb58155373ae004d9a0e8f8ab8369730fbefeb42442617",
     "workbench/tools/reference-pilot/community_regressions.py": "2cf25f06e3228f2026e4f858adbaa28d9bdc529d8125ab41304a435dde38700a",
     "workbench/tools/reference-pilot/engineering.py": "2b7ac790827cde944c0d85cce3d5d8e744ecc22cfdc695346fcfdd57050f95aa",
-    "workbench/tools/reference-pilot/lab.html": "8858e2dc94cf5dbdbc5b91d1c0495fe042e7940dd6c34f0814ae4038aa8ec51f",
+    "workbench/tools/reference-pilot/lab.html": "2dd12648c94d94e93bd53dbe16e262748d9d521df0b4921af0f4508301e10d1c",
     "workbench/tools/reference-pilot/lab.py": "b25d1b951169e142d16cdabaffad4ab60214a566674b83c7d75979a45be33acf",
     "workbench/tools/reference-pilot/model_facts.py": "d9cf363fa5739dd193a9d6299512a7bca9494b5f0186b49ab699e2460f7e667e",
     "workbench/tools/reference-pilot/pump_regressions.py": "35f356724a59cabd375cdf47ad11fc9dbf62a75d9c41b85c5890c4f6fa4a57dc",
