@@ -79,7 +79,7 @@
     "references/authoring.md": "47dab6aac528610b5abf7b1b60b18369be4020d152afedcd43adaad912bb2984",
     "references/collaborative-method.md": "e77b11ef25e41c8a3dd194a7db33b70ce8e78f8a63a5701f5099cd60da4f5b8c",
     "references/validated-syntax.md": "e8fef73e5128403521cdf2a46a13aaa889528f7c586385cf839fb873b526f2f4",
-    "scripts/package_manifest.py": "e389951b4765cbef783c383b7318e2453b44d055014cbaf2c4eac78c4008faae",
+    "scripts/package_manifest.py": "ee69063ada3ac2c4b163ce587dd76a566c85f7af1efcd8feb86a801f8706c44d",
     "scripts/sysml.py": "3bb1fd7484fd2eafb957e4e9914f757d938b858579ccc232102cb75c05cd3bdb",
     "workbench/.npmrc": "a093bb2fed59d699b7f9a62a5203cc196054c624e9c39c6d908c9e7db5dd2464",
     "workbench/config/reference-pilot-lock.json": "65442a0b56cab7ba6a168a7da05522c7a19288969044255a606f6abe48a3d454",
@@ -137,7 +137,7 @@
     "workbench/package-lock.json": "1e6611f20bae12b5c285d4b1e52d294c7cacdc9bfb1690d6c777613202fe5b1a",
     "workbench/package.json": "f01bb3206101969b963af1bcbb79b7c31d3b770b9b4865a8665f5576b621c42b",
     "workbench/vitest.config.ts": "36acd2a5c63b70a5785ef6297acf72c23aad38cbce68def164ea85efc5050a97",
-    "workbench/src/test/referenceLab.test.ts": "214bbd16b315427c967a5143d6354d8a93beec8f24d2c1eef86b51c55bf94585",
+    "workbench/src/test/referenceLab.test.ts": "d815ae19bf6adc0df9b55faf6800575e37b5432a6e66bdc33b4d7ca40b52bc37",
     "workbench/tools/reference-pilot/AGENT_WORKFLOW.md": "40d523763163fcbad1990e8ff1ae7ea47614f7343f8b6d2d1c3424331215e732",
     "workbench/tools/reference-pilot/EVIDENCE_CONTRACT.md": "dd2e47d59e9b5f87f1556abdeca307e52a8781a8226e434ca1128eafad0e9263",
     "workbench/tools/reference-pilot/LIFECYCLE.md": "6b7eb9b56ef724b8f4cdfe3bbfda91c1d19e3e7eade93de9fcc4b32e822c6b14",
@@ -151,8 +151,8 @@
     "workbench/tools/reference-pilot/check_contract.py": "83a3f0fc2a7b87b0c46fd9b057a954e845a90526a7a37227068564885421f8ed",
     "workbench/tools/reference-pilot/check_evidence.py": "9a665f3838d67c2bbcdb58155373ae004d9a0e8f8ab8369730fbefeb42442617",
     "workbench/tools/reference-pilot/community_regressions.py": "2cf25f06e3228f2026e4f858adbaa28d9bdc529d8125ab41304a435dde38700a",
-    "workbench/tools/reference-pilot/engineering.py": "2b7ebbd2d30f914a93f33dd9e2f39fed05e6d5cb2efd76c2f827a13c6693d35c",
-    "workbench/tools/reference-pilot/lab.html": "4d909f9f57f0f768768c1fec1aec850dc4f69da955d8b98853cf7a518ad2e641",
+    "workbench/tools/reference-pilot/engineering.py": "e2e5376e8c745496c289a00b13ea02b4ae94fe52eab27246c03434f5d8a0dda2",
+    "workbench/tools/reference-pilot/lab.html": "8d81e20b5fd7422c2effee7da81313996b363ddf28fc3406a85ebe74b0f464d2",
     "workbench/tools/reference-pilot/lab.py": "a0053b3620040b6592f1a561e72064a4968f387c1b51674c85bce49f5d3d49d1",
     "workbench/tools/reference-pilot/model_facts.py": "d9cf363fa5739dd193a9d6299512a7bca9494b5f0186b49ab699e2460f7e667e",
     "workbench/tools/reference-pilot/pump_regressions.py": "35f356724a59cabd375cdf47ad11fc9dbf62a75d9c41b85c5890c4f6fa4a57dc",
@@ -177,6 +177,7 @@
     "workbench/tools/reference-pilot/presentation.py": "a900d6968be2dade75cf8595ce6a95d6b90d104703a3d011cc26b11cebb8a0f1",
     "workbench/tools/reference-pilot/test_presentation.py": "efb8d0377a192d1a87742db26cc83cda8a49947ec3291e320fb88e1e4bd022b8",
     "workbench/tools/reference-pilot/test_configured_catalogue.py": "13708d4117b49b0b6379a6cf1487f8cd8c560c9465c4c24846c290ee8d8fc069",
+    "workbench/tools/reference-pilot/test_reference_catalogue.py": "fc678b54cd3660377e486573dd5a817c2a5aaa1a42eaf1b31c8af49ecd325012",
     "workbench/tools/reference-pilot/stakeholder.py": "ec5ce5dba089c63456cdd414527256887e58ad99a492cd01722d985080625ecc",
     "workbench/tools/reference-pilot/test_agent_model.py": "700beb8c94c75abbefd0289f512dfa9a76a4b2e0233304574f113bf08e42409d",
     "workbench/tools/reference-pilot/test_capacity_analysis.py": "bcf3e6f958ca08d3e888a5ffbec9ab58ef6573f4b2746b460a2445a52f02c553",
@@ -190,6 +191,6 @@
     "workbench/tools/reference-pilot/test_stakeholder.py": "4630be15d07ec8f049246e3247a5e444f7701db51b3fcbbf1068741461e7c817",
     "workbench/tools/reference-pilot/test_view_contract.py": "1ac6edba39bdc5e8aa2b323e6740bb96bc4f8f7a75c6bab6a83fc25dacd265ad",
     "workbench/tools/reference-pilot/test_view_scope.py": "b68074714b069dabfae08baf55bcb3602cc89944939c7cd77253344f734c716e",
-    "workbench/tools/reference-pilot/view_scope.py": "830e999ee4fd30b831e07c1bb8906b648edaef0a93c1b62a4c2f1e33ad6c628d"
+    "workbench/tools/reference-pilot/view_scope.py": "bf69c4ca561697eb7f6e0b097e88b8909d2c3e6d9e4b18af5591546c8a7259bf"
   }
 }
