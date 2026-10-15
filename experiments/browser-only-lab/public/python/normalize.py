@@ -41,6 +41,14 @@ def normalize(raw, source):
         es.append({'sessionElementId':e['@id'],'metaclass':e['@type'],'qualifiedName':e.get('qualifiedName'),'name':e.get('declaredName') or e.get('lab:roleName'),'line':start,'endLine':end,'source':text,'semantics':s})
     # Materialize binary endpoints only through explicit engine-exported end bindings.
     normalized={e['sessionElementId']:e for e in es}
+    # The engine's typed documentation association and the document's owner
+    # jointly establish this inverse; owner alone never supplies the relation.
+    for raw_element in raw:
+        for ref in raw_element.get('documentation', []):
+            doc=ix.get(ref.get('@id'),{}) if isinstance(ref,dict) else {}
+            if (doc.get('@type') == 'Documentation' and doc.get('owner',{}).get('@id') == raw_element['@id']
+                    and ('documentedElement' not in doc or doc['documentedElement'] == {'@id':raw_element['@id']})):
+                normalized[doc['@id']]['semantics']['documentedElement']=reference({'@id':raw_element['@id']})
     # Prefer the explicit typing relationship over the exporter's aggregate
     # base type for conjugated ports; keep the original report identities.
     for raw_element in raw:

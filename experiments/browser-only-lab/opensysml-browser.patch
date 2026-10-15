@@ -12,7 +12,7 @@ index e349420..4259c31 100644
 -	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState":
 +	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState", "RenderView":
 diff --git a/internal/frontend/core/core.go b/internal/frontend/core/core.go
-index a25c123..6092012 100644
+index a25c123..5ec865b 100644
 --- a/internal/frontend/core/core.go
 +++ b/internal/frontend/core/core.go
 @@ -27,0 +28 @@ import (
@@ -208,11 +208,11 @@ index a25c123..6092012 100644
 +				el["lab:unmappedFeatureRefs"] = missing
 +			}
 +		}
-+		for _, field := range []string{"subjectParameter", "objectiveRequirement"} {
++		for _, field := range []string{"subjectParameter", "objectiveRequirement", "documentation"} {
 +			if values, ok := semantic.ReflectiveElements(sym, field); ok {
 +				mapped, missing := refs(values)
 +				if len(missing) == 0 {
-+					if len(mapped) == 1 {
++					if len(mapped) == 1 && field != "documentation" {
 +						el[field] = mapped[0]
 +					} else {
 +						el[field] = mapped
@@ -327,10 +327,10 @@ index a25c123..6092012 100644
 +}
 diff --git a/internal/frontend/core/lab_capture_test.go b/internal/frontend/core/lab_capture_test.go
 new file mode 100644
-index 0000000..b39fb2f
+index 0000000..98a0974
 --- /dev/null
 +++ b/internal/frontend/core/lab_capture_test.go
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,226 @@
 +// Copyright 2025 Open‐MBEE Foundation. All rights reserved.
 +// Use of this source code is governed by the LICENSE file.
 +// Modified for the maintained Modeling Lab: typed export regression and capture.
@@ -522,5 +522,38 @@ index 0000000..b39fb2f
 +	}
 +	if !found {
 +		t.Fatal("fixture satisfaction declaration was not exported")
++	}
++}
++
++func TestLabDocumentationUsesTypedRelationship(t *testing.T) {
++	elements := labTestExport(t, `package DocumentationFacts {
++ part def Other;
++ requirement r {
++  doc /* The device shall retain the stated information. */
++  comment about Other /* This comment describes Other, not the requirement. */
++  require constraint { true }
++ }
++ requirement undocumented { require constraint { true } }
++}`)
++	byName := map[string]map[string]any{}
++	byID := map[any]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = el
++		}
++		byID[el["@id"]] = el
++	}
++	docs, ok := byName["DocumentationFacts::r"]["documentation"].([]any)
++	if !ok || len(docs) != 1 {
++		t.Fatalf("typed documentation relationship missing or comment included: %v", byName["DocumentationFacts::r"]["documentation"])
++	}
++	doc := byID[docs[0].(map[string]any)["@id"]]
++	if doc["@type"] != "Documentation" || doc["body"] != "The device shall retain the stated information. " {
++		t.Fatalf("wrong documentation target: %v", doc)
++	}
++	for _, name := range []string{"DocumentationFacts::Other", "DocumentationFacts::undocumented"} {
++		if values, ok := byName[name]["documentation"].([]any); !ok || len(values) != 0 {
++			t.Fatalf("%s acquired documentation: %v", name, byName[name]["documentation"])
++		}
 +	}
 +}
