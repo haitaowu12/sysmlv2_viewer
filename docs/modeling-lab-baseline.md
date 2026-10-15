@@ -11,3 +11,5 @@ GitHub Pages provides static hosting. The full Python/Java editing and validatio
 Publication packaging adds an explicit package-local Vitest configuration so a parent repository cannot change the Lab test runner. The obsolete product lint settings treat the standalone Lab harness as test code under the same explicit-any policy as existing repository tests. Its unused callback parameter is removed in the maintained source. No runtime behavior or view/model facts change.
 
 Automated review repairs retain temporary exploration outside saved project recipes and allocate scenario view identifiers from their qualified target with collision resolution. The model name and source are preserved; two regression tests exercise these cases.
+
+Tony selected a fully browser-only GitHub Pages app on October 14, superseding the review/download proposal. The isolated [browser feasibility build](../experiments/browser-only-lab/README.md) proves a bounded browser engineering/save/reopen path, but its pump behavior-view parity gate remains failed. The maintained local baseline is unchanged; the public root has not been replaced.

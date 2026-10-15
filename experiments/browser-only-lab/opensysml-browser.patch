@@ -1,0 +1,113 @@
+diff --git a/internal/frontend/combined/combined.go b/internal/frontend/combined/combined.go
+index e349420..4259c31 100644
+--- a/internal/frontend/combined/combined.go
++++ b/internal/frontend/combined/combined.go
+@@ -19,6 +19,8 @@ import (
+ const maxModels = 16
+ 
+ var capabilities = []string{
++	"render_view",
++	"convert",
+ 	"type_facts",
+ 	"enum_values",
+ 	"evaluate_subject",
+@@ -109,13 +111,13 @@ func (s *Server) Call(ctx context.Context, method string, params []byte) ([]byte
+ 			return nil, jsonrpc.Errorf(jsonrpc.CodeInternal, "encoding engine ParseSources request: %v", err)
+ 		}
+ 		return s.finishParse(ctx, body, "ParseSources", engineParams)
+-	case "GetDiagnostics", "GetSymbol":
++	case "GetDiagnostics", "GetSymbol", "Convert":
+ 		body, err := s.core.Call(ctx, method, params)
+ 		if err == nil {
+ 			s.touchRequest(params)
+ 		}
+ 		return body, err
+-	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState":
++	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState", "RenderView":
+ 		body, err := s.engine.Call(ctx, method, params)
+ 		if err == nil {
+ 			s.touchRequest(params)
+diff --git a/internal/frontend/core/core.go b/internal/frontend/core/core.go
+index a25c123..7ee6f72 100644
+--- a/internal/frontend/core/core.go
++++ b/internal/frontend/core/core.go
+@@ -16,6 +16,7 @@ import (
+ 	"strings"
+ 
+ 	"github.com/Open-MBEE/OpenSysML/internal/check/passes"
++	"github.com/Open-MBEE/OpenSysML/internal/translate/convert"
+ 	"github.com/Open-MBEE/OpenSysML/internal/frontend/jsonrpc"
+ 	"github.com/Open-MBEE/OpenSysML/internal/frontend/symbolfacts"
+ 	fsyntax "github.com/Open-MBEE/OpenSysML/internal/frontend/syntax"
+@@ -100,6 +101,71 @@ func (c *Core) Call(ctx context.Context, method string, params []byte) (result [
+ 	}()
+ 
+ 	switch method {
++    case "Convert":
++        var req struct { ModelHash string `json:"modelHash"`; ToFormat string `json:"toFormat"` }
++        if err := jsonrpc.Decode(params, &req); err != nil { return nil, err }
++        if req.ToFormat != "api-json" { return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial only exposes api-json export") }
++        model, ok := c.get(req.ModelHash)
++        if !ok { return nil, jsonrpc.Errorf(jsonrpc.CodeNotFound, msgModelNotFound, req.ModelHash) }
++        if len(model.documents) != 1 { return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial supports one source document") }
++        for _, d := range modelDiagnostics(model) { if d.Severity == "error" { return nil, jsonrpc.Errorf(jsonrpc.CodeFailedPrecondition, "Invalid model cannot export a snapshot") } }
++        document := model.documents[0]
++        content, err := convert.Convert(document.source.Name(), document.source.Bytes(), convert.FormatSysML, convert.FormatAPIJSON)
++        if err != nil { return nil, err }
++        var elements []map[string]any
++        if err := json.Unmarshal(content, &elements); err != nil { return nil, err }
++        byName := map[string]any{}
++        for _, el := range elements { if name, ok := el["qualifiedName"].(string); ok { byName[name]=el["@id"] } }
++        identity := func(sym *symbols.Symbol) (any, bool) {
++            if sym == nil { return nil, false }
++            if id, ok := byName[model.index.GetFQN(sym)]; ok { return id, true }
++            // An unnamed declared flow has no lookup name; match its engine span.
++            if sym.DocName == document.source.Name() && sym.Kind.String() == "flowUsage" {
++                pos := document.source.Lines().PosAt(sym.DeclSpan.Offset)
++                for _, el := range elements { if el["@type"] == "FlowUsage" && el["sysx:sourceLine"] == float64(pos.Line) && el["sysx:sourceColumn"] == float64(pos.Col) { return el["@id"], true } }
++            }
++            return nil, false
++        }
++        byID := map[any]map[string]any{}
++        for _, el := range elements { byID[el["@id"]]=el }
++        semantic := model.symbolContext().Semantics
++        for _, el := range elements {
++            name, _ := el["qualifiedName"].(string)
++            matches := symbolfacts.LookupNamed(model.index, name)
++            if len(matches) != 1 || name == "" { continue }
++            sym := matches[0]
++            for _, field := range []string{"isComposite", "isReference", "isAbstract", "isOrdered", "isUnique"} {
++                if value, ok := semantic.ReflectiveFeatureValue(sym, field); ok && value.Kind == symbols.FilterValueBool { el[field]=value.Bool }
++            }
++            if features, ok := semantic.ReflectiveElements(sym, "feature"); ok {
++                refs := []map[string]any{}
++                missing := []string{}
++                libraryExcluded := 0
++                for _, feature := range features {
++                    if feature.DocName != document.source.Name() { libraryExcluded++; continue }
++                    if id, ok := identity(feature); ok { refs=append(refs,map[string]any{"@id":id}) } else { missing=append(missing,model.index.GetFQN(feature)) }
++                }
++                el["feature"]=refs
++                el["featureLibraryExcluded"]=libraryExcluded
++                if len(missing)>0 { el["lab:unmappedFeatureRefs"]=missing } else { delete(el,"lab:unmappedFeatureRefs") }
++            }
++            // Preserve the engine's implicit redefinition of typed connector roles.
++            if ends, ok := semantic.OwnedConnectorEnds(sym); ok {
++                encoded, _ := el["connectorEnd"].([]any)
++                if len(ends)==len(encoded) {
++                    for i, nativeEnd := range ends {
++                        ref, _ := encoded[i].(map[string]any)
++                        target := byID[ref["@id"]]
++                        roles := semantic.ImplicitEndRedefinitions(nativeEnd)
++                        if target != nil && len(roles)==1 { target["lab:roleName"]=roles[0].Name }
++                    }
++                }
++            }
++        }
++        content, err = json.Marshal(elements)
++        if err != nil { return nil, err }
++        return json.Marshal(map[string]any{"content":string(content)})
++
+ 	case "ParseSources":
+ 		var req JParseSourcesRequest
+ 		if err := jsonrpc.Decode(params, &req); err != nil {
