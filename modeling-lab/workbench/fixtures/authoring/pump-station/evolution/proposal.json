@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "baseSourceSha256": "67ce68bf0e6614b13abd10a98b0b77a982a4d1aab49c9ceaa6f8f7c2041b4bf2",
+  "evidence": [
+    {
+      "id": "request",
+      "path": "threshold-request.md",
+      "sha256": "7435c78557ddc462ad5eb0c39a9b6aa3443f1086a5248f7b7f6769a251b276e8",
+      "startLine": 4,
+      "endLine": 6,
+      "quote": "Request: propose changing PS-CAP-01 to an installed pump capacity of at least three units.\nKeep the declared installed count of two and the current two-skid architecture unchanged; a design remedy is a separate decision.\nRetain planned verification as planned. No physical test result or commissioning acceptance is supplied."
+    }
+  ],
+  "changes": [
+    {
+      "target": "PumpStationStudy::installedCapacity",
+      "before": "at least two units.",
+      "after": "at least three units.",
+      "reason": "Proposed obligation update; retain the design for impact review.",
+      "evidenceIds": [
+        "request"
+      ]
+    },
+    {
+      "target": "PumpStationStudy::installedCapacity",
+      "before": "station.installedPumpCount >= 2",
+      "after": "station.installedPumpCount >= 3",
+      "reason": "Align the explicit requirement predicate with the proposed minimum.",
+      "evidenceIds": [
+        "request"
+      ]
+    }
+  ]
+}

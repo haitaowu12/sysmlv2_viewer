@@ -1,62 +1,87 @@
-name: Deploy SysML Engineering Workbench to GitHub Pages
+name: Promote qualified Pages artifact
 
+# Promotion is explicit: this workflow never rebuilds the approved artifact.
 on:
-  push:
-    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Browser Lab candidate workflow run ID
+        required: true
+        type: string
+      revision:
+        description: Exact candidate workflow head SHA
+        required: true
+        type: string
+      profile:
+        description: Candidate Lab or retained predecessor rollback
+        required: true
+        default: lab
+        type: choice
+        options: [lab, rollback]
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
-  build:
+  promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Require the successful candidate run
+        uses: actions/github-script@v7
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          REVISION: ${{ inputs.revision }}
         with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm run test
-
-      - name: Release baseline tests
+          script: |
+            const id = Number(process.env.RUN_ID);
+            const revision = process.env.REVISION;
+            if (!Number.isSafeInteger(id) || !/^[a-f0-9]{40}$/.test(revision)) throw Error('Invalid run ID or revision.');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: id});
+            if (run.path !== '.github/workflows/browser-lab.yml' || !['push','workflow_dispatch'].includes(run.event) || run.conclusion !== 'success' || run.head_sha !== revision || run.head_repository.full_name !== `${context.repo.owner}/${context.repo.repo}`) throw Error('The exact candidate workflow must have succeeded in this repository.');
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.profile == 'rollback' && 'pages-rollback-80484f5' || format('browser-lab-{0}', inputs.revision) }}
+          path: site
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify promoted artifact bytes
+        env:
+          PROFILE: ${{ inputs.profile }}
+          REVISION: ${{ inputs.revision }}
         run: |
-          echo "SYSML_V2_RELEASE_DIR is optional; upstream corpus tests are skipped when absent."
-          npm run test:release
-
-      - name: Build and qualify Pages companion
-        run: npm run verify:web-companion
-
-      - name: Production dependency audit
-        run: npm audit --omit=dev
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          site=Path('site')
+          if os.environ['PROFILE']=='rollback':
+              assert json.loads((site/'rollback-build.json').read_text())['revision']=='80484f54610124bc3de1e25eb718d768dccff7db'
+          else:
+              manifest=json.loads((site/'artifact-manifest.json').read_text())
+              assert manifest['revision']==os.environ['REVISION']
+              expected={entry['path'] for entry in manifest['files']}
+              actual={p.relative_to(site).as_posix() for p in site.rglob('*') if p.is_file() and p.name!='artifact-manifest.json'}
+              assert expected==actual, 'Unexpected or missing artifact files'
+              for entry in manifest['files']:
+                  data=(site/entry['path']).read_bytes()
+                  assert len(data)==entry['bytes'] and hashlib.sha256(data).hexdigest()==entry['sha256'], entry['path']
+          PY
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
-
+          path: site
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: promote
     steps:
-      - name: Deploy to GitHub Pages
+      - uses: actions/deploy-pages@v4
         id: deployment
-        uses: actions/deploy-pages@v4

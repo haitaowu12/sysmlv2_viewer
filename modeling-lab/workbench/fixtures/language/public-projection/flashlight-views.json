@@ -1,0 +1,47 @@
+[
+  {
+    "id": "context-engineering",
+    "names": [
+      "'Flashlight Example'::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "context-pilot",
+    "names": [
+      "'Flashlight Example'::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "context-tree",
+    "names": [
+      "'Flashlight Example'::context"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "behavior-flow",
+    "names": [
+      "'Flashlight Example'::illuminateRegion"
+    ],
+    "view": "ACTION",
+    "styles": [],
+    "renderer": "behavior"
+  },
+  {
+    "id": "exchanges-summary",
+    "names": [
+      "'Flashlight Example'::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "summary"
+  }
+]

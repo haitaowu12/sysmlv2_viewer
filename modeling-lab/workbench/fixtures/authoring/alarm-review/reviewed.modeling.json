@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "id": "d95aec8c-5144-4dc2-aae3-f03185ed49e8",
+  "title": "Cold-room alarm study",
+  "brief": "# Cold-room alarm review: fictional training brief\n\nThis is an authored evaluation case, not an operating specification, approved design or field evidence. Source labels below identify statements in this brief.\n\n- BR-1: Model a monitoring system containing Cold Room 0 and Cold Room 1, each using a probe head; a central controller receives their temperature readings. The controller sends an alarm command to an annunciator. These are declared connections/transfers, not evidence that equipment exists or works.\n- BR-2: The controller's declared sample capacity is two. The initial retention requirement is at least two samples. A capacity verification case is planned only; no test has run.\n- CR-1: For this exercise, revise the requirement to retain at least three samples, keeping the declared capacity of two unchanged. Record this change request as the basis. Do not invent a hardware change or a passing result.\n- CR-2: Add a maintenance panel inside Monitoring System. Only its existence is requested. No ports, relationships or performance allocation are supplied.\n- CR-3: Add a Review Temperature Alarm scenario with ordered steps: receive alarm, inspect temperature, notify operator. Assign the controller to perform the whole scenario. This does not allocate individual steps or define timing.\n- OPEN-1: A note says “acknowledge the alarm before restoring cooling.” The actor, acknowledgement conditions and restoration conditions are unspecified. Keep this unresolved in project notes; do not create a safeguard, timing rule or restoration behavior from it.\n\nReview questions: What changed? Does the declared design meet the new minimum? Which relationships and responsibilities were explicitly modeled? Which decisions and verification evidence remain missing?\n",
+  "questions": "OPEN-1 remains unresolved: acknowledgement actor, acknowledgement conditions and cooling restoration conditions are unspecified. No safeguard, restoration behavior or timing rule has been inferred. CR-1 changes only the required minimum to three; declared sample capacity remains two. CR-2 adds maintenancePanel only. CR-3 adds the declared three-step scenario and whole-scenario Controller assignment. CapacityVerification remains planned and unexecuted.",
+  "source": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n        perform action reviewTemperatureAlarm : AlarmReview::ReviewTemperatureAlarm;\n}\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n    action def ReviewTemperatureAlarm {\n        doc /* CR-3: Review a temperature alarm through the declared three-step sequence. */\n        first start;\n        then action receiveAlarm { doc /* Receive alarm */ }\n        then action inspectTemperature { doc /* Inspect temperature */ }\n        then action notifyOperator { doc /* Notify operator */ }\n        then done;\n    }\n}\n",
+  "baselineSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n    }\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* BR-2: The monitoring controller shall retain at least two samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 2 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}\n",
+  "views": [
+    {
+      "id": "overview",
+      "names": [
+        "AlarmReview::monitoringSystem"
+      ],
+      "view": "INTERCONNECTION",
+      "styles": [],
+      "renderer": "engineering"
+    },
+    {
+      "id": "requirement",
+      "names": [
+        "AlarmReview::sampleRetention"
+      ],
+      "view": "TREE",
+      "styles": []
+    },
+    {
+      "id": "verification",
+      "names": [
+        "AlarmReview::CapacityVerification"
+      ],
+      "view": "TREE",
+      "styles": []
+    },
+    {
+      "id": "scenario-reviewtemperaturealarm",
+      "names": [
+        "AlarmReview::ReviewTemperatureAlarm"
+      ],
+      "view": "ACTION",
+      "styles": [
+        "LR"
+      ],
+      "renderer": "behavior"
+    }
+  ],
+  "customViews": [
+    {
+      "name": "Controller responsibility review",
+      "recipe": {
+        "schemaVersion": 1,
+        "root": "AlarmReview::monitoringSystem",
+        "focus": "AlarmReview::monitoringSystem",
+        "depth": 2,
+        "neighbors": 1,
+        "kinds": [
+          "connection",
+          "binding",
+          "flow"
+        ],
+        "pinned": [],
+        "hidden": []
+      },
+      "surface": "responsibilities",
+      "savedSourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919"
+    },
+    {
+      "name": "Cold-room interface review",
+      "recipe": {
+        "schemaVersion": 1,
+        "root": "AlarmReview::monitoringSystem",
+        "focus": "AlarmReview::monitoringSystem",
+        "depth": 2,
+        "neighbors": 1,
+        "kinds": [
+          "connection",
+          "binding",
+          "flow"
+        ],
+        "pinned": [],
+        "hidden": []
+      },
+      "surface": "register",
+      "savedSourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919"
+    }
+  ],
+  "history": [
+    {
+      "operation": "minimum",
+      "target": "AlarmReview::sampleRetention",
+      "reason": "Fictional brief CR-1: revise the minimum to three samples, keeping declared capacity two unchanged.",
+      "description": "AlarmReview::sampleRetention: required minimum becomes 3; the statement is updated. Design quantities stay unchanged.",
+      "before": "\n    requirement sampleRetention {\n        doc /* BR-2: The monitoring controller shall retain at least two samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 2 }\n    }",
+      "after": "\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }",
+      "baseSourceSha256": "828e780e553f143e0ed404d67431977e4660f3a597dbcf1568bacf2acf00cee5",
+      "candidateSourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+      "baseSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n    }\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* BR-2: The monitoring controller shall retain at least two samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 2 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}\n",
+      "baseViews": [
+        {
+          "id": "overview",
+          "names": [
+            "AlarmReview::monitoringSystem"
+          ],
+          "view": "INTERCONNECTION",
+          "styles": [],
+          "renderer": "engineering"
+        },
+        {
+          "id": "requirement",
+          "names": [
+            "AlarmReview::sampleRetention"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "verification",
+          "names": [
+            "AlarmReview::CapacityVerification"
+          ],
+          "view": "TREE",
+          "styles": []
+        }
+      ]
+    },
+    {
+      "operation": "component",
+      "target": "AlarmReview::MonitoringSystem",
+      "reason": "Fictional brief CR-2: add a maintenance panel inside Monitoring System; only its existence is requested.",
+      "description": "Add component maintenancePanel inside AlarmReview::MonitoringSystem. No ports, safeguards or responsibility are inferred.",
+      "before": "\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n    }",
+      "after": "\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}",
+      "baseSourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+      "candidateSourceSha256": "fac63755d3a84401bc464b034c1c751a09b6e3c255951221ce96a5b3b15893a6",
+      "baseSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n    }\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}\n",
+      "baseViews": [
+        {
+          "id": "overview",
+          "names": [
+            "AlarmReview::monitoringSystem"
+          ],
+          "view": "INTERCONNECTION",
+          "styles": [],
+          "renderer": "engineering"
+        },
+        {
+          "id": "requirement",
+          "names": [
+            "AlarmReview::sampleRetention"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "verification",
+          "names": [
+            "AlarmReview::CapacityVerification"
+          ],
+          "view": "TREE",
+          "styles": []
+        }
+      ]
+    },
+    {
+      "operation": "scenario",
+      "target": "AlarmReview",
+      "reason": "Fictional brief CR-3: receive alarm, inspect temperature, notify operator, in that order. OPEN-1 acknowledgement/restoration conditions remain unresolved.",
+      "description": "Add ordered scenario ReviewTemperatureAlarm with 3 declared steps. Conditions and execution remain unspecified.",
+      "before": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}",
+      "after": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n    action def ReviewTemperatureAlarm {\n        doc /* CR-3: Review a temperature alarm through the declared three-step sequence. */\n        first start;\n        then action receiveAlarm { doc /* Receive alarm */ }\n        then action inspectTemperature { doc /* Inspect temperature */ }\n        then action notifyOperator { doc /* Notify operator */ }\n        then done;\n    }\n}",
+      "baseSourceSha256": "fac63755d3a84401bc464b034c1c751a09b6e3c255951221ce96a5b3b15893a6",
+      "candidateSourceSha256": "14eaa182120508731e81818cea292687c86574de41fda112266060845c4bfca9",
+      "baseSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}\n",
+      "baseViews": [
+        {
+          "id": "overview",
+          "names": [
+            "AlarmReview::monitoringSystem"
+          ],
+          "view": "INTERCONNECTION",
+          "styles": [],
+          "renderer": "engineering"
+        },
+        {
+          "id": "requirement",
+          "names": [
+            "AlarmReview::sampleRetention"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "verification",
+          "names": [
+            "AlarmReview::CapacityVerification"
+          ],
+          "view": "TREE",
+          "styles": []
+        }
+      ]
+    },
+    {
+      "operation": "responsibility",
+      "target": "AlarmReview::Controller",
+      "reason": "Fictional brief CR-3: assign the controller to perform the whole Review Temperature Alarm scenario. Individual step allocation, timing and OPEN-1 restoration conditions are not supplied.",
+      "description": "AlarmReview::Controller performs AlarmReview::ReviewTemperatureAlarm. Shared definitions affect every use; no execution is claimed.",
+      "before": "\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }",
+      "after": "\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n        perform action reviewTemperatureAlarm : AlarmReview::ReviewTemperatureAlarm;\n}",
+      "baseSourceSha256": "14eaa182120508731e81818cea292687c86574de41fda112266060845c4bfca9",
+      "candidateSourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919",
+      "baseSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n        part maintenancePanel { doc /* CR-2: Maintenance panel. No interfaces or performance allocation are supplied. */ }\n}\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n    action def ReviewTemperatureAlarm {\n        doc /* CR-3: Review a temperature alarm through the declared three-step sequence. */\n        first start;\n        then action receiveAlarm { doc /* Receive alarm */ }\n        then action inspectTemperature { doc /* Inspect temperature */ }\n        then action notifyOperator { doc /* Notify operator */ }\n        then done;\n    }\n}\n",
+      "baseViews": [
+        {
+          "id": "overview",
+          "names": [
+            "AlarmReview::monitoringSystem"
+          ],
+          "view": "INTERCONNECTION",
+          "styles": [],
+          "renderer": "engineering"
+        },
+        {
+          "id": "requirement",
+          "names": [
+            "AlarmReview::sampleRetention"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "verification",
+          "names": [
+            "AlarmReview::CapacityVerification"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "scenario-reviewtemperaturealarm",
+          "names": [
+            "AlarmReview::ReviewTemperatureAlarm"
+          ],
+          "view": "ACTION",
+          "styles": [
+            "LR"
+          ],
+          "renderer": "behavior"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "Cold-room-alarm-study.review.html",
+      "sourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919",
+      "kind": "reader-review",
+      "status": "download-requested",
+      "targets": [
+        "AlarmReview::monitoringSystem",
+        "AlarmReview::sampleRetention",
+        "AlarmReview::CapacityVerification",
+        "AlarmReview::ReviewTemperatureAlarm"
+      ]
+    },
+    {
+      "name": "Cold-room-alarm-study.review.html",
+      "sourceSha256": "c9c5dd206aaf34fc28f72b5f659bb48a05aab14d23ce6c6322efb261389c2919",
+      "kind": "reader-review",
+      "status": "download-requested",
+      "targets": [
+        "AlarmReview::monitoringSystem",
+        "AlarmReview::sampleRetention",
+        "AlarmReview::CapacityVerification",
+        "AlarmReview::ReviewTemperatureAlarm"
+      ]
+    }
+  ],
+  "audience": "stakeholder"
+}

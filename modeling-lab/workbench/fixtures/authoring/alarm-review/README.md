@@ -1,0 +1,7 @@
+# Cold-room alarm review exercise
+
+Fictional brief-to-review case. Read `brief.md`, then open `starter.modeling.json` in the Lab. The source and native views are the starter, not completion of CR-1–CR-3. `expected-facts.json` records the independently stated expectations. Keep OPEN-1 unresolved. Final reviewed project and reader are added only after the actual exercise and review.
+
+The lead completed CR-1/2/3 through the actual in-app UI on October14,2026. `reviewed.modeling.json` preserves the original baseline and native views plus four source-bound changes, a named interface register, a separate responsibility view and unresolved OPEN-1. `review.html` is its frozen reader at revision c9c5dd206aaf. Native validation had zero diagnostics; the nine `contract.json` checks passed, original connection/transfer facts were preserved, and declared capacity2 versus minimum3 yields a design shortfall. No physical verification or human acceptance occurred. The independent desktop orientation trial is separate from this lead-executed engineering exercise.
+
+The usability-closure refresh preserves source revision c9c5dd206aaf and the original interface-view recipe. Readable responsibility/scope labels and documented sample-count wording are regenerated from the maintained UI; exact paths/source remain accessible. The separate agent trial and any acceptance limits are recorded in the notebook delivery review, not inferred from this fixture.

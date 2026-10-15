@@ -31,7 +31,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/test/**/*.{ts,tsx}'],
+    files: ['src/test/**/*.{ts,tsx}', 'modeling-lab/workbench/src/test/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },

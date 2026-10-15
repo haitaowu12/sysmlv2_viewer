@@ -1,0 +1,5 @@
+source_anchor,artifact_id,revision,message,from_endpoint,to_endpoint,payload,timing_provision,meaning_status
+ICD-R2:dispatch,PS-ICD,R2,RouteDispatch,warehouseControl.sorterLink,sorter.controlLink,"commandId; parcelId; intendedLane",No timing bound supplied,Dispatch requests a route for the identified parcel
+ICD-R2:ack,PS-ICD,R2,RouteAcknowledgement,sorter.controlLink,warehouseControl.sorterLink,"commandId; acknowledged","Acknowledgement shall be returned within 80 ms of RouteDispatch receipt",Acknowledgement meaning unresolved between accepted message and completed physical diversion
+ICD-R2:jam,PS-ICD,R2,JamReport,sorter.controlLink,warehouseControl.sorterLink,"parcelId; affectedDiverter",No timing bound supplied,Reports the jam location and retained parcel identity
+ICD-R2:resume,PS-ICD,R2,ResumeAuthorisation,warehouseControl.sorterLink,sorter.controlLink,"authorisationId; stationId",No timing bound supplied,An input to the declared recovery story; not a commissioning authorisation

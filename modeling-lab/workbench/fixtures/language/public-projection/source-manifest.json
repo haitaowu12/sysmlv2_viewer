@@ -1,0 +1,34 @@
+{
+  "repository": "Systems-Modeling/SysML-v2-Release",
+  "commit": "fb97b754f29588b8e9c7a35f370880cd15eb29e7",
+  "files": [
+    {
+      "local": "flashlight.sysml",
+      "path": "sysml/src/examples/Flashlight Example/Flashlight Example.sysml",
+      "url": "https://raw.githubusercontent.com/Systems-Modeling/SysML-v2-Release/fb97b754f29588b8e9c7a35f370880cd15eb29e7/sysml/src/examples/Flashlight%20Example/Flashlight%20Example.sysml",
+      "bytes": 1245,
+      "sha256": "0b90c2fa75f7ff82495418c3bc366802c6646f8618878845af0bc3975286f8f9"
+    },
+    {
+      "local": "vehicle.sysml",
+      "path": "sysml/src/examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml",
+      "url": "https://raw.githubusercontent.com/Systems-Modeling/SysML-v2-Release/fb97b754f29588b8e9c7a35f370880cd15eb29e7/sysml/src/examples/Vehicle%20Example/SysML%20v2%20Spec%20Annex%20A%20SimpleVehicleModel.sysml",
+      "bytes": 73568,
+      "sha256": "77d7ee54951e01c885d69d19d7359242baf22c69dcfe2d4088b0b59d56ea578d"
+    },
+    {
+      "local": "LICENSE",
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/Systems-Modeling/SysML-v2-Release/fb97b754f29588b8e9c7a35f370880cd15eb29e7/LICENSE",
+      "bytes": 14198,
+      "sha256": "0becf16567beb77fa252b7664631dd177c8f9a1889e48995b45379c7130e5303"
+    },
+    {
+      "local": "UPSTREAM-README.md",
+      "path": "README.md",
+      "url": "https://raw.githubusercontent.com/Systems-Modeling/SysML-v2-Release/fb97b754f29588b8e9c7a35f370880cd15eb29e7/README.md",
+      "bytes": 7752,
+      "sha256": "e86a23b3cefc0835fffc34d2970028ed3e227121f65eab43ad2f314e46a778a7"
+    }
+  ]
+}

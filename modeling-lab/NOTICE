@@ -1,0 +1,15 @@
+SysML v2 modeling skill package
+
+The original workbench source is licensed under Apache License 2.0; see LICENSE.
+This package contains a bounded reference harness and independently maintained
+skill instructions. It does not contain the production LSP wrapper or service.
+
+The separately installed official Pilot 0.52.0 archive contains its own LICENSE
+and LICENSE-GPL texts. They are preserved verbatim in .runtime and in local
+transfer bundles. Exact JAR and standard-library identities are recorded in
+workbench/config/reference-pilot-lock.json. Do not infer component licensing
+from the Apache license for this harness. Java and Graphviz are system
+prerequisites and are not bundled. Optional UI-test packages preserve their own
+licenses in node_modules and are not included in transfer bundles.
+
+Product names and trademarks remain the property of their respective owners.

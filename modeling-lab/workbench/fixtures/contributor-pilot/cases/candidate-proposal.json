@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "CP-CHANGE-B",
+  "kind": "typed-contributor-transaction",
+  "base": {
+    "path": "model.sysml",
+    "revision": "A",
+    "sha256": "bf67757fca15149cf839a0a339aabce2a32ab71d4d3871a5cb99b7c40cf6cc4e",
+    "mustMatchExactly": true
+  },
+  "evidenceIds": ["IF-B-001", "IF-B-002", "HIST-A-01", "ACK-MEANING-01"],
+  "changes": [
+    {
+      "target": "ContributorPilot::ControlController::responseLimitMs",
+      "before": "attribute responseLimitMs : ScalarValues::Real = 120;",
+      "after": "attribute responseLimitMs : ScalarValues::Real = 80;",
+      "kind": "decimal",
+      "unit": "ms",
+      "reason": "Apply interface-register revision B response provision."
+    },
+    {
+      "target": "ContributorPilot::responseWithinBound",
+      "before": "within 120 ms of request receipt",
+      "after": "within 80 ms of request receipt",
+      "kind": "text",
+      "reason": "Keep the requirement documentation aligned with the candidate provision."
+    }
+  ],
+  "unchanged": [
+    "ContributorPilot::ControlController::historicalObservedResponseMillisecondsAtA",
+    "ContributorPilot::ControllerFieldExchange",
+    "ContributorPilot::AcknowledgementTimingCheck",
+    "ContributorPilot::UnrelatedAdvancedLifecycle",
+    "ACK-MEANING-01"
+  ],
+  "expected": {
+    "status": "candidate-only-until-approved",
+    "historicalObservation": "95 ms at FIELD-A remains historical",
+    "verification": "planned-not-executed",
+    "openQuestion": "ACK-MEANING-01 remains open"
+  }
+}

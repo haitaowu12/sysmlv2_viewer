@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "declared-capacity-unchanged",
+      "select": {
+        "qualifiedName": "AlarmReview::Controller::sampleCapacity"
+      },
+      "expect": {
+        "literalValues": [
+          2
+        ]
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "maintenance-panel-only-existence",
+      "select": {
+        "qualifiedName": "AlarmReview::MonitoringSystem::maintenancePanel"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "owner": "AlarmReview::MonitoringSystem",
+        "semanticFields": {
+          "isComposite": true
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "whole-scenario-assignment",
+      "select": {
+        "metaclass": "PerformActionUsage",
+        "owner": "AlarmReview::Controller"
+      },
+      "expect": {
+        "typeIncludes": "AlarmReview::ReviewTemperatureAlarm"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "required-three",
+      "select": {
+        "metaclass": "ConstraintUsage",
+        "owner": "AlarmReview::sampleRetention"
+      },
+      "expect": {
+        "expression": {
+          "kind": "OperatorExpression",
+          "operator": ">=",
+          "operands": [
+            {
+              "kind": "FeaturePath",
+              "path": [
+                "AlarmReview::sampleRetention::system",
+                "AlarmReview::MonitoringSystem::controller",
+                "AlarmReview::Controller::sampleCapacity"
+              ]
+            },
+            {
+              "kind": "LiteralInteger",
+              "value": 3
+            }
+          ]
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "planned-verification",
+      "select": {
+        "qualifiedName": "AlarmReview::CapacityVerification"
+      },
+      "expect": {
+        "metaclass": "VerificationCaseDefinition",
+        "sourceIncludes": [
+          "Planned capacity verification only. No execution occurred."
+        ]
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "ordered-step-0",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "AlarmReview::ReviewTemperatureAlarm"
+      },
+      "expect": {
+        "source": [
+          "Actions::Action::start"
+        ],
+        "targets": [
+          [
+            "AlarmReview::ReviewTemperatureAlarm::receiveAlarm"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "ordered-step-1",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "AlarmReview::ReviewTemperatureAlarm"
+      },
+      "expect": {
+        "source": [
+          "AlarmReview::ReviewTemperatureAlarm::receiveAlarm"
+        ],
+        "targets": [
+          [
+            "AlarmReview::ReviewTemperatureAlarm::inspectTemperature"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "ordered-step-2",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "AlarmReview::ReviewTemperatureAlarm"
+      },
+      "expect": {
+        "source": [
+          "AlarmReview::ReviewTemperatureAlarm::inspectTemperature"
+        ],
+        "targets": [
+          [
+            "AlarmReview::ReviewTemperatureAlarm::notifyOperator"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "ordered-step-3",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "AlarmReview::ReviewTemperatureAlarm"
+      },
+      "expect": {
+        "source": [
+          "AlarmReview::ReviewTemperatureAlarm::notifyOperator"
+        ],
+        "targets": [
+          [
+            "Actions::Action::done"
+          ]
+        ]
+      },
+      "count": 1
+    }
+  ]
+}
