@@ -115,6 +115,7 @@
   async function openProject(data){
     if(busy||opening)throw Error('Wait for the current model check before opening another project.');
     admitFields(data);
+    if(data.id!==undefined&&(typeof data.id!=='string'||!data.id.trim()||data.id.length>200))throw Error('Project identity must contain 1–200 characters. Current project is retained.');
     const revision=editRevision,basis=acceptedReport,candidate=structuredClone(data);
     const recoveryDraft=candidate.recovery?.validation==='unvalidated-draft'?candidate.source:null;
     const checkedSource=recoveryDraft!==null?candidate.recovery.acceptedSource:candidate.source;
@@ -125,7 +126,7 @@
       await admitRecords(candidate);
       await inspectSource(checkedSource,candidate.views,candidate.baselineSource);
       if(revision!==editRevision||basis!==acceptedReport)throw Error('Draft changed while opening the project. Current work is retained.');
-      const accepted=await render(false,{source:checkedSource,payload:{views:candidate.views,baselineSource:candidate.baselineSource},commit(){
+      const accepted=await render(false,{source:checkedSource,payload:{views:candidate.views,baselineSource:candidate.baselineSource,workspaceKey:candidate.id},commit(){
         project=candidate;delete project.recovery;pending=null;importedViews=candidate.customViews;initial.workspaceKey=project.id;initial.source=project.baselineSource;
         el('source').value=checkedSource;el('audience').value=data.audience==='stakeholder'?'stakeholder':'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.leave();el('view-search').value='';el('model-search').value='';
       }});
@@ -211,9 +212,9 @@
     download(filename()+'.review.html','<!doctype html>\n'+doc.documentElement.outerHTML,'text/html');status('Reader review download requested · check Downloads for the file','valid');refreshState();
   }
   window.labWorkflow={
-    payload(){return project?{views:project.views,baselineSource:project.baselineSource}:{views:initial.presets,baselineSource:initial.baselineSource??initial.source}},
+    payload(){return project?{views:project.views,baselineSource:project.baselineSource,workspaceKey:initial.workspaceKey}:{views:initial.presets,baselineSource:initial.baselineSource??initial.source,workspaceKey:initial.workspaceKey}},
     onReport(data){
-      if(!project)project={schemaVersion:1,id:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.baselineSource??initial.source,baselineHash:hash(initial.baselineHash)?initial.baselineHash:(!initial.baselineSource||initial.baselineSource===initial.source?data.sourceSha256:undefined),views:initial.presets,history:[]};
+      if(!project)project={schemaVersion:1,id:initial.acceptedReport&&typeof initial.workspaceKey==='string'&&initial.workspaceKey.trim()&&initial.workspaceKey.length<=200?initial.workspaceKey:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.baselineSource??initial.source,baselineHash:hash(initial.baselineHash)?initial.baselineHash:(!initial.baselineSource||initial.baselineSource===initial.source?data.sourceSha256:undefined),views:initial.presets,history:[]};
       if(data.viewRecipes)project.views=data.viewRecipes;
       if(importedViews){window.scopeWorkbench.import(importedViews);importedViews=null}
       toolbar.querySelectorAll('button').forEach(b=>b.disabled=false);refreshState();

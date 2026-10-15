@@ -1,6 +1,6 @@
 """Accepted model context protocol: rejected/stale candidates never replace it."""
 import unittest
-from lab import AcceptedState, initial_payload
+from lab import AcceptedState, initial_payload, workspace_key_for
 
 
 def state(source, report='report', baseline='baseline'):
@@ -188,3 +188,49 @@ class NativeInitialPayload(unittest.TestCase):
         self.assertIs(protocol.previous, previous)
         self.assertIs(protocol.current, accepted)
         self.assertEqual(protocol.last_rolled_back, 'project-2')
+
+
+class AcceptedWorkspaceIdentity(unittest.TestCase):
+    def setUp(self):
+        self.current = {**state('old'), 'workspaceKey': 'startup-workspace'}
+        self.protocol = AcceptedState(self.current)
+
+    def initial(self):
+        return initial_payload(self.current, 'startup source', [], 'startup-workspace')
+
+    def candidate(self, key):
+        return {**state('new'), 'workspaceKey': workspace_key_for({'workspaceKey': key}, self.current, 'startup-workspace')}
+
+    def test_staged_import_and_failed_accept_do_not_switch_custom_view_namespace(self):
+        candidate = self.candidate('imported-project')
+        self.protocol.stage('project-1', candidate, ('old', 'report'))
+        self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
+        with self.assertRaisesRegex(ValueError, 'match'):
+            self.protocol.accept({'transactionId': 'project-1', 'sourceSha256': 'wrong', 'reportSha256': 'report'})
+        self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
+        self.protocol.accept({'transactionId': 'project-1', 'sourceSha256': 'new', 'reportSha256': 'report'})
+        self.assertEqual(self.initial()['workspaceKey'], 'imported-project')
+
+    def test_rollback_or_unaccepted_abort_restores_or_retains_prior_namespace(self):
+        self.protocol.stage('project-1', self.candidate('imported-project'), ('old', 'report'))
+        self.protocol.accept({'transactionId': 'project-1', 'sourceSha256': 'new', 'reportSha256': 'report'})
+        self.protocol.stage('project-2', self.candidate('other-project'), ('new', 'report'))
+        self.protocol.rollback('project-2')
+        self.assertEqual(self.initial()['workspaceKey'], 'imported-project')
+        self.protocol.rollback('project-1')
+        self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
+        self.protocol.rollback('project-1')
+        self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
+
+    def test_omitted_workspace_key_preserves_current_or_startup_namespace(self):
+        self.assertEqual(workspace_key_for({}, self.current, 'fallback'), 'startup-workspace')
+        self.assertEqual(workspace_key_for({}, {}, 'fallback'), 'fallback')
+        self.assertEqual(workspace_key_for({'workspaceKey': 'imported-project'}, self.current, 'fallback'), 'imported-project')
+        self.assertEqual(self.current['workspaceKey'], 'startup-workspace')
+
+    def test_invalid_workspace_identity_is_rejected_without_state_mutation(self):
+        for key in (None, '', '   ', 42, [], {}, 'x' * 201):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                workspace_key_for({'workspaceKey': key}, self.current, 'startup-workspace')
+            self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
+            self.assertIsNone(self.protocol.staged)
