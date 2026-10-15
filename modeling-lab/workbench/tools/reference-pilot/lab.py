@@ -39,6 +39,7 @@ class AcceptedState:
         self.current = current
         self.staged = None
         self.previous = None
+        self.last_rolled_back = None
 
     def identity(self):
         report = self.current.get('report') or {}
@@ -58,17 +59,27 @@ class AcceptedState:
         report = state['report']
         if self.identity() != expected or (data.get('sourceSha256'), data.get('reportSha256')) != (report['sourceSha256'], report['reportIntegrity']['reportSha256']):
             raise ValueError('Project transaction does not match the staged report')
+        self.last_rolled_back = None
         self.previous = (token, self.current.copy())
         self.current.update(state)
         self.staged = None
         return {'accepted': True, 'transactionId': token, 'sourceSha256': report['sourceSha256'], 'reportSha256': report['reportIntegrity']['reportSha256']}
 
     def rollback(self, token):
+        if not isinstance(token, str) or not 8 <= len(token) <= 128:
+            raise ValueError('Invalid project transaction identity')
         if self.previous and self.previous[0] == token:
             self.current.update(self.previous[1])
             self.previous = None
-            return {'rolledBack': True, 'transactionId': token}
-        raise ValueError('Project acceptance can no longer be rolled back')
+        elif self.staged and self.staged[0] == token:
+            # An accept request may never have arrived. Discard that candidate
+            # without changing the accepted context or another transaction.
+            self.staged = None
+        elif self.last_rolled_back != token:
+            raise ValueError('Project acceptance can no longer be rolled back')
+        # Retain just the last confirmation so a lost response can be retried.
+        self.last_rolled_back = token
+        return {'rolledBack': True, 'transactionId': token}
 
 
 def main():
@@ -243,7 +254,7 @@ def main():
                 else:
                     # Existing native callers retain the immediate-render protocol.
                     current.update(state if report.get('staticChecksPassed') else {'catalogue': None, 'report': None, 'views': project_views, 'baseline': baseline_report})
-                    transactions.staged = transactions.previous = None
+                    transactions.staged = transactions.previous = transactions.last_rolled_back = None
                 return self.reply(200, browser_report(report))
             except Exception as error:
                 return self.reply(400, {'error': str(error)})

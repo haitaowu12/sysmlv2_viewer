@@ -12,9 +12,10 @@ def normalized(checked):
 current_report=None
 staged_report=None
 previous_report=None
+last_rolled_back=None
 
 def render_report(data):
-    global current_report, staged_report, previous_report
+    global current_report, staged_report, previous_report, last_rolled_back
     report=normalized(data['checked'])
     if not report['staticChecksPassed']:return report
     recipes=views_for(data['views'])
@@ -58,7 +59,7 @@ def render_report(data):
         staged_report=(data['transactionId'],report,identity(current_report))
     elif data.get("accept"):
         current_report=report
-        staged_report=previous_report=None
+        staged_report=previous_report=last_rolled_back=None
     return browser_report(report)
 
 def prepare_candidate(data):
@@ -83,21 +84,31 @@ def identity(report):
     return ((report or {}).get('sourceSha256'), (report or {}).get('reportIntegrity',{}).get('reportSha256'))
 
 def accept_current(data):
-    global current_report, staged_report, previous_report
+    global current_report, staged_report, previous_report, last_rolled_back
     if not staged_report or staged_report[0] != data.get('transactionId'):
         raise ValueError('Project transaction is no longer current')
     token,report,expected=staged_report
     if identity(current_report) != expected or identity(report) != (data.get('sourceSha256'),data.get('reportSha256')):
         raise ValueError('Project transaction does not match the staged report')
+    last_rolled_back=None
     previous_report=(token,current_report)
     current_report=report
     staged_report=None
     return {'accepted':True,'transactionId':token,'sourceSha256':identity(report)[0],'reportSha256':identity(report)[1]}
 
 def rollback_current(data):
-    global current_report, previous_report
-    if not previous_report or previous_report[0] != data.get('transactionId'):
+    global current_report, staged_report, previous_report, last_rolled_back
+    token=data.get('transactionId')
+    if not isinstance(token,str) or not 8 <= len(token) <= 128:
+        raise ValueError('Invalid project transaction identity')
+    if previous_report and previous_report[0] == token:
+        current_report=previous_report[1]
+        previous_report=None
+    elif staged_report and staged_report[0] == token:
+        # The accept request may never have arrived; abort only this candidate.
+        staged_report=None
+    elif last_rolled_back != token:
         raise ValueError('Project acceptance can no longer be rolled back')
-    current_report=previous_report[1]
-    previous_report=None
-    return {'rolledBack':True,'transactionId':data['transactionId']}
+    # One confirmation is enough to retry a lost rollback response safely.
+    last_rolled_back=token
+    return {'rolledBack':True,'transactionId':token}
