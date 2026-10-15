@@ -1,0 +1,4 @@
+id,source,source_port,target,target_port,payload
+IF-01,operator,request,station,request,StartRequest
+IF-02,controller,dutyCommand,duty,command,StartRequest
+IF-03,controller,standbyCommand,standby,command,StartRequest

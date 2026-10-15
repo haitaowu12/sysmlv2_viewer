@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "title": "Infrastructure control contributor pilot",
+  "rows": [
+    {
+      "id": "CP-RQ-01",
+      "label": "Acknowledgement response requirement",
+      "kind": "requirement",
+      "target": "ContributorPilot::responseWithinBound",
+      "fields": [
+        {
+          "id": "response-limit",
+          "label": "Response limit",
+          "kind": "decimal",
+          "target": "ContributorPilot::ControlController::responseLimitMs",
+          "unit": "ms",
+          "minimum": 0
+        },
+        {
+          "id": "requirement-statement",
+          "label": "Requirement statement",
+          "kind": "text",
+          "target": "ContributorPilot::responseWithinBound"
+        }
+      ]
+    },
+    {
+      "id": "CP-IF-01",
+      "label": "FIELD-A acknowledgement interface",
+      "kind": "interface",
+      "target": "ContributorPilot::InfrastructureControlSystem::fieldAExchange",
+      "fields": [
+        {
+          "id": "field-identity",
+          "label": "Field equipment identity",
+          "kind": "reference",
+          "target": "ContributorPilot::InfrastructureControlSystem::fieldA",
+          "editable": false,
+          "readOnlyReason": "Reference editing is deferred; the selected qualified occurrence is shown for review and unknown targets fail closed.",
+          "options": [
+            "ContributorPilot::InfrastructureControlSystem::fieldA",
+            "ContributorPilot::InfrastructureControlSystem::fieldB"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "HIST-A-01",
+      "label": "Baseline A field A observation",
+      "observedValue": 95,
+      "unit": "ms",
+      "target": "ContributorPilot::ControlController::historicalObservedResponseMillisecondsAtA",
+      "sourceRevision": "initial",
+      "explanation": "Historical observation at FIELD-A against baseline A; retain unchanged and review applicability after the candidate provision changes."
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "ACK-MEANING-01",
+      "question": "Does acknowledgement mean an accepted dispatch message or a completed field action?",
+      "status": "open"
+    }
+  ],
+  "limits": [
+    "The manifest is a proposed contributor surface for this fixture.",
+    "Unit metadata belongs to the contributor manifest and documentation; the canonical scalar source remains a simple typed AttributeUsage.",
+    "The reference field options are qualified model identities; an implementation must reject unknown options before apply.",
+    "The manifest does not establish human acceptance, project approval or physical verification."
+  ]
+}

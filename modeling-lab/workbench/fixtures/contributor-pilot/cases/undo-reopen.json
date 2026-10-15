@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "CP-RECOVERY-01",
+  "kind": "undo-and-reopen",
+  "sequence": [
+    {
+      "step": "load-baseline",
+      "source": "model.sysml",
+      "expected": {
+        "revision": "A",
+        "responseLimitMs": 120,
+        "historicalObservedResponseMillisecondsAtA": 95,
+        "acknowledgementMeaning": "open",
+        "advancedContent": "present"
+      }
+    },
+    {
+      "step": "apply-corrected-candidate",
+      "source": "candidate-model.sysml",
+      "expected": {
+        "revision": "B",
+        "responseLimitMs": 80,
+        "historicalObservedResponseMillisecondsAtA": 95,
+        "acknowledgementMeaning": "open",
+        "verification": "planned-not-executed"
+      }
+    },
+    {
+      "step": "undo",
+      "expected": {
+        "status": "restored-baseline-draft",
+        "responseLimitMs": 120,
+        "historicalObservedResponseMillisecondsAtA": 95,
+        "advancedContent": "present",
+        "commentMarkers": ["UNRELATED-ADVANCED-01", "CP-CONTEXT-01"]
+      }
+    },
+    {
+      "step": "reopen-baseline",
+      "source": "model.sysml",
+      "expected": {
+        "status": "baseline-A-reopened",
+        "responseLimitMs": 120,
+        "historicalObservedResponseMillisecondsAtA": 95,
+        "acknowledgementMeaning": "open"
+      }
+    },
+    {
+      "step": "reopen-candidate",
+      "source": "candidate-model.sysml",
+      "expected": {
+        "status": "candidate-B-reopened",
+        "responseLimitMs": 80,
+        "historicalObservedResponseMillisecondsAtA": 95,
+        "acknowledgementMeaning": "open",
+        "advancedContent": "present"
+      }
+    }
+  ],
+  "nonClaims": [
+    "The sequence is an expected workflow outcome, not evidence that a human performed it.",
+    "Reopening a source does not execute verification or establish physical applicability."
+  ]
+}

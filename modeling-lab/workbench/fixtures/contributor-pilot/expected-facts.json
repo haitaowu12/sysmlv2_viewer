@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "contributor-pilot",
+  "kind": "independent-expected-facts",
+  "authority": "facts frozen from the pilot brief and interface registers before candidate review; this file is not generated from a qualification report",
+  "models": {
+    "baselineA": {
+      "path": "model.sysml",
+      "revision": "A",
+      "sha256": "bf67757fca15149cf839a0a339aabce2a32ab71d4d3871a5cb99b7c40cf6cc4e",
+      "package": "ContributorPilot",
+      "responseProvision": {
+        "qualifiedName": "ContributorPilot::ControlController::responseLimitMs",
+        "metaclass": "AttributeUsage",
+        "literalValue": 120,
+        "unit": "ms",
+        "sourceMeaning": "declared response provision; not an executed timing result"
+      },
+      "historicalObservation": {
+        "id": "HIST-A-01",
+        "qualifiedName": "ContributorPilot::ControlController::historicalObservedResponseMillisecondsAtA",
+        "metaclass": "AttributeUsage",
+        "literalValue": 95,
+        "unit": "ms",
+        "identity": "FIELD-A",
+        "status": "historical-observation",
+        "applicability": "review-required-after-candidate-change",
+        "mustNotBe": ["current requirement result", "verification pass", "rewritten candidate result"]
+      },
+      "interface": {
+        "definition": "ContributorPilot::ControllerFieldExchange",
+        "controllerEndpoint": "ContributorPilot::ControllerFieldExchange::controller",
+        "fieldEndpoint": "ContributorPilot::ControllerFieldExchange::field",
+        "flows": [
+          {
+            "item": "ControlRequest",
+            "from": "controller.request",
+            "to": "field.request",
+            "direction": "controller-to-field"
+          },
+          {
+            "item": "ControlAcknowledgement",
+            "from": "field.acknowledgement",
+            "to": "controller.acknowledgement",
+            "direction": "field-to-controller"
+          }
+        ]
+      },
+      "requirement": {
+        "qualifiedName": "ContributorPilot::responseWithinBound",
+        "metaclass": "RequirementUsage",
+        "provisionText": "within 120 ms of request receipt",
+        "subjectType": "ContributorPilot::ControlController"
+      },
+      "verification": {
+        "qualifiedName": "ContributorPilot::AcknowledgementTimingCheck",
+        "metaclass": "VerificationCaseDefinition",
+        "target": "ContributorPilot::responseWithinBound",
+        "status": "planned-not-executed"
+      }
+    },
+    "candidateB": {
+      "path": "candidate-model.sysml",
+      "revision": "B",
+      "sha256": "bff2c4ae58519fc8267147101315c933daa53f4bc52d9aa69b96b4299388604b",
+      "package": "ContributorPilot",
+      "responseProvision": {
+        "qualifiedName": "ContributorPilot::ControlController::responseLimitMs",
+        "metaclass": "AttributeUsage",
+        "literalValue": 80,
+        "unit": "ms",
+        "sourceMeaning": "candidate response provision; not an executed timing result"
+      },
+      "historicalObservation": {
+        "id": "HIST-A-01",
+        "qualifiedName": "ContributorPilot::ControlController::historicalObservedResponseMillisecondsAtA",
+        "metaclass": "AttributeUsage",
+        "literalValue": 95,
+        "unit": "ms",
+        "identity": "FIELD-A",
+        "status": "historical-observation",
+        "applicability": "review-required-after-candidate-change",
+        "mustNotBe": ["current requirement result", "verification pass", "rewritten candidate result"]
+      },
+      "requirement": {
+        "qualifiedName": "ContributorPilot::responseWithinBound",
+        "metaclass": "RequirementUsage",
+        "provisionText": "within 80 ms of request receipt",
+        "subjectType": "ContributorPilot::ControlController"
+      },
+      "verification": {
+        "qualifiedName": "ContributorPilot::AcknowledgementTimingCheck",
+        "metaclass": "VerificationCaseDefinition",
+        "target": "ContributorPilot::responseWithinBound",
+        "status": "planned-not-executed"
+      }
+    }
+  },
+  "sharedFacts": {
+    "typedItems": [
+      {
+        "qualifiedName": "ContributorPilot::ControlRequest",
+        "attributes": ["commandId", "equipmentId", "requestedState"]
+      },
+      {
+        "qualifiedName": "ContributorPilot::ControlAcknowledgement",
+        "attributes": ["commandId", "accepted"]
+      }
+    ],
+    "equipmentIdentities": ["FIELD-A", "FIELD-B"],
+    "occurrenceEndpoints": [
+      "ContributorPilot::InfrastructureControlSystem::controller::fieldALink",
+      "ContributorPilot::InfrastructureControlSystem::fieldA::control",
+      "ContributorPilot::InfrastructureControlSystem::controller::fieldBLink",
+      "ContributorPilot::InfrastructureControlSystem::fieldB::control"
+    ],
+    "unresolvedMeaning": {
+      "id": "ACK-MEANING-01",
+      "status": "open",
+      "alternatives": [
+        "accepted dispatch message",
+        "completed field action"
+      ],
+      "selected": null,
+      "blocks": ["claiming acknowledgement timing is verified", "claiming physical action completion"]
+    },
+    "unrelatedPreservation": {
+      "advancedElement": "ContributorPilot::UnrelatedAdvancedLifecycle",
+      "advancedElementKind": "StateDefinition",
+      "commentMarkers": ["UNRELATED-ADVANCED-01", "CP-CONTEXT-01"],
+      "expectedTransitions": ["idle -> active"],
+      "mustRemainUnchangedAcrossCandidate": true
+    }
+  },
+  "changeFacts": {
+    "changedTargets": [
+      {
+        "target": "ContributorPilot::ControlController::responseLimitMs",
+        "before": 120,
+        "after": 80,
+        "reason": "candidate interface provision from register revision B"
+      },
+      {
+        "target": "ContributorPilot::responseWithinBound",
+        "beforeText": "within 120 ms of request receipt",
+        "afterText": "within 80 ms of request receipt",
+        "reason": "candidate requirement statement follows the revised provision"
+      }
+    ],
+    "unchangedTargets": [
+      "ContributorPilot::ControlController::historicalObservedResponseMillisecondsAtA",
+      "ContributorPilot::ControllerFieldExchange",
+      "ContributorPilot::AcknowledgementTimingCheck",
+      "ContributorPilot::UnrelatedAdvancedLifecycle",
+      "ACK-MEANING-01"
+    ],
+    "staleImpact": {
+      "historicalObservation": "HIST-A-01",
+      "status": "review-required",
+      "oldResultMustRemain": "95 ms at FIELD-A against baseline A",
+      "candidateMustNotClaim": "95 ms proves 80 ms candidate compliance"
+    }
+  },
+  "negativeFacts": {
+    "invalidUnit": {
+      "case": "cases/invalid-unit.json",
+      "status": "rejected-before-apply",
+      "reasonCode": "typed-unit-mismatch",
+      "baselinePreserved": true
+    },
+    "invalidReference": {
+      "case": "cases/invalid-reference.json",
+      "status": "rejected-before-apply",
+      "reasonCode": "unknown-reference",
+      "baselinePreserved": true
+    },
+    "staleBase": {
+      "case": "cases/stale-base.json",
+      "status": "rejected-before-apply",
+      "reasonCode": "stale-expected-base",
+      "baselinePreserved": true
+    }
+  },
+  "recoveryFacts": {
+    "case": "cases/undo-reopen.json",
+    "undo": {
+      "status": "restored-baseline-draft",
+      "responseProvisionMilliseconds": 120,
+      "historicalObservationMillisecondsAtA": 95,
+      "openQuestion": "ACK-MEANING-01"
+    },
+    "reopenBaseline": {
+      "status": "baseline-A-reopened",
+      "source": "model.sysml",
+      "responseProvisionMilliseconds": 120,
+      "preservesAdvancedContent": true
+    },
+    "reopenCandidate": {
+      "status": "candidate-B-reopened",
+      "source": "candidate-model.sysml",
+      "responseProvisionMilliseconds": 80,
+      "historicalObservationMillisecondsAtA": 95,
+      "openQuestion": "ACK-MEANING-01"
+    }
+  },
+  "limits": [
+    "These are independent expected facts and workflow outcomes, not a qualification receipt.",
+    "The fixture does not establish physical timing, simulation, verification execution, human usability, project approval or production readiness.",
+    "A passing contract check would establish only agreement with the declared fixture facts."
+  ]
+}

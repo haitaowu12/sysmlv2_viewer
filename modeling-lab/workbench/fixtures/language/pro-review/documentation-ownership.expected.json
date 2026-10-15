@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "child-doc-not-parent",
+      "select": {
+        "qualifiedName": "DocumentationOwnership::childOnly"
+      },
+      "expect": {
+        "documentationBodies": []
+      }
+    },
+    {
+      "id": "parent-doc-excludes-child",
+      "select": {
+        "qualifiedName": "DocumentationOwnership::parentAndChild"
+      },
+      "expect": {
+        "documentationBodies": [
+          "Parent statement. "
+        ]
+      }
+    },
+    {
+      "id": "absent-doc-remains-absent",
+      "select": {
+        "qualifiedName": "DocumentationOwnership::empty"
+      },
+      "expect": {
+        "documentationBodies": []
+      }
+    }
+  ]
+}

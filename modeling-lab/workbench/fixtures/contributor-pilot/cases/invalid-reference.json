@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "CP-NEG-REFERENCE",
+  "kind": "invalid-contributor-input",
+  "base": "model.sysml",
+  "target": "ContributorPilot::InfrastructureControlSystem::fieldAExchange",
+  "input": {
+    "fieldIdentity": "ContributorPilot::InfrastructureControlSystem::fieldC",
+    "rowIdentityHint": "FIELD-C"
+  },
+  "expected": {
+    "status": "rejected-before-apply",
+    "reasonCode": "unknown-reference",
+    "messageContains": ["fieldC", "reference"],
+    "canonicalBaselineUnchanged": true,
+    "knownOptions": [
+      "ContributorPilot::InfrastructureControlSystem::fieldA",
+      "ContributorPilot::InfrastructureControlSystem::fieldB"
+    ],
+    "historicalObservationStill": 95
+  },
+  "explanation": "The row identity does not resolve to a declared field occurrence. The contributor must choose an existing qualified identity or leave the row unresolved."
+}

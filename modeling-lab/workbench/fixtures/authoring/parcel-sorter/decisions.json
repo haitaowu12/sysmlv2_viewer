@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "issues": [
+    {
+      "id": "ACK-MEANING-01",
+      "status": "open",
+      "blocking": true,
+      "question": "Does RouteAcknowledgement attest accepted dispatch message or completed physical diversion, and who has authority to resolve ACK-MEANING-01?",
+      "interpretations": [
+        "Operations: completed physical diversion",
+        "Controls: accepted dispatch message"
+      ],
+      "ownerDecisionNeeded": "Joint Operations and Controls interface agreement; coordinator cannot resolve alone.",
+      "resolutionChecks": []
+    },
+    {
+      "id": "ALLOCATION-01",
+      "status": "open",
+      "blocking": false,
+      "reason": "Functional responsibilities are deliberately unallocated; no input authorises physical allocation.",
+      "resolutionChecks": []
+    },
+    {
+      "id": "RECOVERY-PROCEDURE-01",
+      "status": "open",
+      "blocking": false,
+      "reason": "Intended operational story only. Clearance routing/conjunction, movement/protection and executable recovery details remain outside claimed scope.",
+      "resolutionChecks": []
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "id": "context",
+    "names": [
+      "ParcelSortingStudy::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "station-decomposition",
+    "names": [
+      "ParcelSortingStudy::sorter"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "jam-recovery",
+    "names": [
+      "ParcelSortingStudy::JamRecoveryStory"
+    ],
+    "view": "STATE",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "pilot"
+  },
+  {
+    "id": "acknowledgement",
+    "names": [
+      "ParcelSortingStudy::acknowledgementTiming"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  }
+]

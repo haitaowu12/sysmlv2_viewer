@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "model": "model.sysml",
+  "views": "views.json",
+  "contract": "contract.json",
+  "evidence": "evidence-contract.json",
+  "intake": "intake.json",
+  "factSupport": "fact-support.json",
+  "decisions": "decisions.json",
+  "supportedDeclarationKinds": [
+    "Package",
+    "PartDefinition",
+    "PartUsage",
+    "ItemDefinition",
+    "ItemUsage",
+    "PortDefinition",
+    "PortUsage",
+    "InterfaceDefinition",
+    "InterfaceUsage",
+    "FlowUsage",
+    "BindingConnectorAsUsage",
+    "ReferenceUsage",
+    "AttributeUsage",
+    "StateDefinition",
+    "StateUsage",
+    "ExhibitStateUsage",
+    "TransitionUsage",
+    "AcceptActionUsage",
+    "SuccessionAsUsage",
+    "RequirementUsage",
+    "ConstraintUsage",
+    "SatisfyRequirementUsage",
+    "VerificationCaseDefinition"
+  ],
+  "expectedViews": [
+    {
+      "id": "context",
+      "targets": [
+        "PumpStationStudy::context"
+      ],
+      "view": "INTERCONNECTION",
+      "profile": "sysml-2.0-parts-ports-binary-connectors-v1",
+      "excluded": []
+    },
+    {
+      "id": "station-structure",
+      "targets": [
+        "PumpStationStudy::Station"
+      ],
+      "view": "INTERCONNECTION",
+      "profile": "sysml-2.0-parts-ports-binary-connectors-v1",
+      "excluded": []
+    },
+    {
+      "id": "station-decomposition",
+      "targets": [
+        "PumpStationStudy::Station"
+      ],
+      "view": "TREE",
+      "profile": "pilot",
+      "excluded": []
+    },
+    {
+      "id": "skid-detail",
+      "targets": [
+        "PumpStationStudy::PumpSkid"
+      ],
+      "view": "INTERCONNECTION",
+      "profile": "sysml-2.0-parts-ports-binary-connectors-v1",
+      "excluded": []
+    },
+    {
+      "id": "motor-states",
+      "targets": [
+        "PumpStationStudy::MotorStates"
+      ],
+      "view": "STATE",
+      "profile": "pilot",
+      "excluded": []
+    },
+    {
+      "id": "capacity-requirement",
+      "targets": [
+        "PumpStationStudy::installedCapacity"
+      ],
+      "view": "TREE",
+      "profile": "pilot",
+      "excluded": []
+    },
+    {
+      "id": "capacity-verification",
+      "targets": [
+        "PumpStationStudy::InstalledCapacityVerification"
+      ],
+      "view": "TREE",
+      "profile": "pilot",
+      "excluded": []
+    },
+    {
+      "id": "exchange-summary",
+      "targets": [
+        "PumpStationStudy::Station"
+      ],
+      "view": "INTERCONNECTION",
+      "profile": "analytical-exchange-summary-v1",
+      "excluded": [
+        {
+          "name": "PumpStationStudy::Station::requestForwarding",
+          "reason": "Not an explicit item exchange; omitted from this concern"
+        }
+      ]
+    }
+  ],
+  "exchangeScopes": [
+    "PumpStationStudy::Station",
+    "PumpStationStudy::context"
+  ],
+  "expectedExchanges": [
+    {
+      "scope": "PumpStationStudy::context",
+      "source": "PumpStationStudy::context::operator",
+      "sourcePort": "request",
+      "target": "PumpStationStudy::context::station",
+      "targetPort": "request",
+      "item": "StartRequest"
+    },
+    {
+      "scope": "PumpStationStudy::Station",
+      "source": "PumpStationStudy::Station::controller",
+      "sourcePort": "dutyCommand",
+      "target": "PumpStationStudy::Station::duty",
+      "targetPort": "command",
+      "item": "StartRequest"
+    },
+    {
+      "scope": "PumpStationStudy::Station",
+      "source": "PumpStationStudy::Station::controller",
+      "sourcePort": "standbyCommand",
+      "target": "PumpStationStudy::Station::standby",
+      "targetPort": "command",
+      "item": "StartRequest"
+    }
+  ]
+}
