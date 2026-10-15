@@ -31,6 +31,12 @@ def normalize(raw, source):
             s['satisfyingFeatureChain'] = reference(e['lab:subjectChain'])
         s['ownedElement']=[reference({'@id':child_id}) for child_id in children_by_owner.get(e['@id'], [])]
         if e['@type'] in ['OperatorExpression','FeatureChainExpression'] and 'argument' in s:s['operand']=s['argument']
+        # The browser producer exports typed lower/upper references separately;
+        # retain those fields and bridge the maintained bound-list representation.
+        if e['@type']=='MultiplicityRange' and 'bound' not in s and isinstance(e.get('upperBound'),dict):
+            bound_fields=['lowerBound','upperBound'] if 'lowerBound' in e else ['upperBound']
+            if all(isinstance(e.get(field,{}).get('@id'),str) and e[field]['@id'] in ix for field in bound_fields):
+                s['bound']=[reference(e[field]) for field in bound_fields]
         start,end=e.get('sysx:sourceLine'),e.get('sysx:sourceEndLine')
         text=e.get('sysx:sourceText','')
         if start and end:
@@ -61,17 +67,20 @@ def normalize(raw, source):
             e['semantics']['type'] = [reference(t['type']) for t in resolved]
         # An unnamed redefinition can have a readable effective name without
         # replacing its engine qualified name or inventing an element identity.
-        if raw_element['@type'] == 'AttributeUsage' and not e.get('name'):
+        if raw_element['@type'] in {'AttributeUsage','PartUsage','PortUsage'} and not e.get('name'):
             redefinitions = raw_element.get('ownedRedefinition', [])
             if isinstance(redefinitions,dict): redefinitions=[redefinitions]
-            targets=[]
+            targets=[]; complete=bool(redefinitions)
             for ref in redefinitions:
                 rel=ix.get(ref.get('@id'),{}) if isinstance(ref,dict) else {}
-                if rel.get('@type') != 'Redefinition' or rel.get('redefiningFeature',{}).get('@id') != raw_element['@id']: continue
+                if rel.get('@type') != 'Redefinition' or rel.get('redefiningFeature',{}).get('@id') != raw_element['@id']:
+                    complete=False; continue
                 target=ix.get(rel.get('redefinedFeature',{}).get('@id'),{})
                 if target.get('declaredName'): targets.append(target)
+                else: complete=False
             names={t['declaredName'] for t in targets}
-            if len(names)==1:
+            unique_target=len({t['@id'] for t in targets})==1
+            if complete and len(names)==1 and (raw_element['@type']=='AttributeUsage' or unique_target):
                 e['name']=next(iter(names))
                 e['semantics']['effectiveName']=e['name']
                 e['semantics']['effectiveNameEvidence']=[reference({'@id':t['@id']}) for t in targets]

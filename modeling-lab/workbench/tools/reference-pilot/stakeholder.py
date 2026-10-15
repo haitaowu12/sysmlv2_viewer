@@ -8,12 +8,13 @@ import textwrap
 import json
 import subprocess
 from engineering import index_report, sem, features, types, interconnection
+from presentation import display_name, element_order, resolve_target, part_features, multiplicity
 from change_summary import comparisons
 from check_contract import documentation_facts, facts, references, satisfaction_polarity
 
 
 def human(value):
-    text = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', str(value))
+    text = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', str(value) if value is not None else 'Unnamed')
     text = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', text).replace('_', ' ')
     return text[:1].upper() + text[1:]
 
@@ -23,10 +24,7 @@ def project(report, target, viewpoint=None):
         raise ValueError('Stakeholder views require a statically valid model')
     viewpoint = viewpoint or {}
     ix = index_report(report)
-    roots = [e for e in report['elements'] if e.get('qualifiedName') == target]
-    if len(roots) != 1:
-        raise ValueError('Choose one uniquely resolved model scope')
-    root = roots[0]
+    root = resolve_target(report, target)
     # Action projection checks its own source facts; the legacy Pilot version flag
     # is not an action capability prerequisite.
     if root['metaclass'] in {'ExhibitStateUsage', 'ActionDefinition', 'ActionUsage', 'PerformActionUsage'} or (report.get('behaviorFieldsVersion') == 1 and root['metaclass'] in {'StateDefinition', 'StateUsage'}):
@@ -34,7 +32,7 @@ def project(report, target, viewpoint=None):
     rows, omitted, components = [], [], []
     nodes, edges, warnings = {}, [], []
     def node(e, role="component", referenced=False):
-        label = human(e.get('name', 'Unnamed'))
+        label = human(display_name(e, 'Unnamed'))
         type_labels = [human(t) for t in types(e) if human(t) != label and t != 'Part'] if role == 'component' else []
         if type_labels: label += '\n' + ', '.join(type_labels)
         nodes[e["sessionElementId"]] = {"id": e["sessionElementId"], "label": label, "role": role, "referenced": referenced}
@@ -46,16 +44,21 @@ def project(report, target, viewpoint=None):
     kind = root['metaclass']
     if kind in {'PartDefinition', 'PartUsage'}:
         title, question = 'System overview', 'What is in this part of the system, and what is connected?'
-        parts = sorted((e for e in features(root, ix) if e['metaclass'] == 'PartUsage'), key=lambda e: e.get('qualifiedName', ''))
+        parts, collection_features = part_features(root, ix)
+        parts.sort(key=lambda e: (e.get('qualifiedName') or '', element_order(e)))
         if len(parts) > 12:
             raise ValueError('Choose a smaller scope: stakeholder overview supports 12 components')
         for part in parts:
             composite = sem(part, 'isComposite') in (True, 'true')
             node(part, referenced=not composite)
-            row(human(part.get('name', 'Unnamed component')), ('Included component' if composite else 'Referenced component') +
+            row(human(display_name(part, 'Unnamed component')), ('Included component' if composite else 'Referenced component') + (' · multiplicity ' + multiplicity(part, ix)[0] if multiplicity(part, ix)[0] else '') +
                 (' · ' + ', '.join(human(t) for t in types(part)) if types(part) else ''), part)
         components = rows[:]
         rows.clear()
+        for collection in collection_features:
+            members = ', '.join(collection['memberNames'])
+            row('Collection feature: ' + human(collection['name']) + ' ' + collection['multiplicity'],
+                collection['reason'] + (' Members: ' + members + '.' if members else ''), ix[collection['elementId']])
         if not parts:
             row('No lower-level components shown', 'This scope has no extracted component features. This does not prove that the physical equipment has no internal parts.', root)
         # Use the same qualified connection resolution as the engineering sheet.
@@ -67,7 +70,7 @@ def project(report, target, viewpoint=None):
                 return root['sessionElementId']
             def endpoint_label(pair):
                 component, port = pair
-                return (human(ix[component].get('name', 'Unnamed component')) if component else 'Scope boundary') + ' / ' + human(ix[port].get('name', 'Unnamed contact'))
+                return (human(display_name(ix[component], 'Unnamed component')) if component else 'Scope boundary') + ' / ' + human(display_name(ix[port], 'Unnamed contact'))
             for c in detail['connectors']:
                 a, b = c['endpoints']
                 edge(endpoint_node(a), endpoint_node(b), 'Same value' if c['kind'] == 'BindingConnectorAsUsage' else 'Connection', ix[c['elementId']], 'binding' if c['kind'] == 'BindingConnectorAsUsage' else 'connection')
@@ -99,7 +102,7 @@ def project(report, target, viewpoint=None):
                 warnings.append('Entry declaration is not a resolved StateSubactionMembership owned by this state.')
         for state in owned_states:
             node(state, 'state')
-        transitions = sorted((e for e in report['elements'] if e['metaclass'] == 'TransitionUsage' and sem(e, 'owner', {}).get('id') == root['sessionElementId']), key=lambda e: (e.get('line', 0), e.get('qualifiedName', '')))
+        transitions = sorted((e for e in report['elements'] if e['metaclass'] == 'TransitionUsage' and sem(e, 'owner', {}).get('id') == root['sessionElementId']), key=lambda e: ((e.get('line') if isinstance(e.get('line'), int) else -1), element_order(e)))
         if len(transitions) > 24:
             raise ValueError('Choose a smaller scope: operating story supports 24 transitions')
         for e in transitions:
@@ -119,13 +122,13 @@ def project(report, target, viewpoint=None):
             body = 'Event: ' + (', '.join(triggers) if triggers else 'not translated; inspect the source')
             if sem(e, 'guardExpression', []) or sem(e, 'effectAction', []):
                 body += '. Additional conditions or effects exist; review them in Engineering mode before using this story.'
-            row(human(a.get('name', 'Unnamed state')) + ' → ' + human(b.get('name', 'Unnamed state')), body, *support)
+            row(human(display_name(a, 'Unnamed state')) + ' → ' + human(display_name(b, 'Unnamed state')), body, *support)
         entry_successions = sorted((e for e in report['elements']
                                     if e['metaclass'] == 'SuccessionAsUsage'
                                     and sem(e, 'owner', {}).get('id') == root['sessionElementId']
                                     and len(references(sem(e, 'source'))) == 1
                                     and references(sem(e, 'source'))[0]['id'] in entry_declarations),
-                                   key=lambda e: (e.get('line', 0), e.get('qualifiedName', '')))
+                                   key=lambda e: ((e.get('line') if isinstance(e.get('line'), int) else -1), element_order(e)))
         for e in entry_successions:
             source_ref = references(sem(e, 'source'))[0]
             target_refs = references(sem(e, 'target'))
@@ -135,9 +138,9 @@ def project(report, target, viewpoint=None):
                 continue
             source = ix[source_ref['id']]
             node(target, 'state')
-            label = 'Entry declaration → ' + human(target.get('name', 'Unnamed state'))
+            label = 'Entry declaration → ' + human(display_name(target, 'Unnamed state'))
             edge(source['sessionElementId'], target['sessionElementId'], label, e, 'transition')
-            row('Entry → ' + human(target.get('name', 'Unnamed state')),
+            row('Entry → ' + human(display_name(target, 'Unnamed state')),
                 'Initial entry succession: explicit StateSubactionMembership witness; no action identity is inferred. Condition evidence is unavailable; do not infer absence.',
                 e, source, target)
         if not transitions and not entry_successions:
@@ -148,13 +151,13 @@ def project(report, target, viewpoint=None):
         node(root, 'check' if verification else 'requirement')
         title = 'Planned checks' if verification else 'Requirement context'
         question = 'What is planned to be checked?' if verification else 'What obligation does this model element represent?'
-        row(human(root.get('name', 'Unnamed obligation')), 'Planned model check; execution and acceptance have not been evaluated.' if verification else 'A model obligation. Open its source to read the exact acceptance condition; this view does not claim it is met.', root)
+        row(human(display_name(root, 'Unnamed obligation')), 'Planned model check; execution and acceptance have not been evaluated.' if verification else 'A model obligation. Open its source to read the exact acceptance condition; this view does not claim it is met.', root)
         for ref in sem(root, 'verifiedRequirement', []):
             if ref.get('id') in ix:
                 e = ix[ref['id']]
                 node(e, 'requirement')
                 edge(root['sessionElementId'], e['sessionElementId'], 'Planned check of', root, 'trace')
-                row('Intended to check: ' + human(e.get('name', 'Unnamed obligation')), 'A planned link to an obligation, not a passed test.', e, root)
+                row('Intended to check: ' + human(display_name(e, 'Unnamed obligation')), 'A planned link to an obligation, not a passed test.', e, root)
         omitted.append('Constraint expressions, test setup, installed configuration, observations, deviations and sign-off are not translated or assessed. Consult Engineering mode for the exact model statements.')
     else:
         raise ValueError('No stakeholder translation is qualified for this scope. Use Engineering mode.')
@@ -162,7 +165,7 @@ def project(report, target, viewpoint=None):
     family = 'connections'
     discussion = 'Are the shown boundaries and interfaces the ones we need to review?'
     names = [c['title'] for c in components]
-    takeaway = (human(root.get('name', 'System')) + ' includes ' + ', '.join(names[:4]) + (f' and {len(names)-4} other components' if len(names)>4 else '') + '.') if names else 'This scope has no extracted lower-level components.'
+    takeaway = (human(display_name(root, 'System')) + ' includes ' + ', '.join(names[:6]) + (f' and {len(names)-6} other components' if len(names)>6 else '') + '.') if names else 'This scope has no extracted lower-level components.'
     statement = ''
     statement_documentation, documentation_status = [], 'not-applicable'
     if kind in {'PartDefinition', 'PartUsage'} and viewpoint.get('view') == 'TREE':
@@ -171,19 +174,23 @@ def project(report, target, viewpoint=None):
         nodes, edges, rows = {}, [], []
         def descend(e, path, depth, ancestors):
             composite = sem(e, 'isComposite') in (True, 'true')
-            nodes[path] = {'id': path, 'elementId': e['sessionElementId'], 'label': human(e.get('name', 'Unnamed')), 'role': 'component', 'referenced': depth > 0 and not composite}
-            children = sorted((c for c in features(e, ix) if c['metaclass'] == 'PartUsage'), key=lambda c: c.get('qualifiedName', c['sessionElementId']))
+            nodes[path] = {'id': path, 'elementId': e['sessionElementId'], 'label': human(display_name(e, 'Unnamed')), 'role': 'component', 'referenced': depth > 0 and not composite}
+            children, collections = part_features(e, ix)
+            children.sort(key=lambda e: (e.get('qualifiedName') or '', element_order(e)))
+            for collection in collections:
+                row(human(display_name(e)) + ' / collection ' + human(collection['name']) + ' ' + collection['multiplicity'],
+                    collection['reason'] + (' Members: ' + ', '.join(collection['memberNames']) + '.' if collection['memberNames'] else ''), e, ix[collection['elementId']])
             if depth >= 2 or e['sessionElementId'] in ancestors:
-                if children: warnings.append('Further decomposition exists below ' + human(e.get('name', 'Unnamed')) + '; open a narrower scope.')
+                if children: warnings.append('Further decomposition exists below ' + human(display_name(e, 'Unnamed')) + '; open a narrower scope.')
                 return
             for child in children:
                 child_path = path + '/' + child['sessionElementId']
                 descend(child, child_path, depth + 1, ancestors | {e['sessionElementId']})
                 relation = 'Contains' if sem(child, 'isComposite') in (True, 'true') else 'References'
                 edge(path, child_path, relation, child, 'containment')
-                row(human(e.get('name', 'Unnamed')) + ' / ' + human(child.get('name', 'Unnamed')), relation + ' this component in the model.', e, child)
+                row(human(display_name(e, 'Unnamed')) + ' / ' + human(display_name(child, 'Unnamed')), relation + ' this component in the model.', e, child)
         descend(root, root['sessionElementId'], 0, set())
-        takeaway = f"{human(root.get('name', 'System'))} is shown with up to two levels of component breakdown."
+        takeaway = f"{human(display_name(root, 'System'))} is shown with up to two levels of component breakdown."
         discussion = 'Is the responsibility of each subsystem clear at this level?'
         omitted = ['Component hierarchy only. Interfaces, behaviour and multiplicity instances are not shown. Repeated type features retain separate occurrence paths.']
     elif kind in {'PartDefinition', 'PartUsage'} and viewpoint.get('renderer') == 'summary':
@@ -206,7 +213,7 @@ def project(report, target, viewpoint=None):
                 first = transfers[0]
                 takeaway = 'The model declares ' + first['label'] + ' from ' + nodes[first['source']]['label'].replace('\n', ' / ') + ' to ' + nodes[first['target']]['label'].replace('\n', ' / ') + (f'; {len(transfers)-1} other transfers are shown.' if len(transfers)>1 else '.')
         else:
-            title = human(root.get('name', 'System')) + ' connections'
+            title = human(display_name(root, 'System')) + ' connections'
     elif kind in {'StateDefinition', 'StateUsage'}:
         family = 'states'
         takeaway = f"{len(edges)} declared state changes connect {len(nodes)} states."
@@ -242,7 +249,7 @@ def project(report, target, viewpoint=None):
                 node(satisfying)
                 edge(satisfying['sessionElementId'], root['sessionElementId'], label, assertion, 'trace', polarity != 'positive')
                 edges[-1].update(polarity=polarity, isNegated=sem(assertion, 'isNegated') if polarity != 'unknown' else None)
-                row(label, human(satisfying.get('name', 'Unnamed subject')) + '. A model assertion; execution and acceptance are not established.', assertion, satisfying, root)
+                row(label, human(display_name(satisfying, 'Unnamed subject')) + '. A model assertion; execution and acceptance are not established.', assertion, satisfying, root)
                 rows[-1].update(polarity=polarity, isNegated=sem(assertion, 'isNegated') if polarity != 'unknown' else None)
                 if polarity == 'unknown':
                     warnings.append('Satisfaction polarity unavailable; no positive assertion inferred.')
@@ -277,7 +284,7 @@ def project(report, target, viewpoint=None):
                 if check['metaclass'].startswith('VerificationCase') and any(ref.get('id') == root['sessionElementId'] for ref in sem(check, 'verifiedRequirement', [])):
                     node(check, 'check')
                     edge(check['sessionElementId'], root['sessionElementId'], 'Planned check of', check, 'trace')
-                    row('Planned check', human(check.get('name', 'Unnamed check')), check)
+                    row('Planned check', human(display_name(check, 'Unnamed check')), check)
         if verification:
             linked = any(e['kind'] == 'trace' and ix.get(e['target'], {}).get('metaclass', '').startswith('Requirement') for e in edges)
             takeaway = ('A planned check is linked to its obligation; no execution result is supplied.' if linked else
@@ -292,7 +299,7 @@ def project(report, target, viewpoint=None):
     return {'profile': 'stakeholder-graph-v3', 'viewKind': family, 'takeaway': takeaway, 'discussion': discussion, 'statement': statement,
             'statementDocumentation': statement_documentation, 'documentationStatus': documentation_status,
             'legendItems': legend, 'title': title, 'question': question, 'scope': target,
-            'scopeElementId': root['sessionElementId'], 'scopeLabel': human(root.get('name', target)),
+            'scopeElementId': root['sessionElementId'], 'scopeLabel': human(display_name(root, target)),
             'nodes': list(nodes.values()), 'edges': edges, 'warnings': warnings, 'rows': rows, 'components': components, 'omissions': omitted, 'labelPolicy': 'Identifier spacing only; no inferred purpose or readiness',
             'acceptance': 'Not assessed', 'sourceSha256': report.get('sourceSha256')}
 
@@ -303,7 +310,9 @@ def graph_dot(projection):
     wrap = lambda value: "\n".join(part for line in value.splitlines() for part in (textwrap.wrap(line, 24) or [""]))
     node_ids = {n['id']: f'n{i}' for i, n in enumerate(projection['nodes'])}
     vertical = projection.get('viewKind') == 'decomposition' or (projection.get('viewKind') == 'states' and len(projection.get('nodes', [])) >= 4)
-    direction = projection.get('layoutDirection') or ('TB' if vertical else 'LR')
+    compact = (2 <= len(projection['nodes']) <= 12 and not projection['edges']
+               and all(n['role'] == 'component' for n in projection['nodes']))
+    direction = 'TB' if compact else projection.get('layoutDirection') or ('TB' if vertical else 'LR')
     lines = ['digraph G {',
         'graph [rankdir='+direction+', bgcolor="transparent", pad="0.35", nodesep="0.65", ranksep="0.9", splines=polyline, outputorder=edgesfirst];',
         'node [shape=box, style="rounded,filled", fillcolor="#f0f6f4", color="#47796e", penwidth=1.4, margin="0.3,0.23", fontname="Arial", fontsize=17, fontcolor="#243b36"];',
@@ -318,6 +327,15 @@ def graph_dot(projection):
         elif n['role'] == 'check': attrs.update(fillcolor='#edf1f7', color='#7485a0')
         elif n['role'] == 'boundary': attrs.update(style='rounded,filled,dashed', fillcolor='#f4f4f0', color='#93a5a0')
         lines.append(node_ids[n['id']]+' ['+', '.join(k+'='+q(v) for k,v in attrs.items())+'];')
+    if compact:
+        # Layout-only constraints: a small unconnected component set uses the
+        # available width without adding any asserted model relationship.
+        columns = 2 if projection.get('layoutDirection') == 'TB' else 3
+        ids = list(node_ids.values())
+        for offset in range(0, len(ids), columns):
+            lines.append('{rank=same; ' + '; '.join(ids[offset:offset+columns]) + ';}')
+            if offset >= columns:
+                lines.append(ids[offset-columns]+' -> '+ids[offset]+' [style=invis, weight=10];')
     for i, e in enumerate(projection['edges']):
         if e['source'] not in node_ids or e['target'] not in node_ids: raise ValueError('Graphical relationship has an unresolved visible endpoint')
         directed = e['kind'] in {'flow', 'transition', 'trace'}

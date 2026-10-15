@@ -264,3 +264,20 @@ class StakeholderViewpointTests(unittest.TestCase):
         self.assertNotIn('labelloc=b',graph_dot(p))
 
 if __name__=='__main__':unittest.main()
+
+
+class SmallDisconnectedComponentLayout(unittest.TestCase):
+    def test_five_unconnected_components_keep_identity_without_inventing_links(self):
+        import xml.etree.ElementTree as ET
+        projection={'viewKind':'connections','nodes':[{'id':str(i),'label':'Engine '+str(i+1)+'\nF-1','role':'component','referenced':False} for i in range(5)],'edges':[]}
+        before=copy.deepcopy(projection)
+        svg=render_svg(projection);root=ET.fromstring(svg)
+        width,height=map(float,root.attrib['viewBox'].split()[2:])
+        self.assertGreater(width/height,1.4)
+        self.assertLess(width/height,5)
+        self.assertEqual(projection,before)
+        self.assertEqual(len(root.findall('.//{http://www.w3.org/2000/svg}g[@class="node"]')),5)
+        self.assertEqual(root.findall('.//{http://www.w3.org/2000/svg}g[@class="edge"]'),[])
+        self.assertIn('psysml:4',svg)
+        connected=copy.deepcopy(projection);connected['edges']=[{'source':'0','target':'1','kind':'connection','elementId':'link','label':'Connection','caution':False}]
+        self.assertNotIn('style=invis',graph_dot(connected))

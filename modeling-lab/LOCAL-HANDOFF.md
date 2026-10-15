@@ -25,6 +25,14 @@ Use Model to find a component, then choose a presentation and Scope. Registers d
 
 Open Save view or View options to rename the current view and save it. Save as new view creates a distinct copy. A name used by another view is rejected. A view kept in this browser is included in an editable project file only when you use Save project file. That action requests a download: retain the file in a known location. Reloading a tab is not a project-file save. Export reader review creates a frozen HTML record; it does not replace the editable JSON.
 
+## Open a multi-file model
+
+Project → Import model source accepts several `.sysml` files; Import source folder retains their relative paths and lists other files that were excluded. Up to 64 files and 512 KiB of assembled UTF-8 source are supported. A search helps select the initial review subject after validation; no scope is chosen automatically. The accepted project stays available until the new drawing succeeds. A new source study starts with blank notes and shows Not saved until you request a project download.
+
+Original files remain in the editable project as an immutable source set. Source inspection shows the original file and line while the combined draft exactly matches that imported revision. Editing the combined source switches to assembled-revision locations; edits are not distributed back into the original files. Undoing to the exact imported source restores the original mapping. Save, reopen and recovery preserve this provenance. The serialized project remains capped at 8 MiB, including history.
+
+The working surface starts with a complete diagram overview. Read labels enlarges the drawing for inspection; Fit restores its overview. Secondary discussion, behavior conditions and grouped extraction limitations are expandable. Blocking errors and declared design shortfalls stay visible. Aggregate collection features are shown separately from component usages; the drawing is not a physical inventory. When a model exceeds the navigation budget, supported configured component scopes can remain available with their restricted coverage stated explicitly. Drawing and occurrence limits still apply.
+
 ## Read without the model runtime
 
 The completed exercise's `review.html` is a standalone frozen reader. Open it in a browser that supports local HTML files. The Codex in-app browser accepts HTTP/HTTPS and can reject `file://`; that refusal is not evidence that the HTML is invalid. The delivery record identifies the HTTP reader instance actually inspected. Keep any denied destination unaccessed; do not switch tools to bypass a saved restriction.

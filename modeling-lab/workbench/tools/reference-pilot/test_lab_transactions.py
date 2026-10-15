@@ -145,7 +145,7 @@ class NativeInitialPayload(unittest.TestCase):
         payload = initial_payload(current, 'startup source', presets, 'original workspace')
         self.assertEqual(payload, {'source': 'startup source', 'presets': presets,
             'baselineSource': 'startup source', 'baselineHash': digest('startup source'),
-            'acceptedReport': None, 'workspaceKey': 'original workspace'})
+            'acceptedReport': None, 'workspaceKey': 'original workspace', 'sourceSet': None})
         payload['presets'].append({'id': 'client edit'})
         self.assertEqual(current['views'], [{'id': 'startup'}])
 
@@ -234,3 +234,19 @@ class AcceptedWorkspaceIdentity(unittest.TestCase):
                 workspace_key_for({'workspaceKey': key}, self.current, 'startup-workspace')
             self.assertEqual(self.initial()['workspaceKey'], 'startup-workspace')
             self.assertIsNone(self.protocol.staged)
+
+
+class SourceSetTransactions(unittest.TestCase):
+    def test_source_set_identity_rolls_back_and_refresh_is_a_copy(self):
+        from source_intake import assemble_records
+        meta=assemble_records([{'path':'old.sysml','source':'part def Old;'}])['sourceSet']
+        current={**state('old'), 'sourceSet':meta}
+        protocol=AcceptedState(current)
+        protocol.stage('new-project',{**state('new'),'sourceSet':None},('old','report'))
+        protocol.accept({'transactionId':'new-project','sourceSha256':'new','reportSha256':'report'})
+        self.assertIsNone(current['sourceSet'])
+        protocol.rollback('new-project')
+        self.assertEqual(current['sourceSet'],meta)
+        bootstrap=initial_payload(current,'startup',[],'workspace')
+        bootstrap['sourceSet']['files'][0]['source']='changed copy'
+        self.assertEqual(current['sourceSet']['files'][0]['source'],'part def Old;')
