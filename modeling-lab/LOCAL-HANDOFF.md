@@ -50,3 +50,7 @@ Stop the local server with Ctrl+C when finished. Keep the package, project files
 ## Human acceptance still to observe
 
 When available, ask Tony to identify the changed minimum and declared capacity, distinguish the two room/probe occurrences, inspect a source witness, rename a view, save and reopen the project, and explain what remains unresolved or unexecuted. These local and agent checks do not replace that observation.
+
+Inspecting a requirement usage offers Read requirement definition when its typed definition is available. Explore linked target follows the assertion's exact occurrence context; unresolved or ambiguous targets remain a limitation. These links do not infer satisfaction, verification or transitive coverage.
+
+Reader exports keep review diagrams and material qualifications visible. Expand the counted fact, behavior and scope disclosures for source evidence. Model-wide or configured-scope appendices state their actual coverage and any export truncation; a compact reader does not imply complete language support.
