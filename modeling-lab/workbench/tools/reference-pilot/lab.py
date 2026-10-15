@@ -20,6 +20,57 @@ from lab_delivery import browser_report, element_detail
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def require_complete_views(report, recipes):
+    """A static source pass is insufficient when a required presentation failed."""
+    views = report.get('views', [])
+    for recipe in recipes:
+        matches = [view for view in views if view.get('id') == recipe['id']]
+        if len(matches) != 1 or matches[0].get('targets') != recipe['names']:
+            raise ValueError('Required view '+recipe['id']+' is missing or has a different scope. Current project is retained.')
+    for view in views:
+        failure = view.get('error') or view.get('stakeholderError')
+        if failure or not view.get('svg') or not view.get('stakeholderSvg'):
+            raise ValueError('Required view '+str(view.get('id', '(unnamed)'))+' could not be built: '+str(failure or 'A required audience drawing is missing')+'. Current project is retained.')
+
+
+class AcceptedState:
+    """One staged candidate and one reversible acceptance; no model history cache."""
+    def __init__(self, current):
+        self.current = current
+        self.staged = None
+        self.previous = None
+
+    def identity(self):
+        report = self.current.get('report') or {}
+        return (report.get('sourceSha256'), report.get('reportIntegrity', {}).get('reportSha256'))
+
+    def stage(self, token, state, expected):
+        if not isinstance(token, str) or not 8 <= len(token) <= 128:
+            raise ValueError('Invalid project transaction identity')
+        if tuple(expected) != self.identity():
+            raise ValueError('Accepted project changed while this candidate was rendering')
+        self.staged = (token, state, self.identity())
+
+    def accept(self, data):
+        if not self.staged or self.staged[0] != data.get('transactionId'):
+            raise ValueError('Project transaction is no longer current')
+        token, state, expected = self.staged
+        report = state['report']
+        if self.identity() != expected or (data.get('sourceSha256'), data.get('reportSha256')) != (report['sourceSha256'], report['reportIntegrity']['reportSha256']):
+            raise ValueError('Project transaction does not match the staged report')
+        self.previous = (token, self.current.copy())
+        self.current.update(state)
+        self.staged = None
+        return {'accepted': True, 'transactionId': token, 'sourceSha256': report['sourceSha256'], 'reportSha256': report['reportIntegrity']['reportSha256']}
+
+    def rollback(self, token):
+        if self.previous and self.previous[0] == token:
+            self.current.update(self.previous[1])
+            self.previous = None
+            return {'rolledBack': True, 'transactionId': token}
+        raise ValueError('Project acceptance can no longer be rolled back')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('jar', 'library', 'source', 'views'):
@@ -35,6 +86,7 @@ def main():
     origin = f'http://127.0.0.1:{args.port}'
     working = tempfile.TemporaryDirectory(prefix='sysml-reference-lab-')
     current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None}
+    transactions = AcceptedState(current)
     cache = {}
 
     def render_model(draft, views):
@@ -108,12 +160,16 @@ def main():
         def do_POST(self):
             if not self.allowed() or self.headers.get('Origin') != origin or self.headers.get('X-Session') != token:
                 return self.reply(403, {'error': 'Session or origin rejected'})
-            if self.path not in ('/render', '/compose', '/prepare', '/inspect', '/element') or self.headers.get('Content-Type') != 'application/json':
+            if self.path not in ('/render', '/compose', '/prepare', '/inspect', '/element', '/accept', '/rollback') or self.headers.get('Content-Type') != 'application/json':
                 return self.reply(400, {'error': 'Expected JSON modelling request'})
             try:
                 size = int(self.headers.get('Content-Length', '0'))
                 if not 0 < size <= 1_048_576: raise ValueError('Request exceeds 1 MiB')
                 data = json.loads(self.rfile.read(size))
+                if self.path == '/accept':
+                    return self.reply(200, transactions.accept(data))
+                if self.path == '/rollback':
+                    return self.reply(200, transactions.rollback(data.get('transactionId')))
                 if self.path == '/element':
                     return self.reply(200, element_detail(current['report'], data))
                 if self.path == '/inspect':
@@ -162,24 +218,32 @@ def main():
                 baseline = data.get('baselineSource', source)
                 if not isinstance(baseline, str) or len(baseline.encode()) > 262144:
                     raise ValueError('Invalid baseline source')
-                if not current['baseline'] or current['baseline']['sourceSha256'] != digest(baseline):
+                baseline_report = current['baseline']
+                if not baseline_report or baseline_report['sourceSha256'] != digest(baseline):
                     # Initial baseline uses the same recipes except newly added scenarios.
                     baseline_views = [v for v in views if not v['id'].startswith('scenario-')] or presets
-                    current['baseline'] = render_model(baseline, baseline_views)
-                    if not current['baseline'].get('staticChecksPassed'):
-                        current['baseline'] = None
+                    baseline_report = render_model(baseline, baseline_views)
+                    if not baseline_report.get('staticChecksPassed'):
                         raise ValueError('The project baseline does not pass language validation.')
                 report = render_model(draft, views)
                 report['viewRecipes'] = project_views
-                report['changeSummary'] = summarize(current['baseline'], report)
+                report['changeSummary'] = summarize(baseline_report, report)
                 for view in report['views']:
                     if view.get('stakeholder'):
                         target = next((e for e in report['elements'] if e.get('qualifiedName') == view['targets'][0]), {})
                         concerns = {view['targets'][0]} | {r.get('qualifiedName') for r in target.get('semantics', {}).get('verifiedRequirement', [])}
                         view['stakeholder']['changeSummary'] = [change for change in report['changeSummary'] if change['requirement'] in concerns]
-                current['catalogue'] = report.get('catalogue') if report.get('staticChecksPassed') else None
-                current['report'] = report if report.get('staticChecksPassed') else None
-                current['views'] = project_views
+                if report.get('staticChecksPassed'):
+                    require_complete_views(report, views)
+                state = {'catalogue': report.get('catalogue'), 'report': report, 'views': project_views, 'baseline': baseline_report}
+                if data.get('stage'):
+                    if report.get('staticChecksPassed'):
+                        transactions.stage(data.get('transactionId'), state, (data.get('expectedBase'), data.get('expectedReport')))
+                    report['transactionId'] = data.get('transactionId')
+                else:
+                    # Existing native callers retain the immediate-render protocol.
+                    current.update(state if report.get('staticChecksPassed') else {'catalogue': None, 'report': None, 'views': project_views, 'baseline': baseline_report})
+                    transactions.staged = transactions.previous = None
                 return self.reply(200, browser_report(report))
             except Exception as error:
                 return self.reply(400, {'error': str(error)})

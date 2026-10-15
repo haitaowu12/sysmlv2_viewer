@@ -12,3 +12,10 @@ lab.html
 cases.json
 browser-engine.wasm
 wasm_exec.js
+index.html
+public/build-info.json
+public/licenses/
+public/RUNTIME-NOTICES.txt
+public/opensysml-browser.patch
+engine-build.json
+public/engine-build.json

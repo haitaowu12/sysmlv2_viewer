@@ -45,6 +45,86 @@ class BehaviorTests(unittest.TestCase):
         self.assertIsNone(p['nodes'][0]['parallel']);self.assertEqual(p['coverage'],'partial')
         self.assertIn('Parallelism unknown',graph_dot(p))
 
+    def test_condition_coverage_is_per_field_and_distinguishes_null_from_empty(self):
+        m=model();m.pop('behaviorFieldsVersion')
+        transition=m['elements'][-1]
+        transition['semantics']['guardExpression'] = None
+        transition['semantics']['effectAction'] = []
+        relation=project(m,'Demo::state')['relations'][0]
+        self.assertEqual(relation['conditionStatus'], {
+            'triggers': 'unknown',
+            'guards': 'unknown',
+            'effects': 'not-declared',
+        })
+
+    def test_typed_standard_action_boundaries_are_preserved(self):
+        root=element('root','action','ActionDefinition')
+        first=element('first','receive','ActionUsage','root')
+        last=element('last','notify','ActionUsage','root')
+        start=element('start','start','ActionUsage')
+        start['qualifiedName']='Actions::Action::start'
+        done=element('done','done','ActionUsage')
+        done['qualifiedName']='Actions::Action::done'
+        begin=element('begin','begin','SuccessionAsUsage','root',sourceFeature=[{'id':'start'}],targetFeature=[{'id':'first'}])
+        finish=element('finish','finish','SuccessionAsUsage','root',sourceFeature=[{'id':'last'}],targetFeature=[{'id':'done'}])
+        p=project(dict(staticChecksPassed=True,elements=[root,first,last,start,done,begin,finish]),'Demo::action')
+        self.assertEqual([(r['source'],r['target']) for r in p['relations']], [('start','first'),('last','done')])
+        self.assertEqual({n['id'] for n in p['nodes']}, {'root','first','last','start','done'})
+        self.assertTrue(all(n['kind'] == 'ActionBoundary' for n in p['nodes'] if n['id'] in {'start','done'}))
+        self.assertIn('start',graph_dot(p));self.assertIn('done',graph_dot(p))
+
+    def test_untyped_or_nonstandard_action_boundary_is_not_invented(self):
+        root=element('root','action','ActionDefinition')
+        first=element('first','receive','ActionUsage','root')
+        external=element('external','start','ActionUsage')
+        external['qualifiedName']='Other::start'
+        link=element('link','link','SuccessionAsUsage','root',sourceFeature=[{'id':'external'}],targetFeature=[{'id':'first'}])
+        p=project(dict(staticChecksPassed=True,elements=[root,first,external,link]),'Demo::action')
+        self.assertFalse(p['relations'])
+        self.assertEqual(p['coverage'],'partial')
+        self.assertNotIn('external', {n['id'] for n in p['nodes']})
+
+    def test_empty_entry_uses_membership_witness_without_fake_action(self):
+        root=element('root','state','StateDefinition')
+        membership=element('entryMembership','entry','StateSubactionMembership','root')
+        membership['semantics']['kind']='entry'
+        membership['source']='entry;'
+        root['semantics']['entryDeclaration']={'id':'entryMembership','metaclass':'StateSubactionMembership'}
+        stopped=element('stopped','stopped','StateUsage','root')
+        initial=element('initial','initial','SuccessionAsUsage','root',source={'id':'entryMembership'},target={'id':'stopped'})
+        p=project(dict(staticChecksPassed=True,elements=[root,membership,stopped,initial]),'Demo::state')
+        self.assertEqual(len(p['relations']),1)
+        relation=p['relations'][0]
+        self.assertEqual((relation['source'],relation['target']),('entryMembership','stopped'))
+        self.assertEqual(relation['entryDeclaration'],'entryMembership')
+        entry=next(n for n in p['nodes'] if n['id']=='entryMembership')
+        self.assertEqual((entry['kind'],entry['name']),('EntryDeclaration','entry'))
+        self.assertNotIn('ActionUsage', {n['kind'] for n in p['nodes'] if n['id']=='entryMembership'})
+        self.assertIn('entry declaration',graph_dot(p))
+        self.assertIn('condition evidence incomplete',graph_dot(p))
+
+    def test_name_only_entry_marker_is_not_promoted(self):
+        root=element('root','state','StateDefinition')
+        fake=element('fake','entry','ActionUsage','root')
+        stopped=element('stopped','stopped','StateUsage','root')
+        initial=element('initial','initial','SuccessionAsUsage','root',source={'id':'fake'},target={'id':'stopped'})
+        p=project(dict(staticChecksPassed=True,elements=[root,fake,stopped,initial]),'Demo::state')
+        self.assertFalse(p['relations'])
+        self.assertNotIn('fake',{n['id'] for n in p['nodes']})
+
+    def test_entry_membership_owned_by_another_state_is_not_promoted(self):
+        root=element('root','state','StateDefinition')
+        foreign=element('foreign','foreign','StateUsage')
+        membership=element('entryMembership','entry','StateSubactionMembership','foreign')
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']={'id':'entryMembership','metaclass':'StateSubactionMembership'}
+        stopped=element('stopped','stopped','StateUsage','root')
+        initial=element('initial','initial','SuccessionAsUsage','root',source={'id':'entryMembership'},target={'id':'stopped'})
+        p=project(dict(staticChecksPassed=True,elements=[root,foreign,membership,stopped,initial]),'Demo::state')
+        self.assertFalse(p['relations'])
+        self.assertNotIn('entryMembership',{n['id'] for n in p['nodes']})
+        self.assertTrue(any('not a resolved StateSubactionMembership owned by this state' in w['reason'] for w in p['warnings']))
+
     def test_external_endpoint_excluded_not_invented(self):
         m=model();m['elements'][-1]['semantics']['target']={'id':'missing'}
         p=project(m,'Demo::state');self.assertFalse(p['relations']);self.assertEqual(p['coverage'],'partial')

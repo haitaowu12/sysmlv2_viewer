@@ -173,6 +173,8 @@ SOURCE_PATHS = (
     'workbench/tools/reference-pilot/lab_delivery.py',
     'workbench/tools/reference-pilot/test_lab_delivery.py',
     'workbench/tools/reference-pilot/test_lab_project.py',
+    'workbench/tools/reference-pilot/test_lab_transactions.py',
+    'workbench/src/test/referenceScaleNavigation.test.ts',
     'workbench/tools/reference-pilot/source_set.py',
     'workbench/tools/reference-pilot/stakeholder.py',
     'workbench/tools/reference-pilot/test_agent_model.py',

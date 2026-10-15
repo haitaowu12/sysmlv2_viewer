@@ -51,6 +51,60 @@ class StakeholderTests(unittest.TestCase):
         p=project({'staticChecksPassed':True,'elements':[check,requirement]},'P::Check')
         self.assertIn('not a passed test',p['rows'][1]['body'])
         self.assertEqual(p['rows'][1]['elementIds'],['r','v'])
+
+    def test_verification_takeaway_does_not_claim_a_missing_link(self):
+        check=element('v','VerificationCaseDefinition','Check')
+        report={'staticChecksPassed':True,'elements':[check]}
+        p=project(report,'P::Check')
+        self.assertIn('requirement link is unavailable',p['takeaway'])
+        requirement=element('r','RequirementUsage','capacity')
+        check['semantics']['verifiedRequirement']=[ref(requirement)]
+        p=project({'staticChecksPassed':True,'elements':[check,requirement]},'P::Check')
+        self.assertIn('linked to its obligation',p['takeaway'])
+        self.assertNotIn('unavailable',p['takeaway'])
+
+    def test_action_story_does_not_require_legacy_behavior_version(self):
+        root=element('root','ActionDefinition','Run')
+        first=element('first','ActionUsage','receive','root')
+        last=element('last','ActionUsage','notify','root')
+        link=element('link','SuccessionAsUsage','sequence','root',sourceFeature=ref(first),targetFeature=[ref(last)])
+        report={'staticChecksPassed':True,'elements':[root,first,last,link]}
+        p=project(report,'P::Run')
+        self.assertEqual(p['viewKind'],'actions')
+        self.assertEqual(len(p['behavior']['relations']),1)
+        self.assertEqual(p['behavior']['relations'][0]['source'],'first')
+        self.assertEqual(p['behavior']['relations'][0]['target'],'last')
+
+    def test_empty_entry_row_names_membership_boundary_without_action_claim(self):
+        root=element('root','StateDefinition','States')
+        membership=element('entryMembership','StateSubactionMembership','entry','root')
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']={'id':'entryMembership','metaclass':'StateSubactionMembership'}
+        stopped=element('stopped','StateUsage','stopped','root')
+        initial=element('initial','SuccessionAsUsage','initial','root',source=ref(membership),target=ref(stopped))
+        p=project({'staticChecksPassed':True,'behaviorFieldsVersion':1,'elements':[root,membership,stopped,initial]},'P::States')
+        row=next(row for row in p['rows'] if row['title'].startswith('R1:'))
+        self.assertIn('StateSubactionMembership witness',row['body'])
+        self.assertNotIn('ActionUsage',row['body'])
+
+    def test_legacy_stakeholder_state_story_keeps_typed_entry_boundary(self):
+        root=element('root','StateDefinition','States')
+        membership=element('entryMembership','StateSubactionMembership','entry','root')
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']=ref(membership)
+        stopped=element('stopped','StateUsage','stopped','root')
+        initial=element('initial','SuccessionAsUsage','initial','root',source=ref(membership),target=ref(stopped))
+        p=project({'staticChecksPassed':True,'elements':[root,membership,stopped,initial]},'P::States')
+        self.assertEqual(p['viewKind'],'states')
+        self.assertEqual([(e['source'],e['target'],e['kind']) for e in p['edges']], [('entryMembership','stopped','transition')])
+        self.assertIn('Entry declaration',p['edges'][0]['label'])
+        row=next(row for row in p['rows'] if row['title']=='Entry → Stopped')
+        self.assertIn('StateSubactionMembership witness',row['body'])
+        self.assertIn('Condition evidence is unavailable',row['body'])
+        self.assertNotIn('ActionUsage',row['body'])
+        self.assertEqual(next(node for node in p['nodes'] if node['id']=='entryMembership')['role'],'boundary')
+        self.assertIn('Entry declaration',graph_dot(p))
+
     def test_graph_keeps_topology_and_undirected_connections(self):
         p=project(fixture(),'P::Root')
         self.assertEqual({n['id'] for n in p['nodes']},{'a','b'})
@@ -113,6 +167,52 @@ class StakeholderViewpointTests(unittest.TestCase):
         req['source']=req['source'].replace('two','three')
         doc['semantics']['body']='At least three units.'
         self.assertEqual(project(report,'P::capacity')['statement'],'At least three units.')
+
+    def test_requirement_shows_supported_declared_capacity_comparison(self):
+        req=element('req','RequirementUsage','capacity')
+        literal=element('literal','LiteralInteger','declared',value=2)
+        attribute=element('attribute','AttributeUsage','sampleCapacity',
+                          type=[{'id':'integer','name':'Integer','qualifiedName':'ScalarValues::Integer'}],
+                          ownedElement=[ref(literal)])
+        left=element('left','FeatureReferenceExpression','left',referent=ref(attribute))
+        right=element('right','LiteralInteger','minimum',value=3)
+        expression=element('expression','OperatorExpression','predicate',operator='>=',operand=[ref(left),ref(right)])
+        constraint=element('constraint','ConstraintUsage','capacityConstraint','req',ownedElement=[ref(expression)])
+        membership=element('membership','RequirementConstraintMembership','membership','req',ownedConstraint=ref(constraint))
+        membership['semantics']['kind']='requirement'
+        constraint['semantics']['owner']={'id':'req','qualifiedName':'P::capacity','metaclass':'RequirementUsage'}
+        constraint['semantics']['owningMembership']=ref(membership)
+        report={'staticChecksPassed':True,'sourceSha256':'a'*64,
+                'elements':[req,literal,attribute,left,right,expression,constraint,membership]}
+        p=project(report,'P::capacity')
+        comparison=next(row for row in p['rows'] if row.get('kind')=='declared-capacity-comparison')
+        self.assertEqual(comparison['title'],'Required minimum 3 vs declared sample capacity 2')
+        self.assertIn('Declared design shortfall',comparison['body'])
+        self.assertIn('Physical verification: not evaluated.',comparison['body'])
+        self.assertEqual(comparison['status'],'declared-design-shortfall')
+        self.assertEqual(comparison['physicalVerification'],'not-evaluated')
+        self.assertEqual(comparison['elementIds'],['req','attribute','constraint'])
+        self.assertEqual(comparison['evidence'],{'attributeElementId':'attribute','constraintElementIds':['constraint']})
+
+    def test_requirement_omits_unsupported_declared_capacity_comparison(self):
+        req=element('req','RequirementUsage','capacity')
+        literal=element('literal','LiteralInteger','declared',value=2)
+        attribute=element('attribute','AttributeUsage','sampleCapacity',
+                          type=[{'id':'text','name':'String','qualifiedName':'ScalarValues::String'}],
+                          ownedElement=[ref(literal)])
+        left=element('left','FeatureReferenceExpression','left',referent=ref(attribute))
+        right=element('right','LiteralInteger','minimum',value=3)
+        expression=element('expression','OperatorExpression','predicate',operator='>=',operand=[ref(left),ref(right)])
+        constraint=element('constraint','ConstraintUsage','capacityConstraint','req',ownedElement=[ref(expression)])
+        membership=element('membership','RequirementConstraintMembership','membership','req',ownedConstraint=ref(constraint))
+        membership['semantics']['kind']='requirement'
+        constraint['semantics']['owner']={'id':'req','qualifiedName':'P::capacity','metaclass':'RequirementUsage'}
+        constraint['semantics']['owningMembership']=ref(membership)
+        report={'staticChecksPassed':True,'sourceSha256':'a'*64,
+                'elements':[req,literal,attribute,left,right,expression,constraint,membership]}
+        p=project(report,'P::capacity')
+        self.assertFalse(any(row.get('kind')=='declared-capacity-comparison' for row in p['rows']))
+
     def test_nested_documentation_is_not_parent_statement(self):
         req=element('r','RequirementUsage','parent',documentation=[])
         req['source']='requirement parent { attribute detail { doc /* Child only. */ } }'

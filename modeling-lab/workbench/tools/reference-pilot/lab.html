@@ -72,6 +72,7 @@ body.presenting main,body.presenting main.has-inspector{grid-template-columns:mi
 <script nonce="__TOKEN__">
 const $=id=>document.getElementById(id);
 let inspectionEpoch=0,targetNames=[],targetPage=0;
+let acceptedReport=null;
 let initial,report,selected,active=0,raw=false,busy=false,queued=false,editRevision=0,updateTimer,preferredView,restoreUndo=null,lastInspectionTrigger,reviewRouteId="";
 const labels={context:'Context',decomposition:'Decomposition',interconnection:'Interconnection',behavior:'Behavior',requirements:'Requirements',verification:'Verification',focused:'Focused view'};
 const narrowReview=()=>window.matchMedia?.('(max-width:650px)').matches||false;
@@ -320,17 +321,10 @@ function invalidateDraft(){
   empty('Draft changed',$('automatic').checked?'The model will be checked after you pause typing.':'Validate your draft to regenerate the viewpoints.');status('Draft changed · awaiting validation');controls();
 }
 function scheduleUpdate(){clearTimeout(updateTimer);if($('automatic').checked)updateTimer=setTimeout(()=>render(),1200)}
-async function render(focused=false){
-  clearTimeout(updateTimer);if(busy){queued=true;return}busy=true;queued=false;
-  const revision=editRevision,payload={source:$('source').value,...(window.labWorkflow?.payload()||{})};if(focused){payload.target=$('target').value;payload.view=$('mode').value;preferredView='focused'}
-  status('Validating model and rebuilding views…');controls();if(!report)empty('Checking your model','Viewpoints will appear after validation. You can keep editing while this runs.');
-  try{
-    const res=await fetch('/render',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify(payload)}),data=await res.json();
-    if(revision!==editRevision)return;
-    if(data.error)throw Error(data.error);if(data.source!==payload.source)throw Error('Renderer source does not match submitted draft');
-    report=data;clearSelection();$('target').replaceChildren();
+async function modelRequest(path,payload){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify(payload)});const data=await response.json();if(data.error)throw Error(data.error);return data}
+function displayReport(data,focused=false,payload={}){
+  report=data;clearSelection();$('target').replaceChildren();
     $('diagnostics').textContent=data.diagnostics.map(d=>`${d.severity} line ${d.line}: ${d.message}`).join('\n');
-    if(data.staticChecksPassed){
       status('Static checks passed · execution not evaluated','valid');syncReviewRoutes();buildNavigation();
       targetNames=[...new Set(data.elements.filter(e=>e.qualifiedName&&/^(Package|PartDefinition|PartUsage|ActionDefinition|ActionUsage|RequirementDefinition|RequirementUsage|VerificationCaseDefinition|VerificationCaseUsage|StateDefinition|StateUsage)$/.test(e.metaclass)).map(e=>e.qualifiedName))].sort();
       targetPage=0;$('target-find').value='';modelScopeOptions(focused?payload.target:undefined);
@@ -338,12 +332,43 @@ async function render(focused=false){
       const restoreScope=window.scopeWorkbench?.capture();
       if(data.views.length){const preferred=data.views.findIndex(v=>v.id===preferredView);show(routeIndices().includes(preferred)?preferred:routeIndices()[0])}else empty('No views configured','Choose a model scope in Engineering mode to generate a view.');
       window.scopeWorkbench?.load(data,restoreScope);window.labWorkflow?.onReport(data);
-    }else{
+
+}
+async function render(focused=false,transition=null){
+  clearTimeout(updateTimer);if(busy){if(!transition)queued=true;return false}busy=true;queued=false;
+  let revision=editRevision;const transactionId=crypto.randomUUID(),previous=acceptedReport,prior=window.labWorkflow?.capture();
+  const payload={source:transition?.source??$('source').value,...(transition?.payload||window.labWorkflow?.payload()||{}),stage:true,transactionId,expectedBase:previous?.sourceSha256??null,expectedReport:previous?.reportIntegrity?.reportSha256??null};
+  if(focused){payload.target=$('target').value;payload.view=$('mode').value;preferredView='focused'}
+  let activated=false,activationRequested=false;
+  status('Validating model and rebuilding views…');controls();if(!report)empty('Checking your model','Viewpoints will appear after validation. You can keep editing while this runs.');
+  try{
+    const data=await modelRequest('/render',payload);
+    if(revision!==editRevision)return false;
+    if(data.source!==payload.source||data.transactionId!==transactionId)throw Error('Renderer result does not match this project transaction');
+    if(!data.staticChecksPassed){
+      if(transition)throw Error('Candidate model failed validation: '+data.diagnostics.map(d=>d.message).join(' '));
       window.scopeWorkbench?.invalidate();report=null;$('views').replaceChildren();$('view-count').textContent='—';$('explanation').replaceChildren();
-      $('scope').textContent='Invalid draft · revision '+data.sourceSha256.slice(0,12);status('Validation failed · review the diagnostics','error');empty('This draft needs attention','Fix the reported source errors and validate again. Your draft has been retained.');$('editor').open=true;
+      $('diagnostics').textContent=data.diagnostics.map(d=>`${d.severity} line ${d.line}: ${d.message}`).join('\n');
+      $('scope').textContent='Invalid draft · revision '+data.sourceSha256.slice(0,12);status('Validation failed · review the diagnostics','error');empty('This draft needs attention','Fix the reported source errors and validate again. Your draft has been retained.');$('editor').open=true;return false;
     }
-  }catch(error){if(revision===editRevision){window.scopeWorkbench?.invalidate();report=null;clearSelection();$('views').replaceChildren();$('target').replaceChildren();$('explanation').replaceChildren();$('view-count').textContent='—';$('review-route-control').hidden=true;$('scope').textContent='No accepted result';status('Unable to update views','error');$('diagnostics').textContent=String(error);empty('Unable to update views','Your draft is retained. Check the diagnostic, then use Validate & update views to retry.')}}
-  finally{busy=false;controls();syncEditor();if(queued||(revision!==editRevision&&$('automatic').checked))scheduleUpdate()}
+    const required=data.viewRecipes||payload.views||initial.presets;
+    for(const recipe of required){const matches=data.views.filter(v=>v.id===recipe.id);if(matches.length!==1||JSON.stringify(matches[0].targets)!==JSON.stringify(recipe.names))throw Error('Required view '+recipe.id+' is missing or has a different scope.');}
+    const failed=data.views.find(v=>v.error||v.stakeholderError||!v.svg||!v.stakeholderSvg);
+    if(failed)throw Error('Required view '+failed.id+' could not be built: '+(failed.error||failed.stakeholderError||'A required audience drawing is missing'));
+    transition?.validate?.(data);
+    activationRequested=true;const receipt=await modelRequest('/accept',{transactionId,sourceSha256:data.sourceSha256,reportSha256:data.reportIntegrity?.reportSha256});
+    activated=true;
+    if(!receipt.accepted||receipt.transactionId!==transactionId||receipt.sourceSha256!==data.sourceSha256||receipt.reportSha256!==data.reportIntegrity?.reportSha256)throw Error('Accepted project receipt does not match this candidate');
+    if(revision!==editRevision){await modelRequest('/rollback',{transactionId});activated=false;return false}
+    transition?.commit(data);if(transition)revision=++editRevision;
+    displayReport(data,focused,payload);acceptedReport=data;
+    return true;
+  }catch(error){
+    if(activated||activationRequested){try{await modelRequest('/rollback',{transactionId})}catch(rollbackError){$('diagnostics').textContent=String(rollbackError)}}
+    if(transition&&revision===editRevision){window.labWorkflow?.restore(prior);if(previous&&previous.source===$('source').value)displayReport(previous);else invalidateDraft();status('Project change not accepted · previous project retained','error');$('diagnostics').textContent=String(error)}
+    else if(revision===editRevision){window.scopeWorkbench?.invalidate();report=null;clearSelection();$('views').replaceChildren();$('target').replaceChildren();$('explanation').replaceChildren();$('view-count').textContent='—';$('review-route-control').hidden=true;$('scope').textContent='No accepted result';status('Unable to update views','error');$('diagnostics').textContent=String(error);empty('Unable to update views','Your draft is retained. Export a recovery project before reloading, or retry validation.')}
+    return false;
+  }finally{busy=false;controls();syncEditor();if(queued||(revision!==editRevision&&$('automatic').checked))scheduleUpdate()}
 }
 function syncEditor(){const editing=$('editor').open;if(editing)setPresentation(false);document.body.classList.toggle('editing',editing);$('edit-toggle').setAttribute('aria-expanded',String(editing));$('edit-toggle').textContent=editing?'Back to view':'Edit SysML source'}
 function revealEditor(){requestAnimationFrame(()=>$('source').focus())}

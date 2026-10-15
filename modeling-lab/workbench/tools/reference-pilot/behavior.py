@@ -16,6 +16,13 @@ STATES = {'StateDefinition', 'StateUsage', 'ExhibitStateUsage'}
 ACTIONS = {'ActionDefinition', 'ActionUsage', 'PerformActionUsage'}
 FLOWS = {'FlowUsage', 'SuccessionFlowUsage', 'SuccessionAsUsage'}
 CONTROL_NODES = {'ControlNode', 'ForkNode', 'JoinNode', 'DecisionNode', 'MergeNode'}
+# These are the standard library action-body boundary usages returned by the
+# Pilot exporter for `first start;` and `then done;`.  They are included only
+# when the typed relationship points at the exact exported elements.
+ACTION_BOUNDARIES = {
+    'Actions::Action::start': 'start',
+    'Actions::Action::done': 'done',
+}
 BOUNDARY = 'Declared behavior only: no execution, timing, satisfaction or acceptance result.'
 
 
@@ -82,20 +89,44 @@ def project(report, target, limit=120):
         visited.add(e['sessionElementId'])
         eid = witness(e)
         node = dict(id=eid, elementId=eid, name=e.get('name') or e['metaclass'],
-                    parent=parent, kind=e['metaclass'], parallel=None, subactions={}, constraints=[])
+                    parent=parent, kind=e['metaclass'], parallel=None, subactions={},
+                    entryDeclarations=[], constraints=[])
         if e['metaclass'] in STATES:
             value = semantic(e, 'isParallel')
             node['parallel'] = value if type(value) is bool else None
             if type(value) is not bool:
                 warnings.append(dict(elementId=eid, reason='Parallelism is unknown; requalify with the behavior-field exporter'))
+            entry_declaration_ids = set()
+            for declaration in refs(semantic(e, 'entryDeclaration')):
+                membership = ix.get(declaration['id'])
+                membership_owner = refs(semantic(membership, 'owner')) if membership else []
+                if (membership and membership.get('metaclass') == 'StateSubactionMembership'
+                        and semantic(membership, 'kind') == 'entry'
+                        and any(owner.get('id') == eid for owner in membership_owner)):
+                    mid = witness(membership)
+                    entry_declaration_ids.add(mid)
+                    node['entryDeclarations'].append(dict(elementId=mid, name='entry',
+                                                           text=' '.join(membership.get('source', '').split())[:400],
+                                                           textTruncated=len(' '.join(membership.get('source', '').split())) > 400))
+                else:
+                    warnings.append(dict(elementId=eid, reason='Entry declaration is not a resolved StateSubactionMembership owned by this state'))
             for field in ('entryAction', 'doAction', 'exitAction'):
                 node['subactions'][field] = quoted(semantic(e, field), e, field)
-                # Gson omits null fields, so absence is explicit unknown on old reports.
-                if field not in e.get('semantics', {}) and report.get('behaviorFieldsVersion') != 1:
-                    warnings.append(dict(elementId=eid, reason=field + ' evidence is unavailable in this report'))
+                # Field coverage is reported per field. A missing field is not evidence
+                # of absence, regardless of the producer version or its sibling fields.
+                if field not in e.get('semantics', {}):
+                    if field == 'entryAction' and entry_declaration_ids:
+                        warnings.append(dict(elementId=eid, reason='Entry declaration is available, but no ActionUsage was exported; no action identity is inferred'))
+                    else:
+                        warnings.append(dict(elementId=eid, reason=field + ' evidence is unavailable in this report'))
             node['constraints'] = quoted([{'id': c['sessionElementId']} for c in children[eid]
                                           if c['metaclass'] in {'ConstraintUsage', 'AssertConstraintUsage'}], e, 'constraints')
         nodes.append(node)
+        if e['metaclass'] in STATES and entry_declaration_ids and not refs(semantic(e, 'entryAction')):
+            for declaration_id in entry_declaration_ids:
+                nodes.append(dict(id=declaration_id, elementId=declaration_id, name='entry',
+                                  parent=eid, kind='EntryDeclaration', parallel=None,
+                                  subactions={}, entryDeclarations=[], constraints=[]))
         allowed = STATES if state_mode else ACTIONS
         nested = [c for c in children[eid] if c['metaclass'] in allowed]
         inherited = [v for v in refs(semantic(e, 'inheritedFeature')) if v.get('metaclass') in STATES | ACTIONS | FLOWS | CONTROL_NODES | {'TransitionUsage'}]
@@ -106,7 +137,9 @@ def project(report, target, limit=120):
         # Include initial entry actions that are actual transition endpoints, not every subaction as a state.
         for rel in children[eid]:
             kind = rel['metaclass']
-            if kind not in ({'TransitionUsage'} if state_mode else FLOWS):
+            entry_succession = (state_mode and kind == 'SuccessionAsUsage'
+                                and any(ref.get('id') in entry_declaration_ids for ref in refs(semantic(rel, 'source'))))
+            if kind not in ({'TransitionUsage'} if state_mode else FLOWS) and not entry_succession:
                 if not state_mode and (kind in CONTROL_NODES or (kind.endswith('ActionUsage') and kind not in ACTIONS)):
                     warnings.append(dict(elementId=witness(rel), reason='Unsupported action control or subtype: ' + kind))
                 continue
@@ -119,14 +152,40 @@ def project(report, target, limit=120):
                 continue
             relation['source'], relation['target'] = a[0]['id'], b[0]['id']
             if state_mode:
+                if entry_succession:
+                    relation['name'] = 'entry'
+                    relation['entryDeclaration'] = relation['source']
+                    for field, key in [('triggerAction', 'triggers'), ('guardExpression', 'guards'), ('effectAction', 'effects')]:
+                        value = semantic(rel, field)
+                        references = refs(value)
+                        relation[key] = quoted(value, rel, field)
+                        if value is None:
+                            status = 'unknown'
+                        elif value == []:
+                            status = 'not-declared'
+                        elif references and len(relation[key]) == len(references) and all(q['text'] for q in relation[key]):
+                            status = 'resolved'
+                        else:
+                            status = 'unavailable'
+                        relation['conditionStatus'][key] = status
+                        if status in {'unknown', 'unavailable'}:
+                            warnings.append(dict(elementId=relation['elementId'],
+                                                 reason=field + ': condition evidence unavailable; do not infer absence'))
+                    relations.append(relation)
+                    continue
                 for field, key in [('triggerAction', 'triggers'), ('guardExpression', 'guards'), ('effectAction', 'effects')]:
                     value = semantic(rel, field)
                     references = refs(value)
                     relation[key] = quoted(value, rel, field)
-                    # An unresolved condition is not an unconditional transition.
-                    # Fresh exports omit nulls; older reports cannot prove absence.
-                    if value is None or value == []:
-                        status = 'not-declared' if report.get('behaviorFieldsVersion') == 1 else 'unknown'
+                    # Coverage belongs to each returned field, not a report-wide producer version.
+                    if value is None:
+                        # A producer version cannot turn a missing/null field into
+                        # evidence of absence.
+                        status = 'unknown'
+                    elif value == []:
+                        # An explicit empty collection is an engine fact. Producers
+                        # must omit fields they did not expose instead.
+                        status = 'not-declared'
                     elif references and len(relation[key]) == len(references) and all(q['text'] for q in relation[key]):
                         status = 'resolved'
                     else:
@@ -141,8 +200,22 @@ def project(report, target, limit=120):
                     child = ix.get(endpoint['id'])
                     if child and endpoint['id'] in entry_ids and endpoint['id'] not in {n['id'] for n in nodes}:
                         nodes.append(dict(id=witness(child), elementId=child['sessionElementId'], name=child.get('name') or 'Entry action',
-                                          parent=eid, kind='EntryAction', parallel=None, subactions={}, constraints=[]))
+                                          parent=eid, kind='EntryAction', parallel=None, subactions={},
+                                          entryDeclarations=[], constraints=[]))
             else:
+                # The exporter represents action-body `start` and `done` as
+                # typed standard-library ActionUsage endpoints. Include those
+                # exact witnesses so a real start/action/done chain remains
+                # visible; do not synthesize markers from names or topology.
+                for endpoint in a + b:
+                    child = ix.get(endpoint['id'])
+                    if (child and child.get('metaclass') == 'ActionUsage'
+                            and child.get('qualifiedName') in ACTION_BOUNDARIES
+                            and child['sessionElementId'] not in {n['id'] for n in nodes}):
+                        nodes.append(dict(id=witness(child), elementId=child['sessionElementId'],
+                                          name=ACTION_BOUNDARIES[child['qualifiedName']], parent=eid,
+                                          kind='ActionBoundary', parallel=None, subactions={},
+                                          entryDeclarations=[], constraints=[]))
                 # Preserve complete item/endpoint syntax as a quotation; no label-derived topology.
                 declaration = ' '.join(rel.get('source', '').split())
                 relation['declaration'] = declaration[:600]
@@ -162,6 +235,8 @@ def project(report, target, limit=120):
                 coverage='partial' if warnings else 'selected-local-behavior', boundary=BOUNDARY,
                 limits=['Only explicitly owned state/action trees and resolved binary relationships are projected.',
                         'Inherited behavior and unsupported controls are not expanded; warnings are not proof of absence.',
+                        'Action start/done are shown only when the exporter returns typed standard-library endpoints; absent endpoints remain unresolved.',
+                        'An empty state entry declaration is shown as its StateSubactionMembership witness; no implicit ActionUsage is inferred.',
                         'Ordinary flows are transfers, not an inferred schedule; succession flows retain their separate kind.',
                         'Exact source excerpts are quotations, not evaluated expressions.'])
 
@@ -199,11 +274,13 @@ def graph_dot(projection):
     for i, rel in enumerate(projection['relations'],1):
         kind = {'TransitionUsage':'transition','FlowUsage':'flow','SuccessionFlowUsage':'succession flow', 'SuccessionAsUsage':'succession'}[rel['kind']]
         label = f'R{i}: {kind}'
+        if rel.get('entryDeclaration'):
+            label += '\nentry declaration'
         if rel['kind']=='TransitionUsage':
             # Trigger/guard/effect are legible in a separate traceable table; never silently drop them.
             label += ('\ntrigger' if rel['triggers'] else '') + (' / guard' if rel['guards'] else '') + (' / effect' if rel['effects'] else '')
-            if any(v in {'unknown', 'unavailable'} for v in rel.get('conditionStatus', {}).values()):
-                label += '\ncondition evidence incomplete'
+        if any(v in {'unknown', 'unavailable'} for v in rel.get('conditionStatus', {}).values()):
+            label += '\ncondition evidence incomplete'
         lines.append(names[rel['source']]+' -> '+names[rel['target']]+' [label='+q(label)+',URL='+q('psysml:'+rel['elementId'])+'];')
     lines.append('}')
     return '\n'.join(lines)

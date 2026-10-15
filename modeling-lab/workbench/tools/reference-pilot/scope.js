@@ -10,7 +10,7 @@
   const shortKey=n=>{const value=n.key===n.root?n.name:n.key.slice(n.root.length+1);return stakeholderMode()?value.split('/').map(human).join(' / '):value};
   const matches=(value,query)=>value.toLowerCase().includes(query.toLowerCase());
   const key=()=>`sysml-perspectives-v1:${initial?.workspaceKey||'unassigned'}`;
-  let draftPins=new Set(),draftHidden=new Set(),expanded=new Set(),lastEvidence=null,workingViews=[],loadedWorkspace=null,scopeHistory=[],creatingNew=false,modelPage=0,subjectPage=0,rulePage=0,transient=false,restoreContext=null,activeViewName=null;
+  let draftPins=new Set(),draftHidden=new Set(),expanded=new Set(),childPages=new Map(),lastEvidence=null,workingViews=[],loadedWorkspace=null,scopeHistory=[],creatingNew=false,modelPage=0,subjectPage=0,rulePage=0,transient=false,restoreContext=null,activeViewName=null;
   function newViewName(base){const names=new Set([...saved,...workingViews].map(v=>v.name));let name=base,index=2;while(names.has(name)){name=base+' ('+index+')';index++}return name}
   const friendlyPath=value=>value.split('/').map(x=>human(x.split('::').pop())).join(' / ');
   const displayLabel=id=>stakeholderMode()?human(label(id).split('::').pop()):label(id);
@@ -50,11 +50,16 @@
     const sameRoot=recipe?.root===n.root;
     apply({schemaVersion:1,root:n.root,focus:n.key,depth:recipe?.depth??1,neighbors:recipe?.neighbors??0,kinds:recipe?.kinds||['connection','binding','flow'],pinned:sameRoot?recipe.pinned:[],hidden:sameRoot?recipe.hidden.filter(k=>k!==n.key):[]});
   }
+  function revealModelPath(focus){
+    let n=catalog?.nodes.find(n=>n.key===focus);const seen=new Set();
+    while(n?.parent&&!seen.has(n.key)){seen.add(n.key);const siblings=catalog.nodes.filter(c=>c.parent===n.parent&&c.root===n.root);childPages.set(n.parent,Math.floor(siblings.findIndex(c=>c.key===n.key)/60));expanded.add(n.parent);n=catalog.nodes.find(c=>c.key===n.parent&&c.root===n.root)}
+  }
   function modelBrowser(){
     el('model-tree').replaceChildren();if(!catalog)return;
     const query=el('model-search').value,all=catalog.nodes;
     const list=node('ul');el('model-tree').append(list);
-    function childrenPage(children,parent,key,page=0){
+    function childrenPage(children,parent,key,page=childPages.get(key)||0){
+      page=Math.min(page,Math.max(0,Math.ceil(children.length/60)-1));childPages.set(key,page);
       parent.replaceChildren();children.slice(page*60,page*60+60).forEach(c=>add(c,parent));
       if(children.length>60){const li=node('li');li.append(pageNavigation(children.length,page,value=>childrenPage(children,parent,key,value),'children of '+friendlyPath(key)));parent.append(li)}
     }
@@ -82,6 +87,7 @@
   function getRecipe(){return {schemaVersion:1,root:el('scope-root').value,focus:el('scope-focus').value,depth:Number(el('scope-depth').value),neighbors:Number(el('scope-neighbors').value),kinds:['connection','binding','flow'].filter(k=>el('scope-'+k).checked),pinned:[...draftPins],hidden:[...draftHidden]}}
   async function apply(next,fromValidation=false){
     if(busy&&!fromValidation)return;
+    if(recipe?.focus!==next.focus||recipe?.root!==next.root)revealModelPath(next.focus);
     recipe=JSON.parse(JSON.stringify(next));result=null;const ticket=++epoch,sha=report?.sourceSha256,reportSha=report?.reportIntegrity?.reportSha256;
     if(!sha||!catalog)return;
     el('scope-surfaces').hidden=false;el('scope-summary').textContent='Resolving perspective against the current model…';el('scope-brief').textContent='Updating view…';
@@ -213,9 +219,9 @@
   el('save-perspective').addEventListener('click',()=>saveView());
   el('save-view-copy').addEventListener('click',()=>saveView(true));
   window.scopeWorkbench={
-    active:()=>!!recipe,capture:()=>{restoreContext={transient,surface,activeViewName,name:el('perspective-name').value};return recipe},review:()=>result,appendNavigation:savedNavigation,export:()=>[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))],import(views){el('view-save-feedback').textContent='';saved=views;workingViews=[];scopeHistory=[];restoreContext=null;activeViewName=null;modelPage=0;savedNavigation()},selection(id){el('explore-selection').replaceChildren();if(!catalog)return;const choices=(result?.nodes||catalog.nodes).filter(n=>n.elementId===id);for(const n of choices.slice(0,8))el('explore-selection').append(button('Explore '+friendlyPath(n.key),()=>{focusNode(n);closeInspector()}))},refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog},
+    active:()=>!!recipe,capture:()=>{restoreContext={transient,surface,activeViewName,name:el('perspective-name').value};return recipe},review:()=>result,appendNavigation:savedNavigation,export:()=>[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))],import(views){el('view-save-feedback').textContent='';saved=views;workingViews=[];scopeHistory=[];restoreContext=null;activeViewName=null;modelPage=0;childPages.clear();expanded.clear();savedNavigation()},selection(id){el('explore-selection').replaceChildren();if(!catalog)return;const choices=(result?.nodes||catalog.nodes).filter(n=>n.elementId===id);for(const n of choices.slice(0,8))el('explore-selection').append(button('Explore '+friendlyPath(n.key),()=>{focusNode(n);closeInspector()}))},refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog},
     leave(){el('canvas').closest('.workspace').classList.remove('table-mode');epoch++;recipe=null;result=null;transient=false;activeViewName=null;el('scope-surfaces').hidden=true;el('apply-scope').disabled=false},
     invalidate(){epoch++;result=null;catalog=null;el('model-tree').replaceChildren();el('customize').disabled=true;el('scope-surfaces').hidden=true;el('scope-dialog').close()},
-    load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
+    load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
   };
 })();
