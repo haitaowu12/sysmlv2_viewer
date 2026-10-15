@@ -12,74 +12,515 @@ index e349420..4259c31 100644
 -	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState":
 +	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState", "RenderView":
 diff --git a/internal/frontend/core/core.go b/internal/frontend/core/core.go
-index a25c123..7ee6f72 100644
+index a25c123..6092012 100644
 --- a/internal/frontend/core/core.go
 +++ b/internal/frontend/core/core.go
-@@ -18,0 +19 @@ import (
+@@ -27,0 +28 @@ import (
 +	"github.com/Open-MBEE/OpenSysML/internal/translate/convert"
-@@ -102,0 +104,65 @@ func (c *Core) Call(ctx context.Context, method string, params []byte) (result [
-+    case "Convert":
-+        var req struct { ModelHash string `json:"modelHash"`; ToFormat string `json:"toFormat"` }
-+        if err := jsonrpc.Decode(params, &req); err != nil { return nil, err }
-+        if req.ToFormat != "api-json" { return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial only exposes api-json export") }
-+        model, ok := c.get(req.ModelHash)
-+        if !ok { return nil, jsonrpc.Errorf(jsonrpc.CodeNotFound, msgModelNotFound, req.ModelHash) }
-+        if len(model.documents) != 1 { return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial supports one source document") }
-+        for _, d := range modelDiagnostics(model) { if d.Severity == "error" { return nil, jsonrpc.Errorf(jsonrpc.CodeFailedPrecondition, "Invalid model cannot export a snapshot") } }
-+        document := model.documents[0]
-+        content, err := convert.Convert(document.source.Name(), document.source.Bytes(), convert.FormatSysML, convert.FormatAPIJSON)
-+        if err != nil { return nil, err }
-+        var elements []map[string]any
-+        if err := json.Unmarshal(content, &elements); err != nil { return nil, err }
-+        byName := map[string]any{}
-+        for _, el := range elements { if name, ok := el["qualifiedName"].(string); ok { byName[name]=el["@id"] } }
-+        identity := func(sym *symbols.Symbol) (any, bool) {
-+            if sym == nil { return nil, false }
-+            if id, ok := byName[model.index.GetFQN(sym)]; ok { return id, true }
-+            // An unnamed declared flow has no lookup name; match its engine span.
-+            if sym.DocName == document.source.Name() && sym.Kind.String() == "flowUsage" {
-+                pos := document.source.Lines().PosAt(sym.DeclSpan.Offset)
-+                for _, el := range elements { if el["@type"] == "FlowUsage" && el["sysx:sourceLine"] == float64(pos.Line) && el["sysx:sourceColumn"] == float64(pos.Col) { return el["@id"], true } }
-+            }
-+            return nil, false
-+        }
-+        byID := map[any]map[string]any{}
-+        for _, el := range elements { byID[el["@id"]]=el }
-+        semantic := model.symbolContext().Semantics
-+        for _, el := range elements {
-+            name, _ := el["qualifiedName"].(string)
-+            matches := symbolfacts.LookupNamed(model.index, name)
-+            if len(matches) != 1 || name == "" { continue }
-+            sym := matches[0]
-+            for _, field := range []string{"isComposite", "isReference", "isAbstract", "isOrdered", "isUnique"} {
-+                if value, ok := semantic.ReflectiveFeatureValue(sym, field); ok && value.Kind == symbols.FilterValueBool { el[field]=value.Bool }
-+            }
-+            if features, ok := semantic.ReflectiveElements(sym, "feature"); ok {
-+                refs := []map[string]any{}
-+                missing := []string{}
-+                libraryExcluded := 0
-+                for _, feature := range features {
-+                    if feature.DocName != document.source.Name() { libraryExcluded++; continue }
-+                    if id, ok := identity(feature); ok { refs=append(refs,map[string]any{"@id":id}) } else { missing=append(missing,model.index.GetFQN(feature)) }
-+                }
-+                el["feature"]=refs
-+                el["featureLibraryExcluded"]=libraryExcluded
-+                if len(missing)>0 { el["lab:unmappedFeatureRefs"]=missing } else { delete(el,"lab:unmappedFeatureRefs") }
-+            }
-+            // Preserve the engine's implicit redefinition of typed connector roles.
-+            if ends, ok := semantic.OwnedConnectorEnds(sym); ok {
-+                encoded, _ := el["connectorEnd"].([]any)
-+                if len(ends)==len(encoded) {
-+                    for i, nativeEnd := range ends {
-+                        ref, _ := encoded[i].(map[string]any)
-+                        target := byID[ref["@id"]]
-+                        roles := semantic.ImplicitEndRedefinitions(nativeEnd)
-+                        if target != nil && len(roles)==1 { target["lab:roleName"]=roles[0].Name }
-+                    }
-+                }
-+            }
-+        }
-+        content, err = json.Marshal(elements)
-+        if err != nil { return nil, err }
-+        return json.Marshal(map[string]any{"content":string(content)})
+@@ -102,0 +104,39 @@ func (c *Core) Call(ctx context.Context, method string, params []byte) (result [
++	case "Convert":
++		var req struct {
++			ModelHash string `json:"modelHash"`
++			ToFormat  string `json:"toFormat"`
++		}
++		if err := jsonrpc.Decode(params, &req); err != nil {
++			return nil, err
++		}
++		if req.ToFormat != "api-json" {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial only exposes api-json export")
++		}
++		model, ok := c.get(req.ModelHash)
++		if !ok {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeNotFound, msgModelNotFound, req.ModelHash)
++		}
++		if len(model.documents) != 1 {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial supports one source document")
++		}
++		for _, d := range modelDiagnostics(model) {
++			if d.Severity == "error" {
++				return nil, jsonrpc.Errorf(jsonrpc.CodeFailedPrecondition, "Invalid model cannot export a snapshot")
++			}
++		}
++		document := model.documents[0]
++		content, err := convert.Convert(document.source.Name(), document.source.Bytes(), convert.FormatSysML, convert.FormatAPIJSON)
++		if err != nil {
++			return nil, err
++		}
++		var elements []map[string]any
++		if err := json.Unmarshal(content, &elements); err != nil {
++			return nil, err
++		}
++		labEnrichAPIJSON(model, document, elements)
++		content, err = json.Marshal(elements)
++		if err != nil {
++			return nil, err
++		}
++		return json.Marshal(map[string]any{"content": string(content)})
 +
+@@ -458,0 +499,267 @@ func ptr[T any](v T) *T { return &v }
++
++// labEnrichAPIJSON adds facts from the already validated typed model. Modified
++// for the maintained Modeling Lab; unresolved identities stay unasserted.
++func labEnrichAPIJSON(model *cachedModel, document *cachedDocument, elements []map[string]any) {
++	semantic := model.symbolContext().Semantics
++	resolver := model.symbolContext().Resolver
++	byName := map[string][]map[string]any{}
++	byID := map[any]map[string]any{}
++	bySpan := map[string][]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = append(byName[name], el)
++		}
++		byID[el["@id"]] = el
++		key := fmt.Sprintf("%v:%v:%s", el["sysx:sourceLine"], el["sysx:sourceColumn"], strings.ToLower(fmt.Sprint(el["@type"])))
++		bySpan[key] = append(bySpan[key], el)
++	}
++	identity := func(sym *symbols.Symbol) (any, bool) {
++		if sym == nil {
++			return nil, false
++		}
++		if sym.Name != "" {
++			if matches := byName[model.index.GetFQN(sym)]; len(matches) == 1 {
++				return matches[0]["@id"], true
++			}
++		}
++		if sym.DocName != document.source.Name() || sym.Decl == nil {
++			return nil, false
++		}
++		meta := semantic.MetaclassOf(sym)
++		if meta == nil {
++			return nil, false
++		}
++		pos := document.source.Lines().PosAt(sym.DeclSpan.Offset)
++		metaclass := meta.Name
++		// The pinned API-JSON encoder represents a verify clause as a
++		// RequirementUsage, while its typed AST is UsageSatisfy/verify.
++		if usage, ok := sym.Decl.(*ast.Usage); ok && usage.Kind == ast.UsageSatisfy && usage.Keyword == "verify" {
++			metaclass = "RequirementUsage"
++		}
++		key := fmt.Sprintf("%d:%d:%s", pos.Line, pos.Col, strings.ToLower(metaclass))
++		if matches := bySpan[key]; len(matches) == 1 {
++			return matches[0]["@id"], true
++		}
++		return nil, false
++	}
++	refs := func(syms []*symbols.Symbol) ([]map[string]any, []string) {
++		out := []map[string]any{}
++		missing := []string{}
++		seen := map[any]bool{}
++		for _, sym := range syms {
++			if id, ok := identity(sym); ok {
++				if !seen[id] {
++					out = append(out, map[string]any{"@id": id})
++					seen[id] = true
++				}
++			} else {
++				missing = append(missing, model.index.GetFQN(sym))
++			}
++		}
++		return out, missing
++	}
++	// Resolve original AST pointers, preserving each feature-chain occurrence.
++	var chainSymbols func(ast.Node) ([]*symbols.Symbol, bool)
++	chainSymbols = func(node ast.Node) ([]*symbols.Symbol, bool) {
++		switch n := node.(type) {
++		case *ast.FeatureReference:
++			return chainSymbols(n.Name)
++		case *ast.QualifiedName:
++			if n == nil || len(n.Parts) == 0 {
++				return nil, false
++			}
++			out := []*symbols.Symbol{}
++			for i := 1; i <= len(n.Parts); i++ {
++				if i == len(n.Parts) || n.Parts[i].Chained {
++					sym, ok := resolver.PartSymbol(n, i-1)
++					if !ok || sym == nil {
++						return nil, false
++					}
++					out = append(out, sym)
++				}
++			}
++			return out, true
++		case *ast.FeatureChainExpr:
++			out, ok := chainSymbols(n.Operand)
++			if !ok {
++				return nil, false
++			}
++			rest, ok := chainSymbols(n.Member)
++			if !ok {
++				return nil, false
++			}
++			return append(out, rest...), true
++		}
++		return nil, false
++	}
++	seen := map[*symbols.Symbol]bool{}
++	var all []*symbols.Symbol
++	var collect func(*symbols.Scope)
++	collect = func(scope *symbols.Scope) {
++		if scope == nil {
++			return
++		}
++		all = append(all, scope.AllMembers()...)
++		for _, child := range scope.Children() {
++			collect(child)
++		}
++	}
++	collect(model.index.DocumentRoot(document.source.Name()))
++	for _, sym := range all {
++		if sym == nil || seen[sym] || sym.DocName != document.source.Name() {
++			continue
++		}
++		seen[sym] = true
++		id, ok := identity(sym)
++		if !ok {
++			continue
++		}
++		el := byID[id]
++		if el == nil {
++			continue
++		}
++		for _, field := range []string{"isComposite", "isReference", "isAbstract", "isOrdered", "isUnique"} {
++			if value, ok := semantic.ReflectiveFeatureValue(sym, field); ok && value.Kind == symbols.FilterValueBool {
++				el[field] = value.Bool
++			}
++		}
++		switch el["@type"] {
++		case "StateDefinition", "StateUsage", "ExhibitStateUsage":
++			if value, ok := semantic.ReflectiveFeatureValue(sym, "isParallel"); ok && value.Kind == symbols.FilterValueBool {
++				el["isParallel"] = value.Bool
++			}
++		}
++		if features, ok := semantic.ReflectiveElements(sym, "feature"); ok {
++			local := []*symbols.Symbol{}
++			excluded := 0
++			for _, feature := range features {
++				if feature.DocName != document.source.Name() {
++					excluded++
++				} else {
++					local = append(local, feature)
++				}
++			}
++			mapped, missing := refs(local)
++			el["feature"] = mapped
++			el["featureLibraryExcluded"] = excluded
++			if len(missing) > 0 {
++				el["lab:unmappedFeatureRefs"] = missing
++			}
++		}
++		for _, field := range []string{"subjectParameter", "objectiveRequirement"} {
++			if values, ok := semantic.ReflectiveElements(sym, field); ok {
++				mapped, missing := refs(values)
++				if len(missing) == 0 {
++					if len(mapped) == 1 {
++						el[field] = mapped[0]
++					} else {
++						el[field] = mapped
++					}
++				} else {
++					el["lab:unmapped:"+field] = missing
++				}
++			}
++		}
++		if usage, ok := sym.Decl.(*ast.Usage); ok && usage.Kind == ast.UsageSatisfy {
++			el["isNegated"] = usage.IsNegated
++			kind := semantics.RelationshipSatisfaction
++			if usage.Keyword == "verify" {
++				kind = semantics.RelationshipVerification
++			}
++			edges := semantic.RelationshipEdgesOf(sym, kind)
++			sources := []*symbols.Symbol{}
++			targets := []*symbols.Symbol{}
++			for _, edge := range edges {
++				sources = append(sources, edge.Source)
++				targets = append(targets, edge.Target)
++			}
++			sourceRefs, sourceMissing := refs(sources)
++			targetRefs, targetMissing := refs(targets)
++			if kind == semantics.RelationshipSatisfaction {
++				if len(sourceMissing) == 0 && len(sourceRefs) == 1 {
++					el["satisfyingFeature"] = sourceRefs[0]
++				}
++				if len(targetMissing) == 0 && len(targetRefs) == 1 {
++					el["satisfiedRequirement"] = targetRefs[0]
++				}
++			} else if len(targetMissing) == 0 && len(targetRefs) > 0 {
++				el["verifiedRequirement"] = targetRefs
++				// The typed edge source identifies the enclosing verification case,
++				// including verify usages declared inside an objective requirement.
++				for _, source := range sources {
++					if caseID, ok := identity(source); ok {
++						if target := byID[caseID]; target != nil && (target["@type"] == "VerificationCaseDefinition" || target["@type"] == "VerificationCaseUsage") {
++							existing, _ := target["verifiedRequirement"].([]map[string]any)
++							existing = append(existing, targetRefs...)
++							unique := []map[string]any{}
++							seen := map[any]bool{}
++							for _, ref := range existing {
++								if !seen[ref["@id"]] {
++									seen[ref["@id"]] = true
++									unique = append(unique, ref)
++								}
++							}
++							target["verifiedRequirement"] = unique
++						}
++					}
++				}
++			}
++			for _, rel := range usage.Relationships {
++				if rel == nil || rel.Kind != ast.RelSubject || rel.Target == nil {
++					continue
++				}
++				if _, ok := resolver.ResolveTarget(sym.OwnerScope, rel.Target); !ok {
++					continue
++				}
++				if symbols, ok := chainSymbols(rel.Target); ok {
++					// A chain is an ordered occurrence path, not a set of
++					// referenced declarations. Recursive steps may repeat an ID.
++					mapped := []map[string]any{}
++					complete := true
++					for _, step := range symbols {
++						id, ok := identity(step)
++						if !ok {
++							complete = false
++							break
++						}
++						mapped = append(mapped, map[string]any{"@id": id})
++					}
++					if complete && len(mapped) > 0 {
++						el["lab:subjectChain"] = mapped
++					}
++				}
++			}
++		}
++		if transition, ok := sym.Decl.(*ast.TransitionMember); ok {
++			complete := true
++			for _, field := range []struct {
++				name     string
++				declared bool
++			}{{"triggerAction", transition.Trigger != nil}, {"guardExpression", transition.Guard != nil}, {"effectAction", transition.HasEffect || len(transition.Effect) > 0}} {
++				if _, exists := el[field.name]; !exists {
++					if !field.declared {
++						el[field.name] = []any{}
++					} else {
++						complete = false
++					}
++				}
++			}
++			if complete {
++				el["lab:transitionFieldsComplete"] = true
++			}
++		}
++		if ends, ok := semantic.OwnedConnectorEnds(sym); ok {
++			encoded, _ := el["connectorEnd"].([]any)
++			if len(ends) == len(encoded) {
++				for i, nativeEnd := range ends {
++					ref, _ := encoded[i].(map[string]any)
++					target := byID[ref["@id"]]
++					roles := semantic.ImplicitEndRedefinitions(nativeEnd)
++					if target != nil && len(roles) == 1 {
++						target["lab:roleName"] = roles[0].Name
++					}
++				}
++			}
++		}
++	}
++}
+diff --git a/internal/frontend/core/lab_capture_test.go b/internal/frontend/core/lab_capture_test.go
+new file mode 100644
+index 0000000..b39fb2f
+--- /dev/null
++++ b/internal/frontend/core/lab_capture_test.go
+@@ -0,0 +1,193 @@
++// Copyright 2025 Open‐MBEE Foundation. All rights reserved.
++// Use of this source code is governed by the LICENSE file.
++// Modified for the maintained Modeling Lab: typed export regression and capture.
++package core
++
++import (
++	"context"
++	"encoding/json"
++	"os"
++	"testing"
++)
++
++func labTestExport(t *testing.T, source string) []map[string]any {
++	t.Helper()
++	c, err := New()
++	if err != nil {
++		t.Fatal(err)
++	}
++	request, _ := json.Marshal(map[string]any{"content": source, "strictConformance": true})
++	parsed, err := c.Call(context.Background(), "ParseFile", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var p JParseFileResponse
++	if err = json.Unmarshal(parsed, &p); err != nil {
++		t.Fatal(err)
++	}
++	for _, d := range p.Diagnostics {
++		if d.Severity == "error" {
++			t.Fatalf("invalid fixture: %s", parsed)
++		}
++	}
++	request, _ = json.Marshal(map[string]any{"modelHash": p.ModelHash, "toFormat": "api-json"})
++	converted, err := c.Call(context.Background(), "Convert", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var result struct {
++		Content string `json:"content"`
++	}
++	if err = json.Unmarshal(converted, &result); err != nil {
++		t.Fatal(err)
++	}
++	var elements []map[string]any
++	if err = json.Unmarshal([]byte(result.Content), &elements); err != nil {
++		t.Fatal(err)
++	}
++	return elements
++}
++
++// Developer semantic capture through the same Core calls used by WebAssembly.
++func TestLabCapture(t *testing.T) {
++	path := os.Getenv("LAB_TEST_SOURCE")
++	if path == "" {
++		t.Skip("set LAB_TEST_SOURCE for a fixture capture")
++	}
++	src, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	elements := labTestExport(t, string(src))
++	if out := os.Getenv("LAB_TEST_OUTPUT"); out != "" {
++		data, err := json.Marshal(elements)
++		if err != nil {
++			t.Fatal(err)
++		}
++		if err = os.WriteFile(out, data, 0600); err != nil {
++			t.Fatal(err)
++		}
++	}
++}
++
++func TestLabTypedStateAndOccurrenceFacts(t *testing.T) {
++	elements := labTestExport(t, `package LabFacts {
++ part def Device;
++ part def Area { part unit : Device; }
++ part def Plant { part east : Area; part west : Area; }
++ part plant : Plant;
++ requirement r { subject device : Device; require constraint { true } }
++ satisfy r by plant.east.unit;
++ assert not satisfy r by plant.west.unit;
++ verification def V { subject device : Device; objective { verify r; } }
++ verification def UnknownVerification { subject device : Device; }
++ state def Sequential { entry; then a; state a; state b; transition move first a then b; }
++ state def Concurrent parallel { state a; state b; }
++}`)
++	byName := map[string]map[string]any{}
++	byID := map[any]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = el
++		}
++		byID[el["@id"]] = el
++	}
++	if got := byName["LabFacts::Sequential"]["isParallel"]; got != false {
++		t.Fatalf("sequential isParallel = %v", got)
++	}
++	if got := byName["LabFacts::Concurrent"]["isParallel"]; got != true {
++		t.Fatalf("parallel isParallel = %v", got)
++	}
++	transition := byName["LabFacts::Sequential::move"]
++	if transition["lab:transitionFieldsComplete"] != true {
++		t.Fatalf("typed transition incomplete: %v", transition)
++	}
++	for _, field := range []string{"triggerAction", "guardExpression", "effectAction"} {
++		if values, ok := transition[field].([]any); !ok || len(values) != 0 {
++			t.Fatalf("%s = %v, expected explicitly empty", field, transition[field])
++		}
++	}
++	roots := map[string]bool{}
++	negative, positive := 0, 0
++	for _, el := range elements {
++		if el["@type"] != "SatisfyRequirementUsage" {
++			continue
++		}
++		switch el["isNegated"] {
++		case true:
++			negative++
++		case false:
++			positive++
++		default:
++			t.Fatalf("missing polarity: %v", el)
++		}
++		chain, ok := el["lab:subjectChain"].([]any)
++		if !ok || len(chain) != 3 {
++			t.Fatalf("rooted occurrence chain missing: %v", el)
++		}
++		middle := chain[1].(map[string]any)["@id"]
++		roots[byID[middle]["qualifiedName"].(string)] = true
++		if _, ok := el["satisfyingFeature"].(map[string]any); !ok {
++			t.Fatalf("missing exact satisfier: %v", el)
++		}
++		if _, ok := el["satisfiedRequirement"].(map[string]any); !ok {
++			t.Fatalf("missing requirement: %v", el)
++		}
++	}
++	if negative != 1 || positive != 1 || !roots["LabFacts::Plant::east"] || !roots["LabFacts::Plant::west"] {
++		t.Fatalf("polarity or occurrence collapse: %d/%d %v", negative, positive, roots)
++	}
++	verified, ok := byName["LabFacts::V"]["verifiedRequirement"].([]any)
++	if !ok || len(verified) != 1 {
++		t.Fatalf("verification objective not resolved: %v", byName["LabFacts::V"])
++	}
++	if _, invented := byName["LabFacts::UnknownVerification"]["verifiedRequirement"]; invented {
++		t.Fatal("verification without a declared objective acquired a verified requirement")
++	}
++	if _, invented := byName["LabFacts::Device"]["isParallel"]; invented {
++		t.Fatal("non-state declaration acquired a state default")
++	}
++	for _, el := range elements {
++		if el["@type"] == "StateSubactionMembership" {
++			if _, invented := el["memberElement"]; invented {
++				t.Fatal("empty entry acquired an invented action")
++			}
++		}
++	}
++}
++
++func TestLabSubjectChainRetainsRepeatedFeatureSteps(t *testing.T) {
++	elements := labTestExport(t, `package Repeated {
++ part def Node { ref part next : Node; }
++ part root : Node;
++ requirement r { subject item : Node; require constraint { true } }
++ satisfy r by root.next.next;
++}`)
++	names := map[any]string{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			names[el["@id"]] = name
++		}
++	}
++	found := false
++	for _, el := range elements {
++		if el["@type"] != "SatisfyRequirementUsage" {
++			continue
++		}
++		found = true
++		chain, ok := el["lab:subjectChain"].([]any)
++		if !ok || len(chain) != 3 {
++			t.Fatalf("recursive occurrence chain lost a step: %v", el["lab:subjectChain"])
++		}
++		expected := []string{"Repeated::root", "Repeated::Node::next", "Repeated::Node::next"}
++		for i, ref := range chain {
++			id := ref.(map[string]any)["@id"]
++			if names[id] != expected[i] {
++				t.Fatalf("chain step %d = %s, expected %s", i, names[id], expected[i])
++			}
++		}
++	}
++	if !found {
++		t.Fatal("fixture satisfaction declaration was not exported")
++	}
++}

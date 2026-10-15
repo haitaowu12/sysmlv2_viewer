@@ -55,6 +55,51 @@ class ViewScopeTests(unittest.TestCase):
         self.assertEqual(c['traces'][0]['sourceOccurrences'],[])
         self.assertTrue(any('occurrence unresolved' in w['reason'] for w in c['warnings']))
 
+    def test_explicit_satisfaction_chain_selects_one_repeated_occurrence(self):
+        r=model(); motor=element('motor','PartUsage','motor',feature=[])
+        r['elements'].append(motor)
+        for e in r['elements'][1:3]: e['semantics']['feature'].append(ref(motor))
+        req=element('req','RequirementUsage','capacity')
+        assertion=element('s','SatisfyRequirementUsage','assertion',
+                          satisfyingFeature=ref(motor), satisfiedRequirement=ref(req),
+                          satisfyingFeatureChain=[ref(r['elements'][1]), ref(motor)], isNegated=False)
+        r['elements'] += [req, assertion]
+        c=catalogue(r)
+        self.assertEqual(c['traces'][0]['sourceOccurrences'],['P::Root/a/motor'])
+        self.assertNotIn('P::Root/b/motor',c['traces'][0]['sourceOccurrences'])
+
+    def test_explicit_relative_chain_is_ambiguous_without_fallback(self):
+        r=model(); motor=element('motor','PartUsage','motor',feature=[])
+        r['elements'].append(motor)
+        for e in r['elements'][1:3]: e['semantics']['feature'].append(ref(motor))
+        req=element('req','RequirementUsage','capacity')
+        assertion=element('s','SatisfyRequirementUsage','assertion',
+                          satisfyingFeature=ref(motor), satisfiedRequirement=ref(req),
+                          satisfyingFeatureChain=[ref(motor)], isNegated=False)
+        r['elements'] += [req, assertion]
+        c=catalogue(r)
+        self.assertEqual(c['traces'][0]['sourceOccurrences'],[])
+        self.assertTrue(any('occurrence unresolved' in w['reason'] for w in c['warnings']))
+
+    def test_malformed_explicit_chain_does_not_fall_back_to_native_path(self):
+        r=model(); motor=element('motor','PartUsage','motor',feature=[])
+        r['elements'].append(motor)
+        for e in r['elements'][1:3]: e['semantics']['feature'].append(ref(motor))
+        req=element('req','RequirementUsage','capacity')
+        chain=element('chain','Feature','chain',chainingFeature=[ref(r['elements'][1]),ref(motor)])
+        expr=element('expr','FeatureReferenceExpression','expr',referent=ref(chain))
+        subject=element('subject','ReferenceUsage','subject',ownedElement=[ref(expr)])
+        assertion=element('s','SatisfyRequirementUsage','assertion',subjectParameter=ref(subject),
+                          satisfyingFeature=ref(motor), satisfiedRequirement=ref(req),
+                          satisfyingFeatureChain=ref(motor), isNegated=False)
+        r['elements'] += [req,chain,expr,subject,assertion]
+        for malformed in (ref(motor), [], [{'id':'missing'}], [ref(motor), 'relative']):
+            with self.subTest(malformed=malformed):
+                assertion['semantics']['satisfyingFeatureChain'] = malformed
+                c=catalogue(r)
+                self.assertEqual(c['traces'][0]['sourceOccurrences'],[])
+                self.assertTrue(any('occurrence unresolved' in w['reason'] for w in c['warnings']))
+
     def test_missing_saved_locator_blocks_instead_of_broadening(self):
         c=catalogue(model())
         for field in ['focus','root','hidden','pinned']:
@@ -108,6 +153,24 @@ class ViewScopeTests(unittest.TestCase):
         obj=element('obj','RequirementUsage','obj');alias=element('alias','RequirementUsage','alias','obj')
         check=element('check','VerificationCaseDefinition','check',objectiveRequirement=ref(obj),verifiedRequirement=[ref(req)])
         r['elements'] += [req,obj,alias,check]
+        self.assertEqual([e['elementId'] for e in catalogue(r)['requirements']],['req'])
+
+    def test_list_valued_objective_and_owned_internals_stay_out_of_obligations(self):
+        r=model(); req=element('req','RequirementUsage','capacity')
+        objective=element('objective','RequirementUsage','objective')
+        internal=element('internal','RequirementUsage','internal','objective')
+        check=element('check','VerificationCaseDefinition','check',objectiveRequirement=[ref(objective)],verifiedRequirement=[ref(req)])
+        r['elements'] += [req,objective,internal,check]
+        self.assertEqual([e['elementId'] for e in catalogue(r)['requirements']],['req'])
+
+    def test_typed_objective_membership_filters_current_pilot_shape(self):
+        r=model(); req=element('req','RequirementUsage','capacity')
+        objective=element('objective','RequirementUsage','objective')
+        objective['semantics']['owningMembership']={'id':'objective-membership','metaclass':'ObjectiveMembership'}
+        internal=element('internal','RequirementUsage','internal','objective')
+        internal['semantics']['owningMembership']={'id':'verification-membership','metaclass':'RequirementVerificationMembership'}
+        check=element('check','VerificationCaseDefinition','check')
+        r['elements'] += [req,objective,internal,check]
         self.assertEqual([e['elementId'] for e in catalogue(r)['requirements']],['req'])
     def test_recursive_feature_is_bounded_and_disclosed(self):
         r=model();a=r['elements'][1];a['semantics']['feature'].append(ref(a));c=catalogue(r)

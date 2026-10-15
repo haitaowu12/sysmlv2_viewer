@@ -4,7 +4,7 @@ import execUrl from './wasm_exec.js?url';
 import {loadPyodide} from 'pyodide';
 import {instance} from '@viz-js/viz';
 const base=new URL('../',import.meta.url);
-let python,connection;let current=null,initialData=null;
+let python,connection;let current=null,previous=null,staged=null,initialData=null;
 const ready=(async()=>{
  const assetRoot=base;
  globalThis.labViz=await instance();
@@ -30,7 +30,17 @@ self.onmessage=({data:message})=>{queue=queue.then(async()=>{try{
  else if(path==='/render'||path==='/inspect'){
   const checked=await inspect(data.source);const baseChecked=data.baselineSource&&data.baselineSource!==data.source?await inspect(data.baselineSource):checked;
   if(!baseChecked.valid)throw Error('The project baseline does not pass browser validation.');
-  result=py('render_report',{views:initialData.presets,...data,checked,baseChecked,accept:path==='/render'});if(path==='/render')current=result;
+  result=py('render_report',{views:initialData.presets,...data,checked,baseChecked,stage:path==='/render'&&data.stage,accept:path==='/render'&&!data.stage});
+  if(path==='/render'){
+   if(data.stage){result.transactionId=data.transactionId;if(result.staticChecksPassed)staged={transactionId:data.transactionId,report:result};}
+   else if(result.staticChecksPassed){current=result;staged=previous=null;}
+  }
+ }else if(path==='/accept'){
+  if(!staged||staged.transactionId!==data.transactionId)throw Error('Project transaction is no longer current.');
+  result=py('accept_current',data);previous={transactionId:data.transactionId,report:current};current=staged.report;staged=null;
+ }else if(path==='/rollback'){
+  if(!previous||previous.transactionId!==data.transactionId)throw Error('Project acceptance can no longer be rolled back.');
+  result=py('rollback_current',data);current=previous.report;previous=null;
  }else if(path==='/prepare'){
   if(!current)throw Error('Validate this model before preparing a change.');
   const proposed=py('prepare_candidate',{report:current,request:data});const checked=await inspect(proposed.source);

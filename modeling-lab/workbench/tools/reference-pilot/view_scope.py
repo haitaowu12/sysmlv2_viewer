@@ -5,7 +5,7 @@ Analytical projections, not native SysML view usages or a second semantic model.
 import hashlib
 from engineering import index_report, sem, features, types, endpoint, interface_flows, LINKS
 from stakeholder import human, render_svg
-from check_contract import satisfaction_polarity
+from check_contract import references, satisfaction_polarity
 
 PARTS = {'PartDefinition', 'PartUsage'}
 KINDS = {'connection', 'binding', 'flow'}
@@ -14,7 +14,32 @@ LIMITS = {'occurrences': 2000, 'depth': 8, 'diagramNodes': 40, 'diagramEdges': 1
 
 
 def satisfaction_occurrences(assertion, target, nodes, ix):
-    """Resolve a native feature chain to contextual nodes; never match siblings by terminal ID."""
+    """Resolve an explicit or native feature chain to contextual nodes.
+
+    The normalizer may provide ``satisfyingFeatureChain`` as an exact, typed
+    resolver path. Its presence is authoritative: malformed, incomplete or
+    ambiguous paths remain unresolved instead of falling back to a terminal
+    feature match. Older reports retain the native subject-expression path.
+    """
+    semantics = assertion.get('semantics', {})
+    if 'satisfyingFeatureChain' in semantics:
+        chain = semantics.get('satisfyingFeatureChain')
+        target_id = target.get('id') if isinstance(target, dict) else None
+        if (not isinstance(chain, list) or not chain or not isinstance(target_id, str)
+                or any(not isinstance(ref, dict) or not isinstance(ref.get('id'), str)
+                       or ref['id'] not in ix for ref in chain)
+                or chain[-1]['id'] != target_id):
+            return []
+        candidates = [n for n in nodes if n['elementId'] == chain[0]['id']]
+        for step in chain[1:]:
+            parents = {n['key'] for n in candidates}
+            candidates = [n for n in nodes if n['parent'] in parents and n['elementId'] == step['id']]
+            if not candidates:
+                return []
+        return [n['key'] for n in candidates] if len(candidates) == 1 else []
+
+    # Native Pilot reports expose the subject expression and its resolved
+    # chainingFeature path. Keep this path unchanged for backward compatibility.
     subject = ix.get(sem(assertion, 'subjectParameter', {}).get('id'), {})
     expressions = [ix.get(r.get('id'), {}) for r in sem(subject, 'ownedElement', [])]
     expressions = [e for e in expressions if e.get('metaclass') == 'FeatureReferenceExpression']
@@ -102,10 +127,25 @@ def catalogue(report):
     for root in roots:
         visit(root, root['qualifiedName'], None, root['qualifiedName'], 0, set())
     # Explicit links only. Requirements with no links remain in the inventory.
-    objectives = {sem(e, 'objectiveRequirement', {}).get('id') for e in ix.values()} - {None}
+    # Verification objective scaffolding is not a second user obligation. Use
+    # the typed objective references and resolved owner memberships so internal
+    # requirements remain excluded even when the exporter returns a list-valued
+    # reference. Do not infer exclusion from names or source text.
+    objective_memberships = {'ObjectiveMembership', 'RequirementVerificationMembership'}
+    objectives = {ref['id'] for e in ix.values()
+                  for ref in references(sem(e, 'objectiveRequirement'))
+                  if ref.get('id') in ix}
+    # Current Pilot reports also expose the objective through its owning
+    # membership instead of a materialized objectiveRequirement field. Treat
+    # that typed membership as equivalent evidence, then follow owners below.
+    objectives.update(e['sessionElementId'] for e in ix.values()
+                      if any(ref.get('metaclass') in objective_memberships
+                             for ref in references(sem(e, 'owningMembership'))))
     frontier = set(objectives)
     while frontier:
-        frontier = {e['sessionElementId'] for e in ix.values() if sem(e, 'owner', {}).get('id') in frontier} - objectives
+        owned = {e['sessionElementId'] for e in ix.values()
+                 if any(ref.get('id') in frontier for ref in references(sem(e, 'owner')))}
+        frontier = owned - objectives
         objectives.update(frontier)
     requirements = [e for e in ix.values() if e['metaclass'] in {'RequirementDefinition', 'RequirementUsage'} and e.get('qualifiedName') and e['sessionElementId'] not in objectives]
     traces = []
@@ -123,7 +163,7 @@ def catalogue(report):
                     warnings.append({'scope': 'traceability', 'reason': 'Satisfaction polarity unavailable; no positive assertion inferred', 'elementId': e['sessionElementId']})
             else: warnings.append({'scope': 'traceability', 'reason': 'Satisfaction endpoint unavailable', 'elementId': e['sessionElementId']})
         if e['metaclass'] in {'VerificationCaseDefinition', 'VerificationCaseUsage'}:
-            for b in sem(e, 'verifiedRequirement', []):
+            for b in references(sem(e, 'verifiedRequirement')):
                 if b.get('id') in ix: traces.append({'kind': 'verify', 'sourceId': e['sessionElementId'], 'targetId': b['id'], 'elementId': e['sessionElementId']})
                 else: warnings.append({'scope': 'traceability', 'reason': 'Verification target outside extracted evidence'})
     return {'roots': [e['qualifiedName'] for e in roots], 'nodes': nodes, 'relations': relations,

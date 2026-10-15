@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run --config vitest.config.ts src/test/referenceLab.test.ts"
+    "test": "vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "jsdom": "29.0.2",

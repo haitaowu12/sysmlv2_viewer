@@ -8,7 +8,8 @@ import textwrap
 import json
 import subprocess
 from engineering import index_report, sem, features, types, interconnection
-from check_contract import documentation_facts, satisfaction_polarity
+from change_summary import comparisons
+from check_contract import documentation_facts, facts, references, satisfaction_polarity
 
 
 def human(value):
@@ -26,7 +27,9 @@ def project(report, target, viewpoint=None):
     if len(roots) != 1:
         raise ValueError('Choose one uniquely resolved model scope')
     root = roots[0]
-    if root['metaclass'] == 'ExhibitStateUsage' or (report.get('behaviorFieldsVersion') == 1 and root['metaclass'] in {'StateDefinition', 'StateUsage', 'ActionDefinition', 'ActionUsage', 'PerformActionUsage'}):
+    # Action projection checks its own source facts; the legacy Pilot version flag
+    # is not an action capability prerequisite.
+    if root['metaclass'] in {'ExhibitStateUsage', 'ActionDefinition', 'ActionUsage', 'PerformActionUsage'} or (report.get('behaviorFieldsVersion') == 1 and root['metaclass'] in {'StateDefinition', 'StateUsage'}):
         return behavior_story(report, target)
     rows, omitted, components = [], [], []
     nodes, edges, warnings = {}, [], []
@@ -78,8 +81,23 @@ def project(report, target, viewpoint=None):
         omitted.append('Internal details, engineering symbols, attribute values and operating behaviour are outside this overview. Contact lines do not imply flow direction; only declared transfers use arrows.')
     elif kind in {'StateDefinition', 'StateUsage'}:
         title, question = 'Operating story', 'Which changes of state are described in this model?'
-        for state in report['elements']:
-            if state['metaclass'] == 'StateUsage' and sem(state, 'owner', {}).get('id') == root['sessionElementId']: node(state, 'state')
+        owned_states = [state for state in report['elements']
+                        if state['metaclass'] == 'StateUsage'
+                        and sem(state, 'owner', {}).get('id') == root['sessionElementId']]
+        state_ids = {state['sessionElementId'] for state in owned_states}
+        entry_declarations = {}
+        for declaration in references(sem(root, 'entryDeclaration')):
+            membership = ix.get(declaration['id'])
+            owner = sem(membership, 'owner', {}) if membership else {}
+            if (membership and membership['metaclass'] == 'StateSubactionMembership'
+                    and sem(membership, 'kind') == 'entry'
+                    and owner.get('id') == root['sessionElementId']):
+                entry_declarations[membership['sessionElementId']] = membership
+                node(membership, 'boundary')
+            else:
+                warnings.append('Entry declaration is not a resolved StateSubactionMembership owned by this state.')
+        for state in owned_states:
+            node(state, 'state')
         transitions = sorted((e for e in report['elements'] if e['metaclass'] == 'TransitionUsage' and sem(e, 'owner', {}).get('id') == root['sessionElementId']), key=lambda e: (e.get('line', 0), e.get('qualifiedName', '')))
         if len(transitions) > 24:
             raise ValueError('Choose a smaller scope: operating story supports 24 transitions')
@@ -101,8 +119,29 @@ def project(report, target, viewpoint=None):
             if sem(e, 'guardExpression', []) or sem(e, 'effectAction', []):
                 body += '. Additional conditions or effects exist; review them in Engineering mode before using this story.'
             row(human(a.get('name', 'Unnamed state')) + ' → ' + human(b.get('name', 'Unnamed state')), body, *support)
-        if not transitions: row('No state changes translated', 'This scope has no directly owned transitions supported by this presentation.', root)
-        omitted.append('Initial entry, nested/concurrent states, guards, effects, timing and priorities are not translated. Rows describe model declarations, not a complete operating procedure or observed behaviour.')
+        entry_successions = sorted((e for e in report['elements']
+                                    if e['metaclass'] == 'SuccessionAsUsage'
+                                    and sem(e, 'owner', {}).get('id') == root['sessionElementId']
+                                    and len(references(sem(e, 'source'))) == 1
+                                    and references(sem(e, 'source'))[0]['id'] in entry_declarations),
+                                   key=lambda e: (e.get('line', 0), e.get('qualifiedName', '')))
+        for e in entry_successions:
+            source_ref = references(sem(e, 'source'))[0]
+            target_refs = references(sem(e, 'target'))
+            target = ix.get(target_refs[0]['id']) if len(target_refs) == 1 else None
+            if not target or target['sessionElementId'] not in state_ids:
+                warnings.append('An entry succession has an unresolved or out-of-scope state target; inspect Engineering mode.')
+                continue
+            source = ix[source_ref['id']]
+            node(target, 'state')
+            label = 'Entry declaration → ' + human(target.get('name', 'Unnamed state'))
+            edge(source['sessionElementId'], target['sessionElementId'], label, e, 'transition')
+            row('Entry → ' + human(target.get('name', 'Unnamed state')),
+                'Initial entry succession: explicit StateSubactionMembership witness; no action identity is inferred. Condition evidence is unavailable; do not infer absence.',
+                e, source, target)
+        if not transitions and not entry_successions:
+            row('No state changes translated', 'This scope has no directly owned transitions supported by this presentation.', root)
+        omitted.append('Initial entry is shown only when a typed StateSubactionMembership and matching SuccessionAsUsage are exported; do/exit actions, nested/concurrent states, guards, effects, timing and priorities are not translated. Rows describe model declarations, not a complete operating procedure or observed behaviour.')
     elif kind.startswith('Requirement') or kind.startswith('VerificationCase'):
         verification = kind.startswith('VerificationCase')
         node(root, 'check' if verification else 'requirement')
@@ -206,12 +245,44 @@ def project(report, target, viewpoint=None):
                 rows[-1].update(polarity=polarity, isNegated=sem(assertion, 'isNegated') if polarity != 'unknown' else None)
                 if polarity == 'unknown':
                     warnings.append('Satisfaction polarity unavailable; no positive assertion inferred.')
+            declared = comparisons(report).get(target)
+            if declared and declared.get('status') in {'declared-comparison-passed', 'declared-design-shortfall'}:
+                attribute = next((e for e in report['elements']
+                                  if e.get('qualifiedName') == declared.get('attribute')), None)
+                constraints = []
+                for constraint in report['elements']:
+                    if constraint.get('metaclass') != 'ConstraintUsage' or sem(constraint, 'owner', {}).get('id') != root['sessionElementId']:
+                        continue
+                    expression = facts(constraint, ix).get('expression') or {}
+                    operands = expression.get('operands', [])
+                    path = operands[0].get('path', []) if operands and isinstance(operands[0], dict) else []
+                    if path and path[-1] == declared.get('attribute'):
+                        constraints.append(constraint)
+                if attribute and constraints:
+                    quantity = human(declared['attribute'].split('::')[-1]).lower()
+                    status_label = ('Declared design shortfall.' if declared['status'] == 'declared-design-shortfall'
+                                    else 'Declared comparison passes.')
+                    title_text = f"Required minimum {declared['requiredMinimum']} vs declared {quantity} {declared['declaredValue']}"
+                    body = (f"{status_label} Required minimum: {declared['requiredMinimum']}; declared {quantity}: "
+                            f"{declared['declaredValue']}. Physical verification: not evaluated.")
+                    row(title_text, body, root, attribute, *constraints)
+                    rows[-1].update(kind='declared-capacity-comparison', status=declared['status'],
+                                    physicalVerification='not-evaluated', policy=declared.get('policy'),
+                                    attribute=declared['attribute'], requiredMinimum=declared['requiredMinimum'],
+                                    declaredValue=declared['declaredValue'], comparison=declared.get('comparison'),
+                                    units=declared.get('units'), evidence={'attributeElementId': attribute['sessionElementId'],
+                                                                           'constraintElementIds': [c['sessionElementId'] for c in constraints]})
             for check in report['elements']:
                 if check['metaclass'].startswith('VerificationCase') and any(ref.get('id') == root['sessionElementId'] for ref in sem(check, 'verifiedRequirement', [])):
                     node(check, 'check')
                     edge(check['sessionElementId'], root['sessionElementId'], 'Planned check of', check, 'trace')
                     row('Planned check', human(check.get('name', 'Unnamed check')), check)
-        takeaway = 'A planned check is linked to its obligation; no execution result is supplied.' if verification else 'The obligation is shown with its subject, signed model assertions and any explicit planned checks.'
+        if verification:
+            linked = any(e['kind'] == 'trace' and ix.get(e['target'], {}).get('metaclass', '').startswith('Requirement') for e in edges)
+            takeaway = ('A planned check is linked to its obligation; no execution result is supplied.' if linked else
+                        'A planned check is declared, but its requirement link is unavailable in this projection; no execution result is supplied.')
+        else:
+            takeaway = 'The obligation is shown with its subject, signed model assertions and any explicit planned checks.'
         discussion = 'What procedure, configuration and evidence will demonstrate this requirement?' if verification else 'Is the stated obligation complete and agreed by the responsible stakeholders?'
     if not nodes: node(root)
     legend = {'decomposition': ['Contains / references: model hierarchy', 'Dashed boxes: referenced components'], 'exchanges': ['Arrows: declared transfers'], 'states': ['Arrows: modeled changes of state', 'Labels: triggering events'], 'requirement': ['Dashed arrows: explicit model links', 'A requirement is not a passed check'], 'verification': ['Dashed arrows: planned verification links', 'No executed result is asserted']}.get(family, ['Lines: connections', 'Arrows: declared transfers', 'Dashed lines: same-value bindings', 'Dashed boxes: referenced components'])
@@ -287,6 +358,8 @@ def behavior_story(report, target):
             rows.append({'title': human(n['name']) + ' / Constraint', 'body': quotation(c), 'textTruncated': bool(c.get('textTruncated')), 'elementIds': [n['id'], c['elementId']]})
     for i, rel in enumerate(b['relations'], 1):
         clauses=[]; support=[rel['elementId'],rel['source'],rel['target']]
+        if rel.get('entryDeclaration'):
+            clauses.append('Initial entry succession: explicit StateSubactionMembership witness; condition evidence is unavailable; no action identity is inferred.')
         for key, title in [('triggers','Trigger'),('guards','Guard'),('effects','Effect')]:
             for item in rel[key]:
                 clauses.append(title+': '+quotation(item));support.append(item['elementId'])

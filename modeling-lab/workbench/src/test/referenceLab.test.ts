@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
+import { createHash, webcrypto } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 afterEach(() => vi.unstubAllGlobals())
 
-async function harness(workflow = false) {
+async function harness(workflow = false, initialMetadata: Record<string, unknown> = {}) {
+  vi.stubGlobal('crypto', webcrypto)
   delete (window as any).labWorkflow
   delete (window as any).scopeWorkbench
   const html = readFileSync('tools/reference-pilot/lab.html', 'utf8')
@@ -17,9 +19,14 @@ async function harness(workflow = false) {
   const dom = { window }
   const calls: Array<{ source: string; url: string; payload: Record<string, unknown>; resolve: (r: unknown) => void }> = []
   const timers: Array<() => void> = []
+  const receipts: Array<{ payload: any; resolve: (r: unknown) => void }> = []
+  const protocol: Array<{ url: string; payload: any }> = []
+  let delayAccept = false
   const mocks = {
     fetch: (url: string, options?: { body: string }) => url === '/initial'
-      ? Promise.resolve({ json: async () => ({ source: 'baseline', presets: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }] }) })
+      ? Promise.resolve({ json: async () => ({ source: 'baseline', presets: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], ...initialMetadata }) })
+      : url === '/accept' ? (delayAccept ? new Promise(resolve => receipts.push({ payload: JSON.parse(options!.body), resolve })) : Promise.resolve({ json: async () => ({ accepted: true, ...JSON.parse(options!.body) }) }))
+      : url === '/rollback' ? (protocol.push({ url, payload: JSON.parse(options!.body) }), Promise.resolve({ json: async () => ({ rolledBack: true, ...JSON.parse(options!.body) }) }))
       : new Promise(resolve => calls.push({ source: JSON.parse(options!.body).source, url, payload: JSON.parse(options!.body), resolve })),
     setTimeout: (callback: () => void) => { timers.push(callback); return timers.length },
     requestAnimationFrame: (callback: () => void) => { timers.push(callback); return timers.length },
@@ -27,14 +34,15 @@ async function harness(workflow = false) {
   }
   for (const [key, value] of Object.entries(mocks)) vi.stubGlobal(key, value)
   new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
-  const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve() }
+  const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve() }
   const answer = async (index: number, valid = true, extra: Record<string, unknown> = {}) => {
-    calls[index]!.resolve({ json: async () => ({ source: calls[index]!.source, sourceSha256: 'a'.repeat(64), reportIntegrity: { status: 'verified-managed', reportSha256: 'b'.repeat(64) }, staticChecksPassed: valid,
-      diagnostics: [], elements: [{ sessionElementId: 'motor', name: 'motor', qualifiedName: 'Pump::motor', metaclass: 'PartUsage', line: 1, source: 'part motor;' }], views: [{ id: 'context', view: 'DEFAULT', targets: ['Pump'], svg: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400"><a href="psysml:motor"><text>MODEL</text></a></svg>', stakeholder: { title: 'System overview', scopeLabel: 'Pump', omissions: ['Internal details hidden.'] }, stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"><text>PLAIN MODEL</text></svg>' }], ...extra }) }); await flush()
+    await vi.waitFor(() => expect(calls[index]).toBeDefined(), { interval: 1, timeout: 1000 })
+    calls[index]!.resolve({ json: async () => ({ source: calls[index]!.source, transactionId: calls[index]!.payload.transactionId, sourceSha256: 'a'.repeat(64), reportIntegrity: { status: 'verified-managed', reportSha256: 'b'.repeat(64) }, staticChecksPassed: valid,
+      viewRecipes: calls[index]!.payload.views || [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], diagnostics: [], elements: [{ sessionElementId: 'motor', name: 'motor', qualifiedName: 'Pump::motor', metaclass: 'PartUsage', line: 1, source: 'part motor;' }], views: [{ id: 'context', view: 'DEFAULT', targets: ['Pump'], svg: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400"><a href="psysml:motor"><text>MODEL</text></a></svg>', stakeholder: { title: 'System overview', scopeLabel: 'Pump', omissions: ['Internal details hidden.'] }, stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"><text>PLAIN MODEL</text></svg>' }], ...(Array.isArray(extra.views) && !extra.viewRecipes ? { viewRecipes: extra.views.map((v: any) => ({ id: v.id, names: v.targets, view: v.view || 'TREE', styles: [] })) } : {}), ...extra }) }); await flush()
   }
   const edit = (text: string) => { const input = dom.window.document.getElementById('source') as HTMLTextAreaElement; input.value = text; input.dispatchEvent(new dom.window.Event('input')) }
   await flush()
-  return { dom, calls, answer, edit, flush, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
+  return { dom, calls, answer, edit, flush, receipts, protocol, holdAcceptance: () => { delayAccept = true }, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
 }
 
 describe('reference lab automatic propagation', () => {
@@ -559,6 +567,8 @@ describe('reader artifact integrity', () => {
     brief.value = 'Quoted <script>bad()</script> remains data.'; brief.dispatchEvent(new Event('input'))
     Array.from(document.querySelectorAll<HTMLButtonElement>('#project-dialog button')).find(b=>b.textContent==='Export reader review')!.click()
     const html = await output!.text(), doc = new DOMParser().parseFromString(html,'text/html')
+    expect(document.getElementById('status')!.textContent).toBe('Reader review download requested · check Downloads for the file')
+    expect(click).toHaveBeenCalled()
     expect(doc.querySelector('meta[charset]')!.getAttribute('charset')).toBe('utf-8')
     expect(doc.querySelector('h1')!.textContent).toBe('Study → review')
     expect(doc.querySelectorAll('script')).toHaveLength(0)
@@ -639,7 +649,7 @@ describe('larger-model working navigation', () => {
 })
 
 describe('revision-bound deferred source inspection', () => {
-  const view={id:'context',targets:['Pump'],svg:'<svg xmlns="http://www.w3.org/2000/svg"><a href="psysml:deferred"><text>WITNESS</text></a></svg>'}
+  const view={id:'context',targets:['Pump'],stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',svg:'<svg xmlns="http://www.w3.org/2000/svg"><a href="psysml:deferred"><text>WITNESS</text></a></svg>'}
   const witness=(sha='b'.repeat(64))=>({sourceSha256:'a'.repeat(64),reportSha256:sha,element:{sessionElementId:'deferred',metaclass:'FeatureMembership',source:'exact source witness',line:1}})
   const click=()=>document.querySelector('svg a')!.dispatchEvent(new MouseEvent('click',{bubbles:true}))
   it('loads and caches the exact witness rather than requiring the full report up front', async () => {
@@ -746,7 +756,7 @@ describe('explicit Fit provides a complete overview', () => {
     const original = (SVGElement.prototype as any).getScreenCTM
     ;(SVGElement.prototype as any).getScreenCTM = () => ({ a: 0.5, b: 0 })
     try {
-      await h.answer(0, true, { views: [{ id: 'context', targets: ['Pump'], svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 300"><text style="font-size:12px">Long overview</text></svg>' }] })
+      await h.answer(0, true, { views: [{ id: 'context', targets: ['Pump'], stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"/>', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 300"><text style="font-size:12px">Long overview</text></svg>' }] })
       expect(document.getElementById('canvas')!.classList.contains('fit')).toBe(false)
       expect(document.getElementById('zoom-label')!.textContent).toContain('Readable')
       document.getElementById('fit')!.click()
@@ -818,5 +828,267 @@ describe('readable responsibilities and reader scope', () => {
       expect(register.querySelector('strong')!.textContent).toBe('Cold Room 0')
       expect(register.querySelector('code')!.textContent).toBe('Study::system/coldRoom0')
     } finally {click.mockRestore()}
+  })
+})
+
+
+describe('accepted project transactions and recovery', () => {
+  const workflow = () => (window as any).labWorkflow
+  const click = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b => b.textContent === label)!.click()
+  async function proposed(h: Awaited<ReturnType<typeof harness>>) {
+    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(2)')!.click()
+    ;(document.querySelector('[aria-label="Required minimum"]') as HTMLInputElement).value = '3'
+    click('Prepare change')
+    h.calls.at(-1)!.resolve({ json: async () => ({ source: 'candidate', views: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }], proposal: { description: 'Change with retained basis', reason: 'Declared decision', baseSourceSha256: 'a'.repeat(64), candidateSourceSha256: 'c'.repeat(64) }, changeSummary: [], validated: true }) })
+    await h.flush()
+  }
+  for (const failure of ['invalid', 'worker stopped']) it(`retains every project field and saved status when open fails during its render stage: ${failure}`, async () => {
+    const h = await harness(true); await h.answer(0)
+    const before = workflow().snapshot(), state = document.getElementById('project-file-state')!.textContent
+    const opening = workflow().openProject({ ...before, title: 'Rejected project', source: 'different', baselineSource: 'different', brief: 'Other notes', history: [] })
+    await h.answer(1); await h.flush()
+    const rejected = expect(opening).rejects.toThrow('not opened')
+    if (failure === 'invalid') await h.answer(2, false)
+    else { h.calls[2].resolve({ json: async () => ({ error: failure }) }); await h.flush() }
+    await rejected
+    expect(workflow().snapshot()).toEqual(before)
+    expect(document.getElementById('project-file-state')!.textContent).toBe(state)
+    expect(document.querySelector('#canvas svg')).not.toBeNull()
+  })
+  it('cannot replace a newer draft with a delayed project inspection', async () => {
+    const h = await harness(true); await h.answer(0)
+    const before = workflow().snapshot()
+    const opening = workflow().openProject({ ...before, title: 'Delayed project', source: 'different', baselineSource: 'different' })
+    const rejected = expect(opening).rejects.toThrow('Draft changed')
+    h.edit('newer retained draft'); await h.answer(1); await rejected
+    expect(workflow().snapshot().title).toBe(before.title)
+    expect(workflow().snapshot().source).toBe('newer retained draft')
+    expect(h.calls).toHaveLength(2)
+  })
+  it('never gives a failed proposal a later unrelated successful receipt', async () => {
+    const h = await harness(true); await h.answer(0); await proposed(h)
+    click('Apply to project'); await h.answer(2, false)
+    expect(workflow().snapshot().source).toBe('baseline')
+    expect(workflow().snapshot().history).toEqual([])
+    h.edit('unrelated'); h.tick(); await h.answer(3, true, { sourceSha256: 'd'.repeat(64) })
+    expect(workflow().snapshot().source).toBe('unrelated')
+    expect(workflow().snapshot().history).toEqual([])
+  })
+  it('rejects a same-source candidate with the wrong prepared hash', async () => {
+    const h = await harness(true); await h.answer(0); await proposed(h)
+    click('Apply to project'); await h.answer(2, true, { sourceSha256: 'd'.repeat(64) })
+    expect(workflow().snapshot().source).toBe('baseline')
+    expect(workflow().snapshot().history).toEqual([])
+    expect(document.getElementById('diagnostics')!.textContent).toContain('does not match the prepared change')
+  })
+  it('retains source, recipes and history when undo validation fails', async () => {
+    const h = await harness(true); await h.answer(0); await proposed(h)
+    click('Apply to project'); await h.answer(2, true, { sourceSha256: 'c'.repeat(64) })
+    const before = structuredClone(workflow().snapshot())
+    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(3)')!.click()
+    click('Undo last engineering change'); await h.answer(3, false)
+    expect(workflow().snapshot()).toEqual(before)
+  })
+  it('rolls back acceptance when a newer draft arrives before the receipt and preserves that draft', async () => {
+    const h = await harness(true); await h.answer(0); h.holdAcceptance()
+    h.edit('first candidate'); h.tick(); await h.answer(1)
+    expect(h.receipts).toHaveLength(1)
+    h.edit('latest unsaved draft')
+    h.receipts[0].resolve({ json: async () => ({ accepted: true, ...h.receipts[0].payload }) }); await h.flush()
+    expect(h.protocol).toEqual([{ url: '/rollback', payload: { transactionId: h.receipts[0].payload.transactionId } }])
+    expect(workflow().snapshot().source).toBe('latest unsaved draft')
+    expect(document.querySelector('#canvas svg')).toBeNull()
+  })
+  it('attempts compensation when an acceptance receipt is lost and retains the prior project', async () => {
+    const h = await harness(true); await h.answer(0); h.holdAcceptance()
+    const before = workflow().snapshot()
+    const opening = workflow().openProject({ ...before, title: 'Unreceived project', source: 'different', baselineSource: 'different' })
+    await h.answer(1); await h.flush(); await h.answer(2)
+    const rejected = expect(opening).rejects.toThrow('not opened')
+    h.receipts[0].resolve({ json: async () => { throw Error('Acceptance receipt lost') } }); await h.flush(); await rejected
+    expect(h.protocol).toEqual([{ url: '/rollback', payload: { transactionId: h.receipts[0].payload.transactionId } }])
+    expect(workflow().snapshot()).toEqual(before)
+  })
+  it('exports an unvalidated draft with notes, history and custom recipes, then restores it for editing', async () => {
+    const { Blob: NodeBlob } = await import('node:buffer'); let output: Blob | undefined
+    vi.stubGlobal('Blob', NodeBlob); vi.stubGlobal('URL', { createObjectURL: (blob: Blob) => { output = blob; return 'blob:recovery' }, revokeObjectURL() {} })
+    const anchor = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const h = await harness(true); await h.answer(0, true, { sourceSha256: createHash('sha256').update('baseline').digest('hex') })
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    const notes = document.querySelector<HTMLTextAreaElement>('[aria-label="Assumptions, decisions and open questions"]')!; notes.value = 'Keep this unresolved decision'; notes.dispatchEvent(new Event('input'))
+    workflow().snapshot().history.push({ operation: 'component', target: 'Pump', description: 'Earlier accepted decision', reason: 'Retained decision basis', baseSource: 'before', before: 'before', after: 'baseline', baseSourceSha256: createHash('sha256').update('before').digest('hex'), candidateSourceSha256: createHash('sha256').update('baseline').digest('hex'), baseViews: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }] })
+    ;(window as any).scopeWorkbench.import([{ name: 'Retained custom view', recipe: { schemaVersion: 1, root: 'Pump', focus: 'Pump', depth: 1, neighbors: 0, kinds: ['flow'], pinned: [], hidden: [] }, surface: 'register' }])
+    h.edit('invalid { draft'); await workflow().recovery()
+    const data = JSON.parse(await output!.text())
+    expect(data.source).toBe('invalid { draft'); expect(data.questions).toContain('unresolved decision'); expect(data.history).toHaveLength(1); expect(data.customViews[0].name).toBe('Retained custom view'); expect(data.recovery.acceptedSource).toBe('baseline')
+    const opening = workflow().openProject(data); await h.answer(1); expect(h.calls[1].source).toBe('baseline'); await h.flush(); await h.answer(2); await opening
+    expect(workflow().snapshot().source).toBe('invalid { draft'); expect(workflow().snapshot().questions).toBe(data.questions); expect(workflow().snapshot().history).toEqual(data.history); expect(workflow().snapshot().customViews).toEqual(data.customViews)
+    expect(document.querySelector('#canvas svg')).toBeNull(); expect((document.getElementById('editor') as HTMLDetailsElement).open).toBe(true)
+    anchor.mockRestore()
+  })
+  it('rejects a normal save whose actual indented UTF-8 bytes exceed the reopen limit without discarding work', async () => {
+    const { Blob: NodeBlob } = await import('node:buffer'); let output: Blob | undefined
+    vi.stubGlobal('Blob', NodeBlob); vi.stubGlobal('URL', { createObjectURL: (blob: Blob) => { output = blob; return 'blob:size' }, revokeObjectURL() {} })
+    const anchor = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const h = await harness(true); await h.answer(0)
+    const data = workflow().snapshot(); data.history.push(...Array.from({ length: 100 }, () => ({ records: Array(8000).fill('é') })))
+    expect(new TextEncoder().encode(JSON.stringify(data)).length).toBeLessThan(8_388_608)
+    expect(new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n').length).toBeGreaterThan(8_388_608)
+    document.querySelector<HTMLButtonElement>('.project-context button')!.click()
+    expect(output).toBeUndefined(); expect(document.getElementById('project-dialog')!.textContent).toContain('8 MiB'); expect(workflow().snapshot().history).toHaveLength(100)
+    await workflow().recovery(); expect(output).toBeUndefined(); expect(document.getElementById('project-file-state')!.textContent).toContain('No project file saved')
+    anchor.mockRestore()
+  })
+})
+
+describe('bounded project record admission', () => {
+  const digest = (text: string) => createHash('sha256').update(text).digest('hex')
+  const history = () => ({ operation: 'component', target: 'Pump', description: 'Retained component change', reason: 'Declared decision', baseSource: 'before', before: 'before', after: 'after', baseSourceSha256: digest('before'), candidateSourceSha256: digest('after'), baseViews: [{ id: 'context', names: ['Pump'], view: 'TREE', styles: [] }] })
+  const custom = () => ({ name: 'Retained view', surface: 'register', recipe: { schemaVersion: 1, root: 'Pump', focus: 'Pump/motor', depth: 1, neighbors: 0, kinds: ['flow'], pinned: [], hidden: [] } })
+  const cases: Array<[string, (data: any) => void, RegExp]> = [
+    ['null history item', d => { d.history = [null] }, /history entry 1.*incomplete/],
+    ['missing historical source', d => { d.history = [{ ...history(), baseSource: undefined }] }, /history entry 1.*incomplete/],
+    ['non-hash history identity', d => { d.history = [{ ...history(), baseSourceSha256: 'not a hash' }] }, /history entry 1.*incomplete/],
+    ['changed base source', d => { d.history = [{ ...history(), baseSourceSha256: 'a'.repeat(64) }] }, /source and recorded hashes do not match/],
+    ['changed candidate source', d => { d.history = [{ ...history(), candidateSourceSha256: 'a'.repeat(64) }] }, /source and recorded hashes do not match/],
+    ['ambiguous historical edit', d => { d.history = [{ ...history(), baseSource: 'before before' }] }, /one exact source change/],
+    ['invalid undo recipe', d => { d.history = [{ ...history(), baseViews: [{ id: 'context', names: ['Pump'], view: 'TREE', renderer: 'unknown' }] }] }, /history entry 1.*unsupported/],
+    ['null custom entry', d => { d.customViews = [null] }, /custom view name/],
+    ['incomplete custom scope', d => { d.customViews = [{ ...custom(), recipe: { schemaVersion: 1 } }] }, /invalid scope/],
+    ['string depth', d => { d.customViews = [custom()]; d.customViews[0].recipe.depth = '1' }, /invalid scope/],
+    ['null hidden rules', d => { d.customViews = [custom()]; d.customViews[0].recipe.hidden = null }, /invalid scope/],
+    ['unknown relationship filter', d => { d.customViews = [custom()]; d.customViews[0].recipe.kinds = ['invented'] }, /relationship filter/],
+    ['unknown custom presentation', d => { d.customViews = [{ ...custom(), surface: 'invented' }] }, /presentation/],
+    ['duplicate custom names', d => { d.customViews = [custom(), custom()] }, /repeated custom view name/],
+    ['malformed reader record', d => { d.artifacts = [{ name: 'review', sourceSha256: 3 }] }, /reader artifact/],
+    ['incorrect recovery identity', d => { d.recovery = { validation: 'unvalidated-draft', acceptedSource: 'before', acceptedSourceSha256: 'a'.repeat(64) } }, /Recovery accepted source.*do not match/],
+  ]
+  for (const [name, change, error] of cases) it(`rejects ${name} before replacing or sending any project model`, async () => {
+    const h = await harness(true); await h.answer(0)
+    const workflow = (window as any).labWorkflow, before = structuredClone(workflow.snapshot()), state = document.getElementById('project-file-state')!.textContent
+    const imported = structuredClone(before); change(imported)
+    await expect(workflow.openProject(imported)).rejects.toThrow(error)
+    expect(h.calls).toHaveLength(1); expect(workflow.snapshot()).toEqual(before)
+    expect(document.getElementById('project-file-state')!.textContent).toBe(state)
+    expect(document.getElementById('project-dialog')!.hasAttribute('aria-busy')).toBe(false)
+  })
+  it('admits the maintained reviewed project with its full authentic history and recipes', async () => {
+    const h = await harness(true); await h.answer(0)
+    const fixture = JSON.parse(readFileSync('fixtures/authoring/alarm-review/reviewed.modeling.json', 'utf8'))
+    const opening = (window as any).labWorkflow.openProject(fixture)
+    await h.answer(1); await h.flush(); await h.answer(2, true, { sourceSha256: digest(fixture.source), viewRecipes: fixture.views, views: fixture.views.map((v: any) => ({ id: v.id, targets: v.names, view: v.view, svg: '<svg xmlns="http://www.w3.org/2000/svg"/>', stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })) }); await opening
+    const actual = (window as any).labWorkflow.snapshot()
+    expect(actual.history).toEqual(fixture.history); expect(actual.customViews).toEqual(fixture.customViews); expect(actual.artifacts).toEqual(fixture.artifacts)
+    document.querySelector<HTMLButtonElement>('.project-toolbar button:nth-child(3)')!.click()
+    expect(document.getElementById('project-dialog')!.textContent).toContain(fixture.history[0].reason)
+  })
+})
+
+describe('required view failure atomicity', () => {
+  for (const fault of ['error', 'stakeholderError', 'missing-svg', 'missing-recipe']) it(`rejects ${fault} without accepting or replacing a project`, async () => {
+    const h = await harness(true); await h.answer(0); h.holdAcceptance()
+    const workflow = (window as any).labWorkflow, before = structuredClone(workflow.snapshot()), state = document.getElementById('project-file-state')!.textContent
+    const opening = workflow.openProject({ ...before, title: 'Broken view project', source: 'different', baselineSource: 'different' })
+    const rejection = expect(opening).rejects.toThrow('not opened')
+    await h.answer(1); await h.flush()
+    const view: Record<string, unknown> = { id: 'context', targets: ['Pump'], svg: '<svg/>', stakeholderSvg: '<svg/>' }
+    if (fault === 'missing-svg') view.svg = ''
+    else if (fault !== 'missing-recipe') view[fault] = 'Projection target does not exist'
+    await h.answer(2, true, { views: fault === 'missing-recipe' ? [] : [view], viewRecipes: [{ id: 'context', names: ['Pump'], view: 'TREE' }] })
+    await rejection
+    expect(h.receipts).toHaveLength(0); expect(workflow.snapshot()).toEqual(before)
+    expect(document.getElementById('project-file-state')!.textContent).toBe(state)
+    expect(document.querySelector('#canvas svg')).not.toBeNull()
+    expect(document.getElementById('diagnostics')!.textContent).toContain('Required view context')
+  })
+})
+
+
+describe('project metadata export admission', () => {
+  for(const mode of ['normal','recovery']) for(const size of [20000,20001]) for(const [key,label] of [['title','Project name'],['brief','Brief and source basis'],['questions','Assumptions, decisions and open questions']]) it(`${mode} ${key} respects the ${size}-character UTF-8 boundary and retains entered text`,async()=>{
+    const { Blob: NodeBlob } = await import('node:buffer');let output: Blob|undefined
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{output=blob;return 'blob:metadata'},revokeObjectURL(){}})
+    const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    const h=await harness(true);await h.answer(0,true,{sourceSha256:createHash('sha256').update('baseline').digest('hex')})
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    const input=document.querySelector<HTMLInputElement|HTMLTextAreaElement>(`[aria-label="${label}"]`)!,text='界'.repeat(size);input.value=text;input.dispatchEvent(new Event('input'))
+    if(mode==='recovery')await (window as any).labWorkflow.recovery()
+    else{document.querySelector<HTMLButtonElement>('.project-context button')!.click();await h.flush()}
+    if(size===20001){expect(output).toBeUndefined();expect(document.getElementById('project-dialog')!.textContent).toContain('20,000 characters');expect(document.getElementById('project-dialog')!.textContent).toContain('entered work is retained')}
+    else{await vi.waitFor(()=>expect(output).toBeDefined(),{interval:1});expect(JSON.parse(await output!.text())[key]).toBe(text)}
+    expect((window as any).labWorkflow.snapshot()[key]).toBe(text);anchor.mockRestore()
+  })
+})
+
+
+describe('saved project equality with admitted custom recipes', () => {
+  it('marks a downloaded custom-view project current despite normalized object-key order, and detects later edits', async () => {
+    const { Blob: NodeBlob } = await import('node:buffer'); let output: Blob|undefined
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{output=blob;return 'blob:saved-project'},revokeObjectURL(){}})
+    const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    const h=await perspectiveHarness(true);await h.composed()
+    ;(document.getElementById('perspective-name') as HTMLInputElement).value='Alarm interface register';document.getElementById('save-perspective')!.click()
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    const title=document.querySelector<HTMLInputElement>('[aria-label="Project name"]')!;title.value='Alarm review proxy';title.dispatchEvent(new Event('input',{bubbles:true}))
+    const workflow=(window as any).labWorkflow,before=structuredClone(workflow.snapshot())
+    document.querySelector<HTMLButtonElement>('.project-context button')!.click();await vi.waitFor(()=>expect(output).toBeDefined(),{interval:1})
+    const saved=JSON.parse(await output!.text())
+    expect(saved).toEqual(before)
+    expect(Object.keys(saved.customViews[0].recipe)).not.toEqual(Object.keys(before.customViews[0].recipe))
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Project file current')
+    expect(workflow.dirty()).toBe(false)
+    expect(document.getElementById('status')!.textContent).toContain('download requested')
+    title.value='Later project title';title.dispatchEvent(new Event('input',{bubbles:true}))
+    expect(workflow.dirty()).toBe(true)
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Changes since last project file')
+    anchor.mockRestore()
+  })
+})
+
+describe('frozen reader retains declared facts and behavior conditions', () => {
+  it('exports the current 2-versus-3 comparison, every condition row and unknown evidence without implying execution', async () => {
+    const { Blob: NodeBlob } = await import('node:buffer');let output: Blob|undefined
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{output=blob;return 'blob:complete-reader'},revokeObjectURL(){}})
+    const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    const comparison={title:'Required minimum 3 vs declared sample capacity 2',body:'Declared design shortfall. Required minimum: 3; declared sample capacity: 2. Physical verification: not evaluated.',elementIds:['req','capacity'],kind:'declared-capacity-comparison',status:'declared-design-shortfall',requiredMinimum:3,declaredValue:2,physicalVerification:'not-evaluated',evidence:{attributeElementId:'capacity',constraintElementIds:['minimum']}}
+    const condition={title:'R1: Idle → Running',body:'Trigger: accept Start(); | Guard: evidence unavailable; do not infer absence. | Effect: evidence unavailable; do not infer absence.',elementIds:['transition'],textTruncated:true}
+    const behavior={boundary:'Declared behavior only: no execution, timing, satisfaction or acceptance result.',nodes:[{id:'state',name:'MotorStates',kind:'StateDefinition',parallel:false,subactions:{entryAction:[{elementId:'entry',text:'entry initialize;',textTruncated:false}]},constraints:[]},{id:'idle',name:'idle',kind:'StateUsage',parallel:false,subactions:{},constraints:[]},{id:'running',name:'running',kind:'StateUsage',parallel:false,subactions:{},constraints:[]}],relations:[{elementId:'transition',source:'idle',target:'running',kind:'TransitionUsage',triggers:[{elementId:'trigger',text:'accept Start();',textTruncated:false}],guards:[],effects:[],conditionStatus:{triggers:'resolved',guards:'unknown',effects:'unavailable'},declaration:'transition idle accept Start() then running;',declarationTruncated:false}],evidence:[{elementId:'transition',qualifiedName:'Pump::MotorStates::start',excerpt:'transition idle accept Start() then running;',excerptTruncated:false}],warnings:[{elementId:'transition',reason:'Guard evidence unavailable; do not infer absence'}],limits:['Ordinary flows do not establish an execution schedule.']}
+    const h=await harness(true);await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacityRequirement',metaclass:'RequirementUsage',source:'requirement capacity { doc /* At least three samples. */ }'},{sessionElementId:'capacity',qualifiedName:'Pump::controller::sampleCapacity',metaclass:'AttributeUsage',source:'attribute sampleCapacity : Integer = 2;'}],views:[{id:'requirement',targets:['Pump::capacityRequirement'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Required outcome',statement:'At least three samples.',takeaway:'One bounded declared comparison',rows:[comparison],warnings:[],omissions:['Physical verification has not been performed.'],acceptance:'Not assessed'}},{id:'state',targets:['Pump::MotorStates'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Motor states',statement:'',rows:[condition],behavior,warnings:[],omissions:[],acceptance:'Not assessed'},behavior}]})
+    expect(document.getElementById('status')!.textContent+' '+document.getElementById('diagnostics')!.textContent).not.toContain('Unable')
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
+    const html=await output!.text(),doc=new DOMParser().parseFromString(html,'text/html')
+    expect(doc.querySelectorAll('.reader-facts > div')).toHaveLength(2)
+    expect(doc.body.textContent).toContain(comparison.title);expect(doc.body.textContent).toContain(comparison.body)
+    expect(doc.body.textContent).toContain(condition.title);expect(doc.body.textContent).toContain(condition.body)
+    expect(doc.body.textContent).toContain('Parallel regions: no, exported false.')
+    expect(doc.body.textContent).toContain('Guard: evidence unavailable; do not infer absence.')
+    expect(doc.body.textContent).toContain('Effect: evidence unavailable; do not infer absence.')
+    expect(doc.body.textContent).toContain('Entry: entry initialize;')
+    expect(doc.body.textContent).toContain('attribute sampleCapacity : Integer = 2;')
+    expect(doc.body.textContent).toContain('transition idle accept Start() then running;')
+    expect(doc.body.textContent).toContain('Source excerpt truncated')
+    expect(doc.body.textContent).toContain(behavior.boundary)
+    expect(doc.body.textContent).toContain('execution and acceptance not assessed')
+    expect(doc.body.textContent).toContain('Acceptance: Not assessed')
+    expect([...doc.querySelectorAll('blockquote')].map(n=>n.textContent)).toEqual(['At least three samples.'])
+    anchor.mockRestore()
+  })
+})
+
+
+describe('initial authored project context', () => {
+  it('shows supplied fictional study metadata without inferring history or custom views', async () => {
+    const initial={title:'Fictional cold-room alarm study',brief:'Fictional BR-2 model for workflow review.',questions:'Does the declared capacity cover the required minimum?'}
+    const h=await harness(true,initial);await h.answer(0)
+    const project=(window as any).labWorkflow.snapshot()
+    expect(project.title).toBe(initial.title);expect(project.brief).toBe(initial.brief);expect(project.questions).toBe(initial.questions)
+    expect(project.history).toEqual([]);expect(project.customViews).toEqual([])
+    expect(document.querySelector('.project-context strong')!.textContent).toBe(initial.title)
+  })
+  it('retains the native fallback when optional initial metadata is absent or unsupported', async () => {
+    const h=await harness(true,{title:'界'.repeat(20001),brief:{text:'unsupported'},questions:'x'.repeat(20001)});await h.answer(0)
+    const project=(window as any).labWorkflow.snapshot()
+    expect(project.title).toBe('System study');expect(project.brief).toBe('');expect(project.questions).toBe('')
   })
 })
