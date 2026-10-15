@@ -1375,3 +1375,19 @@ describe('bounded source scope picker',()=>{
     expect(JSON.stringify(targets)).toBe(before);
   });
 });
+
+describe('overview identities and scrollable detail',()=>{
+  it('retains readable component identity in overview and restores complete detail labels',async()=>{
+    const h=await harness(),original=(SVGElement.prototype as any).getScreenCTM;
+    (SVGElement.prototype as any).getScreenCTM=()=>({a:.3,b:0});
+    try{
+      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><text data-component-kind="true">«part»</text><text font-size="14" data-component-label="true" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
+      await h.answer(0,true,{views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]});
+      const label=document.querySelector<SVGTextElement>('[data-component-label]')!;
+      expect(label.textContent).toBe('stage1');expect(parseFloat(label.style.fontSize)*.3).toBeGreaterThanOrEqual(12);
+      document.getElementById('readable')!.click();expect(label.textContent).toBe('stage1: S-IC');
+      expect(document.querySelector<SVGElement>('[data-component-kind]')!.style.display).toBe('');
+      const audience=document.getElementById('audience') as HTMLSelectElement;audience.value='stakeholder';audience.dispatchEvent(new Event('change'));
+    }finally{if(original)(SVGElement.prototype as any).getScreenCTM=original;else delete (SVGElement.prototype as any).getScreenCTM}
+  });
+});

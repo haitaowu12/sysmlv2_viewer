@@ -165,7 +165,7 @@ def interconnection(report, target):
         composite = sem(e, 'isComposite', False) in (True, 'true')
         dash = '' if definition or composite else ' stroke-dasharray="7 4"'
         label = display_name(e) + (multiplicity(e, index)[0] if e['metaclass'] == 'PartUsage' else '') + ((': ' + ', '.join(types(e))) if types(e) else '')
-        svg.extend([link_open(e, context), f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{0 if definition else 12}" fill="white" stroke="#263945" stroke-width="1.5"{dash}/>', text(x+w/2,y+22,'«part def»' if definition else '«part»','middle',12), text(x+w/2,y+43,label,'middle'), f'<path d="M{x} {y+54}H{x+w}" fill="none" stroke="#263945"/>', '</a>'])
+        svg.extend([link_open(e, context), f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{0 if definition else 12}" fill="white" stroke="#263945" stroke-width="1.5"{dash}/>', text(x+w/2,y+22,'«part def»' if definition else '«part»','middle',12).replace('<text ', '<text data-component-kind="true" '), text(x+w/2,y+43,label,'middle').replace('<text ', '<text data-component-label="true" data-overview-label="'+escape(display_name(e), quote=True)+'" data-full-label="'+escape(label, quote=True)+'" data-label-width="'+str(w*.9)+'" '), f'<path d="M{x} {y+54}H{x+w}" fill="none" stroke="#263945"/>', '</a>'])
     box(root, root_box, target)
     for p in parts: box(p, positions[p['sessionElementId']], target + '/' + display_name(p))
     docks = {}

@@ -183,6 +183,7 @@ SOURCE_PATHS = (
     'workbench/tools/reference-pilot/presentation.py',
     'workbench/tools/reference-pilot/test_presentation.py',
     'workbench/tools/reference-pilot/test_configured_catalogue.py',
+    'workbench/tools/reference-pilot/test_reference_catalogue.py',
     'workbench/tools/reference-pilot/stakeholder.py',
     'workbench/tools/reference-pilot/test_agent_model.py',
     'workbench/tools/reference-pilot/test_capacity_analysis.py',

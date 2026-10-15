@@ -17,10 +17,31 @@ class ExplorationBudgetError(ValueError):
     """No catalogue was returned because its occurrence budget was exceeded."""
 
 
+def _reference_root_type(element, index):
+    """A reference context needs exactly one resolved part-definition type."""
+    if element.get('metaclass') != 'ReferenceUsage':
+        return None
+    values = sem(element, 'type', [])
+    values = values if isinstance(values, list) else [values]
+    if not values or any(not isinstance(ref, dict) or not isinstance(ref.get('id'), str)
+                         or ref['id'] not in index for ref in values):
+        return None
+    ids = {ref['id'] for ref in values}
+    if len(ids) != 1:
+        return None
+    target = index[next(iter(ids))]
+    return target if target.get('metaclass') == 'PartDefinition' else None
+
+
+def _eligible_root(element, index):
+    return element.get('metaclass') in PARTS or _reference_root_type(element, index) is not None
+
+
 def _global_roots(index):
     return sorted((e for e in index.values() if e.get('qualifiedName') and
                    (e['metaclass'] == 'PartDefinition' or e['metaclass'] == 'PartUsage' and
-                    sem(e, 'owner', {}).get('metaclass') not in PARTS)), key=lambda e: e['qualifiedName'])
+                    sem(e, 'owner', {}).get('metaclass') not in PARTS or
+                    _reference_root_type(e, index) is not None)), key=lambda e: e['qualifiedName'])
 
 
 
@@ -79,17 +100,24 @@ def catalogue(report, roots=None):
     else:
         if not isinstance(roots, list) or not roots:
             raise ValueError('Explicit catalogue scopes require a nonempty target list')
-        resolved = [resolve_target(report, target, PARTS) for target in roots]
+        resolved = [resolve_target(report, target) for target in roots]
+        if any(not _eligible_root(e, ix) for e in resolved):
+            raise ValueError('Catalogue roots require a part definition, part usage or uniquely part-typed reference context')
         roots = sorted({e['sessionElementId']: e for e in resolved}.values(), key=lambda e: e['qualifiedName'])
     nodes, relations, warnings, collections = [], [], [], []
     def visit(e, path, parent, root, depth, ancestors):
+        reference_root = depth == 0 and _reference_root_type(e, ix) is not None
         if len(nodes) >= LIMITS['occurrences']:
             raise ExplorationBudgetError('Model exceeds the 2000-occurrence exploration budget; split the source package. No partial catalogue returned.')
         node = {'key': path, 'parent': parent, 'root': root, 'depth': depth,
                 'elementId': e['sessionElementId'], 'name': display_name(e),
                 'qualifiedName': e.get('qualifiedName') or '', 'type': ', '.join(types(e)),
-                'referenced': e['metaclass'] == 'PartUsage' and not sem(e, 'isComposite', False)}
+                'metaclass': e['metaclass'], 'referenceRoot': reference_root,
+                'referenced': reference_root or e['metaclass'] == 'PartUsage' and not sem(e, 'isComposite', False)}
         nodes.append(node)
+        if reference_root:
+            warnings.append({'scope': path, 'elementId': e['sessionElementId'],
+                             'reason': 'Referenced part context: this root is a typed reference, not an additional owned component or an observed installed instance.'})
         fs = features(e, ix)
         children, collection_features = part_features(e, ix)
         children.sort(key=lambda e: (e.get('qualifiedName') or '', element_order(e)))
@@ -205,12 +233,13 @@ def catalogue_for_views(report, views):
     if not isinstance(views, list):
         raise ValueError('Configured catalogue requires a view recipe list')
     selected = {}
+    index = index_report(report)
     for view in views:
         names = view.get('names') if isinstance(view, dict) else None
         if not isinstance(names, list) or len(names) != 1:
             raise ValueError('Configured catalogue requires uniquely resolved single-target views')
         target = resolve_target(report, names[0])
-        if target['metaclass'] in PARTS:
+        if _eligible_root(target, index):
             selected[target['sessionElementId']] = target
     if not selected:
         raise ValueError('Global exploration exceeds its budget and no configured view selects a supported part scope')
@@ -274,7 +303,7 @@ def compose(catalog, recipe):
     else:
         # Hashes are local graphical IDs only; map back to source and occurrence explicitly.
         mapping = {n['key']: hashlib.sha256(n['key'].encode()).hexdigest()[:24] for n in nodes}
-        graphnodes = [{'id': mapping[n['key']], 'label': human(n['name']) + ('\n'+human(n['type']) if n['type'] and human(n['type']) != human(n['name']) else ''), 'role': 'component', 'referenced': n['referenced']} for n in nodes]
+        graphnodes = [{'id': mapping[n['key']], 'label': ('Referenced context · ' if n.get('referenceRoot') else '') + human(n['name']) + ('\n'+human(n['type']) if n['type'] and human(n['type']) != human(n['name']) else ''), 'role': 'component', 'referenced': n['referenced']} for n in nodes]
         edges = [{'source': mapping[r['source']['node']], 'target': mapping[r['target']['node']], 'elementId': r['elementId'],
                   'kind': r['kind'], 'label': human(r['item']) if r['kind'] == 'flow' else 'Same value' if r['kind'] == 'binding' else 'Connection', 'caution': False} for r in relations]
         edges.extend({'source': mapping[n['parent']], 'target': mapping[n['key']], 'elementId': n['elementId'], 'kind': 'containment', 'label': 'References' if n['referenced'] else 'Contains', 'caution': False} for n in containment)
