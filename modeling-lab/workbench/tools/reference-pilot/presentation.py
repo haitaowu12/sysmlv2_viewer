@@ -150,6 +150,53 @@ def multiplicity(element, index):
     return result['label'] if result['status'] != 'unknown' else '', result['status'] == 'known-multi'
 
 
+def scalar_alias_evidence(part, value, index):
+    """Recognize a bounded scalar reference declaration, not its population.
+
+    Native reports may reference an omitted implicit Multiplicity. That absence
+    remains unknown cardinality, but does not turn a plain resolved alias into a
+    collection. Explicit, inherited or unresolved range evidence is not bypassed.
+    """
+    ps = part.get('semantics', {})
+    if (ps.get('isComposite') is not False or value.get('metaclass') != 'FeatureReferenceExpression'
+            or any(_refs(ps.get(field)) for field in ('ownedRedefinition', 'ownedSubsetting', 'ownedReferenceSubsetting'))):
+        return None
+    referents = _refs(value.get('semantics', {}).get('referent'))
+    if len(referents) != 1 or referents[0]['id'] not in index:
+        return None
+    target = index[referents[0]['id']]
+    if target.get('metaclass') != 'PartUsage' or target['sessionElementId'] == part['sessionElementId']:
+        return None
+    for feature in (part, target):
+        semantic = feature.get('semantics', {})
+        if any(_refs(semantic.get(field)) for field in ('ownedRedefinition', 'ownedSubsetting', 'ownedReferenceSubsetting')):
+            return None
+        refs = _refs(semantic.get('multiplicity'))
+        if len(refs) > 1:
+            return None
+        # A range can be symbolic, inherited or outside the retained index. Only
+        # explicitly known single-valued ranges are safe for this narrow alias.
+        if refs:
+            mult = index.get(refs[0]['id'], refs[0])
+            if mult.get('metaclass') != 'Multiplicity' and cardinality(feature, index)['status'] != 'known-single':
+                return None
+            if _refs(mult.get('semantics', {}).get('bound')) and cardinality(feature, index)['status'] != 'known-single':
+                return None
+    # This exact declaration witness deliberately supports no specialization,
+    # brackets, body, computed value or comment. Source does not establish bounds.
+    name = r"(?:[A-Za-z_][A-Za-z0-9_]*|'(?:\\['\\]|[^'\\])*')"
+    qualified = name + r'(?:\s*::\s*' + name + r')*'
+    match = re.fullmatch(r'\s*ref\s+part\s+(' + name + r')\s*:\s*' + qualified
+                         + r'\s*=\s*(' + qualified + r')\s*;\s*', part.get('source', ''))
+    if (not match or qualified_segments(match[1]) != (ps.get('declaredName') or part.get('name'),)
+            or qualified_segments(re.sub(r'\s*::\s*', '::', match[2])) != qualified_segments(target.get('qualifiedName'))):
+        return None
+    return {'profile': 'source-witnessed-scalar-alias-v1', 'cardinality': cardinality(part, index)['status'],
+            'declaration': part['source'].strip(),
+            'evidenceIds': [part['sessionElementId'], value['sessionElementId'], target['sessionElementId']],
+            'reason': 'Resolved direct scalar reference feature retained; cardinality and installed instance population are not inferred.'}
+
+
 def part_features(root, index):
     """Separate typed multi-valued features; retain unresolved bindings explicitly.
 
@@ -232,6 +279,9 @@ def part_features(root, index):
         bound_members = members(value, set()) if value.get('metaclass') == 'OperatorExpression' else None
         null_collection = is_collection and value.get('metaclass') == 'NullExpression'
         if cardinal['status'] == 'unknown':
+            if scalar_alias_evidence(part, value, index):
+                ordinary.append(part)
+                continue
             collections.append({'elementId': part['sessionElementId'], 'name': display_name(part), 'qualifiedName': part.get('qualifiedName'),
                 'multiplicity': mult or '[?]', 'cardinality': 'unknown', 'kind': 'unresolved-collection',
                 'memberIds': [], 'memberNames': [],

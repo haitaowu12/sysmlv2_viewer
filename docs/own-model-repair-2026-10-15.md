@@ -2,6 +2,8 @@
 
 The acceptance task is opening and working with a person's own SysML v2 model. Apollo is a multi-file regression input, not a special rendering path or a general compatibility certificate.
 
+The supported input is SysML v2 text or a saved Lab project. SysML 1/XMI and vendor binary files are outside the current importer. Language validation and diagram coverage are separate outcomes.
+
 ## Resulting workflow
 
 Open model accepts SysML v2 text files, a folder, or a saved Modeling Lab project. A unique source-owned top-level part usage opens directly; otherwise a unique source-owned part definition can open directly. Ambiguous sources offer a searchable starting point. Original files and their locations are retained. Imported study notes start blank.
@@ -21,6 +23,8 @@ Analytical diagrams/tables, bounded SysML part/port sheets and declared-behavior
 - Inspector layout was checked at desktop and narrow widths. Fresh native qualifications of the two untouched OpenSysML sources passed with no diagnostics. These are bounded checks, not browser/device, performance or human acceptance qualification.
 
 Occurrence-path collisions now fail explicitly before dictionary selection can discard a component. This is containment, not collision-free identity migration. Unknown multiplicity bound evidence is kept distinct from a known collection or an additional component. State entry successions no longer overwrite the requested scope or inflate state/transition counts.
+
+Fresh native CI exposed a regression in the initial uncertainty rule: it hid simple reference aliases in the parcel-sorting model and excluded a valid connection. The bounded repair requires a directly resolved typed reference and an exact scalar-alias declaration witness; it preserves unknown cardinality and does not infer installed instances. Explicit symbolic bounds remain unresolved. The fresh parcel flow checks are required before release.
 
 ## Next bounded work
 
