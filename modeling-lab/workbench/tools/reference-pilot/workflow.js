@@ -211,9 +211,9 @@
     download(filename()+'.review.html','<!doctype html>\n'+doc.documentElement.outerHTML,'text/html');status('Reader review download requested · check Downloads for the file','valid');refreshState();
   }
   window.labWorkflow={
-    payload(){return project?{views:project.views,baselineSource:project.baselineSource}:{}},
+    payload(){return project?{views:project.views,baselineSource:project.baselineSource}:{views:initial.presets,baselineSource:initial.baselineSource??initial.source}},
     onReport(data){
-      if(!project)project={schemaVersion:1,id:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.source,baselineHash:data.sourceSha256,views:initial.presets,history:[]};
+      if(!project)project={schemaVersion:1,id:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.baselineSource??initial.source,baselineHash:hash(initial.baselineHash)?initial.baselineHash:(!initial.baselineSource||initial.baselineSource===initial.source?data.sourceSha256:undefined),views:initial.presets,history:[]};
       if(data.viewRecipes)project.views=data.viewRecipes;
       if(importedViews){window.scopeWorkbench.import(importedViews);importedViews=null}
       toolbar.querySelectorAll('button').forEach(b=>b.disabled=false);refreshState();

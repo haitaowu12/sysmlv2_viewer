@@ -1216,3 +1216,30 @@ describe('retryable project acceptance compensation', () => {
     expect(h.protocol).toHaveLength(2)
   })
 })
+
+
+describe('native accepted context bootstrap', () => {
+  it('resumes the accepted identity, current source/views and original baseline on the first render',async()=>{
+    const source='accepted current minimum 4',baseline='original required minimum 3',sourceHash=createHash('sha256').update(source).digest('hex'),baselineHash=createHash('sha256').update(baseline).digest('hex')
+    const presets=[{id:'context',names:['Pump'],view:'TREE',styles:['TB']},{id:'retained-scenario',names:['Pump::Scenario'],view:'ACTION',styles:['LR'],renderer:'behavior'}]
+    const views=presets.map(v=>({id:v.id,targets:v.names,view:v.view,svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'}))
+    const h=await harness(true,{source,presets,baselineSource:baseline,baselineHash,acceptedReport:{sourceSha256:sourceHash,reportIntegrity:{reportSha256:'d'.repeat(64)}}})
+    expect(h.calls[0].payload).toMatchObject({source,views:presets,baselineSource:baseline,expectedBase:sourceHash,expectedReport:'d'.repeat(64)})
+    await h.answer(0,true,{sourceSha256:sourceHash,views,viewRecipes:presets})
+    const project=(window as any).labWorkflow.snapshot()
+    expect(project.source).toBe(source);expect(project.baselineSource).toBe(baseline);expect(project.baselineHash).toBe(baselineHash);expect(project.views).toEqual(presets)
+    expect(project.history).toEqual([]);expect(project.customViews).toEqual([])
+    document.getElementById('reload')!.click()
+    expect(h.calls[1].payload).toMatchObject({source:baseline,baselineSource:baseline,expectedBase:sourceHash,views:presets})
+    await h.answer(1,true,{sourceSha256:baselineHash,views,viewRecipes:presets})
+    expect((window as any).labWorkflow.snapshot().source).toBe(baseline)
+    expect((window as any).labWorkflow.snapshot().baselineHash).toBe(baselineHash)
+  })
+  it('keeps fresh browser startup behavior when no retained native identity is supplied',async()=>{
+    const h=await harness(true)
+    expect(h.calls[0].payload).toMatchObject({source:'baseline',baselineSource:'baseline',expectedBase:null,expectedReport:null})
+    await h.answer(0)
+    expect((window as any).labWorkflow.snapshot().baselineSource).toBe('baseline')
+    expect((window as any).labWorkflow.snapshot().baselineHash).toBe('a'.repeat(64))
+  })
+})
