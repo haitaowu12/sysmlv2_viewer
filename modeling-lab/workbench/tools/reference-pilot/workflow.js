@@ -221,7 +221,7 @@
         project=candidate;delete project.recovery;pending=null;importedViews=candidate.customViews;initial.workspaceKey=project.id;initial.source=project.baselineSource;
         el('source').value=checkedSource;el('audience').value=data.audience==='stakeholder'?'stakeholder':'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.leave();el('view-search').value='';el('model-search').value='';
       }});
-      if(!accepted){const reason=el('diagnostics').textContent.trim();throw Error('Project was not opened. Current project and draft are retained.'+(reason?'\n'+reason:''))}
+      if(!accepted){const reason=(el('diagnostics').dataset.runtimeError||el('diagnostics').textContent).trim();throw Error('Project was not opened. Current project and draft are retained.'+(reason?'\n'+reason:''))}
       if(recoveryDraft!==null){el('source').value=recoveryDraft;invalidateDraft();el('editor').open=true;lastSaved=null;status('Recovery draft and project restored · validate the draft before normal saving','valid')}else lastSaved=stateKey(snapshot());refreshState();
     }catch(error){status('Project not opened · current project retained','error');throw error}
     finally{opening=false;dialog.removeAttribute('aria-busy')}

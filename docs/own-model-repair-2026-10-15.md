@@ -14,6 +14,8 @@ Selecting a component inspects it without replacing the current drawing. Open co
 
 For projects opened without a diagram, returning from a temporary component sheet restores the validated workspace with no configured views. A failed return retains the temporary sheet and a retryable return action.
 
+Unsupported diagram recovery shows a concise reason on the page and retains the full runtime message in the import dialog's closed Technical details.
+
 Analytical diagrams/tables, bounded SysML part/port sheets and declared-behavior projections are labeled separately. Authored SysML view declarations remain in source; they are not automatically translated into Lab selector entries. Guided minimum edits use one producer capability profile and check the exact formal change. Linked-element detail in proposals starts closed.
 
 ## Evidence and limits
