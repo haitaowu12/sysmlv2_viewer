@@ -148,6 +148,13 @@ function modelScopeOptions(preferred){
 }
 $('target-find').addEventListener('input',()=>{targetPage=0;modelScopeOptions()});
 function status(text,state='pending'){$('status').textContent=text;$('status').dataset.state=state}
+function runtimeErrorMessage(error){
+  const full=String(error);
+  if(!full.includes('Traceback (most recent call last):'))return full;
+  const lines=full.trim().split('\n').map(line=>line.trim());
+  return lines.findLast(line=>/^(?:[\w.]*Error|[\w.]*Exception):\s*\S/.test(line))||lines.at(-1)||'Runtime failure. Open technical details for the full message.';
+}
+function setRuntimeDiagnostic(error){const full=String(error);$('diagnostics').dataset.runtimeError=full;$('diagnostics').textContent=runtimeErrorMessage(full)}
 function empty(title,description){$('view-notation').textContent='';resetStory();$('canvas').replaceChildren();const box=document.createElement('div');box.className='empty-state';const head=document.createElement('strong'),body=document.createElement('p');head.textContent=title;body.textContent=description;box.append(head,body);$('canvas').append(box)}
 function controls(){
   for(const id of ['validate','reload','undo-restore','audience','target','target-find','mode'])$(id).disabled=busy;
@@ -394,7 +401,7 @@ function invalidateDraft(){
   setPresentation(false);$('review-route-control').hidden=true;$('review-route-error').hidden=true;
   $('model-navigation-note').hidden=true;$('model-navigation-note').textContent='';$('model-search').disabled=true;
   window.scopeWorkbench?.invalidate();editRevision++;report=null;clearSelection();$('views').replaceChildren();$('target').replaceChildren();$('view-count').textContent='—';$('no-views').hidden=true;
-  $('diagnostics').textContent='';$('validation-notes').textContent='';$('validation-details').hidden=true;$('explanation').textContent='';$('scope').textContent='Draft changed · previous views invalidated';
+  $('diagnostics').textContent='';delete $('diagnostics').dataset.runtimeError;$('validation-notes').textContent='';$('validation-details').hidden=true;$('explanation').textContent='';$('scope').textContent='Draft changed · previous views invalidated';
   empty('Draft changed',$('automatic').checked?'The model will be checked after you pause typing.':'Validate your draft to regenerate the viewpoints.');status('Draft changed · awaiting validation');controls();
 }
 function scheduleUpdate(){clearTimeout(updateTimer);if($('automatic').checked)updateTimer=setTimeout(()=>render(),1200)}
@@ -407,7 +414,7 @@ async function compensatePending(){
 }
 function displayReport(data,focused=false,payload={},preserveScope=true){
   report=data;clearSelection();$('target').replaceChildren();
-    $('diagnostics').textContent='';const notes=data.diagnostics||[];$('validation-details').hidden=!notes.length;$('validation-summary').textContent=notes.length+' validation note'+(notes.length===1?'':'s');$('validation-notes').textContent=notes.map((d,index)=>{const mapped=data.sourceLocations?.sourceSha256===data.sourceSha256&&data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;return `${d.severity}${(mapped?.path||mapped?.file)?' · '+(mapped.path||mapped.file)+(mapped.line?' · line '+mapped.line:''):d.line?' · assembled line '+d.line:''}: ${d.message}`}).join('\n');
+    $('diagnostics').textContent='';delete $('diagnostics').dataset.runtimeError;const notes=data.diagnostics||[];$('validation-details').hidden=!notes.length;$('validation-summary').textContent=notes.length+' validation note'+(notes.length===1?'':'s');$('validation-notes').textContent=notes.map((d,index)=>{const mapped=data.sourceLocations?.sourceSha256===data.sourceSha256&&data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;return `${d.severity}${(mapped?.path||mapped?.file)?' · '+(mapped.path||mapped.file)+(mapped.line?' · line '+mapped.line:''):d.line?' · assembled line '+d.line:''}: ${d.message}`}).join('\n');
       status('Static checks passed · execution not evaluated','valid');syncReviewRoutes();buildNavigation();
       targetNames=[...new Set(data.elements.filter(e=>e.qualifiedName&&/^(Package|PartDefinition|PartUsage|ActionDefinition|ActionUsage|RequirementDefinition|RequirementUsage|VerificationCaseDefinition|VerificationCaseUsage|StateDefinition|StateUsage)$/.test(e.metaclass)).map(e=>e.qualifiedName))].sort();
       targetPage=0;$('target-find').value='';modelScopeOptions(focused?payload.target:undefined);
@@ -424,6 +431,7 @@ function displayReport(data,focused=false,payload={},preserveScope=true){
 }
 async function render(focused=false,transition=null){
   clearTimeout(updateTimer);if(busy){if(!transition)queued=true;return false}busy=true;queued=false;
+  delete $('diagnostics').dataset.runtimeError;
   let revision=editRevision;const transactionId=crypto.randomUUID(),previous=acceptedReport,prior=window.labWorkflow?.capture();
   const payload={source:transition?.source??$('source').value,...(transition?.payload||window.labWorkflow?.payload()||{}),stage:true,transactionId,expectedBase:previous?.sourceSha256??null,expectedReport:previous?.reportIntegrity?.reportSha256??null};
   if(focused){payload.target=$('target').value;payload.view=$('mode').value;preferredView='focused'}
@@ -455,9 +463,9 @@ async function render(focused=false,transition=null){
     return true;
   }catch(error){
     let recoveryError='';if(pendingCompensation&&attemptedCompensation!==pendingCompensation){attemptedCompensation=pendingCompensation;try{await compensatePending()}catch(rollbackError){recoveryError=' '+String(rollbackError)}}
-    if(transition&&revision===editRevision){window.labWorkflow?.restore(prior);if(previous&&previous.source===$('source').value)displayReport(previous);else invalidateDraft();status('Project change not accepted · previous project retained','error');$('diagnostics').textContent=String(error)}
-    else if(revision===editRevision){window.scopeWorkbench?.invalidate();report=null;clearSelection();$('views').replaceChildren();$('target').replaceChildren();$('explanation').replaceChildren();$('view-count').textContent='—';$('review-route-control').hidden=true;$('scope').textContent='No accepted result';status('Unable to update views','error');$('diagnostics').textContent=String(error);empty('Unable to update views','Your draft is retained. Export a recovery project before reloading, or retry validation.')}
-    if(pendingCompensation){status('Project recovery pending · retry validation or export a recovery project','error');$('diagnostics').textContent=String(error)+'\nThe previous project and current draft are retained. Recovery must be confirmed before another model update.'+recoveryError}
+    if(transition&&revision===editRevision){window.labWorkflow?.restore(prior);if(previous&&previous.source===$('source').value)displayReport(previous);else invalidateDraft();status('Project change not accepted · previous project retained','error');setRuntimeDiagnostic(error)}
+    else if(revision===editRevision){window.scopeWorkbench?.invalidate();report=null;clearSelection();$('views').replaceChildren();$('target').replaceChildren();$('explanation').replaceChildren();$('view-count').textContent='—';$('review-route-control').hidden=true;$('scope').textContent='No accepted result';status('Unable to update views','error');setRuntimeDiagnostic(error);empty('Unable to update views','Your draft is retained. Export a recovery project before reloading, or retry validation.')}
+    if(pendingCompensation){status('Project recovery pending · retry validation or export a recovery project','error');setRuntimeDiagnostic(error);const recoveryNotice='\nThe previous project and current draft are retained. Recovery must be confirmed before another model update.';$('diagnostics').textContent+=recoveryNotice+runtimeErrorMessage(recoveryError);$('diagnostics').dataset.runtimeError+=recoveryNotice+recoveryError}
     return false;
   }finally{busy=false;controls();syncEditor();if(queued||(revision!==editRevision&&$('automatic').checked))scheduleUpdate()}
 }
@@ -484,5 +492,5 @@ $('canvas').addEventListener('keydown',e=>{if(e.target!==$('canvas'))return;if([
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('dialog[open]'))return;if(e.key==='Escape'&&!$('inspector').hidden){e.preventDefault();closeInspector()}});
 window.addEventListener('beforeunload',e=>{if(initial&&(window.labWorkflow?window.labWorkflow.dirty():$('source').value!==initial.source)){e.preventDefault();e.returnValue=''}});
 empty('Opening your model','Loading the source draft and configured viewpoints.');controls();
-fetch('/initial').then(r=>r.json()).then(data=>{initial=data;if(data.acceptedReport){const identity=data.acceptedReport;if(!/^[a-f0-9]{64}$/.test(identity.sourceSha256||'')||!/^[a-f0-9]{64}$/.test(identity.reportIntegrity?.reportSha256||''))throw Error('The retained model identity is incomplete; reopen the Lab service.');acceptedReport={source:data.source,sourceSha256:identity.sourceSha256,reportIntegrity:{reportSha256:identity.reportIntegrity.reportSha256}}}$('source').value=data.source;render()}).catch(error=>{status('Unable to load model','error');$('diagnostics').textContent=String(error);empty('Model unavailable','Check that the local lab service is running, then reload this page.')});
+fetch('/initial').then(r=>r.json()).then(data=>{initial=data;if(data.acceptedReport){const identity=data.acceptedReport;if(!/^[a-f0-9]{64}$/.test(identity.sourceSha256||'')||!/^[a-f0-9]{64}$/.test(identity.reportIntegrity?.reportSha256||''))throw Error('The retained model identity is incomplete; reopen the Lab service.');acceptedReport={source:data.source,sourceSha256:identity.sourceSha256,reportIntegrity:{reportSha256:identity.reportIntegrity.reportSha256}}}$('source').value=data.source;render()}).catch(error=>{status('Unable to load model','error');setRuntimeDiagnostic(error);empty('Model unavailable','Check that the local lab service is running, then reload this page.')});
 </script><script nonce="__TOKEN__">__SCOPE_SCRIPT__</script><script nonce="__TOKEN__">__SOURCE_INTAKE_SCRIPT__</script><script nonce="__TOKEN__">__WORKFLOW_SCRIPT__</script></body></html>

@@ -1643,6 +1643,39 @@ it('opens an assertion source witness and explores only its exact typed occurren
   expect(h.calls[1]!.payload.recipe).toMatchObject({root:'Reference',focus:'Reference/stage1'})
 })
 
+describe('runtime failure presentation and recovery',()=>{
+  it('summarizes a failed import behind the modal while retaining its full technical details and prior project',async()=>{
+    const h=await harness(true);await h.answer(0)
+    const workflow=(window as any).labWorkflow,before=structuredClone(workflow.snapshot())
+    const candidate={...before,id:'candidate-import',title:'Larger study'};delete candidate.baselineHash
+    toolbarClick('Open model')
+    const input=document.querySelector<HTMLInputElement>('[aria-label="Open project file"]')!
+    Object.defineProperty(input,'files',{value:[{size:2000,text:async()=>JSON.stringify(candidate)}],configurable:true})
+    input.dispatchEvent(new Event('change'))
+    await h.answer(1)
+    const trace='Traceback (most recent call last):\n  File "/runtime/engineering.py", line 123, in interconnection\n    raise ValueError("Maximum 12 direct components")\nValueError: Maximum 12 direct components'
+    await h.answer(2,true,{views:[{id:'context',targets:['Pump'],svg:'<svg/>',stakeholderSvg:'<svg/>',error:trace}]})
+    await vi.waitFor(()=>expect(document.querySelector('#project-dialog details pre')?.textContent).toContain(trace),{interval:1})
+    const diagnostics=document.getElementById('diagnostics')!
+    expect(diagnostics.textContent).toBe('ValueError: Maximum 12 direct components')
+    expect(diagnostics.textContent).not.toContain('Traceback')
+    expect(diagnostics.dataset.runtimeError).toContain(trace)
+    expect(workflow.snapshot()).toEqual(before)
+    expect(document.getElementById('canvas')!.textContent).toContain('MODEL')
+    expect((document.getElementById('project-dialog') as HTMLDialogElement).open).toBe(true)
+    document.querySelector<HTMLButtonElement>('#project-dialog .dialog-heading button')!.click()
+    document.getElementById('validate')!.click()
+    await h.answer(3,false,{error:'Native renderer unavailable'})
+    expect(diagnostics.textContent).toBe('Error: Native renderer unavailable')
+    expect(diagnostics.dataset.runtimeError).toBe('Error: Native renderer unavailable')
+    expect(diagnostics.dataset.runtimeError).not.toContain('Traceback')
+    h.edit('updated source')
+    expect(diagnostics.textContent).toBe('');expect(diagnostics.dataset.runtimeError).toBeUndefined()
+    h.tick();await h.answer(4)
+    expect(diagnostics.textContent).toBe('');expect(diagnostics.dataset.runtimeError).toBeUndefined()
+  })
+})
+
 describe('explicit SysML sheets and honest notation',()=>{
   const core={id:'context',names:['Pump'],view:'TREE',styles:[]}
   const view=(id:string,target:string,profile='sysml-2.0-parts-ports-binary-connectors-v1')=>({id,targets:[target],notationProfile:profile,svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>ENGINEERING</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"><text>STAKEHOLDER</text></svg>'})
