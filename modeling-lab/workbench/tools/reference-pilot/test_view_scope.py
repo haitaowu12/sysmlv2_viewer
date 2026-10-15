@@ -3,7 +3,7 @@ import json
 import unittest
 from unittest.mock import patch
 from test_engineering import fixture, element, ref
-from view_scope import catalogue, select, compose
+from view_scope import catalogue, catalogue_for_views, select, compose
 
 
 def model():
@@ -19,6 +19,35 @@ def recipe(**kw):
 
 
 class ViewScopeTests(unittest.TestCase):
+    def test_quoted_slash_name_collision_blocks_catalogue_without_partial_fallback(self):
+        # Independently distinct semantic declarations: a direct 'rack/unit'
+        # feature and unit nested under rack produce the same legacy path.
+        direct = element('direct', 'PartUsage', 'rack/unit', isComposite=True, feature=[])
+        unit = element('unit', 'PartUsage', 'unit', isComposite=True, feature=[])
+        rack = element('rack', 'PartUsage', 'rack', isComposite=True, feature=[ref(unit)])
+        root = element('vehicle', 'PartDefinition', 'Vehicle', feature=[ref(direct), ref(rack)])
+        direct['semantics']['owner'] = ref(root)
+        rack['semantics']['owner'] = ref(root)
+        unit['semantics']['owner'] = ref(rack)
+        report = {'staticChecksPassed': True, 'sourceSha256': 'f' * 64,
+                  'elements': [root, direct, rack, unit]}
+        original = json.dumps(report, sort_keys=True)
+        with self.assertRaisesRegex(ValueError, 'Ambiguous model occurrence path.*rack/unit'):
+            catalogue(report)
+        with self.assertRaisesRegex(ValueError, 'source and configured diagrams remain available'):
+            catalogue_for_views(report, [{'names': [root['qualifiedName']]}])
+        self.assertEqual(json.dumps(report, sort_keys=True), original)
+
+    def test_legacy_ambiguous_catalogue_is_rejected_before_selection_or_composition(self):
+        catalog = catalogue(model())
+        duplicate = copy.deepcopy(next(n for n in catalog['nodes'] if n['key'] == 'P::Root/a'))
+        duplicate['elementId'] = 'different-semantic-component'
+        catalog['nodes'].append(duplicate)
+        for operation in (select, compose):
+            with self.subTest(operation=operation.__name__):
+                with self.assertRaisesRegex(ValueError, 'Ambiguous model occurrence path'):
+                    operation(catalog, recipe())
+
     def test_focus_neighbors_and_boundary_records(self):
         c=catalogue(model());q=recipe();v=select(c,q)
         self.assertEqual([n['key'] for n in v['nodes']],['P::Root/a'])

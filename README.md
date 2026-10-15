@@ -2,7 +2,9 @@
 
 The maintained **[Modeling Lab](https://haitaowu12.github.io/sysmlv2_viewer/)** runs directly in the browser. Open the link, allow the modeling runtime to initialize, and choose Engineering or Stakeholder. It works from static GitHub Pages assets without a companion service or local installation.
 
-Use **Project** to open an editable `.modeling.json` project or import model source. **Develop model** offers bounded guided changes; **Review changes** shows their basis and consequences before applying. Save the editable project file and keep your downloaded copy. **Export reader review** produces a frozen HTML review for sharing. Files are processed in the browser; this application does not provide shared accounts or cloud project storage.
+Use **Open model** to select your own SysML v2 `.sysml` files, a source folder, or an editable `.modeling.json` project. A unique source-owned starting component opens directly; ambiguous models offer a starting-point choice. Valid source can be retained and edited even when a diagram is unsupported. Authored SysML view declarations remain in source; Lab views are generated projections. **Develop model** offers bounded guided changes; **Review changes** shows their basis and consequences before applying. Save the editable project file and keep your downloaded copy. **Export reader review** produces a frozen HTML review for sharing. Files are processed in the browser; this application does not provide shared accounts or cloud project storage.
+
+The [own-model workflow repair](docs/own-model-repair-2026-10-15.md) records current opening behavior, independent source trials and remaining coverage gaps.
 
 The  records preserved views, recovery behavior, fixture results, scale measurements and known limits. The browser profile uses the maintained Lab interface and projections with a pinned OpenSysML WASM engine. It does not claim full Pilot notation/language parity or engineering acceptance. The [artifact release process](experiments/browser-only-lab/RELEASE.md) explains exact-byte promotion and retained rollback.
 

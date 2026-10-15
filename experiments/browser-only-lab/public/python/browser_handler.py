@@ -39,10 +39,11 @@ def render_report(data):
             elif request.get('renderer')=='summary':
                 drawing=exchange_summary(report,target);v['svg']=drawing.pop('svg');v.update(drawing)
             elif request['view'] in ('STATE','ACTION'):
-                behavior=behavior_project(report,target);v['svg']=behavior_svg(behavior);v['behavior']=behavior
+                behavior=behavior_project(report,target);v['svg']=behavior_svg(behavior);v['behavior']=behavior;v['notationProfile']=behavior.get('profile','declared-behavior-v1')
             else:
                 # Explicitly analytical. This does not claim Pilot notation parity.
                 v['svg']=v['stakeholderSvg']
+                v['notationProfile']='analytical-browser-overview-v1'
             v['authority']='OpenSysML API facts; shared analytical presentation'
         except Exception as error:v['error']=str(error)
         report['views'].append(v)
@@ -68,6 +69,11 @@ def render_report(data):
         current_report=report
         staged_report=previous_report=last_rolled_back=None
     return browser_report(report,metadata)
+
+def minimum_options_current(data):
+    if not current_report or data['request'].get('baseSourceSha256') != current_report.get('sourceSha256'):
+        raise ValueError('The model changed. Reopen the editing task.')
+    return {'sourceSha256':current_report['sourceSha256'],'options':minimum_edit_options(current_report)}
 
 def prepare_candidate(data):
     old=current_report;request=data['request']

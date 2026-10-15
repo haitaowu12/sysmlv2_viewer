@@ -11,7 +11,7 @@ python3 scripts/sysml.py doctor
 python3 scripts/sysml.py serve --source workbench/fixtures/authoring/alarm-review/model.sysml --views workbench/fixtures/authoring/alarm-review/views.json --port 5260
 ```
 
-Open `http://127.0.0.1:5260/` in the in-app browser. Use Project → Open project file to open `workbench/fixtures/authoring/alarm-review/starter.modeling.json` for the initial brief or `reviewed.modeling.json` for the completed exercise. The starter source and brief remain separate from the reviewed project. The existing pump example is also available through `python3 scripts/sysml.py demo --port 5260`; stop the first server before reusing that port.
+Open `http://127.0.0.1:5260/` in the in-app browser. Use Open model → Open project file to open `workbench/fixtures/authoring/alarm-review/starter.modeling.json` for the initial brief or `reviewed.modeling.json` for the completed exercise. The starter source and brief remain separate from the reviewed project. The existing pump example is also available through `python3 scripts/sysml.py demo --port 5260`; stop the first server before reusing that port.
 
 The package includes the pinned Pilot runtime and library when transferred with `sysml.py bundle`. Python 3.10+, Java21+ and Graphviz must already be available; doctor checks these and the package's registered source integrity. Fresh-directory verification on the existing Mac does not establish a clean-machine installation or Windows support.
 
@@ -21,7 +21,9 @@ Use one active study per local server. Opening a different study in another tab 
 
 The project name and file state appear above the model. Develop model provides bounded guided tasks. Edit SysML source opens the advanced language editor. Each proposal needs an explicit source quotation or decision basis, validation and review before Apply to project. Review changes preserves the change basis and offers undo when its revision still matches.
 
-Use Model to find a component, then choose a presentation and Scope. Registers distinguish component name, occurrence context and port; expand Model path for the exact identifier. Connections do not acquire direction from their labels; arrows represent declared transfers. Scope and crossing/filtered omissions remain visible.
+Use Open model to select your own SysML v2 text files or source folder. A unique source-owned starting component opens directly; ambiguous models offer a starting-point choice. Valid source can be opened without a diagram when a requested presentation is unsupported. Authored SysML view declarations remain in source; Lab projections are not automatic translations of those declarations.
+
+Use Model to select and inspect a component. Open component view creates an explicitly analytical view; Open SysML part/port sheet opens the selected element and its direct features in Engineering, with a return to the previous view and audience. Analytical tables and declared-behavior projections remain labeled separately. Inspection reserves space beside or below the model. Registers distinguish component name, occurrence context and port; expand Model path for the exact identifier. Connections do not acquire direction from their labels; arrows represent declared transfers. Scope and crossing/filtered omissions remain visible.
 
 Open Save view or View options to rename the current view and save it. Save as new view creates a distinct copy. A name used by another view is rejected. A view kept in this browser is included in an editable project file only when you use Save project file. That action requests a download: retain the file in a known location. Reloading a tab is not a project-file save. Export reader review creates a frozen HTML record; it does not replace the editable JSON.
 

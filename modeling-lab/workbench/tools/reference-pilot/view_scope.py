@@ -17,6 +17,16 @@ class ExplorationBudgetError(ValueError):
     """No catalogue was returned because its occurrence budget was exceeded."""
 
 
+def _claim_occurrence_key(key, seen):
+    """Reject legacy path collisions before dictionaries can discard an occurrence."""
+    if key in seen:
+        raise ValueError('Ambiguous model occurrence path ' + repr(key) +
+                         ': multiple contextual components share one navigation key. '
+                         'Model browsing and custom views are unavailable for this model; '
+                         'source and configured diagrams remain available.')
+    seen.add(key)
+
+
 def _reference_root_type(element, index):
     """A reference context needs exactly one resolved part-definition type."""
     if element.get('metaclass') != 'ReferenceUsage':
@@ -105,6 +115,7 @@ def catalogue(report, roots=None):
             raise ValueError('Catalogue roots require a part definition, part usage or uniquely part-typed reference context')
         roots = sorted({e['sessionElementId']: e for e in resolved}.values(), key=lambda e: e['qualifiedName'])
     nodes, relations, warnings, collections = [], [], [], []
+    occurrence_keys = set()
     def visit(e, path, parent, root, depth, ancestors):
         reference_root = depth == 0 and _reference_root_type(e, ix) is not None
         if len(nodes) >= LIMITS['occurrences']:
@@ -114,6 +125,7 @@ def catalogue(report, roots=None):
                 'qualifiedName': e.get('qualifiedName') or '', 'type': ', '.join(types(e)),
                 'metaclass': e['metaclass'], 'referenceRoot': reference_root,
                 'referenced': reference_root or e['metaclass'] == 'PartUsage' and not sem(e, 'isComposite', False)}
+        _claim_occurrence_key(path, occurrence_keys)
         nodes.append(node)
         if reference_root:
             warnings.append({'scope': path, 'elementId': e['sessionElementId'],
@@ -124,7 +136,7 @@ def catalogue(report, roots=None):
         for collection in collection_features:
             collections.append(dict(collection, scope=path))
             warnings.append({'scope': path, 'elementId': collection['elementId'],
-                             'reason': 'Collection feature ' + collection['name'] + ' ' + collection['multiplicity'] + ': ' + collection['reason'] + (' Members: ' + ', '.join(collection['memberNames']) if collection['memberNames'] else '')})
+                             'reason': ('Bound feature · cardinality unknown: ' if collection.get('cardinality') == 'unknown' else 'Collection feature ') + collection['name'] + ' ' + collection['multiplicity'] + ': ' + collection['reason'] + (' Members: ' + ', '.join(collection['memberNames']) if collection['memberNames'] else '')})
         if e['sessionElementId'] in ancestors or depth >= LIMITS['depth']:
             if children: warnings.append({'scope': path, 'reason': 'Recursive or depth-limited structure not expanded'})
             return
@@ -256,6 +268,9 @@ def catalogue_for_views(report, views):
 
 
 def select(catalog, recipe):
+    occurrence_keys = set()
+    for occurrence in catalog['nodes']:
+        _claim_occurrence_key(occurrence['key'], occurrence_keys)
     if not isinstance(recipe, dict) or recipe.get('schemaVersion') != 1: raise ValueError('Unsupported view recipe')
     root, focus = recipe.get('root'), recipe.get('focus')
     depth, hops = recipe.get('depth', 1), recipe.get('neighbors', 0)

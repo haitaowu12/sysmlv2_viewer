@@ -57,7 +57,7 @@ def project(report, target, viewpoint=None):
         rows.clear()
         for collection in collection_features:
             members = ', '.join(collection['memberNames'])
-            row('Collection feature: ' + human(collection['name']) + ' ' + collection['multiplicity'],
+            row(('Bound feature · cardinality unknown: ' if collection.get('cardinality') == 'unknown' else 'Collection feature: ') + human(collection['name']) + ' ' + collection['multiplicity'],
                 collection['reason'] + (' Members: ' + members + '.' if members else ''), ix[collection['elementId']])
         if not parts:
             row('No lower-level components shown', 'This scope has no extracted component features. This does not prove that the physical equipment has no internal parts.', root)
@@ -116,7 +116,11 @@ def project(report, target, viewpoint=None):
                 ts = types(payload)
                 triggers.extend(human(t) for t in ts)
                 if payload: support.append(payload)
-            node(a, 'state'); node(b, 'state')
+            for endpoint in (a, b):
+                role = ('state' if endpoint['metaclass'] in {'StateDefinition', 'StateUsage'}
+                        else 'action' if endpoint['metaclass'].endswith(('ActionUsage', 'ActionDefinition'))
+                        else 'boundary')
+                node(endpoint, role)
             caution = bool(sem(e, 'guardExpression', []) or sem(e, 'effectAction', []))
             edge(a['sessionElementId'], b['sessionElementId'], (', '.join(triggers) if triggers else 'Event not translated') + (' / conditions apply' if caution else ''), e, 'transition', caution)
             body = 'Event: ' + (', '.join(triggers) if triggers else 'not translated; inspect the source')
@@ -132,17 +136,18 @@ def project(report, target, viewpoint=None):
         for e in entry_successions:
             source_ref = references(sem(e, 'source'))[0]
             target_refs = references(sem(e, 'target'))
-            target = ix.get(target_refs[0]['id']) if len(target_refs) == 1 else None
-            if not target or target['sessionElementId'] not in state_ids:
+            entry_target = ix.get(target_refs[0]['id']) if len(target_refs) == 1 else None
+            if not entry_target or entry_target['sessionElementId'] not in state_ids:
                 warnings.append('An entry succession has an unresolved or out-of-scope state target; inspect Engineering mode.')
                 continue
             source = ix[source_ref['id']]
-            node(target, 'state')
-            label = 'Entry declaration → ' + human(display_name(target, 'Unnamed state'))
-            edge(source['sessionElementId'], target['sessionElementId'], label, e, 'transition')
-            row('Entry → ' + human(display_name(target, 'Unnamed state')),
+            node(entry_target, 'state')
+            label = 'Entry declaration → ' + human(display_name(entry_target, 'Unnamed state'))
+            edge(source['sessionElementId'], entry_target['sessionElementId'], label, e, 'transition')
+            edges[-1]['entryDeclaration'] = source['sessionElementId']
+            row('Entry → ' + human(display_name(entry_target, 'Unnamed state')),
                 'Initial entry succession: explicit StateSubactionMembership witness; no action identity is inferred. Condition evidence is unavailable; do not infer absence.',
-                e, source, target)
+                e, source, entry_target)
         if not transitions and not entry_successions:
             row('No state changes translated', 'This scope has no directly owned transitions supported by this presentation.', root)
         omitted.append('Initial entry is shown only when a typed StateSubactionMembership and matching SuccessionAsUsage are exported; do/exit actions, nested/concurrent states, guards, effects, timing and priorities are not translated. Rows describe model declarations, not a complete operating procedure or observed behaviour.')
@@ -178,7 +183,7 @@ def project(report, target, viewpoint=None):
             children, collections = part_features(e, ix)
             children.sort(key=lambda e: (e.get('qualifiedName') or '', element_order(e)))
             for collection in collections:
-                row(human(display_name(e)) + ' / collection ' + human(collection['name']) + ' ' + collection['multiplicity'],
+                row(human(display_name(e)) + (' / bound feature · cardinality unknown: ' if collection.get('cardinality') == 'unknown' else ' / collection ') + human(collection['name']) + ' ' + collection['multiplicity'],
                     collection['reason'] + (' Members: ' + ', '.join(collection['memberNames']) + '.' if collection['memberNames'] else ''), e, ix[collection['elementId']])
             if depth >= 2 or e['sessionElementId'] in ancestors:
                 if children: warnings.append('Further decomposition exists below ' + human(display_name(e, 'Unnamed')) + '; open a narrower scope.')
@@ -205,9 +210,14 @@ def project(report, target, viewpoint=None):
         omitted = ['Only explicit transfers are shown. Contact connections and same-value bindings are omitted; an arrow does not establish delivery, timing or observed operation.'] + warnings
     elif kind in {'PartDefinition', 'PartUsage'}:
         if kind == 'PartUsage':
-            family = 'context'
-            title, question = 'System context', 'Who interacts with the system, and across which boundary?'
-            discussion = 'Have we included the people and external systems that matter?'
+            if any(n['role'] == 'boundary' for n in nodes.values()):
+                family = 'context'
+                title, question = 'System context', 'Who interacts with the system, and across which boundary?'
+                discussion = 'Have we included the people and external systems that matter?'
+            else:
+                title = human(display_name(root, 'System')) + ' overview'
+                question = 'Which components and connections are declared?'
+                discussion = 'Are the shown components and connections the ones we need to review?'
             transfers = [e for e in edges if e['kind'] == 'flow']
             if transfers:
                 first = transfers[0]
@@ -216,7 +226,13 @@ def project(report, target, viewpoint=None):
             title = human(display_name(root, 'System')) + ' connections'
     elif kind in {'StateDefinition', 'StateUsage'}:
         family = 'states'
-        takeaway = f"{len(edges)} declared state changes connect {len(nodes)} states."
+        state_count = sum(n['role'] == 'state' for n in nodes.values())
+        transition_count = sum(e['kind'] == 'transition' and not e.get('entryDeclaration') for e in edges)
+        entry_count = sum(bool(e.get('entryDeclaration')) for e in edges)
+        takeaway = (f"{transition_count} declared state transition{'s' if transition_count != 1 else ''} "
+                    f"and {state_count} state{'s' if state_count != 1 else ''} are shown.")
+        if entry_count:
+            takeaway += f" {entry_count} initial entry succession{'s' if entry_count != 1 else ''} shown separately."
         discussion = 'Do these events and recovery paths match the intended operating story?'
     else:
         verification = kind.startswith('VerificationCase')

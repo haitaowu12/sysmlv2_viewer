@@ -19,3 +19,5 @@ public/RUNTIME-NOTICES.txt
 public/opensysml-browser.patch
 engine-build.json
 public/engine-build.json
+
+public/examples/

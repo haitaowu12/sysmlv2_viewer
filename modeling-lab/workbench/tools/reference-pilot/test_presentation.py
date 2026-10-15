@@ -1,7 +1,7 @@
 """Independent projection cases for names, target notation and collection counts."""
 import copy
 import unittest
-from presentation import resolve_target, part_features
+from presentation import resolve_target, part_features, cardinality, multiplicity
 from engineering import interconnection
 from stakeholder import project
 from view_scope import catalogue
@@ -82,6 +82,66 @@ class TargetNotationTests(unittest.TestCase):
 
 
 class ProjectionPresentationTests(unittest.TestCase):
+    def test_symbolic_cardinality_keeps_binding_unknown_with_specific_witnesses(self):
+        report=collections_fixture()
+        index={e['sessionElementId']:e for e in report['elements']}
+        bound=index['engines']
+        bound['name']='selectedModules'
+        bound['source']='ref part selectedModules : Unit [population] = (engine1, engine2);'
+        bound['semantics']['isComposite']=False
+        population=element('population','AttributeUsage','population','root')
+        expression=element('population-ref','FeatureReferenceExpression',None,referent=ref(population))
+        report['elements'] += [population,expression]
+        index.update({e['sessionElementId']:e for e in [population,expression]})
+        index['mult-two']['semantics']['bound']=[ref(expression)]
+        before=copy.deepcopy(report)
+        detail=cardinality(bound,index)
+        self.assertEqual(detail['status'],'unknown')
+        self.assertEqual(detail['label'],'[?]')
+        self.assertEqual(detail['evidenceIds'],['mult-two','population-ref'])
+        ordinary,collections=part_features(index['root'],index)
+        self.assertNotIn('engines',[e['sessionElementId'] for e in ordinary])
+        selected=next(c for c in collections if c['elementId']=='engines')
+        self.assertEqual(selected['kind'],'unresolved-collection')
+        self.assertEqual(selected['cardinality'],'unknown')
+        self.assertEqual(selected['memberIds'],[])
+        self.assertTrue({'mult-two','population-ref','sequence'} <= set(selected['evidenceIds']))
+        self.assertIn('cardinality is unknown',selected['reason'])
+        self.assertIn('count are not inferred',selected['reason'])
+        drawing=interconnection(report,'Study::Root')
+        self.assertIn('Bound feature · cardinality unknown',drawing['svg'])
+        self.assertIn('1 collection feature',drawing['svg'])
+        self.assertIn('1 bound feature with unknown cardinality',drawing['svg'])
+        self.assertNotIn('Collection feature · selectedModules',drawing['svg'])
+        self.assertTrue(any(row['title'].startswith('Bound feature · cardinality unknown') for row in project(report,'Study::Root')['rows']))
+        self.assertTrue(any('/ bound feature · cardinality unknown:' in row['title'] for row in project(report,'Study::Root',{'view':'TREE'})['rows']))
+        self.assertTrue(any('Bound feature · cardinality unknown' in warning['reason'] for warning in catalogue(report)['warnings']))
+        self.assertEqual(set(drawing['partBounds']),{'a','b'})
+        self.assertEqual(len(project(report,'Study::Root')['components']),2)
+        self.assertNotIn('engines',[n['elementId'] for n in catalogue(report)['nodes']])
+        self.assertEqual(report,before)
+
+    def test_cardinality_distinguishes_literal_single_multi_unknown_without_source_inference(self):
+        report=collections_fixture();index={e['sessionElementId']:e for e in report['elements']}
+        part=index['engines']
+        # Brackets inside a binding or comment are not declaration bounds.
+        part['source']='ref part selected : Unit [limit] = (engine1, engine2)[2]; /* [99] */'
+        self.assertEqual(cardinality(part,index)['status'],'known-multi')
+        self.assertEqual(multiplicity(part,index),('[2]',True))
+        index['two']['semantics']['value']=1
+        self.assertEqual(cardinality(part,index)['status'],'known-single')
+        self.assertEqual(multiplicity(part,index),('[1]',False))
+        ordinary,collections=part_features(index['root'],index)
+        self.assertIn('engines',[e['sessionElementId'] for e in ordinary])
+        self.assertNotIn('engines',[e['elementId'] for e in collections])
+        for bound in ([],[{'id':'missing'}]):
+            with self.subTest(bound=bound):
+                index['mult-two']['semantics']['bound']=bound
+                self.assertEqual(cardinality(part,index)['status'],'unknown')
+                ordinary,collections=part_features(index['root'],index)
+                self.assertNotIn('engines',[e['sessionElementId'] for e in ordinary])
+                self.assertEqual(next(c for c in collections if c['elementId']=='engines')['kind'],'unresolved-collection')
+
     def test_null_names_ports_types_and_connectors_retain_existing_identities(self):
         from test_engineering import fixture
         r = fixture(); before_ids = {e['sessionElementId'] for e in r['elements']}
