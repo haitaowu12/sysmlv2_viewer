@@ -72,6 +72,15 @@ class NormalizeTests(unittest.TestCase):
         rows[2]['type']={'@id':'missing'}
         self.assertEqual(normalize(rows,'')['elements'][3]['semantics']['type'][0]['id'],'base')
 
+    def test_documentation_requires_both_typed_association_and_matching_owner(self):
+        rows=[{'@id':'req','@type':'RequirementUsage','documentation':[{'@id':'doc'}]},
+              {'@id':'doc','@type':'Documentation','body':'Declared obligation','owner':{'@id':'req'}}]
+        self.assertEqual(normalize(rows,'')['elements'][1]['semantics']['documentedElement']['id'],'req')
+        rows[0]['documentation']=[]
+        self.assertNotIn('documentedElement',normalize(rows,'')['elements'][1]['semantics'])
+        rows[0]['documentation']=[{'@id':'doc'}];rows[1]['owner']={'@id':'other'}
+        self.assertNotIn('documentedElement',normalize(rows,'')['elements'][1]['semantics'])
+
     def test_effective_attribute_name_keeps_engine_identity_and_rejects_conflict(self):
         rows=[{'@id':'a','@type':'AttributeUsage','qualifiedName':'P::@1','ownedRedefinition':[{'@id':'r'}]},
               {'@id':'r','@type':'Redefinition','redefiningFeature':{'@id':'a'},'redefinedFeature':{'@id':'tag'}},

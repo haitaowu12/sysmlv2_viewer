@@ -1100,3 +1100,35 @@ describe('initial authored project context', () => {
     expect(project.title).toBe('System study');expect(project.brief).toBe('');expect(project.questions).toBe('')
   })
 })
+
+
+describe('prepared file download retry', () => {
+  it('keeps one real download link and its blob alive for an explicit retry, revoking only on replacement',async()=>{
+    const { Blob: NodeBlob } = await import('node:buffer');const files: Blob[]=[],revoked: string[]=[]
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob: Blob)=>{files.push(blob);return 'blob:prepared-'+files.length},revokeObjectURL:(url: string)=>revoked.push(url)})
+    const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    const h=await harness(true);await h.answer(0,true,{sourceSha256:createHash('sha256').update('baseline').digest('hex')})
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+    const title=document.querySelector<HTMLInputElement>('[aria-label="Project name"]')!;title.value='Browser Lab completion acceptance';title.dispatchEvent(new Event('input',{bubbles:true}))
+    ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Save project file')!.click()
+    await vi.waitFor(()=>expect(files).toHaveLength(1),{interval:1})
+    const link=document.getElementById('prepared-file-link') as HTMLAnchorElement,panel=document.getElementById('prepared-download')!
+    expect(link.href).toBe('blob:prepared-1');expect(link.download).toBe('Browser-Lab-completion-acceptance.modeling.json');expect(link.textContent).toContain(link.download)
+    expect(panel.hidden).toBe(false);expect(link.closest('dialog')).toBe(document.getElementById('project-dialog'))
+    expect(JSON.parse(await files[0].text()).title).toBe(title.value)
+    h.tick();expect(revoked).toEqual([]);expect(link.isConnected).toBe(true)
+    link.click();expect(anchor).toHaveBeenCalledTimes(2);expect(files).toHaveLength(1);expect(revoked).toEqual([])
+    document.getElementById('project-dialog')!.dispatchEvent(new Event('close'))
+    expect(link.closest('dialog')).toBeNull();expect(link.isConnected).toBe(true)
+    expect(document.getElementById('project-file-state')!.textContent).toContain('check Downloads')
+    await (window as any).labWorkflow.recovery()
+    expect(files).toHaveLength(2)
+    expect(document.getElementById('prepared-file-link')).toBe(link)
+    expect(document.querySelectorAll('#prepared-file-link')).toHaveLength(1)
+    expect(document.getElementById('status')!.textContent+' '+document.getElementById('project-dialog')!.textContent).not.toContain('not exported')
+    expect(link.getAttribute('href')).toBe('blob:prepared-2');expect(link.download).toBe('Browser-Lab-completion-acceptance.recovery.modeling.json')
+    expect(revoked).toEqual(['blob:prepared-1']);h.tick();expect(revoked).toEqual(['blob:prepared-1'])
+    expect(JSON.parse(await files[1].text()).recovery.validation).toBe('unvalidated-draft')
+    anchor.mockRestore()
+  })
+})

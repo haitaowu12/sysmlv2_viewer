@@ -1,6 +1,6 @@
 /* One local project, one language model. Project downloads are explicit user actions. */
 (() => {
-  let project=null, pending=null, importedViews=null, lastSaved=null,opening=false;
+  let project=null, pending=null, importedViews=null, lastSaved=null,opening=false,preparedUrl=null;
   const el=id=>document.getElementById(id);
   const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n};
   const button=(label,action)=>{const n=node('button',label);n.type='button';n.addEventListener('click',action);return n};
@@ -11,6 +11,9 @@
   const context=node('div');context.className='project-context';context.setAttribute('aria-label','Current project');
   const projectName=node('strong','Opening study…'),fileState=node('span','Checking model…');fileState.setAttribute('role','status');fileState.id='project-file-state';
   context.append(projectName,fileState,button('Save project file',save),button('Export recovery project',recovery));document.querySelector('.app-header').after(context);context.querySelector('button').disabled=true;
+  const downloadPanel=node('div');downloadPanel.id='prepared-download';downloadPanel.className='note';downloadPanel.hidden=true;downloadPanel.setAttribute('aria-label','Prepared file');downloadPanel.style.cssText='flex-shrink:0;padding:8px 24px;margin:0;border-bottom:1px solid #d6e0e5;overflow-wrap:anywhere';
+  const downloadLink=node('a');downloadLink.id='prepared-file-link';const downloadHint=node('span',' If the download did not start, select this link. This prepared snapshot stays available until you prepare another file.');
+  downloadPanel.append(downloadLink,downloadHint);context.after(downloadPanel);dialog.addEventListener('close',()=>context.after(downloadPanel));
   function refreshState(){
     if(!project)return;projectName.textContent=project.title;
     const changed=stateKey(snapshot())!==lastSaved;fileState.dataset.dirty=String(changed);
@@ -18,12 +21,19 @@
     context.querySelector('button').disabled=!report||busy;document.title=project.title+' · '+el('view-title').textContent+' · Modeling lab';
   }
   document.addEventListener('input',refreshState);document.addEventListener('change',refreshState);
-  function start(title){dialog.replaceChildren();const head=node('div');head.className='dialog-heading';head.append(node('h2',title),button('Close',()=>dialog.close()));dialog.append(head);dialog.showModal();return dialog}
+  function start(title){if(downloadPanel.parentElement===dialog)context.after(downloadPanel);dialog.replaceChildren();const head=node('div');head.className='dialog-heading';head.append(node('h2',title),button('Close',()=>dialog.close()));dialog.append(head);dialog.showModal();return dialog}
   function field(parent,label,type='input',value=''){const wrap=node('label',label),input=node(type);input.setAttribute('aria-label',label);input.value=value;wrap.append(input);parent.append(wrap);return input}
   function message(parent,text){const n=node('p',text);n.className='note';parent.append(n);return n}
   function error(parent,text){if(parent===dialog&&!dialog.open)start('Project needs attention');const n=node('p',text);n.setAttribute('role','alert');n.className='workflow-error';parent.append(n)}
   function select(parent,label,items){const input=field(parent,label,'select');for(const [value,text] of items){const o=node('option',text);o.value=value;input.append(o)}return input}
-  function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=node('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+  function download(name,content,type){
+    const url=URL.createObjectURL(new Blob([content],{type})),previous=preparedUrl;preparedUrl=url;
+    downloadLink.href=url;downloadLink.download=name;downloadLink.textContent='Download prepared file: '+name;downloadPanel.hidden=false;
+    if(dialog.open)dialog.append(downloadPanel);else context.after(downloadPanel);
+    if(previous)URL.revokeObjectURL(previous);
+    // Keep the actual link attached for a fresh user gesture if an automatic request is blocked.
+    downloadLink.click();
+  }
   function snapshot(){if(!project)return null;return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value}}
   function stateKey(data){return JSON.stringify(data,(_key,value)=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)}
   async function inspectSource(source,views,baselineSource){const response=await fetch('/inspect',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({source,views,baselineSource})}),data=await response.json();if(data.error)throw Error(data.error);if(!data.staticChecksPassed)throw Error('Imported model failed language validation: '+data.diagnostics.map(d=>d.message).join(' '));return data}
