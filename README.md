@@ -107,26 +107,20 @@ Phase 7 technical work now adds:
 - current workspace, installation, recovery, migration, architecture,
   security, troubleshooting, and release documentation.
 
-The GitHub Pages build now uses the modern service-backed workbench shell. It
-has two explicit modes:
+Before the browser-only Lab replacement, Pages hosted the service-backed
+workbench shell. That predecessor offered a bounded evaluation mode and a
+paired local-companion mode. Its opaque workspace handles, local evidence
+storage and `?legacy=1` compatibility viewer belonged to that earlier profile.
+They are retained in the source and rollback artifact; they are not routes or
+features of the live Modeling Lab.
 
-- without a local companion it is a bounded public sample/evaluation surface;
-- after an explicit one-time pairing with the local companion it uses the
-  qualified local language/workspace service for private authoring and review.
-
-The browser receives an opaque workspace handle, not a filesystem path.
-Canonical source, Git access, engines, reviews, and evidence stay local. The old
-Vite viewer is isolated behind `?legacy=1` as a read-only compatibility sample;
-its parser, fixed diagram tabs, Draw.io round trip, and browser store are not
-authoritative architecture.
-
-Not yet approved as production claims: complete notation-specific graphical
+For the earlier service-backed profile, unqualified production claims include: complete notation-specific graphical
 mutation, external AI-provider adapters, signed desktop installers, Windows
-qualification, or remote collaboration. P7 public release remains blocked by
+qualification, or remote collaboration. That profile's P7 release remains blocked by
 product/runtime license reconciliation, signed/notarized distribution,
 clean-machine evidence for every claimed OS, and three-user usability evidence.
 
-## Development
+## Earlier workbench development
 
 ```bash
 npm ci
@@ -153,20 +147,12 @@ npm run benchmark:workbench -- \
   --candidate qualified-hybrid --profile medium --repetitions 1
 ```
 
-Launch the Pages workbench against a local workspace with:
-
-```bash
-npm run workbench:companion -- \
-  --workspace-file /absolute/path/to/sysml-workspace.yaml
-```
-
-The command starts the service on an operating-system-selected loopback port
-and opens the Pages URL with a short-lived pairing secret in the URL fragment.
-The workbench consumes and removes the fragment. Keep the terminal open while
-using the workspace. This source command is for qualified development; the
-exact-engine release bundle contains equivalent `start-pages-companion`
-launchers. That bundle currently requires supported system Node and Java
-runtimes; self-contained per-OS companion packaging remains a release gate.
+The retained `workbench:companion` and `start-pages-companion` launchers were
+written for the predecessor Pages shell. The live browser-only Lab does not
+consume their pairing fragment or connect to that service. Do not use those
+launchers as the current Lab entry. The predecessor bundle's Node/Java,
+per-OS packaging and runtime qualification limits remain attached to that
+separate historical profile.
 
 ## Authority and evidence
 
