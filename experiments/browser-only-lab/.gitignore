@@ -1,0 +1,14 @@
+node_modules/
+dist/
+_build/
+__pycache__/
+public/python/__pycache__/
+public/pyodide/
+public/python/*.py
+!public/python/normalize.py
+!public/python/browser_handler.py
+public/initial.json
+lab.html
+cases.json
+browser-engine.wasm
+wasm_exec.js
