@@ -105,6 +105,23 @@ class StakeholderTests(unittest.TestCase):
         self.assertEqual(next(node for node in p['nodes'] if node['id']=='entryMembership')['role'],'boundary')
         self.assertIn('Entry declaration',graph_dot(p))
 
+    def test_null_entry_membership_name_uses_human_boundary_label(self):
+        root=element('root','StateDefinition','States')
+        membership=element('entryMembership','StateSubactionMembership','entry','root')
+        membership['name']=None
+        membership['source']='entry;'
+        membership['semantics']['kind']='entry'
+        root['semantics']['entryDeclaration']=ref(membership)
+        stopped=element('stopped','StateUsage','stopped','root')
+        initial=element('initial','SuccessionAsUsage','initial','root',source=ref(membership),target=ref(stopped))
+        p=project({'staticChecksPassed':True,'elements':[root,membership,stopped,initial]},'P::States')
+        boundary=next(node for node in p['nodes'] if node['id']=='entryMembership')
+        self.assertEqual(boundary['label'],'Entry')
+        self.assertEqual(boundary['id'],'entryMembership')
+        row=next(row for row in p['rows'] if row['title']=='Entry → Stopped')
+        self.assertIn('entryMembership',row['elementIds'])
+        self.assertNotIn('None',graph_dot(p))
+
     def test_graph_keeps_topology_and_undirected_connections(self):
         p=project(fixture(),'P::Root')
         self.assertEqual({n['id'] for n in p['nodes']},{'a','b'})

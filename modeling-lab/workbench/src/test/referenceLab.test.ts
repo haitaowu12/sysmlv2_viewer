@@ -1132,3 +1132,15 @@ describe('prepared file download retry', () => {
     anchor.mockRestore()
   })
 })
+
+
+describe('typed state entry condition evidence', () => {
+  for(const entry of [true,false])it(entry?'shows unknown conditions for an explicit state entry succession without claiming absence':'keeps ordinary action succession display unchanged',async()=>{
+    const h=await harness()
+    const behavior={boundary:'Declared behavior only; execution is not evaluated.',nodes:[{id:'entry',name:'entry',kind:'EntryDeclaration',subactions:{},constraints:[]},{id:'idle',name:'idle',kind:'StateUsage',subactions:{},constraints:[]}],relations:[{elementId:'succession',source:'entry',target:'idle',kind:entry?'SuccessionAsUsage':'SuccessionFlowUsage',...(entry?{entryDeclaration:'entry'}:{}),triggers:[],guards:[],effects:[],conditionStatus:entry?{triggers:'unknown',guards:'unknown',effects:'unknown'}:{}}],warnings:[]}
+    await h.answer(0,true,{views:[{id:'context',targets:['Pump'],view:entry?'STATE':'ACTION',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',behavior}]})
+    const evidence=document.querySelector('.behavior-evidence')!.textContent!
+    if(entry){for(const label of ['Trigger','Guard','Effect'])expect(evidence).toContain(label+': evidence unavailable; do not infer absence.');expect(evidence).not.toContain('No explicit trigger, guard or effect declared.')}
+    else expect(evidence).toContain('No explicit trigger, guard or effect declared.')
+  })
+})
