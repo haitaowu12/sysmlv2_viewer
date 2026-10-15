@@ -33,6 +33,36 @@ def require_complete_views(report, recipes):
             raise ValueError('Required view '+str(view.get('id', '(unnamed)'))+' could not be built: '+str(failure or 'A required audience drawing is missing')+'. Current project is retained.')
 
 
+def workspace_key_for(data, current, startup_key):
+    """Bind a custom-view namespace to the candidate, without accepting it."""
+    key = data['workspaceKey'] if 'workspaceKey' in data else current.get('workspaceKey', startup_key)
+    if not isinstance(key, str) or not key.strip() or len(key) > 200:
+        raise ValueError('Project workspace identity must contain 1–200 characters')
+    return key
+
+
+def initial_payload(current, source, presets, workspace_key):
+    """Resume the accepted context without accepting or discarding any work."""
+    report = current.get('report') or {}
+    baseline = current.get('baseline') or {}
+    if not isinstance(baseline, dict):
+        baseline = {}
+    baseline_source = baseline.get('source')
+    if not isinstance(baseline_source, str):
+        baseline_source = source
+    accepted_identity = None
+    if report:
+        accepted_identity = {'sourceSha256': report.get('sourceSha256'),
+                             'reportIntegrity': {'reportSha256': report.get('reportIntegrity', {}).get('reportSha256')}}
+    payload = {'source': report.get('source', source) if report else source,
+               'presets': current.get('views', presets) if report else presets,
+               'baselineSource': baseline_source,
+               'baselineHash': baseline.get('sourceSha256') or digest(baseline_source),
+               'acceptedReport': accepted_identity, 'workspaceKey': current.get('workspaceKey', workspace_key)}
+    # A bootstrap caller receives a snapshot, never aliases into accepted state.
+    return json.loads(json.dumps(payload))
+
+
 class AcceptedState:
     """One staged candidate and one reversible acceptance; no model history cache."""
     def __init__(self, current):
@@ -96,7 +126,8 @@ def main():
     if reviews: prepare_reviews(reviews, digest(source), presets)
     origin = f'http://127.0.0.1:{args.port}'
     working = tempfile.TemporaryDirectory(prefix='sysml-reference-lab-')
-    current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None}
+    workspace_key = digest(str(args.source.resolve()))[:20]
+    current = {'catalogue': None, 'report': None, 'views': presets, 'baseline': None, 'workspaceKey': workspace_key}
     transactions = AcceptedState(current)
     cache = {}
 
@@ -165,7 +196,7 @@ def main():
                     page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
                 return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
             if self.path == '/initial':
-                return self.reply(200, {'source': source, 'presets': presets, 'workspaceKey': digest(str(args.source.resolve()))[:20]})
+                return self.reply(200, initial_payload(current, source, presets, workspace_key))
             self.reply(404, {'error': 'Not found'})
 
         def do_POST(self):
@@ -224,6 +255,7 @@ def main():
                     raise ValueError('Model source must be text, up to 256 KiB')
                 if data.get('expectedBase') and data['expectedBase'] != (current['report'] or {}).get('sourceSha256'):
                     raise ValueError('The model changed while this proposal was open. Reopen the task.')
+                candidate_workspace_key = workspace_key_for(data, current, workspace_key)
                 project_views = views_for(data.get('views', presets))
                 views = exploration_views(project_views, data.get('target'), data.get('view', 'DEFAULT'))
                 baseline = data.get('baselineSource', source)
@@ -246,7 +278,8 @@ def main():
                         view['stakeholder']['changeSummary'] = [change for change in report['changeSummary'] if change['requirement'] in concerns]
                 if report.get('staticChecksPassed'):
                     require_complete_views(report, views)
-                state = {'catalogue': report.get('catalogue'), 'report': report, 'views': project_views, 'baseline': baseline_report}
+                state = {'catalogue': report.get('catalogue'), 'report': report, 'views': project_views, 'baseline': baseline_report,
+                         'workspaceKey': candidate_workspace_key}
                 if data.get('stage'):
                     if report.get('staticChecksPassed'):
                         transactions.stage(data.get('transactionId'), state, (data.get('expectedBase'), data.get('expectedReport')))
