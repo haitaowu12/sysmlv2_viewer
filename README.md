@@ -1,10 +1,18 @@
-# SysML Engineering Workbench
+# Modeling Lab and SysML Engineering Workbench
 
-Local-first SysML v2 engineering workbench under staged architectural revamp.
-SysML/KerML source is canonical. The production path is a workspace service
-backed by a locked, qualified language-engine runtime.
+The maintained **[Modeling Lab](https://haitaowu12.github.io/sysmlv2_viewer/)** runs directly in the browser. Open the link, allow the modeling runtime to initialize, and choose Engineering or Stakeholder. It works from static GitHub Pages assets without a companion service or local installation.
 
-## Current implemented state
+Use **Project** to open an editable `.modeling.json` project or import model source. **Develop model** offers bounded guided changes; **Review changes** shows their basis and consequences before applying. Save the editable project file and keep your downloaded copy. **Export reader review** produces a frozen HTML review for sharing. Files are processed in the browser; this application does not provide shared accounts or cloud project storage.
+
+The  records preserved views, recovery behavior, fixture results, scale measurements and known limits. The browser profile uses the maintained Lab interface and projections with a pinned OpenSysML WASM engine. It does not claim full Pilot notation/language parity or engineering acceptance. The [artifact release process](experiments/browser-only-lab/RELEASE.md) explains exact-byte promotion and retained rollback.
+
+The `modeling-lab/` directory is a generated mirror of the maintained standalone package. Change the maintained owner first and regenerate its registered mirror; avoid separate UI implementations. The earlier native baseline remains available in Releases.
+
+## Earlier service-backed workbench
+
+The service-backed workbench source and its staged implementation record below remain in this repository as a separate preserved development surface. Its companion, desktop and service requirements do not apply to the browser-only Lab linked above.
+
+## Earlier workbench implementation record
 
 Gates P1-P6 provide:
 
