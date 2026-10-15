@@ -51,6 +51,14 @@ class BrowserAcceptedContext(unittest.TestCase):
         self.assertEqual(self.env['current_report'], self.original)
         self.assertIsNone(self.env['staged_report'])
 
+    def test_invalid_diagnostic_uses_the_engine_source_span(self):
+        checked={'valid':False,'source':'package Broken {','raw':[],
+                 'diagnostics':[{'severity':'error','message':"expected '}'",'span':{'startLine':4,'startCol':2}}]}
+        report=self.env['normalized'](checked)
+        self.assertEqual(report['diagnostics'][0]['line'],4)
+        self.assertEqual(report['diagnostics'][0]['span']['startCol'],2)
+        self.assertEqual(self.env['current_report'],self.original)
+
     def test_same_hash_candidate_from_superseded_project_is_rejected(self):
         candidate = self.stage('project-1')
         self.stage('project-2')
