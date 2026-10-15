@@ -34,8 +34,8 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
     clearTimeout: (id: number) => { if (id) timers[id - 1] = () => {} },
   }
   for (const [key, value] of Object.entries(mocks)) vi.stubGlobal(key, value)
-  new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
-  const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve() }
+  new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + '\n' + readFileSync('tools/reference-pilot/source_intake.js', 'utf8') + '\nwindow.sourceSetIntake=globalThis.sourceSetIntake;' + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
+  const flush = async () => { for (let i = 0; i < 64; i++) await Promise.resolve() }
   const answer = async (index: number, valid = true, extra: Record<string, unknown> = {}) => {
     await vi.waitFor(() => expect(calls[index]).toBeDefined(), { interval: 1, timeout: 1000 })
     calls[index]!.resolve({ json: async () => ({ source: calls[index]!.source, transactionId: calls[index]!.payload.transactionId, sourceSha256: 'a'.repeat(64), reportIntegrity: { status: 'verified-managed', reportSha256: 'b'.repeat(64) }, staticChecksPassed: valid,
@@ -739,25 +739,28 @@ describe('readable endpoints and explicit view lifecycle', () => {
     const h = await harness(true); await h.answer(0)
     const workflow = (window as any).labWorkflow
     expect(document.getElementById('edit-toggle')!.textContent).toBe('Edit SysML source')
-    expect(document.getElementById('project-file-state')!.textContent).toContain('No project file saved')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Not saved')
     expect(document.querySelector<HTMLButtonElement>('.project-context button')!.disabled).toBe(false)
     const data = workflow.snapshot(); const opening = workflow.openProject(data)
     await h.answer(1); await h.flush(); await h.answer(2); await opening
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Project file current')
+    expect(document.getElementById('project-file-state')!.textContent).toMatch(/Project file current|Saved snapshot/)
     h.edit('changed draft')
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Changes since last project file')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Unsaved changes')
     expect(document.querySelector<HTMLButtonElement>('.project-context button')!.disabled).toBe(true)
   })
 })
 
 
 describe('explicit Fit provides a complete overview', () => {
-  it('keeps the readable default but lets a deliberate Fit show smaller labels', async () => {
+  it('starts with a complete overview and lets Read labels select readable detail', async () => {
     const h = await harness()
     const original = (SVGElement.prototype as any).getScreenCTM
     ;(SVGElement.prototype as any).getScreenCTM = () => ({ a: 0.5, b: 0 })
     try {
       await h.answer(0, true, { views: [{ id: 'context', targets: ['Pump'], stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"/>', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 300"><text style="font-size:12px">Long overview</text></svg>' }] })
+      expect(document.getElementById('canvas')!.classList.contains('fit')).toBe(true)
+      expect(document.getElementById('zoom-label')!.textContent).toContain('Overview')
+      document.getElementById('readable')!.click()
       expect(document.getElementById('canvas')!.classList.contains('fit')).toBe(false)
       expect(document.getElementById('zoom-label')!.textContent).toContain('Readable')
       document.getElementById('fit')!.click()
@@ -937,7 +940,7 @@ describe('accepted project transactions and recovery', () => {
     expect(new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n').length).toBeGreaterThan(8_388_608)
     document.querySelector<HTMLButtonElement>('.project-context button')!.click()
     expect(output).toBeUndefined(); expect(document.getElementById('project-dialog')!.textContent).toContain('8 MiB'); expect(workflow().snapshot().history).toHaveLength(100)
-    await workflow().recovery(); expect(output).toBeUndefined(); expect(document.getElementById('project-file-state')!.textContent).toContain('No project file saved')
+    await workflow().recovery(); expect(output).toBeUndefined(); expect(document.getElementById('project-file-state')!.textContent).toContain('Not saved')
     anchor.mockRestore()
   })
 })
@@ -1036,12 +1039,12 @@ describe('saved project equality with admitted custom recipes', () => {
     const saved=JSON.parse(await output!.text())
     expect(saved).toEqual(before)
     expect(Object.keys(saved.customViews[0].recipe)).not.toEqual(Object.keys(before.customViews[0].recipe))
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Project file current')
+    expect(document.getElementById('project-file-state')!.textContent).toMatch(/Project file current|Saved snapshot/)
     expect(workflow.dirty()).toBe(false)
     expect(document.getElementById('status')!.textContent).toContain('download requested')
     title.value='Later project title';title.dispatchEvent(new Event('input',{bubbles:true}))
     expect(workflow.dirty()).toBe(true)
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Changes since last project file')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Unsaved changes')
     anchor.mockRestore()
   })
 })
@@ -1053,8 +1056,8 @@ describe('frozen reader retains declared facts and behavior conditions', () => {
     const anchor=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
     const comparison={title:'Required minimum 3 vs declared sample capacity 2',body:'Declared design shortfall. Required minimum: 3; declared sample capacity: 2. Physical verification: not evaluated.',elementIds:['req','capacity'],kind:'declared-capacity-comparison',status:'declared-design-shortfall',requiredMinimum:3,declaredValue:2,physicalVerification:'not-evaluated',evidence:{attributeElementId:'capacity',constraintElementIds:['minimum']}}
     const condition={title:'R1: Idle → Running',body:'Trigger: accept Start(); | Guard: evidence unavailable; do not infer absence. | Effect: evidence unavailable; do not infer absence.',elementIds:['transition'],textTruncated:true}
-    const behavior={boundary:'Declared behavior only: no execution, timing, satisfaction or acceptance result.',nodes:[{id:'state',name:'MotorStates',kind:'StateDefinition',parallel:false,subactions:{entryAction:[{elementId:'entry',text:'entry initialize;',textTruncated:false}]},constraints:[]},{id:'idle',name:'idle',kind:'StateUsage',parallel:false,subactions:{},constraints:[]},{id:'running',name:'running',kind:'StateUsage',parallel:false,subactions:{},constraints:[]}],relations:[{elementId:'transition',source:'idle',target:'running',kind:'TransitionUsage',triggers:[{elementId:'trigger',text:'accept Start();',textTruncated:false}],guards:[],effects:[],conditionStatus:{triggers:'resolved',guards:'unknown',effects:'unavailable'},declaration:'transition idle accept Start() then running;',declarationTruncated:false}],evidence:[{elementId:'transition',qualifiedName:'Pump::MotorStates::start',excerpt:'transition idle accept Start() then running;',excerptTruncated:false}],warnings:[{elementId:'transition',reason:'Guard evidence unavailable; do not infer absence'}],limits:['Ordinary flows do not establish an execution schedule.']}
-    const h=await harness(true);await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacityRequirement',metaclass:'RequirementUsage',source:'requirement capacity { doc /* At least three samples. */ }'},{sessionElementId:'capacity',qualifiedName:'Pump::controller::sampleCapacity',metaclass:'AttributeUsage',source:'attribute sampleCapacity : Integer = 2;'}],views:[{id:'requirement',targets:['Pump::capacityRequirement'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Required outcome',statement:'At least three samples.',takeaway:'One bounded declared comparison',rows:[comparison],warnings:[],omissions:['Physical verification has not been performed.'],acceptance:'Not assessed'}},{id:'state',targets:['Pump::MotorStates'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Motor states',statement:'',rows:[condition],behavior,warnings:[],omissions:[],acceptance:'Not assessed'},behavior}]})
+    const behavior={coverage:'partial',boundary:'Declared behavior only: no execution, timing, satisfaction or acceptance result.',nodes:[{id:'state',name:'MotorStates',kind:'StateDefinition',parallel:false,subactions:{entryAction:[{elementId:'entry',text:'entry initialize;',textTruncated:false}]},constraints:[]},{id:'idle',name:'idle',kind:'StateUsage',parallel:false,subactions:{},constraints:[]},{id:'running',name:'running',kind:'StateUsage',parallel:false,subactions:{},constraints:[]}],relations:[{elementId:'transition',source:'idle',target:'running',kind:'TransitionUsage',triggers:[{elementId:'trigger',text:'accept Start();',textTruncated:false}],guards:[],effects:[],conditionStatus:{triggers:'resolved',guards:'unknown',effects:'unavailable'},declaration:'transition idle accept Start() then running;',declarationTruncated:false}],evidence:[{elementId:'transition',qualifiedName:'Pump::MotorStates::start',excerpt:'transition idle accept Start() then running;',excerptTruncated:false}],warnings:[{elementId:'transition',reason:'Guard evidence unavailable; do not infer absence'}],limits:['Ordinary flows do not establish an execution schedule.']}
+    const h=await harness(true);await h.answer(0,true,{elements:[{sessionElementId:'req',qualifiedName:'Pump::capacityRequirement',metaclass:'RequirementUsage',source:'requirement capacity { doc /* At least three samples. */ }'},{sessionElementId:'capacity',qualifiedName:'Pump::controller::sampleCapacity',metaclass:'AttributeUsage',source:'attribute sampleCapacity : Integer = 2;'}],views:[{id:'requirement',targets:['Pump::capacityRequirement'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Required outcome',question:'Does the declared capacity cover the minimum?',statement:'At least three samples.',takeaway:'One bounded declared comparison',rows:[comparison],warnings:[],omissions:['Physical verification has not been performed.'],acceptance:'Not assessed'}},{id:'state',targets:['Pump::MotorStates'],svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholder:{title:'Motor states',statement:'',rows:[condition],behavior,warnings:[],omissions:[],acceptance:'Not assessed'},behavior}]})
     expect(document.getElementById('status')!.textContent+' '+document.getElementById('diagnostics')!.textContent).not.toContain('Unable')
     document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
     ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
@@ -1073,7 +1076,59 @@ describe('frozen reader retains declared facts and behavior conditions', () => {
     expect(doc.body.textContent).toContain('execution and acceptance not assessed')
     expect(doc.body.textContent).toContain('Acceptance: Not assessed')
     expect([...doc.querySelectorAll('blockquote')].map(n=>n.textContent)).toEqual(['At least three samples.'])
+    const requirement=doc.querySelector<HTMLElement>('[data-view-id="requirement"]')!,state=doc.querySelector<HTMLElement>('[data-view-id="state"]')!
+    expect(requirement.querySelector('h3')!.textContent).toBe('Does the declared capacity cover the minimum?')
+    expect(requirement.querySelector('.reader-material')!.closest('details')).toBeNull()
+    expect(requirement.querySelector('svg')!.closest('details')).toBeNull()
+    expect(state.querySelector('.reader-partial')!.textContent).toBe('Partial behavior projection')
+    expect(state.querySelector('.reader-partial')!.closest('details')).toBeNull()
+    expect(state.querySelector('.reader-acceptance')!.closest('details')).toBeNull()
+    for(const selector of ['.reader-facts-disclosure','.reader-behavior','.reader-limits']) {
+      const disclosure=state.querySelector<HTMLDetailsElement>(selector)!
+      expect(disclosure.open).toBe(false)
+      expect(disclosure.querySelector('summary')!.textContent).toMatch(/\d/)
+    }
     anchor.mockRestore()
+  })
+
+
+  it('starts a large reader with closed counted appendices and grouped warnings while retaining all requirement records and warning witnesses',async()=>{
+    const { Blob: NodeBlob } = await import('node:buffer');let output:Blob|undefined
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob:Blob)=>{output=blob;return 'blob:dense-reader'},revokeObjectURL(){}})
+    const click=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    try {
+      const requirements=Array.from({length:590},(_,i)=>({elementId:'requirement-'+i,qualifiedName:'Study::requirement'+i}))
+      const warnings=Array.from({length:48},(_,i)=>({elementId:'warning-'+i,reason:'Guard evidence unavailable; do not infer absence',field:'guard-'+i}))
+      const elements=[...requirements.map((r,i)=>({sessionElementId:r.elementId,qualifiedName:r.qualifiedName,metaclass:'RequirementUsage',source:'requirement requirement'+i+';'})),...warnings.map((w,i)=>({sessionElementId:w.elementId,qualifiedName:'Study::transition'+i,metaclass:'TransitionUsage',source:'transition witness'+i+';'}))]
+      const relations=Array.from({length:501},(_,i)=>({...scopeRelations[0],elementId:'interface-'+i}))
+      const behavior={coverage:'partial',nodes:[],relations:[],warnings,limits:['Declared conditions do not establish execution.']}
+      const h=await harness(true);await h.answer(0,true,{elements,catalogue:{...scopeCatalog,requirements,relations},views:[{id:'context',targets:['Study'],svg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Core model</text></svg>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"><text>Core model</text></svg>',stakeholder:{title:'System overview',question:'What needs review?',takeaway:'Review the declared conditions.',rows:[{title:'A retained fact',body:'Secondary fact remains available.',elementIds:['warning-47']}],warnings,omissions:['This is a source-derived review.'],acceptance:'Not assessed',behavior},behavior}]})
+      expect(document.getElementById('status')!.textContent+' '+document.getElementById('diagnostics')!.textContent).not.toContain('Unable')
+      document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+      ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
+      const doc=new DOMParser().parseFromString(await output!.text(),'text/html'),view=doc.querySelector('.reader-view')!
+      expect(view.querySelector('h3')!.textContent).toBe('What needs review?')
+      expect(view.querySelector('svg')!.closest('details')).toBeNull()
+      expect(view.querySelector('.reader-partial')!.textContent).toBe('Partial behavior projection')
+      const limits=view.querySelector<HTMLDetailsElement>('.reader-limits')!
+      expect(limits.open).toBe(false);expect(limits.querySelector('summary')!.textContent).toBe('Scope and evidence limits (1 warning groups, 2 scope notes)')
+      expect(limits.querySelectorAll(':scope > details')).toHaveLength(1)
+      expect(limits.textContent).toContain('Stakeholder warning records: 48; behavior warning records: 48.')
+      for(let i=0;i<48;i++){expect(limits.textContent).toContain('guard-'+i);expect(limits.textContent).toContain('transition witness'+i+';')}
+      const appendices=[...doc.querySelectorAll<HTMLDetailsElement>('.reader-appendix')]
+      expect(appendices).toHaveLength(3);expect(appendices.every(a=>!a.open)).toBe(true)
+      const register=appendices.find(a=>a.querySelector('h2')!.textContent==='Requirements register')!
+      expect(register.querySelector('summary')!.textContent).toBe('Model-wide requirements register (590 records)')
+      expect(register.querySelectorAll('h3')).toHaveLength(590)
+      expect(register.textContent).toContain('requirement requirement589;')
+      const interfaces=appendices.find(a=>a.querySelector('h2')!.textContent==='Interface register')!
+      expect(interfaces.querySelector('summary')!.textContent).toBe('Model-wide interface register (501 records; 500 included, 1 omitted)')
+      expect(interfaces.querySelectorAll('tr')).toHaveLength(501)
+      expect(interfaces.textContent).toContain('1 records omitted from this export')
+      expect(appendices.find(a=>a.querySelector('h2')!.textContent==='Declared responsibilities')!.querySelector('summary')!.textContent).toBe('Model-wide declared responsibilities (0 records)')
+      expect(doc.body.textContent).toContain('Secondary fact remains available.')
+      expect(doc.body.textContent).toContain('Acceptance: Not assessed')
+    } finally {click.mockRestore()}
   })
 })
 
@@ -1289,4 +1344,296 @@ describe('accepted project workspace namespace', () => {
     await expect(workflow.openProject({...before,id:'x'.repeat(201)})).rejects.toThrow('Project identity must contain 1–200 characters')
     expect(workflow.snapshot()).toEqual(before);expect(h.calls).toHaveLength(1)
   })
+})
+
+
+describe('quiet working surface retains meaningful evidence',()=>{
+  it('keeps successful notes in a closed disclosure and blocking errors visible',async()=>{
+    const h=await harness();await h.answer(0,true,{diagnostics:[{severity:'warning',line:null,message:'Execution count unavailable'}]});
+    expect(document.getElementById('diagnostics')!.textContent).toBe('');
+    expect((document.getElementById('validation-details') as HTMLDetailsElement).open).toBe(false);
+    expect(document.getElementById('validation-notes')!.textContent).toContain('Execution count unavailable');
+    expect(document.getElementById('validation-notes')!.textContent).not.toContain('line null');
+    h.edit('broken');h.tick();await h.answer(1,false,{diagnostics:[{severity:'error',line:3,message:'Unknown type'}]});
+    expect(document.getElementById('diagnostics')!.textContent).toContain('Unknown type');
+    expect((document.getElementById('editor') as HTMLDetailsElement).open).toBe(true);
+  });
+  it('groups repeated behavior limits while preserving every source inspection action',async()=>{
+    const h=await harness();const node={id:'motor',name:'motor',parallel:false,subactions:{},constraints:[]};
+    await h.answer(0,true,{views:[{id:'behavior',targets:['Pump'],view:'STATE',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',behavior:{nodes:[node],relations:[],warnings:[{elementId:'motor',reason:'Entry evidence unavailable'},{elementId:'motor',reason:'Entry evidence unavailable'}],boundary:'Declared only'}}]});
+    const evidence=document.querySelector<HTMLDetailsElement>('.behavior-evidence')!;
+    expect(evidence,document.getElementById('diagnostics')!.textContent||'missing evidence').not.toBeNull();
+    expect(evidence.open).toBe(false);
+    expect(evidence.querySelector('.behavior-limits')!.textContent).toContain('2 projection limitations · 1 kinds');
+    expect(evidence.querySelectorAll('.behavior-limits button')).toHaveLength(2);
+    evidence.open=true;(evidence.querySelector('button') as HTMLButtonElement).click();
+    expect(document.getElementById('selected')!.textContent).toContain('Motor');
+  });
+  it('uses original file locations only for the matching accepted source revision',async()=>{
+    const h=await harness();await h.answer(0,true,{sourceLocations:{status:'original',sourceSha256:'a'.repeat(64),elements:{motor:{path:'Technical/CSM.sysml',line:88}},diagnostics:[]}});
+    document.querySelector<SVGAElement>('#canvas a')!.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    expect(document.getElementById('inspector')!.textContent).toContain('Technical/CSM.sysml');
+    h.edit('changed');h.tick();await h.answer(1,true,{sourceLocations:{status:'original',sourceSha256:'stale',elements:{motor:{path:'WRONG.sysml',line:2}},diagnostics:[]}});
+    document.querySelector<SVGAElement>('#canvas a')!.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    expect(document.getElementById('inspector')!.textContent).not.toContain('WRONG.sysml');
+  });
+});
+
+describe('explicit source-file intake',()=>{
+  const file=(name:string,source:string)=>({name,webkitRelativePath:'',size:new TextEncoder().encode(source).length,arrayBuffer:async()=>new TextEncoder().encode(source).buffer});
+  async function choose(h:Awaited<ReturnType<typeof harness>>,index=1){
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click();
+    const input=document.querySelector<HTMLInputElement>('[aria-label="Import model source"]')!;
+    Object.defineProperty(input,'files',{value:[file('Study.sysml','part def Study;'),file('Other.sysml','part def Other;')],configurable:true});
+    input.dispatchEvent(new Event('change'));
+    await vi.waitFor(()=>expect(h.calls[index]?.url).toBe('/inspect'),{interval:1});
+    const source=h.calls[index].source;
+    await h.answer(index,true,{elements:[{sessionElementId:'study',qualifiedName:'Study',name:'Study',metaclass:'PartDefinition',line:2,source:'part def Study;'}]});
+    return source;
+  }
+  it('requires an explicit target, can cancel, and starts a new model with its own blank notes',async()=>{
+    const h=await harness(true);await h.answer(0);const workflow=(window as any).labWorkflow;
+    const before=structuredClone(workflow.snapshot());await choose(h);
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
+    const click=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent===name)!.click();
+    expect([...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Open selected model')!.disabled).toBe(true);
+    expect(workflow.snapshot()).toEqual(before);click('Cancel import');expect(workflow.snapshot()).toEqual(before);
+    document.querySelector<HTMLButtonElement>('#project-dialog .dialog-heading button')!.click();
+    const source=await choose(h,2);
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
+    const target=document.querySelector<HTMLSelectElement>('[aria-label="Open at model scope"]')!;target.value='Study';target.dispatchEvent(new Event('change'));
+    click('Open selected model');await h.answer(3);
+    const view={id:'overview',targets:['Study'],view:'INTERCONNECTION',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'};
+    await h.answer(4,true,{sourceSha256:createHash('sha256').update(source).digest('hex'),views:[view]});
+    await vi.waitFor(()=>expect(workflow.snapshot().title).toBe('Study'),{interval:1});
+    expect(workflow.snapshot().brief).toBe('');expect(workflow.snapshot().questions).toBe('');
+    await vi.waitFor(()=>expect(document.getElementById('project-file-state')!.textContent).toBe('Not saved'),{interval:1});
+    expect(workflow.snapshot().sourceSet.files.map((f:any)=>f.path)).toEqual(['Other.sysml','Study.sysml']);
+    const mapping=await workflow.sourceSetStatus();expect(mapping.status).toBe('original');expect(mapping.sourceMap).toHaveLength(2);
+    expect((await workflow.sourceSetStatus(source+'// edited')).sourceMap).toEqual([]);
+  });
+});
+
+
+describe('bounded source scope picker',()=>{
+  it('keeps a complete searchable inventory with forty deliberate choices per page',async()=>{
+    const h=await harness(true);await h.answer(0);const wf=(window as any).labWorkflow;
+    const targets=Array.from({length:1361},(_,i)=>({qualifiedName:'Study::Part'+i,name:'Part'+i,metaclass:'PartDefinition',line:1,source:'part def Part'+i+';'}));
+    targets.push({qualifiedName:'Study::@0',name:'Anonymous feature',metaclass:'PartUsage',line:1,source:'part : Part0;'});
+    const before=JSON.stringify(targets),first=wf.sourceScopePage(targets,'',0);
+    expect(first.items).toHaveLength(40);
+    expect(wf.sourceScopePage(targets,'Study::@0',0).items).toHaveLength(1);
+    expect(wf.sourceScopePage(targets,'does not exist',0).items).toHaveLength(0);
+    expect(JSON.stringify(targets)).toBe(before);
+  });
+});
+
+describe('overview identities and scrollable detail',()=>{
+  it('retains original labels and stereotypes when repeated zoom-out leaves no readable header height',async()=>{
+    const h=await harness(),originalCTM=(SVGElement.prototype as any).getScreenCTM,originalRect=SVGElement.prototype.getBoundingClientRect;
+    const currentWidth=(element:SVGElement)=>parseFloat((element.closest('svg') as SVGElement)?.style.width)||648;
+    (SVGElement.prototype as any).getScreenCTM=function(){return {a:currentWidth(this)/1800,b:0}};
+    SVGElement.prototype.getBoundingClientRect=function(){const width=currentWidth(this);return {width,height:width*500/1800,x:0,y:192,top:192,left:0,right:width,bottom:192+width*500/1800,toJSON(){}}};
+    try{
+      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><rect x="30" y="35" width="1740" height="54"/><text y="57" data-component-kind="true">«part»</text><text y="78" font-size="14" data-component-label="true" data-label-height="54" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
+      await h.answer(0,true,{views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]});
+      const label=document.querySelector<SVGTextElement>('[data-component-label]')!,kind=document.querySelector<SVGElement>('[data-component-kind]')!;
+      // The ordinary Saturn-sized overview still has room for a 12px identity.
+      expect(label.textContent).toBe('stage1');expect(parseFloat(label.style.fontSize)*.36).toBeCloseTo(12);expect(kind.style.display).toBe('none');
+      for(let i=0;i<8;i++)document.getElementById('minus')!.click();
+      expect((document.querySelector('#canvas svg') as SVGElement).style.width).toBe('160px');
+      const scale=160/1800,headerHeight=54*scale;
+      expect(headerHeight).toBeLessThan(16);expect(label.style.fontSize).toBe('');expect(label.textContent).toBe('stage1: S-IC');expect(kind.style.display).toBe('');
+      // With the original 14-unit label, its font box remains within the header;
+      // forcing a 12px screen label here would extend above the SVG itself.
+      const baseline=192+78*scale,headerTop=192+35*scale;
+      expect(baseline-14*scale).toBeGreaterThanOrEqual(headerTop);
+      expect(baseline-12).toBeLessThan(192);
+    }finally{
+      if(originalCTM)(SVGElement.prototype as any).getScreenCTM=originalCTM;else delete (SVGElement.prototype as any).getScreenCTM;
+      SVGElement.prototype.getBoundingClientRect=originalRect;
+    }
+  });
+  it('retains readable component identity in overview and restores complete detail labels',async()=>{
+    const h=await harness(),original=(SVGElement.prototype as any).getScreenCTM;
+    (SVGElement.prototype as any).getScreenCTM=()=>({a:.3,b:0});
+    try{
+      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 500"><a href="psysml:motor"><text data-component-kind="true">«part»</text><text font-size="14" data-component-label="true" data-label-height="54" data-overview-label="stage1" data-full-label="stage1: S-IC" data-label-width="300">stage1: S-IC</text></a></svg>';
+      await h.answer(0,true,{views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]});
+      const label=document.querySelector<SVGTextElement>('[data-component-label]')!;
+      expect(label.textContent).toBe('stage1');expect(parseFloat(label.style.fontSize)*.3).toBeGreaterThanOrEqual(12);
+      document.getElementById('readable')!.click();expect(label.textContent).toBe('stage1: S-IC');
+      expect(document.querySelector<SVGElement>('[data-component-kind]')!.style.display).toBe('');
+      const audience=document.getElementById('audience') as HTMLSelectElement;audience.value='stakeholder';audience.dispatchEvent(new Event('change'));
+    }finally{if(original)(SVGElement.prototype as any).getScreenCTM=original;else delete (SVGElement.prototype as any).getScreenCTM}
+  });
+});
+
+
+describe('reader configured catalogue coverage',()=>{
+  for(const custom of [false,true]) it(`qualifies bounded interface coverage visibly and in its closed appendix with custom perspective ${custom}`,async()=>{
+    const { Blob: NodeBlob } = await import('node:buffer');let output:Blob|undefined
+    vi.stubGlobal('Blob',NodeBlob);vi.stubGlobal('URL',{createObjectURL:(blob:Blob)=>{output=blob;return 'blob:bounded-reader'},revokeObjectURL(){}})
+    const click=vi.spyOn(window.HTMLAnchorElement.prototype,'click').mockImplementation(()=>{})
+    try {
+      const traceabilityLimit='Only configured part scopes have occurrence coverage. Other roots and cross-root relationships are not represented; their absence here is not evidence that they do not exist.'
+      const coverage={mode:'configured-part-scopes',globalAvailable:false,configuredRoots:['Pump'],excludedRootCount:3,globalUnavailableReason:'Complete expansion exceeds the configured occurrence budget',traceabilityLimit}
+      const h=await harness(true);await h.answer(0,true,{catalogue:{...scopeCatalog,coverage,relations:[],requirements:[],warnings:[{scope:'traceability',reason:traceabilityLimit}]}})
+      if(custom)(window as any).scopeWorkbench.review=()=>({nodes:[],relations:[],hiddenCount:2,crossing:[],filteredRelations:0,warnings:[]})
+      document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click()
+      ;[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Export reader review')!.click()
+      const doc=new DOMParser().parseFromString(await output!.text(),'text/html'),qualification=doc.querySelector('.reader-coverage')!
+      expect(qualification.closest('details')).toBeNull()
+      expect(qualification.textContent).toContain('1 included roots; 3 excluded roots')
+      expect(qualification.textContent).toContain(traceabilityLimit)
+      const appendix=[...doc.querySelectorAll<HTMLDetailsElement>('.reader-appendix')].find(a=>a.querySelector('h2')!.textContent==='Interface register')!
+      expect(appendix.open).toBe(false)
+      expect(appendix.querySelector('summary')!.textContent).toBe((custom?'Current perspective within ':'')+'configured part scopes (1 included roots; 3 excluded roots) interface register (0 records)')
+      expect(appendix.textContent).not.toContain('Model-wide')
+      expect(appendix.textContent).toContain('Included roots: Pump.')
+      expect(appendix.textContent).toContain(coverage.globalUnavailableReason)
+      expect(appendix.textContent).toContain(traceabilityLimit)
+      expect(doc.body.textContent).toContain('Model-wide requirements register (0 records)')
+      expect(doc.body.textContent).toContain('Model-wide declared responsibilities (0 records)')
+    } finally {click.mockRestore()}
+  })
+})
+
+
+describe('typed requirement inspector navigation',()=>{
+  async function requirementStudy(options:{deferred?:boolean;occurrences?:string[];polarity?:string;duplicateNode?:boolean;definitionTypes?:unknown[]}={}){
+    const target={key:'Subject/launchVehicle/stage1',root:'Subject',parent:'Subject/launchVehicle',depth:2,name:'stage1',elementId:'stage'}
+    const unrelated={...target,key:'Other/launchVehicle/stage1',root:'Other'}
+    const definition={sessionElementId:'definition-correct',metaclass:'RequirementDefinition',name:'EngineConfiguration',qualifiedName:'Technical::EngineConfiguration',line:1,source:'requirement def EngineConfiguration { doc /* The stage shall incorporate five F-1 engines. */ }'}
+    const usage={sessionElementId:'requirement-usage',metaclass:'RequirementUsage',name:'clr-R001',qualifiedName:'Specification::clr-R001',line:1,source:'requirement clr-R001 : Technical::EngineConfiguration;',semantics:{type:options.definitionTypes||[{id:definition.sessionElementId,metaclass:'RequirementDefinition',name:definition.name,qualifiedName:definition.qualifiedName}]}}
+    const assertion={sessionElementId:'assertion',metaclass:'SatisfyRequirementUsage',name:'satisfaction',qualifiedName:'Specification::satisfaction',line:1,source:'satisfy clr-R001 by subject.launchVehicle.stage1;'}
+    const elements=[usage,assertion,{...definition,sessionElementId:'definition-wrong',qualifiedName:'Other::EngineConfiguration',source:'UNRELATED SAME-LEAF REQUIREMENT'},...(!options.deferred?[definition]:[]),{sessionElementId:'stage',metaclass:'PartUsage',name:'stage1',qualifiedName:'Vehicle::stage1',line:1,source:'part stage1 : SIC;'}]
+    const catalog={...scopeCatalog,nodes:[...scopeCatalog.nodes,target,unrelated,...(options.duplicateNode?[{...target,elementId:'different-element'}]:[])],requirements:[{elementId:usage.sessionElementId,name:usage.name,qualifiedName:usage.qualifiedName}],traces:[{kind:'satisfy',polarity:options.polarity||'positive',sourceId:'stage',targetId:usage.sessionElementId,elementId:assertion.sessionElementId,sourceOccurrences:options.occurrences??[target.key]}]}
+    const h=await harness();await h.answer(0,true,{catalogue:catalog,elements})
+    document.getElementById('customize')!.click();document.getElementById('apply-scope')!.click()
+    h.calls[1]!.resolve({json:async()=>({sourceSha256:'a'.repeat(64),reportSha256:'b'.repeat(64),nodes:scopeCatalog.nodes,relations:[],crossing:[],warnings:[],hiddenCount:2,filteredRelations:0,svg:'<svg/>'})});await h.flush()
+    document.querySelector<HTMLButtonElement>('[data-surface="requirements"]')!.click()
+    ;[...document.querySelectorAll<HTMLButtonElement>('#canvas button')].find(b=>b.textContent===usage.qualifiedName)!.click()
+    return {...h,usage,definition,target}
+  }
+  const actions=()=>[...document.querySelectorAll<HTMLButtonElement>('#explore-selection button')]
+
+  it('opens the exact typed requirement definition from a requirement row without substituting a same-leaf name',async()=>{
+    const h=await requirementStudy()
+    expect(document.getElementById('snippet')!.textContent).toContain('requirement clr-R001')
+    actions().find(b=>b.textContent!.startsWith('Read requirement definition'))!.click();await h.flush()
+    expect(document.getElementById('snippet')!.textContent).toContain('The stage shall incorporate five F-1 engines.')
+    expect(document.getElementById('snippet')!.textContent).not.toContain('UNRELATED')
+    expect(document.getElementById('selection-meta')!.textContent).toContain('Technical::EngineConfiguration')
+    expect(h.calls).toHaveLength(2)
+  })
+
+  it('navigates to the exact assertion occurrence outside the current scope, keeping reference context',async()=>{
+    const h=await requirementStudy()
+    expect(document.getElementById('canvas')!.textContent).toContain('outside component scope')
+    const jump=actions().find(b=>b.textContent!.startsWith('Explore linked target'))!
+    expect(jump.title).toBe(h.target.key);expect(jump.textContent).toContain('S · asserted')
+    jump.click()
+    expect(h.calls[2]!.url).toBe('/compose')
+    expect(h.calls[2]!.payload.recipe).toMatchObject({root:'Subject',focus:'Subject/launchVehicle/stage1'})
+    expect(JSON.stringify(h.calls[2]!.payload.recipe)).not.toContain('Other/')
+  })
+
+  it('lists only explicit definition type identities, deduplicates IDs and avoids self references',async()=>{
+    const h=await requirementStudy({definitionTypes:[
+      {id:'definition-correct',metaclass:'RequirementDefinition',name:'EngineConfiguration'},
+      {id:'definition-correct',metaclass:'RequirementDefinition',name:'Duplicate'},
+      {id:'definition-wrong',metaclass:'RequirementDefinition',name:'Other definition'},
+      {id:'requirement-usage',metaclass:'RequirementDefinition',name:'Self'},
+      {id:'stage',metaclass:'PartDefinition',name:'Not a requirement'},
+      {id:'',metaclass:'RequirementDefinition',name:'Missing identity'},
+    ]})
+    const definitions=actions().filter(b=>b.textContent!.startsWith('Read requirement definition'))
+    expect(definitions).toHaveLength(2)
+    expect(definitions[1]!.textContent).toContain('Other definition')
+    definitions[1]!.click();await h.flush()
+    expect(document.getElementById('snippet')!.textContent).toBe('UNRELATED SAME-LEAF REQUIREMENT')
+  })
+
+  for(const sample of [{occurrences:[]},{occurrences:['missing/path']},{occurrences:['Subject/launchVehicle/stage1','Other/launchVehicle/stage1']},{duplicateNode:true}]){
+    it(`does not guess a component destination for unresolved or ambiguous occurrence evidence ${JSON.stringify(sample)}`,async()=>{
+      await requirementStudy(sample)
+      expect(actions().some(b=>b.textContent!.startsWith('Explore linked target'))).toBe(false)
+      expect(document.getElementById('explore-selection')!.textContent).toContain('No target has been inferred')
+    })
+  }
+
+  for(const polarity of ['negative','unknown']) it(`retains ${polarity} satisfaction wording while offering exact-context navigation`,async()=>{
+    await requirementStudy({polarity})
+    const jump=actions().find(b=>b.textContent!.startsWith('Explore linked target'))!
+    expect(jump.textContent).toContain(polarity==='negative'?'Not satisfied · asserted':'Satisfaction polarity unknown')
+    expect(jump.textContent).not.toContain('S · asserted')
+  })
+
+  it('keeps deferred definition requests revision-bound and discards a reply after source changes',async()=>{
+    const h=await requirementStudy({deferred:true})
+    actions().find(b=>b.textContent!.startsWith('Read requirement definition'))!.click()
+    expect(h.calls[2]!.url).toBe('/element')
+    expect(h.calls[2]!.payload).toMatchObject({elementId:'definition-correct',sourceSha256:'a'.repeat(64),reportSha256:'b'.repeat(64)})
+    h.edit('changed source')
+    h.calls[2]!.resolve({json:async()=>({sourceSha256:'a'.repeat(64),reportSha256:'b'.repeat(64),element:h.definition})});await h.flush()
+    expect(document.getElementById('selected')!.textContent).toBe('Nothing selected')
+    expect(document.getElementById('snippet')!.textContent).toBe('')
+  })
+
+  it('accepts an exact deferred definition and rejects a different returned identity',async()=>{
+    const h=await requirementStudy({deferred:true})
+    actions().find(b=>b.textContent!.startsWith('Read requirement definition'))!.click()
+    h.calls[2]!.resolve({json:async()=>({sourceSha256:'a'.repeat(64),reportSha256:'b'.repeat(64),element:{...h.definition,sessionElementId:'definition-wrong'}})});await h.flush()
+    expect(document.getElementById('selected')!.textContent).toBe('Source evidence unavailable')
+    document.querySelector<HTMLButtonElement>('#canvas button')!.click()
+    actions().find(b=>b.textContent!.startsWith('Read requirement definition'))!.click()
+    h.calls[3]!.resolve({json:async()=>({sourceSha256:'a'.repeat(64),reportSha256:'b'.repeat(64),element:h.definition})});await h.flush()
+    expect(document.getElementById('snippet')!.textContent).toContain('five F-1 engines')
+  })
+})
+
+
+describe('requirement inspector navigation boundary controls',()=>{
+  it('does not guess an assertion target from a terminal element ID when its occurrence path is missing',async()=>{
+    const h=await perspectiveHarness();await h.composed()
+    // Reuse the real trace table route rather than invoking the inspector directly.
+    document.querySelector<HTMLButtonElement>('[data-surface="traces"]')!.click()
+    const witness=[...document.querySelectorAll<HTMLButtonElement>('#canvas button')].find(b=>b.textContent==='Inspect statement')!
+    witness.click();await h.flush()
+    const jumps=[...document.querySelectorAll<HTMLButtonElement>('#explore-selection button')].filter(b=>b.textContent!.startsWith('Explore linked target'))
+    // The old fixture deliberately has no exact sourceOccurrences path. No terminal-ID fallback is allowed.
+    expect(jumps).toHaveLength(0)
+    expect(document.getElementById('explore-selection')!.textContent).toContain('No target has been inferred')
+  })
+
+  it('cannot execute a retained target-navigation action after its source revision is invalidated',async()=>{
+    const h=await harness()
+    const node={key:'Reference/stage1',root:'Reference',parent:'Reference',name:'stage1',elementId:'stage',depth:1}
+    const req={sessionElementId:'req',metaclass:'RequirementUsage',name:'R1',qualifiedName:'Specification::R1',source:'requirement R1;'}
+    const catalog={...scopeCatalog,nodes:[node],requirements:[{elementId:'req',name:'R1',qualifiedName:req.qualifiedName}],traces:[{kind:'satisfy',polarity:'positive',sourceId:'stage',targetId:'req',elementId:'assertion',sourceOccurrences:[node.key]}]}
+    await h.answer(0,true,{catalogue:catalog,elements:[req]})
+    ;(window as any).scopeWorkbench.selection('req')
+    const oldJump=document.querySelector<HTMLButtonElement>('#explore-selection button')!
+    expect(oldJump.textContent).toContain('Explore linked target')
+    h.edit('new draft');oldJump.click();await h.flush()
+    expect(h.calls).toHaveLength(1)
+    expect(document.getElementById('canvas')!.textContent).toContain('Draft changed')
+  })
+})
+
+it('opens an assertion source witness and explores only its exact typed occurrence',async()=>{
+  const h=await harness()
+  const occurrence={key:'Reference/stage1',root:'Reference',parent:'Reference',name:'stage1',elementId:'stage',depth:1}
+  const assertion={sessionElementId:'assertion',metaclass:'SatisfyRequirementUsage',name:'satisfaction',qualifiedName:'Specification::assertion',source:'satisfy R1 by subject.stage1;'}
+  const catalog={...scopeCatalog,roots:['Reference'],nodes:[occurrence],traces:[{kind:'satisfy',polarity:'negative',sourceId:'stage',targetId:'req',elementId:'assertion',sourceOccurrences:[occurrence.key]}]}
+  const svg='<svg xmlns="http://www.w3.org/2000/svg"><a href="psysml:assertion"><text>Assertion witness</text></a></svg>'
+  await h.answer(0,true,{catalogue:catalog,elements:[assertion],views:[{id:'context',targets:['Pump'],svg,stakeholderSvg:svg}]})
+  document.querySelector('svg a')!.dispatchEvent(new MouseEvent('click',{bubbles:true}));await h.flush()
+  expect(document.getElementById('snippet')!.textContent).toBe(assertion.source)
+  const jump=document.querySelector<HTMLButtonElement>('#explore-selection button')!
+  expect(jump.textContent).toContain('Explore linked target');expect(jump.textContent).toContain('Not satisfied · asserted')
+  jump.click()
+  expect(h.calls[1]!.url).toBe('/compose')
+  expect(h.calls[1]!.payload.recipe).toMatchObject({root:'Reference',focus:'Reference/stage1'})
 })

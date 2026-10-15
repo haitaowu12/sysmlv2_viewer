@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 import unittest
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'modeling-lab/workbench/tools/reference-pilot'))
 
 
 def context():
@@ -10,7 +12,8 @@ def context():
         return {'sourceSha256': hashlib.sha256(source.encode()).hexdigest(), 'staticChecksPassed': True, 'elements': [], 'views': []}
     env = {'json': json, 'hashlib': hashlib, 'normalize': normalize, 'views_for': lambda views: views,
            'exploration_views': lambda views, target, view: views, 'summarize': lambda old, new: [],
-           'catalogue': lambda report: {'nodes': [], 'relations': []}, 'browser_report': lambda report: report}
+           'catalogue': lambda report: {'nodes': [], 'relations': []}, 'browser_report': lambda report, metadata=None: report}
+    env['catalogue_for_views']=lambda report,views:env['catalogue'](report)
     exec((Path(__file__).parent / 'public/python/browser_handler.py').read_text(), env)
     return env
 
@@ -200,3 +203,22 @@ class RequiredBrowserViews(unittest.TestCase):
         report = env['render_report'](inspected)
         self.assertTrue(report['staticChecksPassed']); self.assertIn('error', report['views'][0])
         self.assertEqual(env['current_report'], old)
+
+class BrowserSourceSetTransactions(unittest.TestCase):
+    def test_source_set_is_validated_bound_and_rolled_back_with_accepted_report(self):
+        from source_intake import assemble_records
+        assembled=assemble_records([{'path':'Technical/CSM.sysml','source':'part def CSM;'}])
+        env=context()
+        original=env['render_report'](request(assembled['source'],accept=True,sourceSet=assembled['sourceSet']))
+        self.assertEqual(env['current_report']['_sourceSet'],assembled['sourceSet'])
+        candidate=env['render_report'](request('new',stage=True,transactionId='replace-project',sourceSet=None,
+            expectedBase=original['sourceSha256'],expectedReport=original['reportIntegrity']['reportSha256']))
+        env['accept_current']({'transactionId':'replace-project','sourceSha256':candidate['sourceSha256'],
+            'reportSha256':candidate['reportIntegrity']['reportSha256']})
+        self.assertIsNone(env['current_report']['_sourceSet'])
+        env['rollback_current']({'transactionId':'replace-project'})
+        self.assertEqual(env['current_report']['_sourceSet'],assembled['sourceSet'])
+        tampered=json.loads(json.dumps(assembled['sourceSet']));tampered['files'][0]['source']='different'
+        with self.assertRaisesRegex(ValueError,'revision do not match'):
+            env['render_report'](request(assembled['source'],sourceSet=tampered))
+        self.assertEqual(env['current_report'],original)

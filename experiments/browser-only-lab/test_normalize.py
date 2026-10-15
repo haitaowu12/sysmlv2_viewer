@@ -94,4 +94,78 @@ class NormalizeTests(unittest.TestCase):
         rows[0]['ownedRedefinition'].append({'@id':'s'})
         self.assertIsNone(normalize(rows,'')['elements'][0]['name'])
 
+
+
+class EffectivePartNameTests(unittest.TestCase):
+    def test_typed_part_redefinition_retains_engine_ids_and_qualified_names(self):
+        rows=[{'@id':'part','@type':'PartUsage','qualifiedName':'P::@4','ownedRedefinition':[{'@id':'redef'}]},
+              {'@id':'redef','@type':'Redefinition','redefiningFeature':{'@id':'part'},'redefinedFeature':{'@id':'base'}},
+              {'@id':'base','@type':'PartUsage','declaredName':'engines'}]
+        result=normalize(rows,'')['elements'][0]
+        self.assertEqual(result['name'],'engines')
+        self.assertEqual(result['qualifiedName'],'P::@4')
+        self.assertEqual(result['sessionElementId'],'part')
+        self.assertEqual(result['semantics']['effectiveNameEvidence'][0]['id'],'base')
+        rows[1]['redefiningFeature']={'@id':'wrong'}
+        self.assertIsNone(normalize(rows,'')['elements'][0]['name'])
+
+    def test_conflicting_part_redefinitions_and_genuine_anonymous_part_are_not_renamed(self):
+        rows=[{'@id':'part','@type':'PartUsage','qualifiedName':'P::@4','ownedRedefinition':[{'@id':'r1'},{'@id':'r2'}]},
+              {'@id':'r1','@type':'Redefinition','redefiningFeature':{'@id':'part'},'redefinedFeature':{'@id':'base1'}},
+              {'@id':'r2','@type':'Redefinition','redefiningFeature':{'@id':'part'},'redefinedFeature':{'@id':'base2'}},
+              {'@id':'base1','@type':'PartUsage','declaredName':'engines'},
+              {'@id':'base2','@type':'PartUsage','declaredName':'stages'},
+              {'@id':'anonymous','@type':'PartUsage','qualifiedName':'P::@5'}]
+        elements=normalize(rows,'')['elements']
+        self.assertIsNone(elements[0]['name']);self.assertIsNone(elements[-1]['name'])
+
+
+
+class IncompletePartRedefinitionTests(unittest.TestCase):
+    def test_same_named_multiple_or_unresolved_targets_do_not_claim_unique_effective_identity(self):
+        rows=[{'@id':'part','@type':'PartUsage','qualifiedName':'P::@4','ownedRedefinition':[{'@id':'r1'},{'@id':'r2'}]},
+              {'@id':'r1','@type':'Redefinition','redefiningFeature':{'@id':'part'},'redefinedFeature':{'@id':'a'}},
+              {'@id':'r2','@type':'Redefinition','redefiningFeature':{'@id':'part'},'redefinedFeature':{'@id':'b'}},
+              {'@id':'a','@type':'PartUsage','declaredName':'engines'},
+              {'@id':'b','@type':'PartUsage','declaredName':'engines'}]
+        self.assertIsNone(normalize(rows,'')['elements'][0]['name'])
+        rows[2]['redefinedFeature']={'@id':'unavailable'}
+        self.assertIsNone(normalize(rows,'')['elements'][0]['name'])
+
 if __name__=='__main__':unittest.main()
+
+
+class MultiplicityProducerShapeTests(unittest.TestCase):
+    def test_typed_lower_upper_references_bridge_without_changing_identity(self):
+        raw=[{'@id':'range','@type':'MultiplicityRange','lowerBound':{'@id':'zero'},'upperBound':{'@id':'two'}},
+             {'@id':'zero','@type':'LiteralInteger','value':0},{'@id':'two','@type':'LiteralInteger','value':2},
+             {'@id':'star-range','@type':'MultiplicityRange','upperBound':{'@id':'star'}},
+             {'@id':'star','@type':'LiteralInfinity'}]
+        report=normalize(raw,'');by_id={e['sessionElementId']:e for e in report['elements']}
+        self.assertEqual([r['id'] for r in by_id['range']['semantics']['bound']],['zero','two'])
+        self.assertEqual([r['id'] for r in by_id['star-range']['semantics']['bound']],['star'])
+        self.assertEqual(by_id['range']['semantics']['upperBound']['id'],'two')
+        self.assertEqual(by_id['range']['sessionElementId'],'range')
+        raw[0]['upperBound']={'@id':'missing'}
+        self.assertNotIn('bound',normalize(raw,'')['elements'][0]['semantics'])
+
+class ProducerProjectionIntegrationTests(unittest.TestCase):
+    def test_anonymous_document_namespace_and_upper_bound_reach_both_audience_projections(self):
+        from engineering import interconnection
+        from stakeholder import project
+        raw=[{'@id':'doc','@type':'Namespace','ownedMember':[{'@id':'package'}]},
+             {'@id':'package','@type':'Package','declaredName':'TechnicalComponentsPackage','qualifiedName':'TechnicalComponentsPackage','owner':{'@id':'doc'}},
+             {'@id':'root','@type':'PartDefinition','declaredName':'S-IC','qualifiedName':'TechnicalComponentsPackage::S-IC','owner':{'@id':'package'},'feature':[{'@id':'a'},{'@id':'b'},{'@id':'collection'}]},
+             {'@id':'a','@type':'PartUsage','declaredName':'engine1','qualifiedName':'TechnicalComponentsPackage::S-IC::engine1','owner':{'@id':'root'},'feature':[]},
+             {'@id':'b','@type':'PartUsage','declaredName':'engine2','qualifiedName':'TechnicalComponentsPackage::S-IC::engine2','owner':{'@id':'root'},'feature':[]},
+             {'@id':'collection','@type':'PartUsage','declaredName':'subcomponents','qualifiedName':'TechnicalComponentsPackage::S-IC::subcomponents','owner':{'@id':'root'},'multiplicity':{'@id':'range'},'value':{'@id':'null'}},
+             {'@id':'range','@type':'MultiplicityRange','upperBound':{'@id':'star'}},
+             {'@id':'star','@type':'LiteralInfinity'},{'@id':'null','@type':'NullExpression'}]
+        report=normalize(raw,'')
+        target="TechnicalComponentsPackage::'S-IC'"
+        engineering=interconnection(report,target);stakeholder=project(report,target)
+        self.assertIn('2 component usages · 1 collection features',engineering['svg'])
+        self.assertEqual(engineering['collections'][0]['kind'],'null-collection')
+        self.assertEqual(stakeholder['scopeElementId'],'root')
+        self.assertNotIn('Subcomponents',stakeholder['takeaway'])
+        self.assertEqual(report['elements'][2]['qualifiedName'],'TechnicalComponentsPackage::S-IC')
