@@ -23,14 +23,52 @@ def model(parallel=True):
             element('transition','start','TransitionUsage','a',source={'id':'off'},target={'id':'on'},guardExpression={'id':'guard'})])
 
 
+def linear_state_model(count=5, parallel=False):
+    elements=[element('root','phases','ExhibitStateUsage',isParallel=parallel)]
+    states=[]
+    for i in range(count):
+        state_id='phase'+str(i)
+        states.append(state_id)
+        elements.append(element(state_id,'phase'+str(i),'StateUsage','root',isParallel=False))
+    for i,(source,target) in enumerate(zip(states,states[1:])):
+        elements.append(element('transition'+str(i),'advance'+str(i),'TransitionUsage','root',
+                                source={'id':source},target={'id':target}))
+    return dict(staticChecksPassed=True,behaviorFieldsVersion=1,elements=elements)
+
+
 class BehaviorTests(unittest.TestCase):
     def test_parallel_is_engine_fact_and_changes_projection(self):
         p=project(model(),'Demo::state');q=project(model(False),'Demo::state')
         self.assertTrue(p['nodes'][0]['parallel']);self.assertFalse(q['nodes'][0]['parallel'])
         self.assertNotEqual(graph_dot(p),graph_dot(q))
+        self.assertIn('rankdir=TB', graph_dot(p))
+        self.assertNotIn('compact-wrapped-linear-direct-state-chain', graph_dot(p))
         self.assertEqual(len(p['relations']),1)
         self.assertEqual((p['relations'][0]['source'],p['relations'][0]['target']),('off','on'))
         self.assertFalse(any(x['source']=='b' or x['target']=='b' for x in p['relations']))
+
+    def test_compact_layout_requires_complete_linear_direct_state_chain(self):
+        p=project(linear_state_model(15),'Demo::phases')
+        dot=graph_dot(p)
+        self.assertIn('compact-wrapped-linear-direct-state-chain',dot)
+        self.assertIn('rankdir=TB',dot)
+        self.assertIn('compact_row_0',dot)
+        self.assertIn('compact_row_1',dot)
+        self.assertEqual(len(p['nodes']),16)
+        self.assertEqual(len(p['relations']),14)
+        self.assertEqual({r['source'] for r in p['relations']},
+                         {'phase'+str(i) for i in range(14)})
+
+        branch=linear_state_model()
+        branch['elements'].append(element('branch','branch','TransitionUsage','root',
+                                           source={'id':'phase0'},target={'id':'phase2'}))
+        branch_projection=project(branch,'Demo::phases')
+        self.assertIn('rankdir=TB',graph_dot(branch_projection))
+        self.assertNotIn('compact-wrapped-linear-direct-state-chain',graph_dot(branch_projection))
+
+        parallel_projection=project(linear_state_model(parallel=True),'Demo::phases')
+        self.assertIn('rankdir=TB',graph_dot(parallel_projection))
+        self.assertNotIn('compact-wrapped-linear-direct-state-chain',graph_dot(parallel_projection))
 
     def test_guard_obligation_and_anchors_survive(self):
         p=project(model(),'Demo::state')

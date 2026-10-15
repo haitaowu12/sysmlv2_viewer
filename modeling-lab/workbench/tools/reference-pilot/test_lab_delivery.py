@@ -38,5 +38,27 @@ class LabDeliveryTests(unittest.TestCase):
             element_detail(None, req)
 
 
+    def test_original_file_locations_are_separate_and_revision_bound(self):
+        from source_intake import assemble_records
+        assembled = assemble_records([{'path':'Technical/CSM.sysml','source':'part def CSM;'}])
+        report = {'source':assembled['source'], 'sourceSha256':assembled['sourceSet']['assembledSourceSha256'],
+                  'staticChecksPassed':True, 'reportIntegrity':{'reportSha256':'sealed'},
+                  'elements':[{'sessionElementId':'csm','metaclass':'PartDefinition','qualifiedName':'CSM','line':1}],
+                  'diagnostics':[{'line':1,'message':'witness'}]}
+        before=copy.deepcopy(report)
+        delivered=browser_report(report,assembled['sourceSet'])
+        self.assertEqual(delivered['sourceLocations']['elements']['csm']['path'],'Technical/CSM.sysml')
+        self.assertEqual(delivered['sourceLocations']['diagnostics'][0]['originalSource']['line'],1)
+        detail=element_detail(report,{'sourceSha256':report['sourceSha256'],'reportSha256':'sealed','elementId':'csm'},assembled['sourceSet'])
+        self.assertEqual(detail['sourceLocation']['path'],'Technical/CSM.sysml')
+        self.assertEqual(report,before)
+        import hashlib
+        report['source']+='// edited\n';report['sourceSha256']=hashlib.sha256(report['source'].encode()).hexdigest()
+        edited=browser_report(report,assembled['sourceSet'])['sourceLocations']
+        self.assertEqual(edited['status'],'edited')
+        self.assertEqual(edited['elements'],{})
+        self.assertEqual(edited['sourceMap'],[])
+
+
 if __name__ == '__main__':
     unittest.main()

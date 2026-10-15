@@ -61,3 +61,13 @@ test('Python rejection of an unknown rollback preserves both accepted and staged
  assert.equal((await accept(worker,'valid-stage')).result.accepted,true);
  assert.equal((await worker.send('/compose')).result.source,'new');
 });
+
+test('complete 338 KiB model is admitted while UTF-8 bytes remain bounded at 512 KiB',async()=>{
+ const worker=await opened();
+ const complete='a'.repeat(345795);
+ assert.equal((await worker.send('/inspect',{source:complete})).result.staticChecksPassed,true);
+ assert.equal((await worker.send('/inspect',{source:'a'.repeat(524288)})).result.staticChecksPassed,true);
+ assert.match((await worker.send('/inspect',{source:'a'.repeat(524289)})).error,/512 KiB/);
+ assert.match((await worker.send('/inspect',{source:'界'.repeat(174763)})).error,/512 KiB/);
+ assert.equal((await worker.send('/compose')).result.source,'old');
+});

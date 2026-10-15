@@ -3,6 +3,7 @@
 Analytical projections, not native SysML view usages or a second semantic model.
 """
 import hashlib
+from presentation import display_name, element_order, part_features, resolve_target
 from engineering import index_report, sem, features, types, endpoint, interface_flows, LINKS
 from stakeholder import human, render_svg
 from check_contract import references, satisfaction_polarity
@@ -10,6 +11,16 @@ from check_contract import references, satisfaction_polarity
 PARTS = {'PartDefinition', 'PartUsage'}
 KINDS = {'connection', 'binding', 'flow'}
 LIMITS = {'occurrences': 2000, 'depth': 8, 'diagramNodes': 40, 'diagramEdges': 120}
+
+
+class ExplorationBudgetError(ValueError):
+    """No catalogue was returned because its occurrence budget was exceeded."""
+
+
+def _global_roots(index):
+    return sorted((e for e in index.values() if e.get('qualifiedName') and
+                   (e['metaclass'] == 'PartDefinition' or e['metaclass'] == 'PartUsage' and
+                    sem(e, 'owner', {}).get('metaclass') not in PARTS)), key=lambda e: e['qualifiedName'])
 
 
 
@@ -59,36 +70,45 @@ def satisfaction_occurrences(assertion, target, nodes, ix):
     return candidates if len(candidates) == 1 else []
 
 
-def catalogue(report):
+def catalogue(report, roots=None):
     if not report.get('staticChecksPassed'):
         raise ValueError('A validated source revision is required')
     ix = index_report(report)
-    roots = sorted((e for e in ix.values() if e.get('qualifiedName') and
-                    (e['metaclass'] == 'PartDefinition' or e['metaclass'] == 'PartUsage' and
-                     sem(e, 'owner', {}).get('metaclass') not in PARTS)), key=lambda e: e['qualifiedName'])
-    nodes, relations, warnings = [], [], []
+    if roots is None:
+        roots = _global_roots(ix)
+    else:
+        if not isinstance(roots, list) or not roots:
+            raise ValueError('Explicit catalogue scopes require a nonempty target list')
+        resolved = [resolve_target(report, target, PARTS) for target in roots]
+        roots = sorted({e['sessionElementId']: e for e in resolved}.values(), key=lambda e: e['qualifiedName'])
+    nodes, relations, warnings, collections = [], [], [], []
     def visit(e, path, parent, root, depth, ancestors):
         if len(nodes) >= LIMITS['occurrences']:
-            raise ValueError('Model exceeds the 2000-occurrence exploration budget; split the source package. No partial catalogue returned.')
+            raise ExplorationBudgetError('Model exceeds the 2000-occurrence exploration budget; split the source package. No partial catalogue returned.')
         node = {'key': path, 'parent': parent, 'root': root, 'depth': depth,
-                'elementId': e['sessionElementId'], 'name': e.get('name', '(unnamed)'),
-                'qualifiedName': e.get('qualifiedName', ''), 'type': ', '.join(types(e)),
+                'elementId': e['sessionElementId'], 'name': display_name(e),
+                'qualifiedName': e.get('qualifiedName') or '', 'type': ', '.join(types(e)),
                 'referenced': e['metaclass'] == 'PartUsage' and not sem(e, 'isComposite', False)}
         nodes.append(node)
         fs = features(e, ix)
-        children = sorted((x for x in fs if x['metaclass'] == 'PartUsage'), key=lambda x: x.get('qualifiedName', ''))
+        children, collection_features = part_features(e, ix)
+        children.sort(key=lambda e: (e.get('qualifiedName') or '', element_order(e)))
+        for collection in collection_features:
+            collections.append(dict(collection, scope=path))
+            warnings.append({'scope': path, 'elementId': collection['elementId'],
+                             'reason': 'Collection feature ' + collection['name'] + ' ' + collection['multiplicity'] + ': ' + collection['reason'] + (' Members: ' + ', '.join(collection['memberNames']) if collection['memberNames'] else '')})
         if e['sessionElementId'] in ancestors or depth >= LIMITS['depth']:
             if children: warnings.append({'scope': path, 'reason': 'Recursive or depth-limited structure not expanded'})
             return
-        childkeys = {}
+        by_id = {}
         counts = {c.get('name'): sum(x.get('name') == c.get('name') for x in children) for c in children}
         for child in children:
             name = child.get('name')
-            if not name or counts[name] != 1:
-                warnings.append({'scope': path, 'reason': 'Unnamed or ambiguous child omitted; inspect source'})
-                continue
-            childkeys[name] = path + '/' + name
-        by_id = {c['sessionElementId']: childkeys[c['name']] for c in children if c.get('name') in childkeys}
+            if not isinstance(name, str) or not name or counts[name] != 1:
+                warnings.append({'scope': path, 'elementId': child['sessionElementId'], 'reason': 'Unnamed or repeated-name component retained by its engine identity; inspect source for its declaration.'})
+                by_id[child['sessionElementId']] = path + '/@' + child['sessionElementId']
+            else:
+                by_id[child['sessionElementId']] = path + '/' + name
         ports = {x['sessionElementId'] for x in fs if x['metaclass'] == 'PortUsage'}
         child_ports = {c['sessionElementId']: {p['sessionElementId'] for p in features(c, ix) if p['metaclass'] == 'PortUsage'} for c in children}
         def contact(pair):
@@ -100,7 +120,7 @@ def catalogue(report):
                 if component not in by_id or port not in child_ports[component]:
                     raise ValueError('Unresolved contextual endpoint')
                 key = by_id[component]
-            return {'node': key, 'portId': port, 'port': ix[port].get('name', '(unnamed)')}
+            return {'node': key, 'portId': port, 'port': display_name(ix[port])}
         for link in fs:
             if link['metaclass'] not in LINKS: continue
             try:
@@ -111,7 +131,7 @@ def catalogue(report):
                 key = path + '|relation|' + (link.get('qualifiedName') or str(link.get('line'))) + '|' + str(len(relations))
                 kind = 'binding' if link['metaclass'] == 'BindingConnectorAsUsage' else 'connection'
                 base = {'key': key, 'scope': path, 'source': a, 'target': b, 'kind': kind,
-                        'elementId': link['sessionElementId'], 'name': link.get('name', '(unnamed)'), 'item': '', 'connectionId': link['sessionElementId']}
+                        'elementId': link['sessionElementId'], 'name': display_name(link), 'item': '', 'connectionId': link['sessionElementId']}
                 relations.append(base)
                 flows, errors = interface_flows(link, ix)
                 warnings.extend({'scope': path, **error} for error in errors)
@@ -168,7 +188,42 @@ def catalogue(report):
                 else: warnings.append({'scope': 'traceability', 'reason': 'Verification target outside extracted evidence'})
     return {'roots': [e['qualifiedName'] for e in roots], 'nodes': nodes, 'relations': relations,
             'requirements': [{'elementId': e['sessionElementId'], 'name': e.get('name'), 'qualifiedName': e['qualifiedName']} for e in requirements],
-            'traces': traces, 'warnings': warnings, 'limits': LIMITS, 'sourceSha256': report['sourceSha256']}
+            'traces': traces, 'collections': collections, 'warnings': warnings, 'limits': LIMITS, 'sourceSha256': report['sourceSha256']}
+
+
+def catalogue_for_views(report, views):
+    """Use configured part scopes only when complete global exploration exceeds its budget.
+
+    A configured catalogue is complete within the existing expansion limits for
+    precisely those roots. All extracted requirements and trace declarations
+    remain in its evidence inventory; occurrence coverage is explicitly limited.
+    """
+    try:
+        return catalogue(report)
+    except ExplorationBudgetError as error:
+        global_reason = str(error)
+    if not isinstance(views, list):
+        raise ValueError('Configured catalogue requires a view recipe list')
+    selected = {}
+    for view in views:
+        names = view.get('names') if isinstance(view, dict) else None
+        if not isinstance(names, list) or len(names) != 1:
+            raise ValueError('Configured catalogue requires uniquely resolved single-target views')
+        target = resolve_target(report, names[0])
+        if target['metaclass'] in PARTS:
+            selected[target['sessionElementId']] = target
+    if not selected:
+        raise ValueError('Global exploration exceeds its budget and no configured view selects a supported part scope')
+    # An oversized configured root fails again; no prefix or arbitrary root is returned.
+    result = catalogue(report, roots=[e['qualifiedName'] for e in selected.values()])
+    global_ids = {e['sessionElementId'] for e in _global_roots(index_report(report))}
+    limitation = ('Only configured part scopes have occurrence coverage. Other roots, cross-root relationships and '
+                  'unresolved trace occurrences are not represented; their absence here is not evidence that they do not exist.')
+    result['coverage'] = {'mode': 'configured-part-scopes', 'globalAvailable': False,
+        'globalUnavailableReason': global_reason, 'excludedRootCount': len(global_ids - selected.keys()),
+        'configuredRoots': result['roots'], 'traceabilityLimit': limitation}
+    result['warnings'].append({'scope': 'traceability', 'reason': limitation})
+    return result
 
 
 def select(catalog, recipe):
@@ -202,6 +257,8 @@ def select(catalog, recipe):
             'relations': visible, 'crossing': crossing, 'hiddenCount': len(allnodes) - len(chosen),
             'filteredRelations': sum(1 for r in catalog['relations'] if r['source']['node'] in chosen and r['target']['node'] in chosen and r['kind'] not in kinds),
             'warnings': [w for w in catalog['warnings'] if w['scope'] == 'traceability' or w['scope'] in allnodes],
+            'collections': [c for c in catalog.get('collections', []) if c['scope'] in chosen],
+            **({'coverage': catalog['coverage']} if 'coverage' in catalog else {}),
             'sourceSha256': catalog['sourceSha256'], 'recipe': recipe}
 
 

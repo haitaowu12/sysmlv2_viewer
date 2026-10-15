@@ -8,7 +8,7 @@ PUBLIC=ROOT/'public'
 (PUBLIC/'python').mkdir(parents=True,exist_ok=True)
 remove_python_caches(PUBLIC/'python')
 (PUBLIC/'pyodide').mkdir(exist_ok=True)
-for name in ['engineering','stakeholder','behavior','check_contract','receipts','view_scope','capacity_analysis','change_summary','report_integrity','lab_project','lab_delivery']:
+for name in ['engineering','stakeholder','behavior','check_contract','receipts','view_scope','capacity_analysis','change_summary','report_integrity','lab_project','lab_delivery','source_set','source_intake','presentation']:
     shutil.copy2(LAB/'tools/reference-pilot'/f'{name}.py',PUBLIC/'python'/f'{name}.py')
 for name in ['pyodide.asm.js','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip']:
     shutil.copy2(ROOT/'node_modules/pyodide'/name,PUBLIC/'pyodide'/name)
@@ -17,7 +17,7 @@ project=json.loads((LAB/'fixtures/authoring/alarm-review/reviewed.modeling.json'
     'title':project['title'],'brief':project['brief'],'questions':project['questions']}))
 cases=[{'id':'valid-baseline','expectedErrors':False,'source':(LAB/'fixtures/authoring/alarm-review/model.sysml').read_text()},{'id':'valid-reviewed','expectedErrors':False,'source':project['source']},{'id':'undefined-type','expectedErrors':True,'source':project['source'].replace('part coldRoom0 : ColdRoom;','part coldRoom0 : NoSuchRoomType;')},{'id':'undefined-endpoint','expectedErrors':True,'source':project['source'].replace('connect coldRoom0.readings','connect coldRoom0.missingReadings')},{'id':'broken-syntax','expectedErrors':True,'source':project['source']+'\npart def Broken {'},{'id':'same-name-in-two-packages','expectedErrors':False,'source':'package A { part def Unit; } package B { part def Unit; }'}]
 (ROOT/'cases.json').write_text(json.dumps(cases))
-page=(LAB/'tools/reference-pilot/lab.html').read_text().replace('__SCOPE_SCRIPT__',(LAB/'tools/reference-pilot/scope.js').read_text()).replace('__WORKFLOW_SCRIPT__',(LAB/'tools/reference-pilot/workflow.js').read_text()).replace('__TOKEN__','browser-local')
+page=(LAB/'tools/reference-pilot/lab.html').read_text().replace('__SCOPE_SCRIPT__',(LAB/'tools/reference-pilot/scope.js').read_text()).replace('__SOURCE_INTAKE_SCRIPT__',(LAB/'tools/reference-pilot/source_intake.js').read_text()).replace('__WORKFLOW_SCRIPT__',(LAB/'tools/reference-pilot/workflow.js').read_text()).replace('__TOKEN__','browser-local')
 bootstrap='''<script>window.browserLabReady=new Promise((resolve,reject)=>{window.browserLabResolve=resolve;window.browserLabReject=reject});const originalBrowserFetch=window.fetch.bind(window);window.fetch=async (url,options)=>{if(typeof url==='string'&&['/initial','/render','/compose','/prepare','/inspect','/element','/accept','/rollback'].includes(url)){const request=await window.browserLabReady;const data=await request(url,options?.body?JSON.parse(options.body):{});return {json:async()=>data};}return originalBrowserFetch(url,options)};</script><script type="module" src="/lab-runtime.js"></script>'''
 page=page.replace('<body>','<body>'+bootstrap).replace('Full qualified model retained locally. Additional source details load when selected.','Browser engine snapshot. Additional source details load when selected.').replace('Modeling lab','Modeling Lab')
 
@@ -26,7 +26,7 @@ page=page.replace('</body>',"<script>document.getElementById('reference').style.
 # Digest includes generated owner copies and runtime inputs, including uncommitted work.
 paths=[p for p in (PUBLIC/'python').glob('*.py')]+[ROOT/name for name in ['lab-runtime.js','lab-worker.js','package-lock.json','opensysml-browser.patch','browser-engine.wasm','wasm_exec.js']]
 paths += [ROOT/'prepare.py',ROOT/'vite.config.js',PUBLIC/'initial.json']
-paths += [LAB/'tools/reference-pilot'/name for name in ['lab.html','scope.js','workflow.js']]
+paths += [LAB/'tools/reference-pilot'/name for name in ['lab.html','scope.js','workflow.js','source_intake.js']]
 source_digest=hashlib.sha256()
 for path in sorted(paths,key=lambda p:str(p.relative_to(ROOT.parents[1]))):
     source_digest.update(str(path.relative_to(ROOT.parents[1])).encode()+b'\0'+path.read_bytes()+b'\0')

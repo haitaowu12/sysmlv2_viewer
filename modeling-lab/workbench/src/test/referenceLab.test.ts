@@ -34,8 +34,8 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
     clearTimeout: (id: number) => { if (id) timers[id - 1] = () => {} },
   }
   for (const [key, value] of Object.entries(mocks)) vi.stubGlobal(key, value)
-  new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
-  const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve() }
+  new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + '\n' + readFileSync('tools/reference-pilot/source_intake.js', 'utf8') + '\nwindow.sourceSetIntake=globalThis.sourceSetIntake;' + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
+  const flush = async () => { for (let i = 0; i < 64; i++) await Promise.resolve() }
   const answer = async (index: number, valid = true, extra: Record<string, unknown> = {}) => {
     await vi.waitFor(() => expect(calls[index]).toBeDefined(), { interval: 1, timeout: 1000 })
     calls[index]!.resolve({ json: async () => ({ source: calls[index]!.source, transactionId: calls[index]!.payload.transactionId, sourceSha256: 'a'.repeat(64), reportIntegrity: { status: 'verified-managed', reportSha256: 'b'.repeat(64) }, staticChecksPassed: valid,
@@ -739,25 +739,28 @@ describe('readable endpoints and explicit view lifecycle', () => {
     const h = await harness(true); await h.answer(0)
     const workflow = (window as any).labWorkflow
     expect(document.getElementById('edit-toggle')!.textContent).toBe('Edit SysML source')
-    expect(document.getElementById('project-file-state')!.textContent).toContain('No project file saved')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Not saved')
     expect(document.querySelector<HTMLButtonElement>('.project-context button')!.disabled).toBe(false)
     const data = workflow.snapshot(); const opening = workflow.openProject(data)
     await h.answer(1); await h.flush(); await h.answer(2); await opening
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Project file current')
+    expect(document.getElementById('project-file-state')!.textContent).toMatch(/Project file current|Saved snapshot/)
     h.edit('changed draft')
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Changes since last project file')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Unsaved changes')
     expect(document.querySelector<HTMLButtonElement>('.project-context button')!.disabled).toBe(true)
   })
 })
 
 
 describe('explicit Fit provides a complete overview', () => {
-  it('keeps the readable default but lets a deliberate Fit show smaller labels', async () => {
+  it('starts with a complete overview and lets Read labels select readable detail', async () => {
     const h = await harness()
     const original = (SVGElement.prototype as any).getScreenCTM
     ;(SVGElement.prototype as any).getScreenCTM = () => ({ a: 0.5, b: 0 })
     try {
       await h.answer(0, true, { views: [{ id: 'context', targets: ['Pump'], stakeholderSvg: '<svg xmlns="http://www.w3.org/2000/svg"/>', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 300"><text style="font-size:12px">Long overview</text></svg>' }] })
+      expect(document.getElementById('canvas')!.classList.contains('fit')).toBe(true)
+      expect(document.getElementById('zoom-label')!.textContent).toContain('Overview')
+      document.getElementById('readable')!.click()
       expect(document.getElementById('canvas')!.classList.contains('fit')).toBe(false)
       expect(document.getElementById('zoom-label')!.textContent).toContain('Readable')
       document.getElementById('fit')!.click()
@@ -937,7 +940,7 @@ describe('accepted project transactions and recovery', () => {
     expect(new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n').length).toBeGreaterThan(8_388_608)
     document.querySelector<HTMLButtonElement>('.project-context button')!.click()
     expect(output).toBeUndefined(); expect(document.getElementById('project-dialog')!.textContent).toContain('8 MiB'); expect(workflow().snapshot().history).toHaveLength(100)
-    await workflow().recovery(); expect(output).toBeUndefined(); expect(document.getElementById('project-file-state')!.textContent).toContain('No project file saved')
+    await workflow().recovery(); expect(output).toBeUndefined(); expect(document.getElementById('project-file-state')!.textContent).toContain('Not saved')
     anchor.mockRestore()
   })
 })
@@ -1036,12 +1039,12 @@ describe('saved project equality with admitted custom recipes', () => {
     const saved=JSON.parse(await output!.text())
     expect(saved).toEqual(before)
     expect(Object.keys(saved.customViews[0].recipe)).not.toEqual(Object.keys(before.customViews[0].recipe))
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Project file current')
+    expect(document.getElementById('project-file-state')!.textContent).toMatch(/Project file current|Saved snapshot/)
     expect(workflow.dirty()).toBe(false)
     expect(document.getElementById('status')!.textContent).toContain('download requested')
     title.value='Later project title';title.dispatchEvent(new Event('input',{bubbles:true}))
     expect(workflow.dirty()).toBe(true)
-    expect(document.getElementById('project-file-state')!.textContent).toContain('Changes since last project file')
+    expect(document.getElementById('project-file-state')!.textContent).toContain('Unsaved changes')
     anchor.mockRestore()
   })
 })
@@ -1290,3 +1293,85 @@ describe('accepted project workspace namespace', () => {
     expect(workflow.snapshot()).toEqual(before);expect(h.calls).toHaveLength(1)
   })
 })
+
+
+describe('quiet working surface retains meaningful evidence',()=>{
+  it('keeps successful notes in a closed disclosure and blocking errors visible',async()=>{
+    const h=await harness();await h.answer(0,true,{diagnostics:[{severity:'warning',line:null,message:'Execution count unavailable'}]});
+    expect(document.getElementById('diagnostics')!.textContent).toBe('');
+    expect((document.getElementById('validation-details') as HTMLDetailsElement).open).toBe(false);
+    expect(document.getElementById('validation-notes')!.textContent).toContain('Execution count unavailable');
+    expect(document.getElementById('validation-notes')!.textContent).not.toContain('line null');
+    h.edit('broken');h.tick();await h.answer(1,false,{diagnostics:[{severity:'error',line:3,message:'Unknown type'}]});
+    expect(document.getElementById('diagnostics')!.textContent).toContain('Unknown type');
+    expect((document.getElementById('editor') as HTMLDetailsElement).open).toBe(true);
+  });
+  it('groups repeated behavior limits while preserving every source inspection action',async()=>{
+    const h=await harness();const node={id:'motor',name:'motor',parallel:false,subactions:{},constraints:[]};
+    await h.answer(0,true,{views:[{id:'behavior',targets:['Pump'],view:'STATE',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>',behavior:{nodes:[node],relations:[],warnings:[{elementId:'motor',reason:'Entry evidence unavailable'},{elementId:'motor',reason:'Entry evidence unavailable'}],boundary:'Declared only'}}]});
+    const evidence=document.querySelector<HTMLDetailsElement>('.behavior-evidence')!;
+    expect(evidence,document.getElementById('diagnostics')!.textContent||'missing evidence').not.toBeNull();
+    expect(evidence.open).toBe(false);
+    expect(evidence.querySelector('.behavior-limits')!.textContent).toContain('2 projection limitations · 1 kinds');
+    expect(evidence.querySelectorAll('.behavior-limits button')).toHaveLength(2);
+    evidence.open=true;(evidence.querySelector('button') as HTMLButtonElement).click();
+    expect(document.getElementById('selected')!.textContent).toContain('Motor');
+  });
+  it('uses original file locations only for the matching accepted source revision',async()=>{
+    const h=await harness();await h.answer(0,true,{sourceLocations:{status:'original',sourceSha256:'a'.repeat(64),elements:{motor:{path:'Technical/CSM.sysml',line:88}},diagnostics:[]}});
+    document.querySelector<SVGAElement>('#canvas a')!.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    expect(document.getElementById('inspector')!.textContent).toContain('Technical/CSM.sysml');
+    h.edit('changed');h.tick();await h.answer(1,true,{sourceLocations:{status:'original',sourceSha256:'stale',elements:{motor:{path:'WRONG.sysml',line:2}},diagnostics:[]}});
+    document.querySelector<SVGAElement>('#canvas a')!.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    expect(document.getElementById('inspector')!.textContent).not.toContain('WRONG.sysml');
+  });
+});
+
+describe('explicit source-file intake',()=>{
+  const file=(name:string,source:string)=>({name,webkitRelativePath:'',size:new TextEncoder().encode(source).length,arrayBuffer:async()=>new TextEncoder().encode(source).buffer});
+  async function choose(h:Awaited<ReturnType<typeof harness>>,index=1){
+    document.querySelector<HTMLButtonElement>('.project-toolbar button')!.click();
+    const input=document.querySelector<HTMLInputElement>('[aria-label="Import model source"]')!;
+    Object.defineProperty(input,'files',{value:[file('Study.sysml','part def Study;'),file('Other.sysml','part def Other;')],configurable:true});
+    input.dispatchEvent(new Event('change'));
+    await vi.waitFor(()=>expect(h.calls[index]?.url).toBe('/inspect'),{interval:1});
+    const source=h.calls[index].source;
+    await h.answer(index,true,{elements:[{sessionElementId:'study',qualifiedName:'Study',name:'Study',metaclass:'PartDefinition',line:2,source:'part def Study;'}]});
+    return source;
+  }
+  it('requires an explicit target, can cancel, and starts a new model with its own blank notes',async()=>{
+    const h=await harness(true);await h.answer(0);const workflow=(window as any).labWorkflow;
+    const before=structuredClone(workflow.snapshot());await choose(h);
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
+    const click=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent===name)!.click();
+    expect([...document.querySelectorAll<HTMLButtonElement>('#project-dialog button')].find(b=>b.textContent==='Open selected model')!.disabled).toBe(true);
+    expect(workflow.snapshot()).toEqual(before);click('Cancel import');expect(workflow.snapshot()).toEqual(before);
+    document.querySelector<HTMLButtonElement>('#project-dialog .dialog-heading button')!.click();
+    const source=await choose(h,2);
+    await vi.waitFor(()=>expect(document.querySelector('[aria-label="Open at model scope"]')).not.toBeNull(),{interval:1});
+    const target=document.querySelector<HTMLSelectElement>('[aria-label="Open at model scope"]')!;target.value='Study';target.dispatchEvent(new Event('change'));
+    click('Open selected model');await h.answer(3);
+    const view={id:'overview',targets:['Study'],view:'INTERCONNECTION',svg:'<svg xmlns="http://www.w3.org/2000/svg"/>',stakeholderSvg:'<svg xmlns="http://www.w3.org/2000/svg"/>'};
+    await h.answer(4,true,{sourceSha256:createHash('sha256').update(source).digest('hex'),views:[view]});
+    await vi.waitFor(()=>expect(workflow.snapshot().title).toBe('Study'),{interval:1});
+    expect(workflow.snapshot().brief).toBe('');expect(workflow.snapshot().questions).toBe('');
+    await vi.waitFor(()=>expect(document.getElementById('project-file-state')!.textContent).toBe('Not saved'),{interval:1});
+    expect(workflow.snapshot().sourceSet.files.map((f:any)=>f.path)).toEqual(['Other.sysml','Study.sysml']);
+    const mapping=await workflow.sourceSetStatus();expect(mapping.status).toBe('original');expect(mapping.sourceMap).toHaveLength(2);
+    expect((await workflow.sourceSetStatus(source+'// edited')).sourceMap).toEqual([]);
+  });
+});
+
+
+describe('bounded source scope picker',()=>{
+  it('keeps a complete searchable inventory with forty deliberate choices per page',async()=>{
+    const h=await harness(true);await h.answer(0);const wf=(window as any).labWorkflow;
+    const targets=Array.from({length:1361},(_,i)=>({qualifiedName:'Study::Part'+i,name:'Part'+i,metaclass:'PartDefinition',line:1,source:'part def Part'+i+';'}));
+    targets.push({qualifiedName:'Study::@0',name:'Anonymous feature',metaclass:'PartUsage',line:1,source:'part : Part0;'});
+    const before=JSON.stringify(targets),first=wf.sourceScopePage(targets,'',0);
+    expect(first.items).toHaveLength(40);
+    expect(wf.sourceScopePage(targets,'Study::@0',0).items).toHaveLength(1);
+    expect(wf.sourceScopePage(targets,'does not exist',0).items).toHaveLength(0);
+    expect(JSON.stringify(targets)).toBe(before);
+  });
+});

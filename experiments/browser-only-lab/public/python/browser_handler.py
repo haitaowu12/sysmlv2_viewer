@@ -1,3 +1,5 @@
+from source_intake import admit_source_set
+
 """Experimental in-browser adapter over maintained projection/workflow functions."""
 def normalized(checked):
     diagnostics=[dict(d,line=(d.get('span') or {}).get('startLine',d.get('line'))) for d in checked['diagnostics']]
@@ -16,8 +18,11 @@ last_rolled_back=None
 
 def render_report(data):
     global current_report, staged_report, previous_report, last_rolled_back
+    metadata=data.get('sourceSet', None if data.get('inspection') else (current_report or {}).get('_sourceSet'))
+    if metadata is not None:
+        metadata=admit_source_set(metadata,data['baseChecked']['source'])['sourceSet']
     report=normalized(data['checked'])
-    if not report['staticChecksPassed']:return report
+    if not report['staticChecksPassed']:return browser_report(report,metadata)
     recipes=views_for(data['views'])
     rendered=exploration_views(recipes,data.get('target'),data.get('view','DEFAULT'))
     report['views']=[]
@@ -38,16 +43,18 @@ def render_report(data):
             else:
                 # Explicitly analytical. This does not claim Pilot notation parity.
                 v['svg']=v['stakeholderSvg']
+            v['authority']='OpenSysML API facts; shared analytical presentation'
         except Exception as error:v['error']=str(error)
         report['views'].append(v)
     report['viewRecipes']=recipes
     report['changeSummary']=summarize(normalized(data['baseChecked']),report)
     report['reportIntegrity']={'reportSha256':hashlib.sha256(json.dumps(report,sort_keys=True).encode()).hexdigest()}
     try:
-        report['catalogue']=catalogue(report)
+        report['catalogue']=catalogue_for_views(report,rendered)
         report['catalogue']['reportSha256']=report['reportIntegrity']['reportSha256']
     except ValueError as error:
         report['catalogueError']=str(error)
+    report['_sourceSet']=metadata
     if data.get('stage') or data.get('accept'):
         for v in report['views']:
             failure=v.get('error') or v.get('stakeholderError')
@@ -60,7 +67,7 @@ def render_report(data):
     elif data.get("accept"):
         current_report=report
         staged_report=previous_report=last_rolled_back=None
-    return browser_report(report)
+    return browser_report(report,metadata)
 
 def prepare_candidate(data):
     old=current_report;request=data['request']
@@ -75,7 +82,7 @@ def compose_current(data):
     if not report or request.get('sourceSha256')!=report['sourceSha256'] or request.get('reportSha256')!=report['reportIntegrity']['reportSha256']:raise ValueError('Source revision is no longer current; validate the draft first')
     return {**compose(report['catalogue'],request.get('recipe')),'reportSha256':report['reportIntegrity']['reportSha256']}
 
-def detail_current(data):return element_detail(current_report,data['request'])
+def detail_current(data):return element_detail(current_report,data['request'],(current_report or {}).get('_sourceSet'))
 
 def proposal_summary(data):return summarize(current_report,normalized(data["checked"]))
 

@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import subprocess
 import textwrap
+from presentation import display_name, element_order, resolve_target
 
 STATES = {'StateDefinition', 'StateUsage', 'ExhibitStateUsage'}
 ACTIONS = {'ActionDefinition', 'ActionUsage', 'PerformActionUsage'}
@@ -39,18 +40,18 @@ def project(report, target, limit=120):
     ix = {e['sessionElementId']: e for e in elements}
     if len(ix) != len(elements):
         raise ValueError('Duplicate report element IDs')
-    roots = [e for e in elements if e.get('qualifiedName') == target]
-    if len(roots) != 1 or roots[0]['metaclass'] not in STATES | ACTIONS:
+    try:
+        root = resolve_target(report, target, kinds=STATES | ACTIONS)
+    except ValueError:
         raise ValueError('Select one state or action definition/usage for a behavior projection')
     if type(limit) is not int or not 1 <= limit <= 300:
         raise ValueError('Behavior element limit must be 1–300')
-    root = roots[0]
     semantic = lambda e, k, default=None: e.get('semantics', {}).get(k, default)
     children = defaultdict(list)
     for e in elements:
         for owner in refs(semantic(e, 'owner')):
             children[owner['id']].append(e)
-    order = lambda e: (e.get('line') or 0, e.get('qualifiedName') or '', e['sessionElementId'])
+    order = element_order
     for values in children.values():
         values.sort(key=order)
     evidence, warnings = {}, []
@@ -62,7 +63,7 @@ def project(report, target, limit=120):
                 raise ValueError('Behavior projection exceeds its element limit; select a smaller scope')
             source = e.get('source', '')
             evidence[eid] = dict(elementId=eid, qualifiedName=e.get('qualifiedName'),
-                name=e.get('name'), metaclass=e['metaclass'], line=e.get('line'), endLine=e.get('endLine'),
+                name=display_name(e, e['metaclass']), metaclass=e['metaclass'], line=e.get('line'), endLine=e.get('endLine'),
                 excerpt=source.strip()[:1200], excerptTruncated=len(source.strip()) > 1200)
         return eid
 
@@ -88,7 +89,7 @@ def project(report, target, limit=120):
             raise ValueError('Cyclic or overly deep behavior ownership')
         visited.add(e['sessionElementId'])
         eid = witness(e)
-        node = dict(id=eid, elementId=eid, name=e.get('name') or e['metaclass'],
+        node = dict(id=eid, elementId=eid, name=display_name(e, e['metaclass']),
                     parent=parent, kind=e['metaclass'], parallel=None, subactions={},
                     entryDeclarations=[], constraints=[])
         if e['metaclass'] in STATES:
@@ -144,7 +145,7 @@ def project(report, target, limit=120):
                     warnings.append(dict(elementId=witness(rel), reason='Unsupported action control or subtype: ' + kind))
                 continue
             relation = dict(elementId=witness(rel), owner=eid, kind=kind,
-                            name=rel.get('name') or kind, source=None, target=None, triggers=[], guards=[], effects=[], conditionStatus={})
+                            name=display_name(rel, kind), source=None, target=None, triggers=[], guards=[], effects=[], conditionStatus={})
             a = refs(semantic(rel, 'source' if state_mode else 'sourceFeature'))
             b = refs(semantic(rel, 'target' if state_mode else 'targetFeature'))
             if len(a) != 1 or len(b) != 1:
@@ -241,6 +242,66 @@ def project(report, target, limit=120):
                         'Exact source excerpts are quotations, not evaluated expressions.'])
 
 
+def _linear_direct_state_chain(projection):
+    """Return a typed direct-child state chain, or ``None`` when it is unproven.
+
+    The compact renderer is deliberately narrower than the projection itself.  It
+    only applies when the selected state owns a complete set of direct state
+    children and the exported transition relationships form one connected path.
+    This keeps unknown parallelism, nested regions, entry boundaries and branch
+    topology on the existing layout instead of making a visual assumption.
+    """
+    if projection.get('kind') != 'state':
+        return None
+    nodes = projection.get('nodes', [])
+    root_id = projection.get('rootId')
+    root = next((n for n in nodes if n.get('id') == root_id), None)
+    if not root or root.get('parallel') is not False:
+        return None
+    children = [n for n in nodes if n.get('parent') == root_id]
+    if len(children) < 3 or any(n.get('kind') not in STATES for n in children):
+        return None
+    # A compact chain cannot conceal nested regions, boundary witnesses or
+    # additional projected nodes.  Every rendered node must be a direct state.
+    child_ids = {n.get('id') for n in children}
+    if (len(child_ids) != len(children)
+            or {n.get('id') for n in nodes} != child_ids | {root_id}
+            or any(n.get('parallel') is not False for n in children)):
+        return None
+    relations = projection.get('relations', [])
+    if len(relations) != len(children) - 1:
+        return None
+    indegree = {node_id: 0 for node_id in child_ids}
+    outgoing = {node_id: [] for node_id in child_ids}
+    for relation in relations:
+        if (relation.get('kind') != 'TransitionUsage'
+                or relation.get('source') not in child_ids
+                or relation.get('target') not in child_ids
+                or relation.get('source') == relation.get('target')):
+            return None
+        source, target = relation['source'], relation['target']
+        outgoing[source].append(target)
+        indegree[target] += 1
+    outdegree = {node_id: len(targets) for node_id, targets in outgoing.items()}
+    if (sum(value == 0 for value in indegree.values()) != 1
+            or sum(value == 0 for value in outdegree.values()) != 1
+            or max(indegree.values(), default=0) > 1
+            or max(outdegree.values(), default=0) > 1):
+        return None
+    starts = [node_id for node_id, degree in indegree.items() if degree == 0]
+    if len(starts) != 1:
+        return None
+    ordered = []
+    current = starts[0]
+    while current not in ordered:
+        ordered.append(current)
+        targets = outgoing[current]
+        if not targets:
+            break
+        current = targets[0]
+    return ordered if len(ordered) == len(children) else None
+
+
 def graph_dot(projection):
     """Separate edge identities from long declarations; evidence rows carry full labels."""
     q = lambda s: json.dumps(str(s), ensure_ascii=False)
@@ -250,8 +311,19 @@ def graph_dot(projection):
     by_parent = defaultdict(list)
     for n in nodes:
         by_parent[n['parent']].append(n)
-    lines = ['digraph G {', 'graph [rankdir=TB, compound=true, nodesep=0.5, ranksep=0.7, pad=0.3, bgcolor="white"];',
-             'node [shape=box, style=rounded, fontname="Arial", fontsize=16, margin="0.22,0.15"];',
+    compact_chain = _linear_direct_state_chain(projection)
+    if compact_chain:
+        # A single linear state chain is an analytical compact projection: all
+        # typed nodes, relation labels and source URLs remain present, while the
+        # chain wraps into deliberate rows instead of producing one tall column.
+        graph_style = 'rankdir=TB, compound=true, nodesep=0.28, ranksep=0.45, pad=0.18, bgcolor="white"'
+        node_style = 'node [shape=box, style=rounded, fontname="Arial", fontsize=14, margin="0.16,0.10"];'
+        layout_marker = '// compact-wrapped-linear-direct-state-chain'
+    else:
+        graph_style = 'rankdir=TB, compound=true, nodesep=0.5, ranksep=0.7, pad=0.3, bgcolor="white"'
+        node_style = 'node [shape=box, style=rounded, fontname="Arial", fontsize=16, margin="0.22,0.15"];'
+        layout_marker = '// standard-topology-layout'
+    lines = ['digraph G {', layout_marker, 'graph [' + graph_style + '];', node_style,
              'edge [fontname="Arial", fontsize=14, arrowsize=0.8];']
 
     def emit(n):
@@ -262,15 +334,29 @@ def graph_dot(projection):
         for field, label in [('entryAction', 'entry'), ('doAction', 'do'), ('exitAction', 'exit')]:
             parts.extend(wrap(label + ': ' + (a['text'] or a['name'] or 'Source unavailable') + (' [excerpt truncated]' if a.get('textTruncated') else '')) for a in n['subactions'].get(field, []))
         parts.extend(wrap('constraint: ' + c['text'] + (' [excerpt truncated]' if c.get('textTruncated') else '')) for c in n['constraints'])
-        if kids:
+        if kids and not compact_chain:
             lines.append('subgraph cluster_' + nid + ' { label=' + q('\n'.join(parts)) + '; fontname="Arial"; fontsize=16; color="#607687";')
             # Anchor is an inspected source node, not an invented transition.
             lines.append(nid+' [shape=plaintext,label='+q(n['name'])+',URL='+q('psysml:'+n['id'])+'];')
             for child in kids: emit(child)
             lines.append('}')
+        elif kids:
+            # Compact mode has already proven that this is the sole direct
+            # state chain. Avoid a cluster rank constraint so explicit five-node
+            # rows remain stable in Graphviz. The root stays a source-linked
+            # scope anchor and retains its descriptive label parts.
+            lines.append(nid+' [shape=plaintext,label='+q('\n'.join(parts))+',URL='+q('psysml:'+n['id'])+'];')
+            for child in kids: emit(child)
         else:
             lines.append(nid+' [label='+q('\n'.join(parts))+',URL='+q('psysml:'+n['id'])+'];')
     emit(next(n for n in nodes if n['id']==root))
+    if compact_chain:
+        # Rows follow the typed succession path, not source order. This keeps
+        # the overview deterministic while leaving every real edge below intact.
+        for row, offset in enumerate(range(0, len(compact_chain), 5)):
+            row_nodes = compact_chain[offset:offset + 5]
+            lines.append('subgraph compact_row_' + str(row) + ' { rank=same; ' +
+                         ' '.join(names[node_id] for node_id in row_nodes) + '; }')
     for i, rel in enumerate(projection['relations'],1):
         kind = {'TransitionUsage':'transition','FlowUsage':'flow','SuccessionFlowUsage':'succession flow', 'SuccessionAsUsage':'succession'}[rel['kind']]
         label = f'R{i}: {kind}'
@@ -281,7 +367,7 @@ def graph_dot(projection):
             label += ('\ntrigger' if rel['triggers'] else '') + (' / guard' if rel['guards'] else '') + (' / effect' if rel['effects'] else '')
         if any(v in {'unknown', 'unavailable'} for v in rel.get('conditionStatus', {}).values()):
             label += '\ncondition evidence incomplete'
-        lines.append(names[rel['source']]+' -> '+names[rel['target']]+' [label='+q(label)+',URL='+q('psysml:'+rel['elementId'])+'];')
+        lines.append(names[rel['source']]+' -> '+names[rel['target']]+' [label='+q('R'+str(i) if compact_chain else label)+',tooltip='+q(label)+',URL='+q('psysml:'+rel['elementId'])+'];')
     lines.append('}')
     return '\n'.join(lines)
 
