@@ -204,12 +204,14 @@ function syncReviewRoutes(){
 }
 $('review-route').addEventListener('change',()=>{reviewRouteId=$('review-route').value;$('view-search').value='';buildNavigation();show(routeIndices()[0])});
 function filterViews(){
+  if(window.labViews){window.labViews.filter();return}
   const term=$('view-search').value.trim().toLowerCase();let visible=0;
   for(const b of $('views').children){b.hidden=!b.textContent.toLowerCase().includes(term);if(!b.hidden)visible++}
   $('no-views').hidden=visible>0||!report;
   $('view-count').textContent=report?visible+' / '+$('views').children.length:'—';
 }
 function buildNavigation(){
+  if(window.labViews){window.labViews.rebuild();return}
   $('views').replaceChildren();
   routeIndices().forEach(i=>{const v=report.views[i],b=document.createElement('button');const title=stakeholderMode()?(v.stakeholder?.title||viewLabel(v.id)):viewLabel(v.id);b.setAttribute('aria-label',title);b.title=viewPurpose(v);
     const count=document.createElement('span'),name=document.createElement('span'),detail=document.createElement('span');
@@ -218,6 +220,7 @@ function buildNavigation(){
   });window.scopeWorkbench?.appendNavigation();filterViews();
 }
 function show(index,useRaw=false){
+  window.labViews?.core(index);
   resetStory();document.body.classList.remove('mobile-browse');$('browse-toggle').setAttribute('aria-expanded','false');
   const view=report?.views[index];if(!view)return;
   window.scopeWorkbench?.leave();controls();active=index;raw=useRaw;preferredView=view.id;clearSelection();
@@ -244,7 +247,7 @@ function show(index,useRaw=false){
 let sysmlReturn=null;
 window.openSysmlComponent=async function(target){
   if(busy||!report||$('source').value!==report.source)return false;
-  const basis=report,priorViewId=report.views[active]?.id,priorPreferred=preferredView,context=window.scopeWorkbench?.captureContext(),audience=$('audience').value;const returnContext=priorViewId==='focused'&&!window.scopeWorkbench?.active()&&sysmlReturn?.sourceSha256===report.sourceSha256?sysmlReturn:{context,viewId:priorViewId||priorPreferred,sourceSha256:report.sourceSha256,audience,sourceOnlyPayload:!context&&!basis.views.length?structuredClone(window.labWorkflow.payload()):null};preferredView='focused';
+  const basis=report,priorViewId=report.views[active]?.id,priorPreferred=preferredView,context=window.scopeWorkbench?.captureContext(),audience=$('audience').value,workspaceView=window.labViews?.snapshot().selected;const returnContext=(!workspaceView||workspaceView==='review:focused')&&priorViewId==='focused'&&!window.scopeWorkbench?.active()&&sysmlReturn?.sourceSha256===report.sourceSha256?sysmlReturn:{context,viewId:priorViewId||priorPreferred,workspaceView,sourceSha256:report.sourceSha256,audience,sourceOnlyPayload:!context&&!basis.views.length?structuredClone(window.labWorkflow.payload()):null};preferredView='focused';
   const ok=await render(false,{source:report.source,payload:{...window.labWorkflow.payload(),target,view:'INTERCONNECTION'},preserveScope:false,commit(){$('audience').value='engineering';document.body.classList.remove('stakeholder')}});
   if(ok){sysmlReturn=returnContext;syncSysmlReturn();$('view-purpose').textContent='Selected element and its direct features · custom scope filters do not apply';}
   else preferredView=priorPreferred;return ok;
@@ -261,14 +264,14 @@ function syncSysmlReturn(){
         const ok=await render(false,{source:report.source,payload:{...previous.sourceOnlyPayload,views:[]},preserveScope:false,commit(){
           preferredView=null;$('audience').value=previous.audience||'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());
         }});
-        if(ok)sysmlReturn=null;else preferredView=priorPreferred;
+        if(ok){sysmlReturn=null;if(previous.workspaceView&&window.labViews?.has(previous.workspaceView))await window.labViews.open(previous.workspaceView)}else preferredView=priorPreferred;
         syncSysmlReturn();return;
       }
       sysmlReturn=null;back.hidden=true;$('audience').value=previous.audience||'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());buildNavigation();
-      if(previous.context)window.scopeWorkbench.returnToScope(previous.context);else{const index=report.views.findIndex(v=>v.id===previous.viewId);if(index>=0)show(index)}
+      if(previous.context)window.scopeWorkbench.returnToScope(previous.context);else if(previous.workspaceView&&window.labViews?.has(previous.workspaceView))await window.labViews.open(previous.workspaceView);else{const index=report.views.findIndex(v=>v.id===previous.viewId);if(index>=0)show(index)}
     });
   }
-  back.hidden=!sysmlReturn||sysmlReturn.sourceSha256!==report?.sourceSha256||report?.views[active]?.id!=='focused';back.disabled=busy;
+  const workspaceView=window.labViews?.snapshot().selected;back.hidden=!sysmlReturn||sysmlReturn.sourceSha256!==report?.sourceSha256||report?.views[active]?.id!=='focused'||(!!workspaceView&&workspaceView!=='review:focused');back.disabled=busy;
 }
 function notationLabel(profile){if(profile?.startsWith('sysml-2.0-parts-ports'))return 'SysML part/port sheet';if(profile?.startsWith('declared-behavior'))return 'Declared behavior projection · limited notation';if(profile?.startsWith('analytical-exchange'))return 'Analytical exchange summary';if(profile?.startsWith('analytical'))return 'Analytical diagram';if(profile?.startsWith('pilot')||profile?.startsWith('sysml-reference'))return 'SysML Pilot diagram';return 'Projection · notation not classified'}
 function concernChanges(view){
@@ -372,6 +375,7 @@ function overviewLabels(svg,enabled){
   }
 }
 function fit(readable=false){
+  if(window.labViews?.control("fit"))return;
   const canvas=$('canvas'),svg=canvas.querySelector('svg');canvas.classList.add('fit');if(svg){svg.style.width='';svg.style.height='';svg.style.maxWidth='';svg.style.maxHeight=''}$('zoom-label').textContent='';canvas.scrollLeft=0;canvas.scrollTop=0;const stage=canvas.querySelector('.story-stage');if(svg)overviewLabels(svg,false);if(stage){stage.scrollLeft=0;stage.scrollTop=0;}
   if(!svg)return;
   const target=stage||canvas,box=svg.viewBox?.baseVal;
@@ -390,6 +394,7 @@ function fit(readable=false){
   }
 }
 function zoom(factor,actual=false){
+  if(window.labViews?.control("zoom",actual?1:factor))return;
   const svg=$('canvas').querySelector('svg');if(!svg)return;
   const base=Number(svg.getAttribute('viewBox')?.split(/[ ,]+/)[2])||parseFloat(svg.getAttribute('width'))||800;
   const current=svg.getBoundingClientRect().width||parseFloat(svg.style.width)||base;
@@ -397,6 +402,7 @@ function zoom(factor,actual=false){
   $('canvas').classList.remove('fit');svg.style.maxWidth='none';svg.style.maxHeight='none';svg.style.width=width+'px';const box=svg.viewBox?.baseVal;svg.style.height=box?.width>0&&box?.height>0?(width*box.height/box.width)+'px':'auto';overviewLabels(svg,true);$('zoom-label').textContent=Math.round(width/base*100)+'%';
 }
 function invalidateDraft(){
+  window.labViews?.invalidate();
   sysmlReturn=null;if($('return-view'))$('return-view').hidden=true;
   setPresentation(false);$('review-route-control').hidden=true;$('review-route-error').hidden=true;
   $('model-navigation-note').hidden=true;$('model-navigation-note').textContent='';$('model-search').disabled=true;
@@ -413,7 +419,7 @@ async function compensatePending(){
   if(pendingCompensation===transactionId)pendingCompensation=null;
 }
 function displayReport(data,focused=false,payload={},preserveScope=true){
-  report=data;clearSelection();$('target').replaceChildren();
+  window.labViews?.beginReport(data,focused,payload);report=data;clearSelection();$('target').replaceChildren();
     $('diagnostics').textContent='';delete $('diagnostics').dataset.runtimeError;const notes=data.diagnostics||[];$('validation-details').hidden=!notes.length;$('validation-summary').textContent=notes.length+' validation note'+(notes.length===1?'':'s');$('validation-notes').textContent=notes.map((d,index)=>{const mapped=data.sourceLocations?.sourceSha256===data.sourceSha256&&data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;return `${d.severity}${(mapped?.path||mapped?.file)?' · '+(mapped.path||mapped.file)+(mapped.line?' · line '+mapped.line:''):d.line?' · assembled line '+d.line:''}: ${d.message}`}).join('\n');
       status('Static checks passed · execution not evaluated','valid');syncReviewRoutes();buildNavigation();
       targetNames=[...new Set(data.elements.filter(e=>e.qualifiedName&&/^(Package|PartDefinition|PartUsage|ActionDefinition|ActionUsage|RequirementDefinition|RequirementUsage|VerificationCaseDefinition|VerificationCaseUsage|StateDefinition|StateUsage)$/.test(e.metaclass)).map(e=>e.qualifiedName))].sort();
@@ -477,7 +483,7 @@ $('source').addEventListener('input',()=>{restoreUndo=null;$('undo-restore').hid
 $('source').addEventListener('click',editorPosition);$('source').addEventListener('keyup',editorPosition);
 $('source').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();render()}else if(e.key==='Tab'&&!e.shiftKey){e.preventDefault();const source=$('source');source.setRangeText('    ',source.selectionStart,source.selectionEnd,'end');source.dispatchEvent(new Event('input',{bubbles:true}));editorPosition()}});
 $('automatic').addEventListener('change',()=>{if($('automatic').checked)scheduleUpdate();else clearTimeout(updateTimer)});
-$('audience').addEventListener('change',()=>{document.body.classList.toggle('stakeholder',stakeholderMode());setPresentation(false);if(report)buildNavigation();if(window.scopeWorkbench?.active())window.scopeWorkbench.refresh();else show(active)});
+$('audience').addEventListener('change',()=>{document.body.classList.toggle('stakeholder',stakeholderMode());setPresentation(false);if(report)buildNavigation();if(window.labViews?.refresh())return;if(window.scopeWorkbench?.active())window.scopeWorkbench.refresh();else show(active)});
 $('reference').addEventListener('click',()=>show(active,!raw));
 $('view-search').addEventListener('input',filterViews);
 $('readable').addEventListener('click',()=>fit(true));$('minus').addEventListener('click',()=>zoom(.8));$('plus').addEventListener('click',()=>zoom(1.25));$('fit').addEventListener('click',()=>fit(false));$('actual').addEventListener('click',()=>zoom(1,true));
@@ -486,11 +492,11 @@ $('reload').addEventListener('click',()=>{if(!initial)return;const baseline=wind
 $('undo-restore').addEventListener('click',()=>{if(restoreUndo===null)return;$('source').value=restoreUndo;restoreUndo=null;$('undo-restore').hidden=true;invalidateDraft();render()});
 $('inspector-toggle').addEventListener('click',()=>{if($('inspector').hidden)openInspector();else closeInspector()});$('close-inspector').addEventListener('click',closeInspector);
 $('edit-toggle').addEventListener('click',()=>{$('editor').open=!$('editor').open;syncEditor();if($('editor').open)revealEditor()});$('editor').addEventListener('toggle',syncEditor);
-$('jump-source').addEventListener('click',()=>{if(!selected||!report||$('source').value!==report.source)return;openEditor();const lines=$('source').value.split('\n'),line=Math.max(0,selected.line-1),start=lines.slice(0,line).reduce((sum,l)=>sum+l.length+1,0);$('source').focus();$('source').setSelectionRange(start,start+(lines[line]?.length||0));$('source').scrollTop=line*19;editorPosition()});
+$('jump-source').addEventListener('click',()=>{if(!selected||!report||$('source').value!==report.source)return;openEditor();const lines=$('source').value.split('\n'),line=Math.max(0,selected.line-1),start=lines.slice(0,line).reduce((sum,l)=>sum+l.length+1,0);$('source').focus();$('source').setSelectionRange(selected.startOffset??start,selected.endOffset??(start+(lines[line]?.length||0)));$('source').scrollTop=line*19;editorPosition()});
 window.addEventListener('resize',()=>{if($('canvas').classList.contains('fit'))requestAnimationFrame(()=>fit(false))});
 $('canvas').addEventListener('keydown',e=>{if(e.target!==$('canvas'))return;if(['+','=','-','0'].includes(e.key)){e.preventDefault();if(e.key==='0')fit(false);else zoom(e.key==='-'?.8:1.25)}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('dialog[open]'))return;if(e.key==='Escape'&&!$('inspector').hidden){e.preventDefault();closeInspector()}});
 window.addEventListener('beforeunload',e=>{if(initial&&(window.labWorkflow?window.labWorkflow.dirty():$('source').value!==initial.source)){e.preventDefault();e.returnValue=''}});
 empty('Opening your model','Loading the source draft and configured viewpoints.');controls();
 fetch('/initial').then(r=>r.json()).then(data=>{initial=data;if(data.acceptedReport){const identity=data.acceptedReport;if(!/^[a-f0-9]{64}$/.test(identity.sourceSha256||'')||!/^[a-f0-9]{64}$/.test(identity.reportIntegrity?.reportSha256||''))throw Error('The retained model identity is incomplete; reopen the Lab service.');acceptedReport={source:data.source,sourceSha256:identity.sourceSha256,reportIntegrity:{reportSha256:identity.reportIntegrity.reportSha256}}}$('source').value=data.source;render()}).catch(error=>{status('Unable to load model','error');setRuntimeDiagnostic(error);empty('Model unavailable','Check that the local lab service is running, then reload this page.')});
-</script><script nonce="__TOKEN__">__SCOPE_SCRIPT__</script><script nonce="__TOKEN__">__SOURCE_INTAKE_SCRIPT__</script><script nonce="__TOKEN__">__WORKFLOW_SCRIPT__</script></body></html>
+</script><script nonce="__TOKEN__">__SCOPE_SCRIPT__</script><script nonce="__TOKEN__">__SOURCE_INTAKE_SCRIPT__</script><script nonce="__TOKEN__">__WORKFLOW_SCRIPT__</script><script nonce="__TOKEN__">__VIEW_WORKSPACE_SCRIPT__</script></body></html>

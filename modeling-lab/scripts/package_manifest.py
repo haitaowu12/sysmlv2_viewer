@@ -8,6 +8,25 @@ ROOT = Path(__file__).resolve().parents[1]
 # Register a reviewed maintained file here before regenerating its integrity hash.
 # Exact paths are intentional: a new file beside a fixture is not an export choice.
 SOURCE_PATHS = (
+    'references/view-workspace-architecture.md',
+    'workbench/tools/reference-pilot/view_workspace.js',
+    'workbench/tools/reference-pilot/view_workspace.test.cjs',
+    'workbench/tools/reference-pilot/view_workspace.integration.test.cjs',
+    'workbench/tools/reference-pilot/diagram-ui/LICENSE.OpenSysML',
+    'workbench/tools/reference-pilot/diagram-ui/README.md',
+    'workbench/tools/reference-pilot/diagram-ui/THIRD_PARTY_NOTICES.OpenSysML.md',
+    'workbench/tools/reference-pilot/diagram-ui/adapter.ts',
+    'workbench/tools/reference-pilot/diagram-ui/host.ts',
+    'workbench/tools/reference-pilot/diagram-ui/host.test.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/protocol.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/style.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/landing/zoom.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/webview/autolayout.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/webview/avoid.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/webview/canvas.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/webview/geometry.ts',
+    'workbench/tools/reference-pilot/diagram-ui/vendor/webview/layout.ts',
+
     'workbench/src/test/referenceComponentSelection.test.ts',
     'workbench/tools/reference-pilot/workflow_open.test.cjs',
     'workbench/tools/reference-pilot/examples/apollo-11.modeling.json',

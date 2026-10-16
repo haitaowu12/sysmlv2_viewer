@@ -11,6 +11,7 @@ function transport(){
   terminate(){this.terminated=true;}
  }
  const source=readFileSync(new URL('./lab-runtime.js',import.meta.url),'utf8')
+  .replace("import './diagram-renderer.ts';",'')
   .replace("new URL('./lab-worker.js',import.meta.url)","'lab-worker.js'");
  vm.runInNewContext(source,{Worker,window:{browserLabResolve:fn=>request=fn},
   setTimeout:fn=>{timers.set(++nextTimer,fn);return nextTimer;},clearTimeout:id=>timers.delete(id)});

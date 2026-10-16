@@ -56,7 +56,7 @@ def main():
     if output(go,'env','GOVERSION')!=GO_VERSION:
         raise SystemExit('Use Go 1.27.1 (LAB_GO can name an isolated SDK).')
     native_env={**os.environ,'GOOS':output(go,'env','GOHOSTOS'),'GOARCH':output(go,'env','GOHOSTARCH'),'GOTOOLCHAIN':'local'}
-    run(go,'test','./internal/frontend/core','-run','TestLab','-count=1',cwd=SOURCE,env=native_env)
+    run(go,'test','./internal/frontend/core','./internal/frontend/combined','-run','TestLab','-count=1',cwd=SOURCE,env=native_env)
     env={**os.environ,'GOOS':'js','GOARCH':'wasm','GOTOOLCHAIN':'local'}
     run(go,'build','-trimpath','-ldflags=-s -w -X main.Version=0.10.0-lab','-o',str(ROOT/'browser-engine.wasm'),'./cmd/sysml-wasm',cwd=SOURCE,env=env)
     goroot=Path(output(go,'env','GOROOT'))
