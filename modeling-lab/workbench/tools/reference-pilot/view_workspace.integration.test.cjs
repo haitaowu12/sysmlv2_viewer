@@ -17,7 +17,7 @@ function harness(t){
  const dom=new JSDOM('<!doctype html><html><head></head><body><div class="canvas-tools"></div>'+ids.map(id=>['view-search','model-search'].includes(id)?`<input id="${id}">`:`<div id="${id}"></div>`).join('')+'</body></html>');
  t.after(()=>dom.window.close());
  const window=dom.window,document=window.document,timers=[],requests=[],mounts=[],statuses=[],diagnostics=[],refreshSnapshots=[];
- const mountPlans=new Map(),fetchPlans=new Map();
+ const mountPlans=new Map(),fetchPlans=new Map(),restorePlans=new Map(),restoreOrder=[];
  window.HTMLDialogElement.prototype.showModal=function(){this.open=true};window.HTMLDialogElement.prototype.close=function(){this.open=false};
  window.browserLabReady=true;
  window.scopeWorkbench={export:()=>[],leave(){},openSaved(){throw Error('Unexpected analytical view')},create(){}};
@@ -25,7 +25,7 @@ function harness(t){
  window.labDiagramRenderer={async mountDiagram(container,graph,options){
   const plan=mountPlans.get(graph.view);if(plan)await plan.promise;
   const content=document.createElement('section');content.dataset.engineView=graph.view;content.textContent=graph.view;container.append(content);
-  const controller={disposed:false,fitCalls:0,summary:{notices:[]},fit(){this.fitCalls++},zoom(){},dispose(){this.disposed=true;content.remove()}};
+  const controller={disposed:false,fitCalls:0,presentation:{mode:'diagram'},summary:{notices:[]},capturePresentation(){return structuredClone(this.presentation)},async restorePresentation(state){restoreOrder.push('presentation:start');if(restorePlans.has(graph.view))await restorePlans.get(graph.view).promise;this.presentation=structuredClone(state);this.summary.notices=['Focused connection neighborhood'];restoreOrder.push('presentation:end')},captureViewport(){return this.viewport||null},restoreViewport(view){this.viewport=structuredClone(view);restoreOrder.push('viewport')},fit(){this.fitCalls++},zoom(){},dispose(){this.disposed=true;content.remove()}};
   mounts.push({view:graph.view,container,content,controller,options});return controller;
  }};
  const context={window,document,structuredClone,console,busy:false,active:0,report:null,selected:null,
@@ -38,7 +38,7 @@ function harness(t){
  const report=()=>({source:'package Example;',sourceSha256,elements:[],views:[],viewRecipes:[]});
  async function load(selectedView=null){api.importProject({sysmlViews:[first,second],selectedView});context.report=report();api.onReport(context.report);await flushTimers()}
  async function flushTimers(){for(const callback of timers.splice(0))callback();await drain()}
- return{api,context,document,report,load,flushTimers,timers,requests,mounts,mountPlans,fetchPlans,statuses,diagnostics,refreshSnapshots,canvas:()=>document.getElementById('canvas')};
+ return{api,context,document,report,load,flushTimers,timers,requests,mounts,mountPlans,fetchPlans,restorePlans,restoreOrder,statuses,diagnostics,refreshSnapshots,canvas:()=>document.getElementById('canvas')};
 }
 
 test('saved personal view selection restores after the report transaction clears busy',async t=>{
@@ -284,10 +284,12 @@ test('first occurrence navigation and history refresh saved-state status after c
 test('same-source report refresh restores the explored occurrence, depth and history after core disposes its drawing',async t=>{
  const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),baseline=JSON.parse(JSON.stringify(ui.api.snapshot()));
  ui.api.reveal(usage);await ui.api.navigate(usage);changeDepth(ui,4);await drain();const drawing=ui.mounts.at(-1),keys=viewKeys(ui);
+ drawing.controller.presentation={mode:'focus',selectedWitness:{name:'lexer',kind:'part'},scroll:96,page:0};drawing.controller.viewport={x:-20,y:-10,scale:1.2};
  ui.api.beginReport(data,false,{});ui.api.core(0);assert.equal(drawing.controller.disposed,true);assert.equal(ui.api.reader(),null);ui.canvas().textContent='Configured review drawing';
  const refreshed={...data,elements:[...data.elements]};ui.context.report=refreshed;ui.api.onReport(refreshed);await ui.flushTimers();
  assert.equal(ui.requests.at(-1).view,'#interconnection:'+usage.qualifiedName);assert.equal(ui.api.reader()?.target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);assert.equal(ui.mounts.at(-1).options.depth,4);
  assert.equal(ui.canvas().querySelector('[data-engine-view]')?.dataset.engineView,'#interconnection:'+usage.qualifiedName);assert.doesNotMatch(ui.canvas().textContent,/Configured review drawing/);
+ assert.equal(ui.api.reader().presentation,'focus');assert.deepEqual(ui.mounts.at(-1).controller.viewport,{x:-20,y:-10,scale:1.2});
  assert.equal(ui.document.querySelector('[aria-label="Model ancestry"] [aria-current="location"]').textContent,'pipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
  assert.deepEqual(viewKeys(ui),keys);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot())),baseline,'refresh retains the saved view identity while restoring temporary exploration');
  await ui.api.back();assert.equal(ui.api.reader().target,first.target);await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);
@@ -298,4 +300,46 @@ test('changed-source invalidation restores the registered saved view instead of 
  ui.api.invalidate();ui.context.report=null;const changed={...data,source:data.source+' // changed revision',sourceSha256:'c'.repeat(64),elements:[...data.elements]};ui.api.beginReport(changed,false,{});ui.context.report=changed;ui.api.core(0);ui.api.onReport(changed);await ui.flushTimers();
  assert.equal(ui.requests.at(-1).view,'#tree:'+first.target);assert.equal(ui.requests.at(-1).sourceSha256,changed.sourceSha256);assert.equal(ui.api.reader().target,first.target);assert.equal(ui.api.snapshot().selected,'sysml:first');
  const requests=ui.requests.length;await ui.api.back();assert.equal(ui.requests.length,requests,'old occurrence history belongs to the invalidated revision');
+});
+
+
+test('returning to a focused overview restores presentation before camera and retains accessible result position',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');
+ const presentation={mode:'focus',selectedWitness:{name:'lexer',kind:'part',origin:{file:'<content>',startLine:12,startCol:1,endLine:12,endCol:20}},scroll:240,page:1};
+ const viewport={x:-50,y:-30,scale:1.5};ui.mounts.at(-1).controller.presentation=presentation;ui.mounts.at(-1).controller.viewport=viewport;ui.document.getElementById('model-tree').scrollTop=411;
+ await ui.api.navigate(usage);const pending=deferred();ui.restorePlans.set('#tree:'+first.target,pending);
+ const returning=ui.api.back();await drain();
+ assert.equal(ui.mounts.at(-1).controller.viewport,undefined,'camera cannot apply to an overview before its focused diagram is mounted');
+ assert.deepEqual(ui.restoreOrder,['presentation:start']);pending.resolve();await returning;
+ assert.deepEqual(ui.restoreOrder,['presentation:start','presentation:end','viewport']);
+ assert.deepEqual(ui.mounts.at(-1).controller.presentation,presentation);assert.deepEqual(ui.mounts.at(-1).controller.viewport,viewport);
+ assert.equal(ui.document.getElementById('model-tree').scrollTop,411);assert.equal(ui.api.reader().presentation,'focus');assert.ok(ui.api.reader().notices.includes('Focused connection neighborhood'));
+ const keys=viewKeys(ui);assert.ok(keys.includes('sysml:first'));assert.ok(keys.includes('authored:OpenSysMLViews::pipelineStructure'));
+ await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.api.reader().presentation,'diagram');
+});
+
+
+test('failed same-view presentation restoration disposes the staged controller and retains the accepted view',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const previous=ui.mounts.at(-1),pending=deferred();
+ previous.controller.presentation={mode:'focus',selectedWitness:{name:'unit',kind:'part'},scroll:0,page:0};ui.restorePlans.set('#tree:'+first.target,pending);
+ const reopening=ui.api.open('sysml:first');await drain();const staged=ui.mounts.at(-1);assert.notEqual(staged,previous);
+ pending.reject(Error('Focused drawing unavailable'));await reopening;
+ assert.equal(staged.controller.disposed,true);assert.equal(previous.controller.disposed,false);assert.equal(previous.content.parentElement,ui.canvas());
+ assert.equal(ui.api.snapshot().selected,'sysml:first');assert.equal(ui.api.reader().presentation,'focus');assert.match(ui.diagnostics.at(-1).message,/Focused drawing unavailable/);
+});
+
+
+test('a superseded Back restoration cannot apply its camera to a newer view',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');
+ ui.mounts.at(-1).controller.presentation={mode:'focus',scroll:0,page:0};ui.mounts.at(-1).controller.viewport={x:-123,y:-456,scale:3};await ui.api.navigate(usage);
+ const pending=deferred();ui.restorePlans.set('#tree:'+first.target,pending);const returning=ui.api.back();await drain();
+ await ui.api.open('sysml:second');const newer=ui.mounts.at(-1);pending.resolve();await returning;
+ assert.equal(ui.api.reader().target,second.target);assert.equal(newer.controller.viewport,undefined,'old camera must not reach the new selected view');assert.equal(newer.controller.disposed,false);
+});
+
+test('a superseded same-source report restoration cannot apply its camera to a newer view',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');ui.mounts.at(-1).controller.presentation={mode:'focus',scroll:0,page:0};ui.mounts.at(-1).controller.viewport={x:-123,y:-456,scale:3};
+ ui.api.beginReport();ui.api.core(0);const data=ui.report();ui.context.report=data;const pending=deferred();ui.restorePlans.set('#tree:'+first.target,pending);ui.api.onReport(data);await ui.flushTimers();
+ await ui.api.open('sysml:second');const newer=ui.mounts.at(-1);pending.resolve();await drain();
+ assert.equal(ui.api.reader().target,second.target);assert.equal(newer.controller.viewport,undefined,'report restoration must stay bound to its original drawing');
 });
