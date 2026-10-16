@@ -13,15 +13,15 @@ const sourceSha256='a'.repeat(64);
 const personal=(id,target)=>({kind:'sysml',id,name:id+' architecture',target,notation:'tree',depth:2});
 const first=personal('first','Example::First'),second=personal('second','Example::Second');
 function harness(t){
- const ids=['views','view-count','view-search','no-views','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual'];
+ const ids=['views','view-count','view-search','no-views','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual','nav-model','explore-selection'];
  const dom=new JSDOM('<!doctype html><html><head></head><body><div class="canvas-tools"></div>'+ids.map(id=>['view-search','model-search'].includes(id)?`<input id="${id}">`:`<div id="${id}"></div>`).join('')+'</body></html>');
  t.after(()=>dom.window.close());
- const window=dom.window,document=window.document,timers=[],requests=[],mounts=[],statuses=[],diagnostics=[];
+ const window=dom.window,document=window.document,timers=[],requests=[],mounts=[],statuses=[],diagnostics=[],refreshSnapshots=[];
  const mountPlans=new Map(),fetchPlans=new Map();
  window.HTMLDialogElement.prototype.showModal=function(){this.open=true};window.HTMLDialogElement.prototype.close=function(){this.open=false};
  window.browserLabReady=true;
  window.scopeWorkbench={export:()=>[],leave(){},openSaved(){throw Error('Unexpected analytical view')},create(){}};
- window.labWorkflow={sourceWitness:()=>true,refreshState(){}};
+ window.labWorkflow={sourceWitness:()=>true,refreshState(){refreshSnapshots.push(JSON.parse(JSON.stringify(window.labViews?.snapshot()||null)))}};
  window.labDiagramRenderer={async mountDiagram(container,graph,options){
   const plan=mountPlans.get(graph.view);if(plan)await plan.promise;
   const content=document.createElement('section');content.dataset.engineView=graph.view;content.textContent=graph.view;container.append(content);
@@ -38,7 +38,7 @@ function harness(t){
  const report=()=>({source:'package Example;',sourceSha256,elements:[],views:[],viewRecipes:[]});
  async function load(selectedView=null){api.importProject({sysmlViews:[first,second],selectedView});context.report=report();api.onReport(context.report);await flushTimers()}
  async function flushTimers(){for(const callback of timers.splice(0))callback();await drain()}
- return{api,context,document,report,load,flushTimers,timers,requests,mounts,mountPlans,fetchPlans,statuses,diagnostics,canvas:()=>document.getElementById('canvas')};
+ return{api,context,document,report,load,flushTimers,timers,requests,mounts,mountPlans,fetchPlans,statuses,diagnostics,refreshSnapshots,canvas:()=>document.getElementById('canvas')};
 }
 
 test('saved personal view selection restores after the report transaction clears busy',async t=>{
@@ -146,4 +146,156 @@ test('a review route filter preserves original review indices and leaves persona
  assert.equal(ui.document.getElementById('view-count').textContent,'3 views');
  await ui.api.open('review:second-review');assert.deepEqual(shown,[1],'the allowed second review retains its original index');
  assert.equal(ui.api.snapshot().selected,'review:second-review');
+});
+
+
+// Explicit declarations follow the larger self-model's surfaces.sysml:623–624
+// and pipeline.sysml:728–731. This fixture intentionally keeps occurrence and
+// definition in different packages, as the real source does.
+function navigationReport(ui){
+ const e=(sessionElementId,name,qualifiedName,metaclass,owner,type=[])=>({sessionElementId,name,qualifiedName,metaclass,semantics:{owner:owner?{id:owner}:null,type}});
+ return {...ui.report(),elements:[
+  e('surfaces','OpenSysMLSurfaces','OpenSysMLSurfaces','Package'),
+  e('toolchain','Toolchain','OpenSysMLSurfaces::Toolchain','PartDefinition','surfaces'),
+  e('pipeline','pipeline','OpenSysMLSurfaces::Toolchain::pipeline','PartUsage','toolchain',[{id:'analysis'}]),
+  e('pipeline-package','OpenSysMLPipeline','OpenSysMLPipeline','Package'),
+  e('analysis','AnalysisPipeline','OpenSysMLPipeline::AnalysisPipeline','PartDefinition','pipeline-package'),
+  e('sources','sources','OpenSysMLPipeline::AnalysisPipeline::sources','PartUsage','analysis'),
+  e('authored','pipelineStructure','OpenSysMLViews::pipelineStructure','ViewUsage')
+ ],views:[{id:'overview',targets:['OpenSysMLSurfaces::Toolchain'],view:'INTERCONNECTION'}],
+ viewRecipes:[{id:'overview',names:['OpenSysMLSurfaces::Toolchain'],view:'INTERCONNECTION',renderer:'engineering'}]};
+}
+async function loadNavigation(ui){
+ ui.api.importProject({sysmlViews:[first,second],selectedView:'sysml:first'});const data=navigationReport(ui);ui.context.report=data;ui.api.onReport(data);await ui.flushTimers();return data;
+}
+function setSearch(ui,value){const input=ui.document.getElementById('model-search');input.value=value;input.dispatchEvent(new ui.document.defaultView.Event('input'))}
+const locationButton=(ui,name)=>[...ui.document.querySelectorAll('.model-location button')].find(b=>b.textContent===name);
+const viewKeys=ui=>[...ui.document.querySelectorAll('#views [data-view-key]')].map(b=>b.dataset.viewKey);
+
+test('occurrence to definition and Back restore the semantic location, search, hierarchy and useful view registry',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ const keys=viewKeys(ui);assert.deepEqual(keys,['review:overview','authored:OpenSysMLViews::pipelineStructure','sysml:first','sysml:second']);
+ ui.api.reveal(usage);assert.ok(ui.document.querySelector('[aria-label="Collapse OpenSysMLSurfaces"]'));assert.ok(ui.document.querySelector('[aria-label="Collapse Toolchain"]'));
+ assert.equal(ui.document.querySelector('#model-tree [aria-current="true"]').dataset.modelTarget,usage.qualifiedName);
+ setSearch(ui,'pipeline occurrence');await ui.api.navigate(usage);
+ assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLSurfaces::Toolchain::pipeline');
+ assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
+ assert.ok(locationButton(ui,'Definition: AnalysisPipeline'));
+ setSearch(ui,'pipeline');locationButton(ui,'Definition: AnalysisPipeline').click();await drain();
+ assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLPipeline::AnalysisPipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Definition');
+ assert.ok(locationButton(ui,'Usages (1)'));
+ await ui.api.back();
+ assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLSurfaces::Toolchain::pipeline');
+ assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.document.getElementById('model-search').value,'pipeline');
+ assert.equal(ui.document.querySelector('#model-tree [aria-current="true"]').dataset.modelTarget,usage.qualifiedName);
+ assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
+ assert.deepEqual(viewKeys(ui),keys);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot().views)),[first,second]);
+ setSearch(ui,'');assert.ok(ui.document.querySelector('[aria-label="Collapse OpenSysMLSurfaces"]'));assert.ok(ui.document.querySelector('[aria-label="Collapse Toolchain"]'));
+ assert.equal(ui.document.querySelector('[data-model-target="OpenSysMLSurfaces::Toolchain::pipeline"]').parentElement.nextElementSibling?.classList.contains('model-children')||false,false,'occurrence has no fabricated inherited branch');
+ await ui.api.forward();assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLPipeline::AnalysisPipeline');assert.equal(ui.document.getElementById('model-search').value,'pipeline');
+ await ui.api.open('sysml:second');assert.equal(ui.api.reader().target,second.target);assert.deepEqual(viewKeys(ui),keys);
+});
+
+test('a failed navigation preserves current occurrence and does not become a Back or Forward destination',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ await ui.api.navigate(usage);const displayed=ui.mounts.at(-1),failure=deferred();ui.fetchPlans.set('#interconnection:'+definition.qualifiedName,failure);
+ const opening=ui.api.navigate(definition);failure.reject(Error('Definition unavailable'));assert.equal(await opening,false);
+ assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(displayed.controller.disposed,false);
+ assert.equal(ui.document.querySelector('[aria-label="Forward to next model view"]').disabled,true);
+ await ui.api.back();assert.equal(ui.api.reader().target,first.target,'Back returns to prior saved view, skipping failed definition');
+ await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName,'Forward restores the successful occurrence only');
+ assert.equal(ui.document.querySelector('[aria-label="Forward to next model view"]').disabled,true);
+});
+
+test('a late occurrence render cannot replace a newer definition or add a ghost history entry',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ const slow=deferred();ui.mountPlans.set('#interconnection:'+usage.qualifiedName,slow);
+ const old=ui.api.navigate(usage);await drain();assert.equal(await ui.api.navigate(definition),true);slow.resolve();assert.equal(await old,false);
+ assert.equal(ui.api.reader().target,definition.qualifiedName);assert.equal(ui.canvas().querySelector('[data-engine-view]').dataset.engineView,'#interconnection:'+definition.qualifiedName);
+ assert.equal(ui.mounts.find(m=>m.view==='#interconnection:'+usage.qualifiedName).controller.disposed,true);
+ await ui.api.back();assert.equal(ui.api.reader().target,first.target,'stale completion never inserts occurrence into history');
+});
+
+test('opening a replacement project clears previous navigation, search and expansion state',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');
+ ui.api.reveal(usage);await ui.api.navigate(usage);setSearch(ui,'old pipeline');
+ const replacement={...ui.report(),source:'package Replacement;',sourceSha256:'b'.repeat(64),elements:[{sessionElementId:'new-root',name:'Replacement',qualifiedName:'Replacement',metaclass:'Package',semantics:{}}]};
+ ui.api.importProject({sysmlViews:[second],selectedView:'sysml:second'});ui.context.report=replacement;ui.api.onReport(replacement);await ui.flushTimers();
+ assert.equal(ui.api.reader().target,second.target);assert.equal(ui.api.reader().sourceSha256,replacement.sourceSha256);
+ assert.equal(ui.document.getElementById('model-search').value,'');assert.deepEqual(viewKeys(ui),['sysml:second']);
+ assert.equal(ui.document.querySelector('[data-model-target="OpenSysMLSurfaces::Toolchain::pipeline"]'),null);
+ assert.equal(ui.document.querySelector('#model-tree [aria-current="true"]'),null);
+ const back=ui.document.querySelector('[aria-label="Back to previous model view"]');assert.ok(!back||back.disabled);
+ const requests=ui.requests.length;await ui.api.back();assert.equal(ui.requests.length,requests,'replacement cannot return to a prior project diagram');
+});
+
+
+test('definition Usages action reveals declared occurrences without changing the open diagram',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ await ui.api.navigate(definition);const drawing=ui.mounts.at(-1),requests=ui.requests.length;
+ locationButton(ui,'Usages (1)').click();
+ assert.equal(ui.requests.length,requests);assert.equal(drawing.controller.disposed,false);assert.equal(ui.api.reader().target,definition.qualifiedName);
+ assert.equal(ui.document.querySelector('#model-tree [role="status"]').textContent,'Usages of AnalysisPipeline');
+ const uses=[...ui.document.querySelectorAll('#model-tree [data-model-target]')];assert.deepEqual(uses.map(b=>b.dataset.modelTarget),['OpenSysMLSurfaces::Toolchain::pipeline']);
+ assert.match(uses[0].textContent,/Occurrence · AnalysisPipeline/);
+ assert.ok([...ui.document.querySelectorAll('#model-tree button')].some(b=>b.textContent==='Browse hierarchy'));
+});
+
+
+function button(ui,text){const result=[...ui.document.querySelectorAll('button')].find(b=>b.textContent===text);assert.ok(result,'Expected button: '+text);return result}
+function changeDepth(ui,value){const control=ui.document.querySelector('[aria-label="Diagram depth"]');control.value=String(value);control.dispatchEvent(new ui.document.defaultView.Event('change'))}
+
+test('exploring at depth four redraws the exact occurrence and Back retains that presentation depth',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ await ui.api.navigate(usage);const requests=ui.requests.length;changeDepth(ui,4);await drain();
+ assert.equal(ui.requests.length,requests+1);assert.equal(ui.requests.at(-1).view,'#interconnection:'+usage.qualifiedName);
+ assert.equal(ui.mounts.at(-1).options.depth,4,'depth is supplied to the diagram renderer');assert.equal(ui.api.reader().depth,4);
+ await ui.api.navigate(definition);await ui.api.back();
+ assert.equal(ui.requests.at(-1).view,'#interconnection:'+usage.qualifiedName);assert.equal(ui.mounts.at(-1).options.depth,4);assert.equal(ui.api.reader().depth,4);assert.equal(ui.document.querySelector('[aria-label="Diagram depth"]').value,'4');
+});
+
+test('deleting a personal view removes all historical routes that could resurrect it',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');
+ await ui.api.navigate(usage);await ui.api.open('sysml:first');button(ui,'Edit view').click();button(ui,'Delete view').click();await drain();
+ assert.equal(ui.api.has('sysml:first'),false);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot().views)),[second]);
+ const requests=ui.requests.length;await ui.api.back();assert.equal(ui.api.reader().target,usage.qualifiedName,'Back skips the deleted saved view and returns to a valid occurrence');
+ await ui.api.back();assert.equal(ui.requests.length,requests+1,'no older copy of the deleted view can be drawn');
+ assert.equal(ui.document.querySelector('[aria-label="Back to previous model view"]').disabled,true);
+ assert.ok(ui.requests.slice(requests).every(request=>request.view!=='#tree:'+first.target));assert.equal(ui.api.has('sysml:first'),false);
+});
+
+test('older history resolves the current personal recipe after rename and depth edit',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),definition=data.elements.find(e=>e.sessionElementId==='analysis');
+ await ui.api.navigate(usage);await ui.api.open('sysml:first');
+ button(ui,'Edit view').click();ui.document.querySelector('[aria-label="View name"]').value='Renamed engineering view';button(ui,'Keep changes').click();await drain();changeDepth(ui,4);await drain();
+ await ui.api.navigate(definition);await ui.api.back();assert.equal(ui.api.reader().name,'Renamed engineering view');assert.equal(ui.api.reader().depth,4);
+ await ui.api.back();assert.equal(ui.api.reader().target,usage.qualifiedName);
+ await ui.api.back();assert.equal(ui.requests.at(-1).view,'#tree:'+first.target);assert.equal(ui.api.reader().name,'Renamed engineering view','the original history entry must not restore its stale name');assert.equal(ui.api.reader().depth,4,'the original history entry must not restore its stale depth');assert.equal(ui.mounts.at(-1).options.depth,4);
+});
+
+test('first occurrence navigation and history refresh saved-state status after committing the history change',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),baseline=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ await ui.api.navigate(usage);assert.deepEqual(ui.refreshSnapshots.at(-1),baseline,'the final refresh keeps the saved selected view while browsing an occurrence');
+ await ui.api.back();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline);assert.equal(ui.api.reader().target,first.target);
+ await ui.api.forward();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline,'Forward also refreshes after restoring navigation history');assert.equal(ui.api.reader().target,usage.qualifiedName);
+});
+
+
+test('same-source report refresh restores the explored occurrence, depth and history after core disposes its drawing',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),baseline=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ ui.api.reveal(usage);await ui.api.navigate(usage);changeDepth(ui,4);await drain();const drawing=ui.mounts.at(-1),keys=viewKeys(ui);
+ ui.api.beginReport(data,false,{});ui.api.core(0);assert.equal(drawing.controller.disposed,true);assert.equal(ui.api.reader(),null);ui.canvas().textContent='Configured review drawing';
+ const refreshed={...data,elements:[...data.elements]};ui.context.report=refreshed;ui.api.onReport(refreshed);await ui.flushTimers();
+ assert.equal(ui.requests.at(-1).view,'#interconnection:'+usage.qualifiedName);assert.equal(ui.api.reader()?.target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);assert.equal(ui.mounts.at(-1).options.depth,4);
+ assert.equal(ui.canvas().querySelector('[data-engine-view]')?.dataset.engineView,'#interconnection:'+usage.qualifiedName);assert.doesNotMatch(ui.canvas().textContent,/Configured review drawing/);
+ assert.equal(ui.document.querySelector('[aria-label="Model ancestry"] [aria-current="location"]').textContent,'pipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
+ assert.deepEqual(viewKeys(ui),keys);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot())),baseline,'refresh retains the saved view identity while restoring temporary exploration');
+ await ui.api.back();assert.equal(ui.api.reader().target,first.target);await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);
+});
+
+test('changed-source invalidation restores the registered saved view instead of the old exploration',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');await ui.api.navigate(usage);changeDepth(ui,4);await drain();
+ ui.api.invalidate();ui.context.report=null;const changed={...data,source:data.source+' // changed revision',sourceSha256:'c'.repeat(64),elements:[...data.elements]};ui.api.beginReport(changed,false,{});ui.context.report=changed;ui.api.core(0);ui.api.onReport(changed);await ui.flushTimers();
+ assert.equal(ui.requests.at(-1).view,'#tree:'+first.target);assert.equal(ui.requests.at(-1).sourceSha256,changed.sourceSha256);assert.equal(ui.api.reader().target,first.target);assert.equal(ui.api.snapshot().selected,'sysml:first');
+ const requests=ui.requests.length;await ui.api.back();assert.equal(ui.requests.length,requests,'old occurrence history belongs to the invalidated revision');
 });

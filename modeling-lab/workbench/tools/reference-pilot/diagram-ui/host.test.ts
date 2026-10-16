@@ -65,7 +65,10 @@ test('donor host draws ports and typed edge markers, selects exact origins, zoom
     assert.equal(diagram.svg!.querySelectorAll('.movable').length, 0);
     const content = diagram.svg!.lastElementChild!, fitted = content.getAttribute('transform');
     diagram.zoom(2); assert.notEqual(content.getAttribute('transform'), fitted);
+    const viewport=diagram.captureViewport()!, zoomed=content.getAttribute('transform');
     diagram.fit(); assert.equal(content.getAttribute('transform'), fitted);
+    diagram.restoreViewport(viewport); assert.equal(content.getAttribute('transform'), zoomed);
+    diagram.restoreViewport({...viewport,scale:NaN}); assert.equal(content.getAttribute('transform'),zoomed,'invalid restored camera does not discard the current viewport');
     diagram.dispose(); diagram.dispose(); assert.equal(host.children.length, 0);
   } finally { Object.assign(globalThis, { document: previous }); dom.window.close(); }
 });
@@ -116,4 +119,46 @@ test('Read labels reaches actual size on a tall diagram, supports bounded pan an
     assert.deepEqual(camera(), overview, 'the fitted content stays centered on both axes');
     diagram.dispose();
   } finally { Object.assign(globalThis, { document: previous }); dom.window.close(); }
+});
+
+test('table views report rows, omit graph zoom controls and retain source selection', async () => {
+  const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document;
+  Object.assign(globalThis,{document:dom.window.document});
+  try {
+    const host=dom.window.document.querySelector('main')!, selected:unknown[]=[];
+    const diagram=await mountDiagram(host,{kind:'table',columns:['Element','Kind'],rows:[{cells:['pipeline','part'],origin},{cells:['lexer','part'],origin}]},{onSelect:span=>selected.push(span)});
+    assert.match(host.querySelector('[role="status"]')!.textContent!,/2 table rows/);
+    assert.ok([...host.querySelectorAll('button')].every(button=>button.hidden));
+    assert.equal(host.querySelectorAll('tr').length,3);
+    host.querySelectorAll('tr')[1].dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    assert.equal(selected[0],origin);assert.equal(diagram.captureViewport(),null);diagram.dispose();
+  } finally { Object.assign(globalThis,{document:previous});dom.window.close(); }
+});
+
+test('the initial asynchronous resize preserves a restored navigation viewport', async () => {
+  const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document, previousObserver=globalThis.ResizeObserver;
+  let resize: (()=>void)|undefined;
+  Object.assign(globalThis,{document:dom.window.document,ResizeObserver:class { constructor(callback:()=>void){resize=callback} observe(){} disconnect(){} }});
+  try {
+    const host=dom.window.document.querySelector('main')!, first=await mountDiagram(host,model());
+    first.zoom(2);const saved=first.captureViewport()!;first.dispose();
+    const next=await mountDiagram(host,model()), group=next.svg!.lastElementChild!;
+    next.restoreViewport(saved);const restored=group.getAttribute('transform');
+    resize!();assert.equal(group.getAttribute('transform'),restored,'queued initial fit must not overwrite Back camera');
+    next.fit();const fitted=group.getAttribute('transform');resize!();assert.equal(group.getAttribute('transform'),fitted,'an explicit Fit still requests the overview');next.dispose();
+  } finally { Object.assign(globalThis,{document:previous,ResizeObserver:previousObserver});dom.window.close(); }
+});
+
+
+test('empty table views retain column headers and table controls', async () => {
+  const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document;
+  Object.assign(globalThis,{document:dom.window.document});
+  try {
+    const host=dom.window.document.querySelector('main')!;
+    const diagram=await mountDiagram(host,{kind:'table',columns:['Element','Kind'],rows:[]});
+    assert.equal(host.querySelector('[role="status"]')!.textContent,'0 table rows');
+    assert.deepEqual([...host.querySelectorAll('th')].map(cell=>cell.textContent),['Element','Kind']);
+    assert.ok([...host.querySelectorAll('button')].every(button=>button.hidden));
+    assert.equal(host.querySelector('.diagram-stage'),null);assert.equal(diagram.svg,null);diagram.dispose();
+  } finally { Object.assign(globalThis,{document:previous});dom.window.close(); }
 });
