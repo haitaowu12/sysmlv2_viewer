@@ -13,6 +13,7 @@ export interface MountOptions {
 }
 export interface DiagramController {
   fit(): void; zoom(factor: number): void; dispose(): void;
+  captureViewport(): View | null; restoreViewport(view: View): void;
   readonly svg: SVGSVGElement | null; summary: DiagramSummary;
 }
 let serial = 0;
@@ -107,7 +108,10 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
     zoomTo(current.scale * factor);
   }
   const controller: DiagramController = {
-    fit: fitDiagram, zoom, summary, get svg() { return svg; },
+    fit: fitDiagram, zoom, summary,
+    captureViewport() { return svg ? { ...current } : null; },
+    restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); apply(); },
+    get svg() { return svg; },
     dispose() { if (disposed) return; disposed = true; listeners.forEach(remove => remove()); observer?.disconnect(); shell.remove(); },
   };
   let observer: ResizeObserver | undefined;
@@ -142,6 +146,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   // Replace only the host's contents. A later disposal never clears a newer mount.
   container.replaceChildren(shell);
   if ((view.rows?.length ?? 0) && !summary.totalNodes) {
+    status.textContent = `${view.rows!.length} table rows`; tools.querySelectorAll('button').forEach(button => { button.hidden = true; });
     stage.className = 'diagram-table-wrap'; stage.removeAttribute('tabindex'); stage.removeAttribute('aria-label');
     const table = document.createElement('table'), head = document.createElement('tr');
     for (const column of view.columns ?? []) { const cell = document.createElement('th'); cell.textContent = column; head.append(cell); }
