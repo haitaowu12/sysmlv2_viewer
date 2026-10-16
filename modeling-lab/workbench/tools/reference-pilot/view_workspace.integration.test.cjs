@@ -180,7 +180,7 @@ test('occurrence to definition and Back restore the semantic location, search, h
  setSearch(ui,'pipeline occurrence');await ui.api.navigate(usage);
  assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLSurfaces::Toolchain::pipeline');
  assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
- assert.ok(locationButton(ui,'Definition: AnalysisPipeline'));
+ assert.ok(locationButton(ui,'Definition: AnalysisPipeline'));assert.equal(ui.document.querySelector('.model-location').closest('details'),null,'primary context and Back controls cannot be hidden inside secondary View options');
  setSearch(ui,'pipeline');locationButton(ui,'Definition: AnalysisPipeline').click();await drain();
  assert.equal(ui.requests.at(-1).view,'#interconnection:OpenSysMLPipeline::AnalysisPipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Definition');
  assert.ok(locationButton(ui,'Usages (1)'));
