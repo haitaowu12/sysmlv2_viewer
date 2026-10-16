@@ -268,3 +268,14 @@ test('superseding a pending focus restoration reports false and retains the newe
  const old=diagram.restorePresentation({...state,mode:'focus'}),next=diagram.restorePresentation({...state,mode:'diagram'});assert.equal(await old,false);assert.equal(await next,true);assert.equal(diagram.capturePresentation().mode,'diagram');assert.ok(diagram.svg);assert.ok(notifications.at(-1)!.some(notice=>notice==='Original SDK diagram.'));diagram.dispose();
  }finally{Object.assign(globalThis,{document:previous});dom.window.close()}
 });
+
+test('dense context-only edges cannot consume the selected subtree relationship budget',()=>{
+ const contextEdges=Array.from({length:30},(_,index)=>({from:'neighbor-a',to:'neighbor-b',kind:'connection',label:'Unrelated '+index,origin}));
+ const selectedEdges=[{from:'selected-child',to:'neighbor-a',kind:'connection',label:'Selected connection',origin},{from:'selected-child',to:'neighbor-a',kind:'flow',label:'Selected parallel flow',origin},{from:'neighbor-b',to:'selected',kind:'connection',label:'Selected incoming endpoint',origin}];
+ const view:SDKView={view:'Dense neighbors',kind:'interconnection',nodes:[{id:'root',kind:'part def'},{id:'selected',kind:'part',parent:'root'},{id:'selected-child',kind:'part',parent:'selected'},{id:'neighbor-a',kind:'part',parent:'root'},{id:'neighbor-b',kind:'part',parent:'root'}],edges:[...contextEdges,...selectedEdges]};
+ const focus=focusArchitecture(view,'selected');
+ assert.deepEqual(focus.view.nodes.map(node=>node.id),['root','selected','selected-child','neighbor-a','neighbor-b']);
+ assert.deepEqual(focus.view.edges,selectedEdges,'only relationships incident to the selected subtree consume the focus budget, independent of unrelated edge ordering');
+ assert.equal(focus.view.edges[0],selectedEdges[0]);assert.equal(focus.view.edges[1],selectedEdges[1],'parallel connection and flow remain distinct original declarations');assert.equal(focus.omittedEdges,30);
+ assert.ok(focus.view.edges.every(edge=>edge.from==='selected'||edge.from==='selected-child'||edge.to==='selected'||edge.to==='selected-child'));
+});

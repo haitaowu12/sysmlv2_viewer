@@ -257,7 +257,7 @@ export function focusArchitecture(view: SDKView, selectedID: string, nodeBudget 
     for (const edge of edges) if (subtree.has(edge.from) || subtree.has(edge.to)) { include(edge.from, !subtree.has(edge.from)); include(edge.to, !subtree.has(edge.to)); }
   }
   const keptNodes = nodes.filter(node => retained.has(node.id));
-  const keptEdges = edges.filter(edge => retained.has(edge.from) && retained.has(edge.to)).slice(0, edgeBudget);
+  const keptEdges = edges.filter(edge => (subtree.has(edge.from) || subtree.has(edge.to)) && retained.has(edge.from) && retained.has(edge.to)).slice(0, edgeBudget);
   const omittedNodes = nodes.length - keptNodes.length, omittedEdges = edges.length - keptEdges.length;
   const notice = available ? `${view.kind==='interconnection'?'Focused connections':'Focused relationships'}: ${keptNodes.length} of ${nodes.length} elements and ${keptEdges.length} of ${edges.length} relationships. ${omittedNodes} elements and ${omittedEdges} relationships outside this focus or its ${nodeBudget}-element / ${edgeBudget}-relationship budget are omitted. Neighbor endpoints are context, not owned children. Open Diagram for the complete SDK graph.` : 'This ownership path exceeds the focus budget. Open Diagram to inspect the original graph.';
   return { available, contextIDs, omittedNodes, omittedEdges, view: { ...view, nodes: keptNodes, edges: keptEdges, notices: [...view.notices ?? [], notice] }, notice };
