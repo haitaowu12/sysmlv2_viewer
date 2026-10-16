@@ -62,6 +62,7 @@
   function rebuild(){
     if(!basis)return;
     registry=viewRegistry(basis.views.map(v=>{const recipe=engineRecipeFor(basis,v);return {...v,label:viewLabel(v.id),engineRecipe:recipe?.names?.length===1&&['engineering','behavior'].includes(recipe.renderer)&&Object.hasOwn(NOTATIONS,recipe.view.toLowerCase())?recipe:null}}),root.scopeWorkbench?.export()||[],authored(),personal);
+    if(typeof routeIndices==='function'){const allowed=new Set(routeIndices());registry=registry.filter(item=>item.kind!=='review'||allowed.has(item.index))}
     const host=el('views');host.replaceChildren();let group='';
     for(const item of registry){
       const next={review:'Review views',authored:'From the model',sysml:'My SysML views',analytical:'Analytical views'}[item.kind];
@@ -71,7 +72,7 @@
     }
     el('view-count').textContent=registry.length+' views';filter();
   }
-  function filter(){const terms=el('view-search').value.toLowerCase().trim().split(/\s+/).filter(Boolean);for(const b of el('views').querySelectorAll('button[data-view-key]'))b.hidden=!terms.every(t=>b.textContent.toLowerCase().includes(t))}
+  function filter(){const terms=el('view-search').value.toLowerCase().trim().split(/\s+/).filter(Boolean);const host=el('views'),buttons=[...host.querySelectorAll('button[data-view-key]')];let visible=0;for(const b of buttons){b.hidden=!terms.every(t=>b.textContent.toLowerCase().includes(t));if(!b.hidden)visible++}let heading=null,shown=false;for(const node of host.children){if(node.classList.contains('view-group')){if(heading)heading.hidden=!shown;heading=node;shown=false}else if(!node.hidden)shown=true}if(heading)heading.hidden=!shown;el('view-count').textContent=terms.length?visible+' / '+buttons.length:buttons.length+' views';if(el('no-views'))el('no-views').hidden=visible>0||!basis}
   el('view-search').addEventListener('input',filter);
   function leave(){ticket++;controller?.dispose();controller=null;mounted=null;tools.hidden=true;el('canvas').classList.remove('engine-diagram');document.body.classList.remove('engine-view-active');}
   async function open(key){

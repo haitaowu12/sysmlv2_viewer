@@ -70,13 +70,13 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   let svg: SVGSVGElement | null = null, disposed = false;
   let fit: View = { x: 0, y: 0, scale: 1 }, current: View = fit;
   let bounds: Box = { x: 0, y: 0, width: 800, height: 500 };
-  let content: SVGGElement | undefined;
+  let content: SVGGElement | undefined = undefined;
   const listeners: (() => void)[] = [];
   function listen(target: EventTarget, name: string, fn: EventListener, opts?: AddEventListenerOptions) {
     target.addEventListener(name, fn, opts); listeners.push(() => target.removeEventListener(name, fn, opts));
   }
   function apply() { content?.setAttribute('transform', `translate(${current.x} ${current.y}) scale(${current.scale})`); }
-  let layout: ReturnType<typeof layoutCanvas> | undefined;
+  let layout: ReturnType<typeof layoutCanvas> | undefined = undefined;
   // The donor hero's four-times-fit ceiling is too small for tall model views.
   // Keep its focal-point zoom math, but bound pan against the actual diagram and
   // allow actual-size labels even when the overview is very small.
