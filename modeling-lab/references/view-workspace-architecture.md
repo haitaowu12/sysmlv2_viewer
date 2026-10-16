@@ -58,6 +58,47 @@ file mapping. Library origins are disclosed as external declarations and never
 redirected into unrelated user source. Ports identify the owning declaration
 because the SDK does not supply an independent port span.
 
+## Declaration navigation and occurrence context
+
+The browser Model panel now presents a lazily expanded declaration hierarchy.
+Its parent relation comes only from resolved `semantics.owner` references in the
+accepted source report. It does not split qualified names, attach definitions
+under their usages, or treat resolved/inherited `feature` references as locally
+owned children. Named packages, definitions and usages remain distinct source
+declarations; hidden intermediate owners can be traversed by their explicit
+owner references. Missing owners fall back to the root, and ownership cycles
+cannot create a recursive UI. Sibling lists and search results are paged.
+
+The inspector and current-view trail distinguish a declared occurrence (part,
+item or occurrence usage) from its definition. Definition links resolve typed
+references; the reverse Usages list finds other directly typed source usages.
+These are declarations, not observed installed instances. Existing analytical
+catalogues retain their separate contextual occurrence keys and projections.
+The engine may resolve ports from a usage's type; navigation does not invent a
+new containment tree of all inherited features beneath every usage.
+
+Model navigation requests a temporary engine diagram of the exact semantic
+subject without replacing the accepted report, configured review recipes,
+authored views, personal views or analytical views. Back/Forward retains the
+subject, search, expanded branches, model selection, sidebar position and engine
+viewport. History holds at most thirty entries, resolves current saved recipes
+and prunes deleted destinations. Source invalidation or project replacement
+clears transient history. Depth changes rerender temporary exploration too.
+Browsing does not become an engineering edit or dirty the saved-view baseline.
+
+Temporary navigation is not a new saved view. Project save retains the last
+registered selected view; Save as view explicitly retains a newly explored
+subject as a personal semantic recipe. Original authored and analytical views
+remain available in the Views panel. Table presentations report actual row
+counts and omit graph zoom controls.
+
+The interface borrows the established explorer/type distinction rather than
+introducing diagram membership editing. The inspected SysON 2026.9 General View
+documentation distinguishes usage/definition representations and an explorer
+from exposed diagram membership; its General View is marked experimental:
+https://doc.mbse-syson.org/syson/v2026.9.0/user-manual/features/general-view.html
+No SysON framework code or service was introduced.
+
 ## Bounded capability
 
 The browser producer stops tree/interconnection containment after four levels
@@ -89,8 +130,10 @@ the in-app browser before Pages promotion.
 
 Subsequent slices should address, in this order:
 
-1. Hierarchical architecture navigation and explicit occurrence-versus-definition
-   exploration, with a new user's observed task as the acceptance criterion.
+1. Extend observed own-model navigation coverage beyond the current declaration
+   hierarchy and explicit occurrence/definition round trip. Wide architecture
+   Fit can still make labels small; search and branch navigation provide readable
+   access but do not establish a new large-graph layout or human acceptance.
 2. Published interoperability coverage: import a declared corpus of ordinary
    multi-file SysML models, report unsupported constructs before drawing, and
    qualify source-owned identity and view coverage for each.

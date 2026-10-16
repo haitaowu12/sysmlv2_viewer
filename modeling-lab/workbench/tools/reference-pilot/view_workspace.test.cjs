@@ -10,3 +10,65 @@ test('engine UTF-8 byte columns map to exact JavaScript editor offsets after non
 test('only an exact source/query and nonempty engine view receipt admits the engineering fallback',()=>{const report={sourceSha256:'a'.repeat(64)},view={view:'INTERCONNECTION',targets:['P::System'],engineView:{supported:true,sourceSha256:report.sourceSha256,viewquery:'#interconnection:P::System',kind:'interconnection',nodeCount:15,rowCount:0}};assert.equal(acceptsEngineView(report,view),true);for(const change of [{sourceSha256:'b'.repeat(64)},{viewquery:'#interconnection:P::Other'},{nodeCount:0},{kind:'tree'},{supported:false}])assert.equal(acceptsEngineView(report,{...view,engineView:{...view.engineView,...change}}),false);});
 
 test('focused state and action fallback dispatches a real engine recipe only for verified source evidence',()=>{for(const kind of ['STATE','ACTION','INTERCONNECTION']){const report={sourceSha256:'c'.repeat(64)},view={id:'focused',view:kind,targets:['P::Subject'],engineView:{supported:true,sourceSha256:report.sourceSha256,viewquery:'#'+kind.toLowerCase()+':P::Subject',kind:kind.toLowerCase(),nodeCount:3,rowCount:0}};assert.equal(context.labViewDefinitions.engineRecipeFor(report,view).view,kind);if(kind!=='INTERCONNECTION')assert.equal(context.labViewDefinitions.engineRecipeFor({...report,sourceSha256:'d'.repeat(64)},view),null);}});
+
+
+// Source contract from pinned OpenSysML examples/self-model: surfaces.sysml
+// 623–624 declares Toolchain::pipeline : AnalysisPipeline; pipeline.sysml
+// 728–742 declares AnalysisPipeline's 14 children under the definition. A second
+// occurrence below is a deliberate counterexample, not a donor model claim.
+const declaration=(id,name,qualifiedName,metaclass,owner=null,type=[])=>({sessionElementId:id,name,qualifiedName,metaclass,semantics:{owner:owner?{id:owner}:null,type}});
+const modelFacts=()=>[
+ declaration('surface','OpenSysMLSurfaces','OpenSysMLSurfaces','Package'),
+ declaration('toolchain','Toolchain','OpenSysMLSurfaces::Toolchain','PartDefinition','surface'),
+ declaration('pipeline','pipeline','OpenSysMLSurfaces::Toolchain::pipeline','PartUsage','toolchain',[{id:'analysis'}]),
+ declaration('pipeline2','backupPipeline','OpenSysMLSurfaces::Toolchain::backupPipeline','PartUsage','toolchain',[{qualifiedName:'OpenSysMLPipeline::AnalysisPipeline'}]),
+ declaration('pipeline-package','OpenSysMLPipeline','OpenSysMLPipeline','Package'),
+ declaration('analysis','AnalysisPipeline','OpenSysMLPipeline::AnalysisPipeline','PartDefinition','pipeline-package'),
+ declaration('sources','sources','OpenSysMLPipeline::AnalysisPipeline::sources','PartUsage','analysis'),
+ declaration('lexer','lexer','OpenSysMLPipeline::AnalysisPipeline::lexer','PartUsage','analysis')
+];
+test('source owners define the hierarchy while type and resolved-feature links stay separate',()=>{
+ const facts=modelFacts();facts[2].semantics.resolvedFeatures=[{id:'sources'},{id:'lexer'}];facts[2].semantics.children=[{id:'sources'}];
+ const index=context.labViewDefinitions.modelIndex(facts);
+ assert.equal(index.parents.get('pipeline'),'toolchain');
+ assert.deepEqual(plain(index.path(index.byId.get('pipeline')).map(e=>e.name)),['OpenSysMLSurfaces','Toolchain','pipeline']);
+ assert.deepEqual(plain(index.children.get('toolchain').map(e=>e.sessionElementId)),['pipeline2','pipeline']);
+ assert.equal(index.children.has('pipeline'),false,'definition members must not become children of a typed occurrence');
+ assert.deepEqual(plain(index.children.get('analysis').map(e=>e.name)),['lexer','sources']);
+ assert.deepEqual(plain(index.types(index.byId.get('pipeline')).map(e=>e.sessionElementId)),['analysis']);
+ assert.deepEqual(plain(index.usages.get('analysis').map(e=>e.sessionElementId)),['pipeline','pipeline2']);
+ assert.notEqual(index.byId.get('pipeline'),index.byId.get('pipeline2'),'two explicit occurrences preserve their own identity');
+ assert.equal(context.labViewDefinitions.modelRole(index.byId.get('pipeline')),'Occurrence');
+ assert.equal(context.labViewDefinitions.modelRole(index.byId.get('analysis')),'Definition');
+ assert.equal(context.labViewDefinitions.modelNotation(index.byId.get('pipeline')),'interconnection');
+});
+
+test('quoted names, hidden owners and malformed ownership cycles remain bounded and unambiguous',()=>{
+ const facts=[
+  declaration('root',"'Plant::One'","'Plant::One'",'Package'),
+  declaration('hidden','@membership',"'Plant::One'::@membership",'Membership','root'),
+  declaration('quoted',"'Pump::A'","'Plant::One'::'Pump::A'",'PartUsage','hidden'),
+  declaration('cycle-a','A','Cycle::A','PartDefinition','cycle-b'),
+  declaration('cycle-b','B','Cycle::B','PartDefinition','cycle-a'),
+  declaration('self','Self','Self','PartDefinition','self'),
+  declaration('orphan','Orphan','Unrelated::Orphan','PartUsage','missing')
+ ];
+ const index=context.labViewDefinitions.modelIndex(facts);
+ assert.equal(index.parents.get('quoted'),'root');
+ assert.deepEqual(plain(index.path(index.byId.get('quoted')).map(e=>e.qualifiedName)),["'Plant::One'","'Plant::One'::'Pump::A'"]);
+ assert.equal(index.resolve("'Plant::One'::'Pump::A'").sessionElementId,'quoted');
+ assert.equal(index.byId.has('hidden'),false);
+ assert.equal(index.parents.has('self'),false);assert.equal(index.parents.has('orphan'),false,'qualified name punctuation never invents an owner');
+ const reached=new Set();function walk(id){for(const e of index.children.get(id)||[]){assert.equal(reached.has(e.sessionElementId),false,'UI hierarchy contains no ownership cycle');reached.add(e.sessionElementId);walk(e.sessionElementId)}}walk(null);
+ assert.equal(reached.size,index.entries.length);for(const e of index.entries)assert.ok(index.path(e).length<=index.entries.length);
+});
+
+test('type navigation requires a unique source definition and does not resolve usages as definitions',()=>{
+ const facts=modelFacts();facts.push(declaration('ambiguous-a','Shared','P::Shared','PartDefinition'),declaration('ambiguous-b','Shared','P::Shared','PartDefinition'));
+ facts[2].semantics.type=[{qualifiedName:'P::Shared'},{id:'pipeline2'},{id:'absent'},{id:'analysis'}];
+ const index=context.labViewDefinitions.modelIndex(facts);
+ assert.equal(index.resolve('P::Shared'),null,'ambiguous qualified names must not choose an arbitrary definition');
+ assert.deepEqual(plain(index.types(index.byId.get('pipeline')).map(e=>e.sessionElementId)),['analysis']);
+ assert.deepEqual(plain(index.usages.get('analysis').map(e=>e.sessionElementId)),['pipeline','pipeline2']);
+ assert.equal(index.usages.has('pipeline2'),false);
+});
