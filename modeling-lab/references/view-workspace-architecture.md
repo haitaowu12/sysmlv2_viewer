@@ -99,6 +99,47 @@ from exposed diagram membership; its General View is marked experimental:
 https://doc.mbse-syson.org/syson/v2026.9.0/user-manual/features/general-view.html
 No SysON framework code or service was introduced.
 
+## Readable overview and focused neighborhoods
+
+Large structural results (tree, interconnection, definition or package) open an
+Architecture overview when they contain more than eight direct components or
+thirty total nodes. It is explicitly a navigation aid, not an alternative SysML
+notation. A bounded grid shows direct engine-owned components with original
+kind/type. Boundary ports remain visible as context. Selecting a component lists
+its exact adjacent connection and flow assertions, with readable endpoints and
+original edge-source callbacks. Separate parallel assertions are preserved.
+Component and connection lists page at fifty, with explicit current ranges.
+The original SysML Diagram remains available through one direct action.
+
+Explore connections focuses the existing SDK graph rather than synthesizing a new
+instance structure. It includes the selected subtree, actual adjacent endpoints
+and necessary ancestor chains within twelve nodes and twenty-four edges.
+Endpoints retain original parents and port identities; external neighbors are
+identified as context. No edge is retargeted to a visible owner. Generic connections remain undirected
+in overview annotations; only actual flows receive flow-direction labels. Omitted counts
+and budget limits remain explicit, and the complete original graph remains
+available. Open definition continues to follow declared typing to user-source
+structure; a focused neighborhood does not invent subsystem internals.
+
+Back to overview retains the selected component and list position. Model-view
+history also captures the overview/focus/diagram presentation and camera. A
+unique original source/name/kind witness resolves selections after rerendering;
+render-local IDs are not persisted. Asynchronous presentation restoration is
+bound to its drawing, accepted report and request ticket, so an obsolete restore
+cannot move a newer drawing's camera. Source changes clear transient history.
+Selected component actions and exact relationships share the overview pane.
+Focused drawings suppress unselected edge-label clutter, retain selectable line
+names and an exact source-linked relationship list. The original drawing is
+unchanged. Secondary depth/save/full-canvas settings live in View options.
+Discovery controls remain outside scrolling result lists, and short desktop
+windows use a bounded flex/scroll chain rather than clipping diagram controls.
+
+Reader export retains the displayed overview or focused drawing, its revision,
+current page/range and explicit projection limits. Overview navigation buttons
+become static content or are removed; an exported overview does not claim to
+include all edges or every page. Useful configured, authored, personal and
+analytical recipes remain unchanged in editable projects.
+
 ## Bounded capability
 
 The browser producer stops tree/interconnection containment after four levels
@@ -130,17 +171,14 @@ the in-app browser before Pages promotion.
 
 Subsequent slices should address, in this order:
 
-1. Extend observed own-model navigation coverage beyond the current declaration
-   hierarchy and explicit occurrence/definition round trip. Wide architecture
-   Fit can still make labels small; search and branch navigation provide readable
-   access but do not establish a new large-graph layout or human acceptance.
-2. Published interoperability coverage: import a declared corpus of ordinary
+1. Published interoperability coverage: import a declared corpus of ordinary
    multi-file SysML models, report unsupported constructs before drawing, and
    qualify source-owned identity and view coverage for each.
-3. Scalable view queries: producer-side node/edge budgets and server/profile
+2. Scalable view queries: producer-side node/edge budgets and server/profile
    capability discovery, then progressive expansion and benchmarked wide/deep
-   models. A smaller screenshot is not proof of scale.
-4. Editing interaction: reversible, source-witnessed changes and clear diagnostics
+   models. Host presentation budgets do not reduce producer work. A readable
+   overview or smaller screenshot is not proof of scale.
+3. Editing interaction: reversible, source-witnessed changes and clear diagnostics
    around one complete engineering task before adding diagram editing gestures.
 
 Each slice must demonstrate its user task before breadth expands. A new parser,
