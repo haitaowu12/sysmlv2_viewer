@@ -1,10 +1,11 @@
-import {renderAcceptedDiagram} from './engine-view.js';
+import {renderAcceptedDiagram,preflightEngineViews} from './engine-view.js';
 import {connectWasm} from '@openmbee/opensysml/browser';
 import wasmUrl from './browser-engine.wasm?url';
 import execUrl from './wasm_exec.js?url';
 import {loadPyodide} from 'pyodide';
 import {instance} from '@viz-js/viz';
 const base=new URL('../',import.meta.url);
+const checkedModels=new WeakMap();
 let python,connection;let current=null,previous=null,staged=null,initialData=null;
 const ready=(async()=>{
  const assetRoot=base;
@@ -21,7 +22,8 @@ const ready=(async()=>{
 async function inspect(source){
  if(typeof source!=='string'||new TextEncoder().encode(source).length>524288)throw Error('Source must be text, up to 512 KiB.');
  const model=await connection.loads(source,{strictConformance:true});
- return {source,valid:!model.hasErrors,diagnostics:model.diagnostics,raw:model.hasErrors?[]:JSON.parse((await model.toApiJson()).content)};
+ const checked={source,valid:!model.hasErrors,diagnostics:model.diagnostics,raw:model.hasErrors?[]:JSON.parse((await model.toApiJson()).content)};
+ checkedModels.set(checked,model);return checked;
 }
 function py(action,data){python.globals.set('browser_payload',JSON.stringify(data));return JSON.parse(python.runPython(`json.dumps(${action}(json.loads(browser_payload)))`));}
 let queue=Promise.resolve();
@@ -31,7 +33,9 @@ self.onmessage=({data:message})=>{queue=queue.then(async()=>{try{
  else if(path==='/render'||path==='/inspect'){
   const checked=await inspect(data.source);const baseChecked=data.baselineSource&&data.baselineSource!==data.source?await inspect(data.baselineSource):checked;
   if(checked.valid&&!baseChecked.valid)throw Error('The project baseline does not pass browser validation.');
-  result=py('render_report',{views:path==='/inspect'?[]:initialData.presets,...data,checked,baseChecked,inspection:path==='/inspect',stage:path==='/render'&&data.stage,accept:path==='/render'&&!data.stage});
+  const requests=path==='/render'&&checked.valid?py('engine_view_requests',{...data,views:data.views??initialData.presets}):[];
+  const enginePreflight=path==='/render'&&checked.valid?await preflightEngineViews(checkedModels.get(checked),checked.source,requests):{};
+  result=py('render_report',{views:path==='/inspect'?[]:initialData.presets,...data,checked,baseChecked,enginePreflight,inspection:path==='/inspect',stage:path==='/render'&&data.stage,accept:path==='/render'&&!data.stage});
   if(path==='/render'){
    if(data.stage){result.transactionId=data.transactionId;if(result.staticChecksPassed)staged={transactionId:data.transactionId,report:result};}
    else if(result.staticChecksPassed){current=result;staged=previous=null;}

@@ -16,6 +16,22 @@ staged_report=None
 previous_report=None
 last_rolled_back=None
 
+def engine_view_requests(data):
+    return exploration_views(views_for(data['views']),data.get('target'),data.get('view','DEFAULT'))
+
+def engine_view_query(request):
+    kind=request['view'].lower()
+    eligible=(request.get('renderer')=='engineering' and kind in ('tree','interconnection')) or (kind in ('state','action') and (request.get('renderer')=='behavior' or request['id']=='focused'))
+    return '#'+kind+':'+request['names'][0] if eligible else None
+
+def verified_engine_view(receipt,request,source_sha256):
+    query=engine_view_query(request)
+    if not query or not isinstance(receipt,dict):return False
+    counts=[receipt.get('nodeCount'),receipt.get('rowCount'),receipt.get('edgeCount')]
+    return (receipt.get('supported') is True and receipt.get('sourceSha256')==source_sha256
+            and receipt.get('viewquery')==query and receipt.get('kind')==request['view'].lower()
+            and all(type(n) is int and n>=0 for n in counts) and counts[0]+counts[1]>0)
+
 def render_report(data):
     global current_report, staged_report, previous_report, last_rolled_back
     metadata=data.get('sourceSet', None if data.get('inspection') else (current_report or {}).get('_sourceSet'))
@@ -28,7 +44,12 @@ def render_report(data):
     report['views']=[]
     for request in rendered:
         target=request['names'][0]
+        receipts=data.get('enginePreflight')
+        evidence=receipts.get(request['id']) if isinstance(receipts,dict) else None
+        verified=verified_engine_view(evidence,request,report['sourceSha256'])
         v={'id':request['id'],'targets':request['names'],'view':request['view'],'styles':request.get('styles',[]),'notationProfile':'experimental-browser-analytical'}
+        if engine_view_query(request):
+            v['engineView']=dict(evidence) if verified else {'supported':False,'sourceSha256':report['sourceSha256'],'viewquery':engine_view_query(request),'error':evidence.get('error','Engine support was not verified for this source and view.') if isinstance(evidence,dict) else 'Engine support was not verified for this source and view.'}
         try:
             projection=project(report,target,request)
             v['stakeholder']=projection
@@ -45,7 +66,9 @@ def render_report(data):
                 v['svg']=v['stakeholderSvg']
                 v['notationProfile']='analytical-browser-overview-v1'
             v['authority']='OpenSysML API facts; shared analytical presentation'
-        except Exception as error:v['error']=str(error)
+        except Exception as error:
+            v['error']=str(error)
+            if not v.get('stakeholderSvg'):v['stakeholderError']='Stakeholder presentation is unavailable for this scope: '+str(error)
         report['views'].append(v)
     report['viewRecipes']=recipes
     report['changeSummary']=summarize(normalized(data['baseChecked']),report)
@@ -59,7 +82,7 @@ def render_report(data):
     if data.get('stage') or data.get('accept'):
         for v in report['views']:
             failure=v.get('error') or v.get('stakeholderError')
-            if failure or not v.get('svg') or not v.get('stakeholderSvg'):
+            if not v.get('engineView',{}).get('supported') and (failure or not v.get('svg') or not v.get('stakeholderSvg')):
                 raise ValueError('Required view '+v['id']+' could not be built: '+str(failure or 'A required audience drawing is missing')+'. Current project is retained.')
     if data.get('stage'):
         if identity(current_report) != (data.get('expectedBase'), data.get('expectedReport')):

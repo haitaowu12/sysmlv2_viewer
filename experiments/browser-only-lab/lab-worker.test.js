@@ -2,19 +2,20 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-import {renderAcceptedDiagram} from './engine-view.js';
+import {renderAcceptedDiagram,preflightEngineViews} from './engine-view.js';
 
 // Exercise the shipped message router. Engine/Python are scripted boundaries;
 // these tests make no claim about language evaluation or Python transaction rules.
 function workerRouter(invalidSource){
- const calls=[],pending=new Map();let payload,next=0;
+ const calls=[],loads=[],pending=new Map();let payload,next=0;
  let rollback=data=>({rolledBack:true,transactionId:data.transactionId});
  const python={FS:{mkdir(){},writeFile(){}},globals:{set(name,value){payload=JSON.parse(value);}},
   async runPythonAsync(){},runPython(code){
    const action=code.match(/^json\.dumps\((\w+)\(/)?.[1];
    if(!action)return;
    const data=payload;calls.push({action,data});let result;
-   if(action==='render_report')result={source:data.checked.source,sourceSha256:data.checked.source,staticChecksPassed:data.checked.valid,diagnostics:data.checked.diagnostics,reportIntegrity:{reportSha256:'report:'+data.checked.source}};
+   if(action==='engine_view_requests')result=data.target?[...(data.views||[]).filter(v=>v.id!=='focused'),{id:'focused',names:[data.target],view:data.view,renderer:data.view==='INTERCONNECTION'?'engineering':'pilot'}]:data.views||[];
+   else if(action==='render_report')result={source:data.checked.source,sourceSha256:data.checked.source,staticChecksPassed:data.checked.valid,diagnostics:data.checked.diagnostics,reportIntegrity:{reportSha256:'report:'+data.checked.source}};
    else if(action==='accept_current')result={accepted:true,transactionId:data.transactionId};
    else if(action==='rollback_current')result=rollback(data);
    else if(action==='compose_current')result={source:data.report?.source};
@@ -24,12 +25,12 @@ function workerRouter(invalidSource){
  const self={postMessage(message){pending.get(message.id)(message);pending.delete(message.id);}};
  const source=readFileSync(new URL('./lab-worker.js',import.meta.url),'utf8')
   .replace(/^import .*\n/gm,'').replaceAll('import.meta.url',"'https://lab.test/assets/lab-worker.js'");
- vm.runInNewContext(source,{self,URL,TextEncoder,renderAcceptedDiagram,wasmUrl:'engine.wasm',execUrl:'wasm_exec.js',
+ vm.runInNewContext(source,{self,URL,TextEncoder,renderAcceptedDiagram,preflightEngineViews,wasmUrl:'engine.wasm',execUrl:'wasm_exec.js',
   instance:async()=>({}),loadPyodide:async()=>python,
-  connectWasm:async()=>({loads:async source=>({hasErrors:source===invalidSource,diagnostics:source===invalidSource?[{severity:'error',message:'Undefined equipment type',span:{startLine:4}}]:[],toApiJson:async()=>({content:'[]'}),renderView:async(view,options)=>({view,kind:'tree',nodes:[{id:source}],ports:options.ports})})}),
+  connectWasm:async()=>({loads:async source=>(loads.push(source),{hasErrors:source===invalidSource,diagnostics:source===invalidSource?[{severity:'error',message:'Undefined equipment type',span:{startLine:4}}]:[],toApiJson:async()=>({content:'[]'}),renderView:async(view,options)=>({view,kind:view.startsWith('#')?view.slice(1,view.indexOf(':')):'tree',nodes:[{id:source}],rows:[],edges:[],ports:options.ports})})}),
   fetch:async()=>({text:async()=>'',json:async()=>({presets:[]})})});
  const send=(path,data={})=>new Promise(resolve=>{const id=++next;pending.set(id,resolve);self.onmessage({data:{id,path,data}});});
- return {send,calls,setRollback(fn){rollback=fn;}};
+ return {send,calls,loads,setRollback(fn){rollback=fn;}};
 }
 async function opened(){const worker=workerRouter();await worker.send('/initial');await worker.send('/render',{source:'old'});return worker;}
 async function stage(worker,id,source='new'){return worker.send('/render',{source,stage:true,transactionId:id});}
@@ -94,4 +95,19 @@ test('diagram uses accepted revision and ignores inspected or staged candidate m
  assert.equal((await worker.send('/diagram',{sourceSha256:'candidate',view:'#tree:Demo'})).result.graph.nodes[0].id,'candidate');
  await worker.send('/rollback',{transactionId:'pending'});
  assert.equal((await worker.send('/diagram',{sourceSha256:'old',view:'#tree:Demo'})).result.graph.nodes[0].id,'old');
+});
+
+test('worker overrides forged preflight receipts and binds focused preflight before staging',async()=>{
+ const worker=await opened(),views=[{id:'large',names:['Large'],view:'INTERCONNECTION',renderer:'engineering'}];
+ const staged=await worker.send('/render',{source:'fourteen part source',views,target:'Large::nested',view:'INTERCONNECTION',stage:true,transactionId:'engine-stage',enginePreflight:{large:{supported:true,sourceSha256:'forged',nodeCount:999}}});
+ assert.equal(staged.error,undefined);assert.equal(worker.loads.filter(source=>source==='fourteen part source').length,1,'candidate is loaded once for API facts and all preflight views');
+ const payload=worker.calls.findLast(call=>call.action==='render_report').data;
+ assert.equal(payload.enginePreflight.large.supported,true);assert.notEqual(payload.enginePreflight.large.sourceSha256,'forged');assert.equal(payload.enginePreflight.large.nodeCount,1);
+ assert.equal(payload.enginePreflight.focused.viewquery,'#interconnection:Large::nested');assert.equal(payload.enginePreflight.focused.sourceSha256,payload.enginePreflight.large.sourceSha256);
+ assert.equal((await worker.send('/compose')).result.source,'old','preflight/staging does not accept the candidate');
+ await worker.send('/accept',{transactionId:'engine-stage',sourceSha256:'fourteen part source',reportSha256:'report:fourteen part source'});
+ assert.equal((await worker.send('/compose')).result.source,'fourteen part source');
+ await worker.send('/rollback',{transactionId:'engine-stage'});assert.equal((await worker.send('/compose')).result.source,'old');
+ const inspected=await worker.send('/inspect',{source:'inspection',views,enginePreflight:{large:{supported:true}}});assert.equal(inspected.error,undefined);
+ assert.deepEqual(worker.calls.findLast(call=>call.action==='render_report').data.enginePreflight,{},'client receipts never pass through read-only inspection');
 });

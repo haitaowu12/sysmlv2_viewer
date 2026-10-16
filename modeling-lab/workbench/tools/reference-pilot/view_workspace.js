@@ -29,7 +29,11 @@
     const end=lines.slice(0,endLine-1).reduce((n,l)=>n+l.length+1,0)+endColumn;if(end<start)return null;
     return {start,end,text:source.slice(start,end)};
   }
-  const helpers={admitViews,viewRegistry,NOTATIONS,sourceSlice};
+  function acceptsEngineView(report,view){
+    const proof=view?.engineView,kind=String(view?.view||'').toLowerCase();return proof?.supported===true&&view.targets?.length===1&&proof.sourceSha256===report.sourceSha256&&proof.viewquery==='#'+kind+':'+view.targets[0]&&proof.kind===kind&&((Number.isInteger(proof.nodeCount)&&proof.nodeCount>0)||(Number.isInteger(proof.rowCount)&&proof.rowCount>0));
+  }
+  function engineRecipeFor(report,view){return (report.viewRecipes||[]).find(r=>r.id===view.id)||(view.id==='focused'&&view.targets?.length===1&&(view.view==='INTERCONNECTION'||acceptsEngineView(report,view))?{names:view.targets,view:view.view,renderer:['STATE','ACTION'].includes(view.view)?'behavior':'engineering'}:null);}
+  const helpers={admitViews,viewRegistry,NOTATIONS,sourceSlice,acceptsEngineView,engineRecipeFor};
   if (typeof module !== 'undefined') module.exports=helpers;
   root.labViewDefinitions=helpers;
   if (!root.document || !root.browserLabReady) return;
@@ -57,7 +61,7 @@
   function current(){return registry.find(v=>v.key===selectedKey)}
   function rebuild(){
     if(!basis)return;
-    registry=viewRegistry(basis.views.map(v=>{const recipe=(basis.viewRecipes||[]).find(r=>r.id===v.id)||(v.id==='focused'&&v.targets?.length===1&&v.view==='INTERCONNECTION'?{names:v.targets,view:v.view,renderer:'engineering'}:null);return {...v,label:viewLabel(v.id),engineRecipe:recipe?.names?.length===1&&['engineering','behavior'].includes(recipe.renderer)&&Object.hasOwn(NOTATIONS,recipe.view.toLowerCase())?recipe:null}}),root.scopeWorkbench?.export()||[],authored(),personal);
+    registry=viewRegistry(basis.views.map(v=>{const recipe=engineRecipeFor(basis,v);return {...v,label:viewLabel(v.id),engineRecipe:recipe?.names?.length===1&&['engineering','behavior'].includes(recipe.renderer)&&Object.hasOwn(NOTATIONS,recipe.view.toLowerCase())?recipe:null}}),root.scopeWorkbench?.export()||[],authored(),personal);
     const host=el('views');host.replaceChildren();let group='';
     for(const item of registry){
       const next={review:'Review views',authored:'From the model',sysml:'My SysML views',analytical:'Analytical views'}[item.kind];
@@ -99,7 +103,7 @@
       if(notices.length){const details=make('details');details.append(make('summary','View scope and limitations'));for(const n of notices)details.append(make('p',n));el('explanation').append(details)}
       for(const id of ['fit','minus','plus','readable','actual'])el(id).disabled=false;
       rebuild();root.syncSysmlReturn?.();status('SysML view ready','valid');root.labWorkflow.refreshState();
-    }catch(error){if(request!==ticket||basis!==base)return;selectedKey=committedKey||previousKey;status('View could not be opened · previous drawing retained','error');setRuntimeDiagnostic(error);rebuild()}
+    }catch(error){if(request!==ticket||basis!==base)return;selectedKey=committedKey||previousKey;if(!mounted&&!el('canvas').querySelector('svg')){el('canvas').replaceChildren(make('strong','View could not be opened'),make('p',error.message||'Try opening the view again.'),action('Retry view',()=>open(item.key)));status('View could not be opened · retry available','error')}else status('View could not be opened · previous drawing retained','error');setRuntimeDiagnostic(error);rebuild()}
   }
   depth.addEventListener('change',()=>{const item=current();if(!item||!['authored','sysml','review'].includes(item.kind))return;const d=Number(depth.value);if(item.kind==='sysml'){personal=personal.map(v=>v.id===item.id?{...v,depth:d}:v);rebuild()}draw({...item,depth:d})});
   async function inspectOrigin(origin,context={}){
@@ -157,7 +161,7 @@
     if(all.length>50){const pages=make('div');const prev=action('Previous',()=>{modelPage--;renderModel()}),next=action('Next',()=>{modelPage++;renderModel()});prev.disabled=modelPage===0;next.disabled=(modelPage+1)*50>=all.length;pages.append(prev,make('span',' '+(modelPage+1)+' / '+Math.ceil(all.length/50)+' '),next);modelHost.append(pages)}
   }
   root.labViews={
-    rebuild,filter,renderModel,open,has:key=>registry.some(v=>v.key===key),create:createDialog,leave,
+    rebuild,filter,renderModel,open,hasAuthored:()=>authored().length>0,has:key=>registry.some(v=>v.key===key),create:createDialog,leave,
     snapshot:()=>({views:structuredClone(personal),selected:selectedKey}),
     importProject(data){personal=admitViews(data.sysmlViews);pendingSelection=typeof data.selectedView==='string'?data.selectedView:null;selectedKey=null;committedKey=null;leave()},
     restore(state){personal=admitViews(state?.views);pendingSelection=state?.selected||null;selectedKey=null;committedKey=null;leave()},

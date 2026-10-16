@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {connectWasm} from '@openmbee/opensysml';
-import {renderAcceptedDiagram} from './engine-view.js';
+import {renderAcceptedDiagram,preflightEngineViews} from './engine-view.js';
+import {execFileSync} from 'node:child_process';
 const sourceRoot=new URL('./_build/OpenSysML/',import.meta.url);
 test('built WASM public SDK retains authored views, exact anonymous origins and declared layout',async()=>{
  const connection=await connectWasm({wasm:fileURLToPath(new URL('./browser-engine.wasm',import.meta.url)),wasmExec:fileURLToPath(new URL('./wasm_exec.js',import.meta.url)),timeoutMs:30000});
@@ -31,5 +32,53 @@ test('built WASM public SDK retains authored views, exact anonymous origins and 
   const quoted=await connection.loads("package Quoted { part def Stage; part 'S-IC' : Stage; }",{strictConformance:true});assert.equal(quoted.hasErrors,false);
   const quotedGraph=await quoted.renderView("#interconnection:Quoted::'S-IC'",{ports:'full'});assert.equal(quotedGraph.nodes.length,1);assert.match(quotedGraph.nodes[0].name,/S-IC/);
   await assert.rejects(quoted.renderView('#tree',{ports:'full'}),/untargeted/);
+ }finally{await connection.close();}
+});
+
+
+test('unchanged eight-file self-model pipeline gains exact-source engine admission beyond the legacy 12-part limit',async()=>{
+ const names=['behavior','document','execution','identity','pipeline','quality','surfaces','views'];
+ const source=(await Promise.all(names.map(name=>readFile(new URL('examples/self-model/'+name+'.sysml',sourceRoot),'utf8')))).join('\n');
+ const connection=await connectWasm({wasm:fileURLToPath(new URL('./browser-engine.wasm',import.meta.url)),wasmExec:fileURLToPath(new URL('./wasm_exec.js',import.meta.url)),timeoutMs:30000});
+ try{
+  const model=await connection.loads(source,{strictConformance:true});assert.equal(model.hasErrors,false);
+  const request={id:'pipeline',names:['OpenSysMLPipeline::AnalysisPipeline'],view:'INTERCONNECTION',renderer:'engineering'};
+  const receipts=await preflightEngineViews(model,source,[request]);
+  assert.equal(receipts.pipeline.supported,true);assert.equal(receipts.pipeline.nodeCount,18);assert.equal(receipts.pipeline.edgeCount,27);
+  const raw=JSON.parse((await model.toApiJson()).content);
+  // Run the exact Python report/staging handler against real typed API output.
+  // No model source or rendering function is replaced in this cross-runtime test.
+  const proof=JSON.parse(execFileSync('python3',['-c',`
+import json,sys,hashlib
+from pathlib import Path
+root=Path.cwd()
+sys.path[:0]=[str(root/'public/python'),str(root.parents[1]/'modeling-lab/workbench/tools/reference-pilot')]
+from normalize import normalize
+from lab_project import views_for,exploration_views
+from lab_delivery import browser_report
+from view_scope import catalogue_for_views
+from stakeholder import project,render_svg
+from engineering import interconnection,exchange_summary
+from behavior import project as behavior_project,render_svg as behavior_svg
+from change_summary import summarize
+exec((root/'public/python/browser_handler.py').read_text())
+payload=json.load(sys.stdin)
+old={'source':'old','sourceSha256':'0'*64,'reportIntegrity':{'reportSha256':'1'*64}}
+current_report=old
+checked={'source':payload['source'],'raw':payload['raw'],'valid':True,'diagnostics':[]}
+report=render_report({'checked':checked,'baseChecked':checked,'views':[payload['request']],'enginePreflight':payload['receipts'],'stage':True,'transactionId':'pipeline-test','expectedBase':'0'*64,'expectedReport':'1'*64})
+assert current_report is old
+view=report['views'][0]
+assert view['engineView']['supported'] is True
+assert 'error' in view and '12' in view['error']
+assert 'svg' not in view and 'stakeholderSvg' not in view
+assert 'unavailable' in view['stakeholderError']
+accept_current({'transactionId':'pipeline-test','sourceSha256':report['sourceSha256'],'reportSha256':report['reportIntegrity']['reportSha256']})
+assert current_report['source']==payload['source']
+rollback_current({'transactionId':'pipeline-test'})
+assert current_report is old
+print(json.dumps({'legacyError':view['error'],'nodeCount':view['engineView']['nodeCount'],'stagedAndRolledBack':True}))
+`],{cwd:fileURLToPath(new URL('./',import.meta.url)),input:JSON.stringify({source,raw,request,receipts}),encoding:'utf8',maxBuffer:20*1024*1024}));
+  assert.equal(proof.nodeCount,18);assert.equal(proof.stagedAndRolledBack,true);assert.match(proof.legacyError,/12/);
  }finally{await connection.close();}
 });
