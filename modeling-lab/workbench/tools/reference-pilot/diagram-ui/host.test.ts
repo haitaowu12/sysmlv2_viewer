@@ -148,3 +148,17 @@ test('the initial asynchronous resize preserves a restored navigation viewport',
     next.fit();const fitted=group.getAttribute('transform');resize!();assert.equal(group.getAttribute('transform'),fitted,'an explicit Fit still requests the overview');next.dispose();
   } finally { Object.assign(globalThis,{document:previous,ResizeObserver:previousObserver});dom.window.close(); }
 });
+
+
+test('empty table views retain column headers and table controls', async () => {
+  const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document;
+  Object.assign(globalThis,{document:dom.window.document});
+  try {
+    const host=dom.window.document.querySelector('main')!;
+    const diagram=await mountDiagram(host,{kind:'table',columns:['Element','Kind'],rows:[]});
+    assert.equal(host.querySelector('[role="status"]')!.textContent,'0 table rows');
+    assert.deepEqual([...host.querySelectorAll('th')].map(cell=>cell.textContent),['Element','Kind']);
+    assert.ok([...host.querySelectorAll('button')].every(button=>button.hidden));
+    assert.equal(host.querySelector('.diagram-stage'),null);assert.equal(diagram.svg,null);diagram.dispose();
+  } finally { Object.assign(globalThis,{document:previous});dom.window.close(); }
+});
