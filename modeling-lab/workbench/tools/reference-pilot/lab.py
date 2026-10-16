@@ -194,7 +194,7 @@ def main():
             if not self.allowed(): return self.reply(403, {'error': 'Host rejected'})
             if self.path == '/':
                 page = (ROOT / 'tools/reference-pilot/lab.html').read_text()
-                for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__SOURCE_INTAKE_SCRIPT__', 'source_intake.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js')]:
+                for key, filename in [('__SCOPE_SCRIPT__', 'scope.js'), ('__SOURCE_INTAKE_SCRIPT__', 'source_intake.js'), ('__WORKFLOW_SCRIPT__', 'workflow.js'), ('__VIEW_WORKSPACE_SCRIPT__', 'view_workspace.js')]:
                     page = page.replace(key, (ROOT / 'tools/reference-pilot' / filename).read_text())
                 return self.reply(200, page.replace('__TOKEN__', token), 'text/html')
             if self.path == '/examples/apollo-11.modeling.json':

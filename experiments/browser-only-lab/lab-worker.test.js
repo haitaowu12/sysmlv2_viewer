@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import {renderAcceptedDiagram} from './engine-view.js';
 
 // Exercise the shipped message router. Engine/Python are scripted boundaries;
 // these tests make no claim about language evaluation or Python transaction rules.
@@ -23,9 +24,9 @@ function workerRouter(invalidSource){
  const self={postMessage(message){pending.get(message.id)(message);pending.delete(message.id);}};
  const source=readFileSync(new URL('./lab-worker.js',import.meta.url),'utf8')
   .replace(/^import .*\n/gm,'').replaceAll('import.meta.url',"'https://lab.test/assets/lab-worker.js'");
- vm.runInNewContext(source,{self,URL,TextEncoder,wasmUrl:'engine.wasm',execUrl:'wasm_exec.js',
+ vm.runInNewContext(source,{self,URL,TextEncoder,renderAcceptedDiagram,wasmUrl:'engine.wasm',execUrl:'wasm_exec.js',
   instance:async()=>({}),loadPyodide:async()=>python,
-  connectWasm:async()=>({loads:async source=>({hasErrors:source===invalidSource,diagnostics:source===invalidSource?[{severity:'error',message:'Undefined equipment type',span:{startLine:4}}]:[],toApiJson:async()=>({content:'[]'})})}),
+  connectWasm:async()=>({loads:async source=>({hasErrors:source===invalidSource,diagnostics:source===invalidSource?[{severity:'error',message:'Undefined equipment type',span:{startLine:4}}]:[],toApiJson:async()=>({content:'[]'}),renderView:async(view,options)=>({view,kind:'tree',nodes:[{id:source}],ports:options.ports})})}),
   fetch:async()=>({text:async()=>'',json:async()=>({presets:[]})})});
  const send=(path,data={})=>new Promise(resolve=>{const id=++next;pending.set(id,resolve);self.onmessage({data:{id,path,data}});});
  return {send,calls,setRollback(fn){rollback=fn;}};
@@ -80,4 +81,17 @@ test('invalid own-source inspection returns source diagnostics without replacing
  assert.equal(inspected.result.diagnostics[0].span.startLine,4);
  assert.deepEqual(worker.calls.findLast(call=>call.action==='render_report').data.views,[]);
  assert.equal((await worker.send('/compose')).result.source,'accepted');
+});
+
+
+test('diagram uses accepted revision and ignores inspected or staged candidate models',async()=>{
+ const worker=await opened();
+ await worker.send('/inspect',{source:'inspected'});await stage(worker,'pending','candidate');
+ assert.match((await worker.send('/diagram',{sourceSha256:'candidate',view:'#tree:Demo'})).error,/older model revision/);
+ const result=(await worker.send('/diagram',{sourceSha256:'old',view:'#tree:Demo',ports:'full'})).result;
+ assert.equal(result.sourceSha256,'old');assert.equal(result.graph.nodes[0].id,'old');
+ await worker.send('/accept',{transactionId:'pending',sourceSha256:'candidate',reportSha256:'report:candidate'});
+ assert.equal((await worker.send('/diagram',{sourceSha256:'candidate',view:'#tree:Demo'})).result.graph.nodes[0].id,'candidate');
+ await worker.send('/rollback',{transactionId:'pending'});
+ assert.equal((await worker.send('/diagram',{sourceSha256:'old',view:'#tree:Demo'})).result.graph.nodes[0].id,'old');
 });

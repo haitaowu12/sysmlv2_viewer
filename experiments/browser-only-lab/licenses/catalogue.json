@@ -6,7 +6,8 @@
     "files": [
       "OpenSysML/LICENSE",
       "OpenSysML/internal/workspace/libs/stdlib/NOTICE",
-      "OpenSysML/internal/workspace/libs/stdlib/LICENSE-EPL-2.0"
+      "OpenSysML/internal/workspace/libs/stdlib/LICENSE-EPL-2.0",
+      "OpenSysML/DIAGRAM-THIRD-PARTY-NOTICES.md"
     ]
   },
   {
@@ -97,6 +98,22 @@
     "revision": "60ce9dfe9a75f7ee92956aba8a83d1a37625bc1d",
     "files": [
       "bzip2/LICENSE"
+    ]
+  },
+  {
+    "component": "elkjs",
+    "source": "https://github.com/kieler/elkjs",
+    "revision": "v0.12.0",
+    "files": [
+      "elkjs/LICENSE"
+    ]
+  },
+  {
+    "component": "libavoid-js",
+    "source": "https://github.com/Aksem/libavoid-js",
+    "revision": "28a6fe20c2f1f809afdbeca8d789e65357614c4f",
+    "files": [
+      "libavoid-js/LICENSE"
     ]
   }
 ]

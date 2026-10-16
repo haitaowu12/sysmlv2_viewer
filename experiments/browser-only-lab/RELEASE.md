@@ -13,6 +13,7 @@ From this directory, use Node 22, Python 3.13 and Go 1.27.1:
 npm ci
 npm test
 npm run build:engine
+npm run test:engine-views
 npm run build
 npm audit --omit=dev
 ```
@@ -80,7 +81,7 @@ it does not require rewriting Git history. Verify public startup after rollback.
 
 ## Evidence limits
 
-Five build regressions cover valid subpath layout, missing/mismatched assets,
+Build regressions cover valid subpath layout, missing/mismatched assets,
 root-relative references, unexpected engine edits/added files and both upstream/
 Homebrew Go SDK license layouts. The runtime
 notices catalogue records the upstream commits and retained license texts. Browser

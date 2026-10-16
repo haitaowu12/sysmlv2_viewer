@@ -1,3 +1,4 @@
+import {renderAcceptedDiagram} from './engine-view.js';
 import {connectWasm} from '@openmbee/opensysml/browser';
 import wasmUrl from './browser-engine.wasm?url';
 import execUrl from './wasm_exec.js?url';
@@ -48,7 +49,8 @@ self.onmessage=({data:message})=>{queue=queue.then(async()=>{try{
   else {const proposed=py('prepare_candidate',{report:current,request:data});const checked=await inspect(proposed.source);
   if(!checked.valid)throw Error('The proposed edit failed browser validation: '+checked.diagnostics.map(d=>d.message).join(' '));
   result={...proposed,validated:true,changeSummary:py('proposal_summary',{checked})};}
- }else if(path==='/compose')result=py('compose_current',{report:current,request:data});
+ }else if(path==='/diagram')result=await renderAcceptedDiagram(connection,()=>current,data);
+ else if(path==='/compose')result=py('compose_current',{report:current,request:data});
  else if(path==='/element')result=py('detail_current',{report:current,request:data});
  else throw Error('Unsupported browser operation.');
  self.postMessage({id:message.id,result});
