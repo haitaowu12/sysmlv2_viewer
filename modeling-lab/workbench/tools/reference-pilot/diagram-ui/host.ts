@@ -10,12 +10,13 @@ export interface SelectionContext { kind: 'node' | 'edge' | 'port' | 'note' | 'r
 export interface MountOptions {
   audience?: string; depth?: number; avoidWasmUrl?: string;
   onSelect?: (origin: SourceSpan | undefined, context: SelectionContext) => void;
+  onPresentationChange?: (summary: DiagramSummary) => void;
 }
 export interface PresentationState { mode: 'overview' | 'focus' | 'diagram'; selectedID?: string; selectedWitness?: { origin?: SourceSpan; name?: string; kind: string }; scroll: number; page: number; allConnections?: boolean; connectionPage?: number; componentsScroll?: number; contextScroll?: number }
 export interface DiagramController {
   fit(): void; zoom(factor: number): void; dispose(): void;
   captureViewport(): View | null; restoreViewport(view: View): void;
-  capturePresentation(): PresentationState; restorePresentation(state: PresentationState): Promise<void>;
+  capturePresentation(): PresentationState; restorePresentation(state: PresentationState): Promise<boolean>;
   readonly svg: SVGSVGElement | null; summary: DiagramSummary;
 }
 let serial = 0;
@@ -118,7 +119,7 @@ async function mountOriginalDiagram(container: HTMLElement, view: SDKView, optio
   const controller: DiagramController = {
     fit: fitDiagram, zoom, summary,
     capturePresentation() { return {mode:'diagram',scroll:0,page:0}; },
-    async restorePresentation() {},
+    async restorePresentation() { return true; },
     captureViewport() { return svg ? { ...current } : null; },
     restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); preserveViewportOnResize = true; apply(); },
     get svg() { return svg; },
@@ -358,8 +359,9 @@ async function mountArchitecture(container: HTMLElement, view: SDKView, options:
     if (!allConnections) context.append(button(allCaption, () => { allConnections = true; connectionPage = 0; renderOverview(); }));
     if(selected && !allConnections){stage.classList.add('has-selection');const layout=make('div');layout.className='architecture-selection';const components=make('div');components.className='architecture-components';components.append(grid);for(const child of [...stage.children])if(child.classList.contains('architecture-pages'))components.append(child);layout.append(components,context);stage.append(layout)}else stage.append(context);body.append(stage); stage.scrollTop = overviewScroll; const componentPane=stage.querySelector<HTMLElement>('.architecture-components'); if(componentPane)componentPane.scrollTop=componentsScroll; context.scrollTop=contextScroll;
     const displayed = Math.min(50, parts.components.length - page * 50) + parts.ports.length + (parts.root ? 1 : 0);
-    summary = { ...originalSummary, visibleNodes: displayed, visibleEdges: 0, omittedNodes: Math.max(0, nodes.length - displayed), omittedEdges: edges.length, notices: [...view.notices ?? [], `Architecture overview is a navigation aid: page ${page + 1} of ${Math.max(1, Math.ceil(parts.components.length / 50))}, showing ${Math.min(50, parts.components.length - page * 50)} of ${parts.components.length} direct components. ${Math.max(0, nodes.length - displayed)} elements are outside this overview page. No diagram edges are drawn here. Diagram opens the original SDK graph.`] };
-    toolbar();
+    const pageNodes=parts.components.slice(page*50,page*50+50),missingOrigins=[...pageNodes,...parts.ports,...(parts.root?[parts.root]:[])].filter(node=>!node.origin).length;
+    summary = { ...originalSummary, depth:null,missingOrigins,visibleNodes: displayed, visibleEdges: 0, omittedNodes: Math.max(0, nodes.length - displayed), omittedEdges: edges.length, notices: [...view.notices ?? [], ...(missingOrigins?[`${missingOrigins} overview elements have no source location from the engine.`]:[]),...(originalSummary.invalidEdges?[`${originalSummary.invalidEdges} relationships have unavailable node or port endpoints.`]:[]), `Architecture overview is a navigation aid: page ${page + 1} of ${Math.max(1, Math.ceil(parts.components.length / 50))}, showing ${Math.min(50, parts.components.length - page * 50)} of ${parts.components.length} direct components. ${Math.max(0, nodes.length - displayed)} elements are outside this overview page. No diagram edges are drawn here. Diagram opens the original SDK graph.`] };
+    toolbar();options.onPresentationChange?.(summary);
   }
   async function show(next: PresentationState['mode'], restoring = false) {
     if (disposed) return;
@@ -373,7 +375,7 @@ async function mountArchitecture(container: HTMLElement, view: SDKView, options:
       const neighbors = nodes.filter(node => focus!.contextIDs.has(node.id)); if (neighbors.length) context.append(make('p', 'Context: ' + neighbors.map(node => nodeName(node)).join(', ')));
       context.append(make('p','Select a line to show its name.'));
       const connections=make('details');connections.className='focused-connections architecture-focus-connections';connections.append(make('summary',`${relationshipCaption} (${focus.view.edges.length})`));for(const edge of focus.view.edges){const row=button(`${endpoint(edge.from,edge.fromPort)}${edge.kind==='flow'?' → ':' — '}${endpoint(edge.to,edge.toPort)}`,()=>{const originalIndex=focus!.view.edges.indexOf(edge),svgEdge=body.querySelector(`g.opensysml-edge[data-source-edge-index="${originalIndex}"]`);body.querySelectorAll('g.opensysml-edge.selected').forEach(item=>item.classList.remove('selected'));svgEdge?.classList.add('selected');options.onSelect?.(edge.origin,{kind:'edge',index:edges.indexOf(edge),element:edge})});row.className='architecture-connection';row.append(make('small',[edge.label,edge.kind].filter(Boolean).join(' · ')));connections.append(row)}context.append(connections);
-      body.append(context); if (!focus.available) { summary = { ...originalSummary, visibleNodes: 0, visibleEdges: 0, omittedNodes: nodes.length, omittedEdges: edges.length, notices: [...view.notices ?? [], focus.notice] }; return; } drawing = focus.view;
+      body.append(context); if (!focus.available) { summary = { ...originalSummary, visibleNodes: 0, visibleEdges: 0, omittedNodes: nodes.length, omittedEdges: edges.length, notices: [...view.notices ?? [], focus.notice] }; options.onPresentationChange?.(summary);return; } drawing = focus.view;
     }
     const target = make('div'); target.className = 'architecture-drawing'+(mode==='focus'?' connections-focus':''); body.append(target);
     let nextChild: DiagramController;
@@ -382,7 +384,7 @@ async function mountArchitecture(container: HTMLElement, view: SDKView, options:
     if (disposed || token !== generation) { nextChild.dispose(); return; }
     if(mode==='focus')nextChild.svg?.classList.add('focus-connections');
     for(const stage of target.querySelectorAll<HTMLElement>('.diagram-stage'))Object.assign(stage.style,{flex:'1 1 0',minHeight:'0',height:'auto'});
-    child = nextChild; summary = { ...child.summary, totalNodes: nodes.length, totalEdges: edges.length, omittedNodes: nodes.length - child.summary.visibleNodes, omittedEdges: edges.length - child.summary.visibleEdges, notices: [...child.summary.notices, ...(focus ? [] : ['Original SDK diagram.']), ...(focus ? [focus.notice] : [])] };
+    child = nextChild; summary = { ...child.summary, totalNodes: nodes.length, totalEdges: edges.length, omittedNodes: nodes.length - child.summary.visibleNodes, omittedEdges: edges.length - child.summary.visibleEdges, notices: [...child.summary.notices, ...(focus ? [] : ['Original SDK diagram.']), ...(focus ? [focus.notice] : [])] };options.onPresentationChange?.(summary);
   }
   function capturePresentation(): PresentationState {
     const selected = selectedID ? byID.get(selectedID) : undefined;
@@ -390,13 +392,13 @@ async function mountArchitecture(container: HTMLElement, view: SDKView, options:
     return { mode, ...(selected ? { selectedID: selected.id, selectedWitness: { origin: selected.origin, name: selected.name, kind: selected.kind } } : {}), scroll: overviewScroll, page, allConnections, connectionPage, componentsScroll, contextScroll };
   }
   async function restorePresentation(state: PresentationState) {
-    if (disposed || !state || !['overview', 'focus', 'diagram'].includes(state.mode)) return;
+    if (disposed || !state || !['overview', 'focus', 'diagram'].includes(state.mode)) return false;
     selectedID = undefined;
     if (state.selectedWitness?.origin) { const witness = state.selectedWitness, matches = nodes.filter(node => node.name === witness.name && node.kind === witness.kind && !!node.origin && (['file','startLine','startCol','endLine','endCol'] as const).every(key => node.origin![key] === witness.origin![key])); if (matches.length === 1) selectedID = matches[0].id; }
     overviewScroll = Number.isFinite(state.scroll) ? Math.max(0, state.scroll) : 0; page = Number.isInteger(state.page) ? Math.max(0, state.page) : 0;
     componentsScroll = Number.isFinite(state.componentsScroll) ? Math.max(0, state.componentsScroll!) : 0; contextScroll = Number.isFinite(state.contextScroll) ? Math.max(0, state.contextScroll!) : 0;
     allConnections = state.allConnections === true; const selection = selectedID ? descendants(view, selectedID) : new Set<string>(), count = allConnections ? edges.length : edges.filter(edge => selection.has(edge.from) || selection.has(edge.to)).length; connectionPage = Math.min(Number.isInteger(state.connectionPage) ? Math.max(0, state.connectionPage!) : 0, Math.max(0, Math.ceil(count / 50) - 1));
-    await show(state.mode === 'focus' && !selectedID ? 'overview' : state.mode, true);
+    const desired=state.mode === 'focus' && !selectedID ? 'overview' : state.mode, expected=generation+1;await show(desired, true);return !disposed && generation===expected && mode===desired;
   }
   renderOverview();
   return {

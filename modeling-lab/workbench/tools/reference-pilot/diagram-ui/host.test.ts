@@ -260,3 +260,11 @@ test('connection list highlights the exact edge when an invalid earlier port edg
  assert.equal(diagram.svg!.querySelector('g.opensysml-edge.selected .edge-label')?.textContent,'tokenChannel');assert.equal(selected[0],view.edges![1]);diagram.dispose();
  }finally{Object.assign(globalThis,{document:previous});dom.window.close()}
 });
+
+
+test('superseding a pending focus restoration reports false and retains the newer diagram presentation',async()=>{
+ const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document;Object.assign(globalThis,{document:dom.window.document});
+ try{const host=dom.window.document.querySelector('main')!,notifications:string[][]=[],diagram=await mountDiagram(host,pipeline(),{onPresentationChange:summary=>notifications.push(summary.notices)});host.querySelector<HTMLButtonElement>('[aria-label="Select lexer"]')!.click();const state=diagram.capturePresentation();
+ const old=diagram.restorePresentation({...state,mode:'focus'}),next=diagram.restorePresentation({...state,mode:'diagram'});assert.equal(await old,false);assert.equal(await next,true);assert.equal(diagram.capturePresentation().mode,'diagram');assert.ok(diagram.svg);assert.ok(notifications.at(-1)!.some(notice=>notice==='Original SDK diagram.'));diagram.dispose();
+ }finally{Object.assign(globalThis,{document:previous});dom.window.close()}
+});
