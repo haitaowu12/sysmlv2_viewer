@@ -1,5 +1,5 @@
 // New Lab host for the unchanged OpenSysML canvas/layout/zoom modules.
-import { adaptDiagram, type SDKView, type SourceSpan, type DiagramSummary } from './adapter';
+import { adaptDiagram, type SDKView, type SourceSpan, type DiagramSummary, type SDKNode } from './adapter';
 import { autoLayout } from './vendor/webview/autolayout';
 import { loadAvoid } from './vendor/webview/avoid';
 import { drawCanvas } from './vendor/webview/canvas';
@@ -11,9 +11,11 @@ export interface MountOptions {
   audience?: string; depth?: number; avoidWasmUrl?: string;
   onSelect?: (origin: SourceSpan | undefined, context: SelectionContext) => void;
 }
+export interface PresentationState { mode: 'overview' | 'focus' | 'diagram'; selectedID?: string; selectedWitness?: { origin?: SourceSpan; name?: string; kind: string }; scroll: number; page: number; allConnections?: boolean; connectionPage?: number; componentsScroll?: number; contextScroll?: number }
 export interface DiagramController {
   fit(): void; zoom(factor: number): void; dispose(): void;
   captureViewport(): View | null; restoreViewport(view: View): void;
+  capturePresentation(): PresentationState; restorePresentation(state: PresentationState): Promise<void>;
   readonly svg: SVGSVGElement | null; summary: DiagramSummary;
 }
 let serial = 0;
@@ -56,6 +58,11 @@ const CSS = `
 
 /** Mount a read-only engineering diagram. All source callbacks use original SDK spans. */
 export async function mountDiagram(container: HTMLElement, view: SDKView, options: MountOptions = {}): Promise<DiagramController> {
+  if (architectureNeeded(view)) return mountArchitecture(container, view, options);
+  return mountOriginalDiagram(container, view, options);
+}
+
+async function mountOriginalDiagram(container: HTMLElement, view: SDKView, options: MountOptions = {}): Promise<DiagramController> {
   const adapted = adaptDiagram(view, options.depth, options.audience);
   const shell = document.createElement('section'); shell.className = 'lab-donor-diagram';
   shell.setAttribute('aria-label', `${view.view || 'Model'} diagram`);
@@ -110,6 +117,8 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   const controller: DiagramController = {
     fit: fitDiagram, zoom, summary,
+    capturePresentation() { return {mode:'diagram',scroll:0,page:0}; },
+    async restorePresentation() {},
     captureViewport() { return svg ? { ...current } : null; },
     restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); preserveViewportOnResize = true; apply(); },
     get svg() { return svg; },
@@ -188,6 +197,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   for (const item of svg.querySelectorAll<SVGGElement>('g.opensysml-edge')) {
     const index = Number(item.dataset.edge), edge = adapted.sourceEdges[index]; if (!edge) continue;
+    item.dataset.sourceEdgeIndex=String((view.edges??[]).indexOf(edge));
     const from = adapted.sourceNodes.get(edge.from), to = adapted.sourceNodes.get(edge.to);
     accessible(item, `${edge.label || edge.kind}: ${from?.name || edge.from} to ${to?.name || edge.to}`, edge.origin, { kind: 'edge', index, element: edge });
   }
@@ -217,4 +227,181 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }) as EventListener);
   if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(() => { const restored = preserveViewportOnResize ? { ...current } : null; fitDiagram(); if (restored) { current = boundedView(restored); apply(); } }); observer.observe(stage); }
   return controller;
+}
+
+const structuralKinds = new Set(['tree', 'interconnection', 'definition', 'package']);
+function architectureParts(view: SDKView) {
+  const nodes = view.nodes ?? [], ids = new Set(nodes.map(node => node.id));
+  const roots = nodes.filter(node => !node.parent || !ids.has(node.parent));
+  const direct = roots.length === 1 ? nodes.filter(node => node.parent === roots[0].id) : roots;
+  return { root: roots.length === 1 ? roots[0] : undefined, components: direct.filter(node => !/^port(?:\s|$)/i.test(node.kind)), ports: direct.filter(node => /^port(?:\s|$)/i.test(node.kind)) };
+}
+function architectureNeeded(view: SDKView) { return structuralKinds.has(view.kind) && (architectureParts(view).components.length > 8 || (view.nodes?.length ?? 0) > 30); }
+function descendants(view: SDKView, selectedID: string) {
+  const result = new Set([selectedID]);
+  for (let changed = true; changed;) { changed = false; for (const node of view.nodes ?? []) if (node.parent && result.has(node.parent) && !result.has(node.id)) { result.add(node.id); changed = true; } }
+  return result;
+}
+
+/** Presentation subset only. Original objects, endpoint IDs and ownership remain authoritative. */
+export function focusArchitecture(view: SDKView, selectedID: string, nodeBudget = 12, edgeBudget = 24) {
+  adaptDiagram(view);
+  const nodes = view.nodes ?? [], edges = view.edges ?? [], byID = new Map(nodes.map(node => [node.id, node]));
+  const subtree = descendants(view, selectedID), retained = new Set<string>(), contextIDs = new Set<string>();
+  function chain(id: string) { const result: string[] = []; let node = byID.get(id); while (node) { result.unshift(node.id); node = node.parent ? byID.get(node.parent) : undefined; } return result; }
+  function include(id: string, context: boolean) { const required = chain(id).filter(value => !retained.has(value)); if (!required.length) return true; if (retained.size + required.length > nodeBudget) return false; for (const value of required) { retained.add(value); if (context && !subtree.has(value)) contextIDs.add(value); } return true; }
+  const available = !!byID.has(selectedID) && include(selectedID, false);
+  if (available) {
+    for (const node of nodes) if (subtree.has(node.id)) include(node.id, false);
+    for (const edge of edges) if (subtree.has(edge.from) || subtree.has(edge.to)) { include(edge.from, !subtree.has(edge.from)); include(edge.to, !subtree.has(edge.to)); }
+  }
+  const keptNodes = nodes.filter(node => retained.has(node.id));
+  const keptEdges = edges.filter(edge => retained.has(edge.from) && retained.has(edge.to)).slice(0, edgeBudget);
+  const omittedNodes = nodes.length - keptNodes.length, omittedEdges = edges.length - keptEdges.length;
+  const notice = available ? `${view.kind==='interconnection'?'Focused connections':'Focused relationships'}: ${keptNodes.length} of ${nodes.length} elements and ${keptEdges.length} of ${edges.length} relationships. ${omittedNodes} elements and ${omittedEdges} relationships outside this focus or its ${nodeBudget}-element / ${edgeBudget}-relationship budget are omitted. Neighbor endpoints are context, not owned children. Open Diagram for the complete SDK graph.` : 'This ownership path exceeds the focus budget. Open Diagram to inspect the original graph.';
+  return { available, contextIDs, omittedNodes, omittedEdges, view: { ...view, nodes: keptNodes, edges: keptEdges, notices: [...view.notices ?? [], notice] }, notice };
+}
+
+const ARCHITECTURE_CSS = `
+.lab-donor-diagram .architecture-overview.has-selection{display:flex;flex-direction:column;overflow:hidden;container-type:inline-size}
+.lab-donor-diagram .architecture-selection{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(230px,.9fr);gap:16px;flex:1;min-height:0;margin-top:12px}
+.lab-donor-diagram .architecture-components{min-height:0;overflow:auto}
+.lab-donor-diagram .architecture-selection>.architecture-context{min-height:0;overflow:auto;border-top:0;border-left:1px solid #d8dfe5;margin:0;padding:0 0 0 14px}
+.lab-donor-diagram .architecture-card.is-neighbor{border-left:3px solid #54829f;background:#f3f7fa}
+.lab-donor-diagram .architecture-card .architecture-direction{color:#315c75}
+svg.focus-connections g.opensysml-edge:not(.selected) .edge-label{display:none}
+.lab-donor-diagram .focused-connections{max-height:150px;overflow:auto;margin-top:6px}
+@container(max-width:650px){.lab-donor-diagram .architecture-selection{display:flex;flex-direction:column}.lab-donor-diagram .architecture-selection>.architecture-context{order:-1;max-height:55%;border-left:0;border-bottom:1px solid #d8dfe5;padding:0 0 10px}.lab-donor-diagram .architecture-components{flex:1}}
+@media(max-width:650px){.lab-donor-diagram .architecture-selection{display:flex;flex-direction:column}.lab-donor-diagram .architecture-selection>.architecture-context{order:-1;max-height:55%;border-left:0;border-bottom:1px solid #d8dfe5;padding:0 0 10px}.lab-donor-diagram .architecture-components{flex:1}}
+
+.lab-donor-diagram.architecture-shell{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
+.lab-donor-diagram .architecture-body,.lab-donor-diagram .architecture-drawing{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.lab-donor-diagram .architecture-drawing>.lab-donor-diagram{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.lab-donor-diagram .architecture-focus-context{flex-shrink:0}
+.lab-donor-diagram .architecture-focus-context summary{cursor:pointer;color:#526171;font-size:12px}
+
+.lab-donor-diagram .architecture-overview{overflow:auto;touch-action:auto;cursor:auto;padding:16px;box-sizing:border-box;background:#fff}
+.lab-donor-diagram .architecture-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:12px 0;align-content:start}
+.lab-donor-diagram .architecture-card{text-align:left;min-width:0;overflow-wrap:anywhere;padding:12px;line-height:1.4}
+.lab-donor-diagram .architecture-card strong,.lab-donor-diagram .architecture-card small{display:block}
+.lab-donor-diagram .architecture-card small{font-size:12px;color:#526171;margin-top:4px}
+.lab-donor-diagram .architecture-card[aria-pressed=true]{border:2px solid #176bbb;background:#eef5fc;padding:11px}
+.lab-donor-diagram .architecture-context{border-top:1px solid #d8dfe5;margin-top:16px;padding-top:12px;overflow-wrap:anywhere}
+.lab-donor-diagram .architecture-context h3{font-size:16px;margin:0 0 5px}
+.lab-donor-diagram .architecture-context p{margin:6px 0;font-size:13px;color:#526171}
+.lab-donor-diagram .architecture-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.lab-donor-diagram .architecture-connection{display:block;width:100%;text-align:left;margin:5px 0;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+.lab-donor-diagram .architecture-connection small{display:block;color:#526171;font-size:12px}
+.lab-donor-diagram .architecture-pages{display:flex;align-items:center;gap:8px;margin:10px 0}
+.lab-donor-diagram .architecture-focus-context{padding:10px 14px;border-bottom:1px solid #d8dfe5;font-size:13px;overflow-wrap:anywhere}
+.lab-donor-diagram .architecture-focus-context p{margin:4px 0}
+`;
+
+async function mountArchitecture(container: HTMLElement, view: SDKView, options: MountOptions): Promise<DiagramController> {
+  const originalSummary = adaptDiagram(view, options.depth, options.audience).summary;
+  const relationshipCaption = view.kind==='interconnection'?'Connections and flows':'Relationships', allCaption=view.kind==='interconnection'?'All connections':'All relationships', exploreCaption=view.kind==='interconnection'?'Explore connections':'Explore relationships', focusCaption=view.kind==='interconnection'?'Focused connections':'Focused relationships';
+  const parts = architectureParts(view), nodes = view.nodes ?? [], edges = view.edges ?? [], byID = new Map(nodes.map(node => [node.id, node]));
+  const shell = document.createElement('section'); shell.className = 'lab-donor-diagram architecture-shell'; shell.setAttribute('aria-label', `${view.view || 'Model'} architecture`);
+  const style = document.createElement('style'); style.textContent = CSS + ARCHITECTURE_CSS; shell.append(style);
+  const tools = document.createElement('div'); tools.className = 'diagram-tools'; shell.append(tools);
+  const body = document.createElement('div'); body.className = 'architecture-body'; shell.append(body); container.replaceChildren(shell);
+  let mode: PresentationState['mode'] = 'overview', selectedID: string | undefined, overviewScroll = 0, page = 0, connectionPage = 0, allConnections = false, componentsScroll = 0, contextScroll = 0;
+  let child: DiagramController | null = null, disposed = false, generation = 0;
+  let summary: DiagramSummary = { ...originalSummary, notices: [...originalSummary.notices] };
+  const nodeName = (node: SDKNode | undefined, fallback = '') => node?.name || fallback || node?.kind || 'Element';
+  function make<T extends keyof HTMLElementTagNameMap>(tag: T, text?: string) { const item = document.createElement(tag); if (text !== undefined) item.textContent = text; return item; }
+  function button(text: string, action: () => void | Promise<void>) { const item = make('button', text); item.type = 'button'; item.addEventListener('click', () => { if (!disposed) void action(); }); return item; }
+  function endpoint(id: string, portID?: string) { const node = byID.get(id), port = node?.ports?.find(value => value.id === portID); return nodeName(node, id) + (portID ? ' · ' + (port?.name || portID) : ''); }
+  function sourceNode(node: SDKNode) { options.onSelect?.(node.origin, { kind: 'node', id: node.id, element: node }); }
+  function connectionRows(host: HTMLElement, matching: readonly typeof edges[number][]) {
+    connectionPage = Math.max(0, Math.min(connectionPage, Math.max(0, Math.ceil(matching.length / 50) - 1)));
+    const start = connectionPage * 50, end = Math.min(start + 50, matching.length);
+    host.append(make('p', `${relationshipCaption} ${matching.length ? start + 1 + '–' + end : '0'} of ${matching.length}${allConnections ? ' in this graph' : ' adjacent to this selection'}${matching.length > end - start ? ' · ' + (matching.length - (end - start)) + ' outside this page' : ''}.`));
+    for (const edge of matching.slice(start, start + 50)) {
+      const item = button(`${endpoint(edge.from, edge.fromPort)}${edge.kind==='flow'?' → ':' — '}${endpoint(edge.to, edge.toPort)}`, () => options.onSelect?.(edge.origin, { kind: 'edge', index: edges.indexOf(edge), element: edge }));
+      item.className = 'architecture-connection'; item.append(make('small', [edge.label, edge.kind].filter(Boolean).join(' · '))); host.append(item);
+    }
+    if (matching.length > 50) { const pages = make('div'); pages.className = 'architecture-pages'; const previous = button(view.kind==='interconnection'?'Previous connections':'Previous relationships', () => { connectionPage--; renderOverview(); }), next = button(view.kind==='interconnection'?'Next connections':'Next relationships', () => { connectionPage++; renderOverview(); }); previous.disabled = !connectionPage; next.disabled = start + 50 >= matching.length; pages.append(previous, make('span', `${connectionPage + 1} / ${Math.ceil(matching.length / 50)}`), next); host.append(pages); }
+  }
+  function toolbar() {
+    tools.replaceChildren();
+    if (mode !== 'overview') tools.append(button('Back to overview', async () => { await show('overview'); }));
+    if (mode !== 'diagram') tools.append(button('Diagram', async () => { await show('diagram'); }));
+    const status = make('span', mode === 'overview' ? `Architecture overview · ${parts.components.length} components` : mode === 'focus' ? focusCaption+' · SDK graph' : 'Original SDK diagram'); status.className = 'diagram-status'; status.setAttribute('role', 'status'); tools.append(status);
+  }
+  function renderOverview() {
+    if (disposed) return;
+    const previousStage = body.querySelector<HTMLElement>('.architecture-overview'); if (previousStage) {overviewScroll = previousStage.scrollTop; componentsScroll = body.querySelector<HTMLElement>('.architecture-components')?.scrollTop ?? componentsScroll; contextScroll = body.querySelector<HTMLElement>('.architecture-context')?.scrollTop ?? contextScroll;}
+    body.replaceChildren(); const stage = make('div'); stage.className = 'diagram-stage architecture-overview'; Object.assign(stage.style,{flex:'1 1 0',minHeight:'0',height:'auto'}); stage.setAttribute('aria-label', 'Architecture overview');
+    stage.append(make('strong', nodeName(parts.root, view.view || 'System architecture')));
+    const selectedNodes = selectedID ? descendants(view, selectedID) : new Set<string>();
+    const grid = make('div'); grid.className = 'architecture-grid'; grid.setAttribute('aria-label', 'Direct components');
+    page = Math.max(0, Math.min(page, Math.max(0, Math.ceil(parts.components.length / 50) - 1)));
+    for (const node of parts.components.slice(page * 50, page * 50 + 50)) {
+      const card = button('', () => { selectedID = node.id; allConnections = false; connectionPage = 0; renderOverview(); contextScroll=0; const context=body.querySelector<HTMLElement>('.architecture-context'); if(context)context.scrollTop=0; body.querySelector<HTMLButtonElement>('.architecture-card[aria-pressed=true]')?.focus({preventScroll:true}); }); card.className = 'architecture-card'; card.dataset.nodeId = node.id; card.setAttribute('aria-pressed', String(selectedID === node.id)); card.setAttribute('aria-label', `Select ${nodeName(node)}`);
+      card.append(make('strong', nodeName(node)), make('small', [node.kind, node.type].filter(Boolean).join(' · ')));
+      if(selectedID && selectedID!==node.id){
+        const members=descendants(view,node.id),toSelection=(edge:typeof edges[number])=>members.has(edge.from)&&selectedNodes.has(edge.to),fromSelection=(edge:typeof edges[number])=>selectedNodes.has(edge.from)&&members.has(edge.to);
+        const connected=edges.some(edge=>edge.kind!=='flow'&&(toSelection(edge)||fromSelection(edge))),flowTo=edges.some(edge=>edge.kind==='flow'&&toSelection(edge)),flowFrom=edges.some(edge=>edge.kind==='flow'&&fromSelection(edge));
+        if(connected||flowTo||flowFrom){const name=nodeName(byID.get(selectedID)),direction=[connected?'Connected to '+name:null,flowTo&&flowFrom?'Flow to and from '+name:flowTo?'Flow to '+name:flowFrom?'Flow from '+name:null].filter(Boolean).join(' · ');card.classList.add('is-neighbor');card.setAttribute('aria-label',`Select ${nodeName(node)}; ${direction}`);const annotation=make('small',direction);annotation.className='architecture-direction';card.append(annotation)}
+      }grid.append(card);
+    }
+    stage.append(grid);
+    if (parts.components.length > 50) { const pages = make('div'); pages.className = 'architecture-pages'; const previous = button('Previous components', () => { page--; renderOverview(); }), next = button('Next components', () => { page++; renderOverview(); }); previous.disabled = !page; next.disabled = (page + 1) * 50 >= parts.components.length; pages.append(previous, make('span', `${page + 1} / ${Math.ceil(parts.components.length / 50)}`), next); stage.append(pages); }
+    const context = make('section'); context.className = 'architecture-context'; context.setAttribute('aria-label', view.kind==='interconnection'?'Connections context':'Relationships context');
+    const selected = selectedID ? byID.get(selectedID) : undefined;
+    context.append(make('h3', allConnections ? 'All '+relationshipCaption.toLowerCase() : selected ? nodeName(selected) : view.kind==='interconnection'?'Connections context':'Relationships context'));
+    if (selected && !allConnections) { context.append(make('p', [selected.kind, selected.type].filter(Boolean).join(' · '))); const actions = make('div'); actions.className = 'architecture-actions'; actions.append(button(exploreCaption, async () => { overviewScroll = stage.scrollTop; await show('focus'); }), button('Inspect source', () => sourceNode(selected))); context.append(actions); }
+    if (parts.ports.length || parts.root?.ports?.length) { const ports = [...parts.ports.map(node => `${nodeName(node)}${node.type ? ' : ' + node.type : ''}`), ...(parts.root?.ports ?? []).map(port => `${port.name}${port.type ? ' : ' + port.type : ''}`)]; context.append(make('p', 'Boundary ports: ' + ports.join(', '))); }
+    if (selected || allConnections) { const selectedNodes = selected ? descendants(view, selected.id) : new Set<string>(); connectionRows(context, allConnections ? edges : edges.filter(edge => selectedNodes.has(edge.from) || selectedNodes.has(edge.to))); }
+    else context.append(make('p', 'Choose a component to inspect its relationships.'));
+    if (!allConnections) context.append(button(allCaption, () => { allConnections = true; connectionPage = 0; renderOverview(); }));
+    if(selected && !allConnections){stage.classList.add('has-selection');const layout=make('div');layout.className='architecture-selection';const components=make('div');components.className='architecture-components';components.append(grid);for(const child of [...stage.children])if(child.classList.contains('architecture-pages'))components.append(child);layout.append(components,context);stage.append(layout)}else stage.append(context);body.append(stage); stage.scrollTop = overviewScroll; const componentPane=stage.querySelector<HTMLElement>('.architecture-components'); if(componentPane)componentPane.scrollTop=componentsScroll; context.scrollTop=contextScroll;
+    const displayed = Math.min(50, parts.components.length - page * 50) + parts.ports.length + (parts.root ? 1 : 0);
+    summary = { ...originalSummary, visibleNodes: displayed, visibleEdges: 0, omittedNodes: Math.max(0, nodes.length - displayed), omittedEdges: edges.length, notices: [...view.notices ?? [], `Architecture overview is a navigation aid: page ${page + 1} of ${Math.max(1, Math.ceil(parts.components.length / 50))}, showing ${Math.min(50, parts.components.length - page * 50)} of ${parts.components.length} direct components. ${Math.max(0, nodes.length - displayed)} elements are outside this overview page. No diagram edges are drawn here. Diagram opens the original SDK graph.`] };
+    toolbar();
+  }
+  async function show(next: PresentationState['mode'], restoring = false) {
+    if (disposed) return;
+    const overview = body.querySelector<HTMLElement>('.architecture-overview'); if (overview && !restoring) {overviewScroll = overview.scrollTop; componentsScroll = body.querySelector<HTMLElement>('.architecture-components')?.scrollTop ?? componentsScroll; contextScroll = body.querySelector<HTMLElement>('.architecture-context')?.scrollTop ?? contextScroll;}
+    const token = ++generation; child?.dispose(); child = null; mode = next; body.replaceChildren(); toolbar();
+    if (mode === 'overview') { renderOverview(); return; }
+    let drawing = view, focus: ReturnType<typeof focusArchitecture> | undefined;
+    if (mode === 'focus') {
+      if (!selectedID || !byID.has(selectedID)) { mode = 'overview'; renderOverview(); return; }
+      focus = focusArchitecture(view, selectedID); const context = make('div'); context.className = 'architecture-focus-context'; context.append(make('strong', nodeName(byID.get(selectedID))+(view.kind==='interconnection'?' connections':' relationships'))); const scope = make('details'); scope.append(make('summary', 'Focus scope and limits'), make('p', focus.notice)); context.append(scope);
+      const neighbors = nodes.filter(node => focus!.contextIDs.has(node.id)); if (neighbors.length) context.append(make('p', 'Context: ' + neighbors.map(node => nodeName(node)).join(', ')));
+      context.append(make('p','Select a line to show its name.'));
+      const connections=make('details');connections.className='focused-connections architecture-focus-connections';connections.append(make('summary',`${relationshipCaption} (${focus.view.edges.length})`));for(const edge of focus.view.edges){const row=button(`${endpoint(edge.from,edge.fromPort)}${edge.kind==='flow'?' → ':' — '}${endpoint(edge.to,edge.toPort)}`,()=>{const originalIndex=focus!.view.edges.indexOf(edge),svgEdge=body.querySelector(`g.opensysml-edge[data-source-edge-index="${originalIndex}"]`);body.querySelectorAll('g.opensysml-edge.selected').forEach(item=>item.classList.remove('selected'));svgEdge?.classList.add('selected');options.onSelect?.(edge.origin,{kind:'edge',index:edges.indexOf(edge),element:edge})});row.className='architecture-connection';row.append(make('small',[edge.label,edge.kind].filter(Boolean).join(' · ')));connections.append(row)}context.append(connections);
+      body.append(context); if (!focus.available) { summary = { ...originalSummary, visibleNodes: 0, visibleEdges: 0, omittedNodes: nodes.length, omittedEdges: edges.length, notices: [...view.notices ?? [], focus.notice] }; return; } drawing = focus.view;
+    }
+    const target = make('div'); target.className = 'architecture-drawing'+(mode==='focus'?' connections-focus':''); body.append(target);
+    let nextChild: DiagramController;
+    try { nextChild = await mountOriginalDiagram(target, drawing, { ...options, ...(mode === 'focus' ? { depth: undefined } : {}), onSelect: (origin, context) => options.onSelect?.(origin, context.kind === 'edge' ? { ...context, index: edges.indexOf(context.element as typeof edges[number]) } : context) }); }
+    catch (error) { if (disposed || token !== generation) return; mode = 'overview'; renderOverview(); const message = make('p', 'Diagram could not be opened: ' + (error instanceof Error ? error.message : String(error))); message.setAttribute('role', 'alert'); body.prepend(message); return; }
+    if (disposed || token !== generation) { nextChild.dispose(); return; }
+    if(mode==='focus')nextChild.svg?.classList.add('focus-connections');
+    for(const stage of target.querySelectorAll<HTMLElement>('.diagram-stage'))Object.assign(stage.style,{flex:'1 1 0',minHeight:'0',height:'auto'});
+    child = nextChild; summary = { ...child.summary, totalNodes: nodes.length, totalEdges: edges.length, omittedNodes: nodes.length - child.summary.visibleNodes, omittedEdges: edges.length - child.summary.visibleEdges, notices: [...child.summary.notices, ...(focus ? [] : ['Original SDK diagram.']), ...(focus ? [focus.notice] : [])] };
+  }
+  function capturePresentation(): PresentationState {
+    const selected = selectedID ? byID.get(selectedID) : undefined;
+    const stage = body.querySelector<HTMLElement>('.architecture-overview'); if (stage) {overviewScroll = stage.scrollTop; componentsScroll = body.querySelector<HTMLElement>('.architecture-components')?.scrollTop ?? componentsScroll; contextScroll = body.querySelector<HTMLElement>('.architecture-context')?.scrollTop ?? contextScroll;}
+    return { mode, ...(selected ? { selectedID: selected.id, selectedWitness: { origin: selected.origin, name: selected.name, kind: selected.kind } } : {}), scroll: overviewScroll, page, allConnections, connectionPage, componentsScroll, contextScroll };
+  }
+  async function restorePresentation(state: PresentationState) {
+    if (disposed || !state || !['overview', 'focus', 'diagram'].includes(state.mode)) return;
+    selectedID = undefined;
+    if (state.selectedWitness?.origin) { const witness = state.selectedWitness, matches = nodes.filter(node => node.name === witness.name && node.kind === witness.kind && !!node.origin && (['file','startLine','startCol','endLine','endCol'] as const).every(key => node.origin![key] === witness.origin![key])); if (matches.length === 1) selectedID = matches[0].id; }
+    overviewScroll = Number.isFinite(state.scroll) ? Math.max(0, state.scroll) : 0; page = Number.isInteger(state.page) ? Math.max(0, state.page) : 0;
+    componentsScroll = Number.isFinite(state.componentsScroll) ? Math.max(0, state.componentsScroll!) : 0; contextScroll = Number.isFinite(state.contextScroll) ? Math.max(0, state.contextScroll!) : 0;
+    allConnections = state.allConnections === true; const selection = selectedID ? descendants(view, selectedID) : new Set<string>(), count = allConnections ? edges.length : edges.filter(edge => selection.has(edge.from) || selection.has(edge.to)).length; connectionPage = Math.min(Number.isInteger(state.connectionPage) ? Math.max(0, state.connectionPage!) : 0, Math.max(0, Math.ceil(count / 50) - 1));
+    await show(state.mode === 'focus' && !selectedID ? 'overview' : state.mode, true);
+  }
+  renderOverview();
+  return {
+    fit() { child?.fit(); }, zoom(factor) { child?.zoom(factor); }, captureViewport() { return child?.captureViewport() ?? null; }, restoreViewport(camera) { child?.restoreViewport(camera); }, capturePresentation, restorePresentation,
+    get svg() { return child?.svg ?? null; }, get summary() { return summary; },
+    dispose() { if (disposed) return; disposed = true; generation++; child?.dispose(); child = null; shell.remove(); },
+  };
 }
