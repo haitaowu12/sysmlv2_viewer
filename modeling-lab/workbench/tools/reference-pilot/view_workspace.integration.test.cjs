@@ -360,3 +360,11 @@ test('live scope notices follow the active presentation and ignore obsolete cont
  firstMount.options.onPresentationChange({notices:['Focus: 4 of 18 elements']});assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/no source origin/);assert.match(ui.document.getElementById('explanation').textContent,/4 of 18/);
  await ui.api.open('sysml:second');firstMount.options.onPresentationChange({notices:['Obsolete warning']});assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/Obsolete warning/);
 });
+
+ test('retained controller scope notices still update after a replacement fails',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const retained=ui.mounts.at(-1);
+ retained.options.onPresentationChange({notices:['Overview scope']});const pending=deferred();ui.fetchPlans.set('#tree:'+second.target,pending);
+ const opening=ui.api.open('sysml:second');pending.reject(Error('Failed replacement'));await opening;
+ retained.options.onPresentationChange({notices:['Focused scope']});
+ assert.match(ui.document.getElementById('explanation').textContent,/Focused scope/);assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/Overview scope/);
+ });
