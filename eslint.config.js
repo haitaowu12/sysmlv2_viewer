@@ -9,6 +9,8 @@ export default defineConfig([
   globalIgnores([
     'dist',
     'dist-workbench',
+    'experiments/browser-only-lab/_build',
+    'modeling-lab/workbench/tools/reference-pilot/diagram-ui/vendor',
     'apps/workbench-desktop/src-tauri/binaries',
     'apps/workbench-desktop/src-tauri/generated',
     'apps/workbench-desktop/src-tauri/target',

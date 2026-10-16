@@ -21,3 +21,5 @@ engine-build.json
 public/engine-build.json
 
 public/examples/
+
+public/libavoid.wasm

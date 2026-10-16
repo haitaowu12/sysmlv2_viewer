@@ -2,7 +2,9 @@
   "dependencies": {
     "@openmbee/opensysml": "0.10.0",
     "@viz-js/viz": "3.31.0",
+    "elkjs": "0.12.0",
     "esbuild": "0.28.1",
+    "libavoid-js": "0.4.5",
     "pyodide": "0.29.3",
     "vite": "7.3.7"
   },
@@ -11,7 +13,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test lab-runtime.test.js lab-worker.test.js && python3 -m unittest -v test_normalize.py test_browser_transactions.py && npm run test:build",
+    "test": "node --test lab-runtime.test.js lab-worker.test.js engine-view.test.js && python3 -m unittest -v test_normalize.py test_browser_transactions.py && npm run test:build && npm run test:diagram-ui",
+    "test:diagram-ui": "esbuild ../../modeling-lab/workbench/tools/reference-pilot/diagram-ui/host.test.ts --bundle --platform=node --format=esm --packages=external --outfile=_build/diagram-host.test.mjs && node --test _build/diagram-host.test.mjs",
+    "test:engine-views": "node --test engine-view-sdk.test.js",
     "prepare:lab": "python3 prepare.py",
     "build:engine": "python3 build_engine.py",
     "build": "npm run prepare:lab && vite build && npm run audit:build",
@@ -19,5 +23,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "audit:build": "python3 audit_build.py",
     "test:build": "python3 -m unittest -v test_build.py"
+  },
+  "devDependencies": {
+    "jsdom": "29.0.2"
   }
 }

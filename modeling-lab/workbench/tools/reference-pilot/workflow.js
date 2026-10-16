@@ -39,7 +39,7 @@
     // Keep the actual link attached for a fresh user gesture if an automatic request is blocked.
     downloadLink.click();
   }
-  function snapshot(){if(!project)return null;return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value}}
+  function snapshot(){if(!project)return null;const viewState=window.labViews?.snapshot();return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value,...(viewState?{sysmlViews:viewState.views,selectedView:viewState.selected}:{})}}
   function stateKey(data){return JSON.stringify(data,(_key,value)=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)}
   async function inspectSource(source,views,baselineSource,sourceSet){const response=await fetch('/inspect',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({source,views,baselineSource,...(sourceSet?{sourceSet}:{})})}),data=await response.json();if(data.error)throw Error(data.error);if(!data.staticChecksPassed)throw Error('Imported model failed language validation: '+data.diagnostics.map((d,index)=>{const original=data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;const location=original?.path?original.path+(original.line?':'+original.line:''):d.line?'Line '+d.line:'';return (location?location+': ':'')+d.message}).join(' '));return data}
   function filename(){return (project.title||'modeling-project').replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,70)}
@@ -68,7 +68,7 @@
       finally{loading=false;p.removeAttribute('aria-busy');for(const [control,disabled] of controls)control.disabled=disabled}
     }
     const sources=node('section');sources.className='open-model-option';sources.append(node('h3','Open your SysML v2 model'));
-    message(sources,'Choose .sysml files or a folder. The Lab opens the main component when it is clear, or lets you choose a starting point. Authored SysML view declarations are retained in source; the Lab generates its own review views.');
+    message(sources,'Choose .sysml files or a folder. The Lab opens the main component when it is clear, or lets you choose a starting point. Authored SysML views are available in the browser view selector; the original declarations remain in source.');
     const source=field(sources,'Choose SysML files','input');source.type='file';source.accept='.sysml';source.multiple=true;
     const folder=field(sources,'Choose SysML folder','input');folder.type='file';folder.setAttribute('webkitdirectory','');folder.multiple=true;p.append(sources);
     const saved=node('section');saved.className='open-model-option';saved.append(node('h3','Continue a saved project'));
@@ -173,7 +173,7 @@
     }
   }
   async function admitRecords(data){
-    admitViews(data.views,'Project');const names=new Set(),checks=[];
+    admitViews(data.views,'Project');if(data.sysmlViews!==undefined){if(!window.labViewDefinitions)throw Error('This Lab cannot admit saved SysML view definitions.');data.sysmlViews=window.labViewDefinitions.admitViews(data.sysmlViews)}const names=new Set(),checks=[];
     for(const v of data.customViews){
       if(!record(v)||!text(v.name,80)||!v.name.trim()||names.has(v.name)||!record(v.recipe)||v.recipe.schemaVersion!==1)throw Error('Invalid or repeated custom view name/recipe.');
       const r=v.recipe,path=value=>text(value,5000)&&value.length>0,paths=value=>Array.isArray(value)&&value.length<=2000&&value.every(path);
@@ -218,7 +218,7 @@
       await inspectSource(checkedSource,candidate.views,candidate.baselineSource,candidate.sourceSet);
       if(revision!==editRevision||basis!==acceptedReport)throw Error('Draft changed while opening the project. Current work is retained.');
       const accepted=await render(false,{source:checkedSource,project:candidate,payload:{views:candidate.views,baselineSource:candidate.baselineSource,workspaceKey:candidate.id,sourceSet:candidate.sourceSet??null},commit(){
-        project=candidate;delete project.recovery;pending=null;importedViews=candidate.customViews;initial.workspaceKey=project.id;initial.source=project.baselineSource;
+        project=candidate;delete project.recovery;pending=null;importedViews=candidate.customViews;window.labViews?.importProject(candidate);initial.workspaceKey=project.id;initial.source=project.baselineSource;
         el('source').value=checkedSource;el('audience').value=data.audience==='stakeholder'?'stakeholder':'engineering';document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.leave();el('view-search').value='';el('model-search').value='';
       }});
       if(!accepted){const reason=(el('diagnostics').dataset.runtimeError||el('diagnostics').textContent).trim();throw Error('Project was not opened. Current project and draft are retained.'+(reason?'\n'+reason:''))}
@@ -286,6 +286,9 @@
   function exportReview(){
     if(window.scopeWorkbench.active()&&!window.scopeWorkbench.review()){error(dialog,'The selected view is still building or needs review. Select a valid view before exporting.');return}
     if(!report||busy||report.source!==el('source').value){error(dialog,'Validate the model before exporting a reader review.');return}
+    const engineActive=window.labViews?.active(),engineView=engineActive?window.labViews.reader():null;
+    const engineSvg=engineActive?el('canvas').querySelector('svg'):null,engineTable=engineActive&&!engineSvg?el('canvas').querySelector('table'):null;
+    if(engineActive&&(!engineView||engineView.sourceSha256!==report.sourceSha256||(!engineSvg&&!engineTable))){error(dialog,'Wait for the current SysML view to finish drawing before exporting.');return}
     project.artifacts??=[];const artifactName=filename()+'.review.html';project.artifacts.push({name:artifactName,sourceSha256:report.sourceSha256,kind:'reader-review',status:'download-requested',targets:report.views.flatMap(v=>v.targets)});if(project.artifacts.length>100)project.artifacts.shift();
     const doc=document.implementation.createHTMLDocument(project.title+' · review');doc.documentElement.lang='en';const charset=doc.createElement('meta');charset.setAttribute('charset','utf-8');const viewport=doc.createElement('meta');viewport.name='viewport';viewport.content='width=device-width,initial-scale=1';doc.head.prepend(charset,viewport);const meta=doc.createElement('meta');meta.httpEquiv='Content-Security-Policy';meta.content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'";doc.head.append(meta);const style=doc.createElement('style');style.textContent='body{font:16px/1.6 system-ui;color:#203d4c;max-width:1100px;margin:40px auto;padding:0 24px}section{border-top:1px solid #d6e0e5;padding:24px 0;break-inside:avoid}svg{max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}.reader-notes{white-space:pre-wrap}details{margin:18px 0}summary{cursor:pointer;font-weight:600}h1,h2{line-height:1.25}.endpoint{display:grid;gap:5px}.endpoint-context,.endpoint-port{font-size:12px}.endpoint details{font-size:11px}.endpoint code{display:block;overflow-wrap:anywhere;white-space:normal}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:13px}td,th{border:1px solid #ccd;padding:8px;text-align:left;overflow-wrap:anywhere}';doc.head.append(style);
     const body=doc.body;body.append(node('h1',project.title),node('p','Frozen reader review · revision '+report.sourceSha256.slice(0,12)+' · static checks passed; execution and acceptance not assessed.'));const notes=node('details');notes.append(node('summary','Brief, decisions and engineering change record'),node('p','Full model revision: '+report.sourceSha256),node('h2','Brief and source basis'));const brief=node('div',project.brief),questions=node('div',project.questions);brief.className=questions.className='reader-notes';notes.append(brief,node('h2','Assumptions, decisions and open questions'),questions);body.append(notes);
@@ -315,6 +318,21 @@
     }
     for(const v of report.views){const section=node('section');section.className='reader-view';section.dataset.viewId=v.id;section.append(node('h2',v.stakeholder?.title||viewLabel(v.id)),node('p','Scope'));for(const target of v.targets){const e=report.elements.find(e=>e.qualifiedName===target);section.append(modelCard(target,e?.metaclass?.endsWith('Definition')?'definition':e?.metaclass==='PartUsage'?'model occurrence':''))}section.append(safeSvg(v.stakeholderSvg||v.svg));if(v.stakeholder?.statement)section.append(node('blockquote',v.stakeholder.statement));readerFacts(section,v.stakeholder,v.behavior||v.stakeholder?.behavior);if(v.error)section.append(node('p',v.error));body.append(section)}
     const custom=window.scopeWorkbench.active();if(custom){const section=node('section');section.append(node('h2',el('view-title').textContent),node('p',el('scope-brief').textContent+' · scope and omissions are recorded in the interface register below'));const current=el('canvas').querySelector('svg');if(current)section.append(safeSvg(new XMLSerializer().serializeToString(current)));else{const table=el('canvas').querySelector('table');if(table){const clone=table.cloneNode(true);clone.querySelectorAll('button').forEach(b=>b.replaceWith(node('span',b.textContent.startsWith('Inspect')?'See source register below':b.textContent)));section.append(clone)}}body.append(section)}
+    if(engineView){
+      const section=node('section');section.className='reader-engine-view';section.dataset.sourceSha256=engineView.sourceSha256;
+      section.append(node('h2',human(engineView.name)),node('p','Current displayed SysML view · '+human(engineView.kind)+' · depth '+engineView.depth+' · '+el('audience').value),node('p','Subject: '+engineView.target),node('p','Model revision: '+engineView.sourceSha256),node('p','This section includes the current displayed view and viewport. Other authored and personal SysML drawings are not rendered in this reader; personal view definitions are retained below and in the editable project.'));
+      const picture=node('div');picture.className='lab-donor-diagram';
+      // Styles are from the maintained canvas host; the SVG itself goes through
+      // the same static sanitizer as configured views. No toolbar is copied.
+      const canvasStyles=[...el('canvas').querySelectorAll('.lab-donor-diagram > style')].map(s=>s.textContent).join('\n');
+      picture.append(node('style',canvasStyles+'\n.reader-engine-view svg.opensysml-canvas{width:100%;height:auto;max-width:100%;cursor:default}.reader-engine-view .opensysml-node,.reader-engine-view .opensysml-edge,.reader-engine-view .port{cursor:default}'));
+      const content=engineSvg?safeSvg(new XMLSerializer().serializeToString(engineSvg)):engineTable.cloneNode(true);
+      content.querySelectorAll('button').forEach(b=>b.replaceWith(node('span',b.textContent)));
+      for(const item of [content,...content.querySelectorAll('[tabindex],[role="button"]')]){item.removeAttribute('tabindex');if(item.getAttribute('role')==='button')item.removeAttribute('role')}
+      picture.append(content);section.append(picture);
+      if(engineView.notices?.length){const scope=node('details');scope.open=true;scope.append(node('summary','View scope and limitations'));for(const notice of engineView.notices)scope.append(node('p',notice));section.append(scope)}
+      body.append(section);
+    }
     function readerTable(title,headers,rows,note,scope='Model-wide'){
       const appendix=node('details');appendix.className='reader-appendix';appendix.append(node('summary',scope+' '+title.toLowerCase()+' ('+rows.length+' records'+(rows.length>500?'; 500 included, '+(rows.length-500)+' omitted':'')+')'));
       const section=node('section');section.append(node('h2',title),node('p',note));const table=node('table'),head=node('tr');headers.forEach(h=>head.append(node('th',h)));table.append(head);for(const row of rows.slice(0,500)){const tr=node('tr');row.forEach(value=>{const cell=node('td');cell.append(value instanceof Node?value:document.createTextNode(value));tr.append(cell)});table.append(tr)}section.append(table);if(rows.length>500)section.append(node('p',`${rows.length-500} records omitted from this export; narrow the view and re-export. The full model remains in the project file.`));appendix.append(section);body.append(appendix);
@@ -329,6 +347,8 @@
     const requirements=report.catalogue?.requirements||[],requirementAppendix=node('details');requirementAppendix.className='reader-appendix';requirementAppendix.append(node('summary',report.catalogue?'Model-wide requirements register ('+requirements.length+' records)':'Requirements register · extraction unavailable'));
     const register=node('section');register.append(node('h2','Requirements register'));for(const r of requirements){const e=report.elements.find(e=>e.sessionElementId===r.elementId);register.append(node('h3',e?.qualifiedName||r.qualifiedName||r.name||r.elementId),node('pre',e?.source||'Source unavailable in this reader; inspect the editable project.'))}if(!report.catalogue)register.append(node('p','Requirement extraction unavailable for this scope; inspect the project source. Absence of this register is not absence of requirements.'));requirementAppendix.append(register);body.append(requirementAppendix);
     const recipes=node('details');recipes.append(node('summary','Saved custom view definitions and scope'),node('pre',JSON.stringify(window.scopeWorkbench.export(),null,2)));body.append(recipes);
+    const personal=window.labViews?.snapshot().views||[];
+    if(personal.length){const definitions=node('details');definitions.append(node('summary','Saved personal SysML view definitions ('+personal.length+')'),node('p','These definitions retain subjects, diagram kinds and depths. Only the current SysML drawing, when one is displayed at export, is pictured above.'),node('pre',JSON.stringify(personal,null,2)));body.append(definitions)}
     download(filename()+'.review.html','<!doctype html>\n'+doc.documentElement.outerHTML,'text/html');status('Reader review download requested · check Downloads for the file','valid');refreshState();
   }
   window.labWorkflow={
@@ -337,13 +357,13 @@
       if(!project)project={schemaVersion:1,id:initial.acceptedReport&&typeof initial.workspaceKey==='string'&&initial.workspaceKey.trim()&&initial.workspaceKey.length<=200?initial.workspaceKey:crypto.randomUUID(),title:(text(initial.title,20000)?initial.title.trim():'')||'System study',brief:text(initial.brief,20000)?initial.brief:'',questions:text(initial.questions,20000)?initial.questions:'',baselineSource:initial.baselineSource??initial.source,baselineHash:hash(initial.baselineHash)?initial.baselineHash:(!initial.baselineSource||initial.baselineSource===initial.source?data.sourceSha256:undefined),views:initial.presets,history:[],...(initial.sourceSet?{sourceSet:initial.sourceSet}:{})};
       if(data.viewRecipes)project.views=data.viewRecipes;
       const authored=(data.elements||[]).filter(e=>['ViewDefinition','ViewUsage'].includes(e.metaclass)&&sourceWitness(e,data.source));
-      el('source-view-note').hidden=!authored.length;el('source-view-note').textContent=authored.length?authored.length+' source view declaration'+(authored.length===1?'':'s')+' retained in source. Displayed views are Lab projections.':'';
+      el('source-view-note').hidden=!!window.labViews||!authored.length;el('source-view-note').textContent=authored.length?authored.length+' source view declaration'+(authored.length===1?'':'s')+' retained in source. Displayed views are Lab projections.':'';
       if(importedViews){window.scopeWorkbench.import(importedViews);importedViews=null}
-      toolbar.querySelectorAll('button').forEach(b=>b.disabled=false);refreshState();
+      window.labViews?.onReport(data);toolbar.querySelectorAll('button').forEach(b=>b.disabled=false);refreshState();
     },
-    snapshot,openProject,refreshState,recovery,validateCandidate,sourceSetStatus,sourceTargets,sourceInitialTarget,sourceScopePage,sourceRecipe,
-    capture(){return {project:structuredClone(project),pending:structuredClone(pending),lastSaved,source:el('source').value,audience:el('audience').value,initialSource:initial.source,workspaceKey:initial.workspaceKey,customViews:window.scopeWorkbench.export()}},
-    restore(state){if(!state)return;project=state.project;pending=state.pending;lastSaved=state.lastSaved;importedViews=null;el('source').value=state.source;el('audience').value=state.audience;initial.source=state.initialSource;initial.workspaceKey=state.workspaceKey;document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.import(state.customViews);refreshState()},
+    snapshot,openProject,refreshState,recovery,validateCandidate,sourceSetStatus,sourceTargets,sourceInitialTarget,sourceScopePage,sourceRecipe,sourceWitness,
+    capture(){return {project:structuredClone(project),pending:structuredClone(pending),lastSaved,source:el('source').value,audience:el('audience').value,initialSource:initial.source,workspaceKey:initial.workspaceKey,customViews:window.scopeWorkbench.export(),viewWorkspace:window.labViews?.snapshot()}},
+    restore(state){if(!state)return;project=state.project;pending=state.pending;lastSaved=state.lastSaved;importedViews=null;el('source').value=state.source;el('audience').value=state.audience;initial.source=state.initialSource;initial.workspaceKey=state.workspaceKey;document.body.classList.toggle('stakeholder',stakeholderMode());window.scopeWorkbench.import(state.customViews);window.labViews?.restore(state.viewWorkspace);refreshState()},
     dirty(){return project&&stateKey(snapshot())!==lastSaved},
   };
 })();

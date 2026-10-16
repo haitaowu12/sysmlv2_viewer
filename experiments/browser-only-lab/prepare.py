@@ -13,6 +13,7 @@ for name in ['engineering','stakeholder','behavior','check_contract','receipts',
 for name in ['pyodide.asm.js','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip']:
     shutil.copy2(ROOT/'node_modules/pyodide'/name,PUBLIC/'pyodide'/name)
 shutil.copytree(LAB/'tools/reference-pilot/examples',PUBLIC/'examples',dirs_exist_ok=True)
+shutil.copy2(ROOT/'node_modules/libavoid-js/dist/libavoid.wasm',PUBLIC/'libavoid.wasm')
 startup_project=json.loads((LAB/'tools/reference-pilot/examples/apollo-11.modeling.json').read_text())
 (PUBLIC/'initial.json').write_text(json.dumps({'source':startup_project['source'],'presets':startup_project['views'],'workspaceKey':startup_project['id'],
     'title':startup_project['title'],'brief':startup_project['brief'],'questions':startup_project['questions'],'project':startup_project}))
@@ -21,8 +22,8 @@ startup_project=json.loads((LAB/'tools/reference-pilot/examples/apollo-11.modeli
 project=json.loads((LAB/'fixtures/authoring/alarm-review/reviewed.modeling.json').read_text())
 cases=[{'id':'valid-baseline','expectedErrors':False,'source':(LAB/'fixtures/authoring/alarm-review/model.sysml').read_text()},{'id':'valid-reviewed','expectedErrors':False,'source':project['source']},{'id':'undefined-type','expectedErrors':True,'source':project['source'].replace('part coldRoom0 : ColdRoom;','part coldRoom0 : NoSuchRoomType;')},{'id':'undefined-endpoint','expectedErrors':True,'source':project['source'].replace('connect coldRoom0.readings','connect coldRoom0.missingReadings')},{'id':'broken-syntax','expectedErrors':True,'source':project['source']+'\npart def Broken {'},{'id':'same-name-in-two-packages','expectedErrors':False,'source':'package A { part def Unit; } package B { part def Unit; }'}]
 (ROOT/'cases.json').write_text(json.dumps(cases))
-page=(LAB/'tools/reference-pilot/lab.html').read_text().replace('__SCOPE_SCRIPT__',(LAB/'tools/reference-pilot/scope.js').read_text()).replace('__SOURCE_INTAKE_SCRIPT__',(LAB/'tools/reference-pilot/source_intake.js').read_text()).replace('__WORKFLOW_SCRIPT__',(LAB/'tools/reference-pilot/workflow.js').read_text()).replace('__TOKEN__','browser-local')
-bootstrap='''<script>window.browserLabReady=new Promise((resolve,reject)=>{window.browserLabResolve=resolve;window.browserLabReject=reject});const originalBrowserFetch=window.fetch.bind(window);window.fetch=async (url,options)=>{if(typeof url==='string'&&['/initial','/render','/compose','/prepare','/inspect','/element','/accept','/rollback'].includes(url)){const request=await window.browserLabReady;const data=await request(url,options?.body?JSON.parse(options.body):{});return {json:async()=>data};}return originalBrowserFetch(url,options)};</script><script type="module" src="/lab-runtime.js"></script>'''
+page=(LAB/'tools/reference-pilot/lab.html').read_text().replace('__SCOPE_SCRIPT__',(LAB/'tools/reference-pilot/scope.js').read_text()).replace('__SOURCE_INTAKE_SCRIPT__',(LAB/'tools/reference-pilot/source_intake.js').read_text()).replace('__WORKFLOW_SCRIPT__',(LAB/'tools/reference-pilot/workflow.js').read_text()).replace('__VIEW_WORKSPACE_SCRIPT__',(LAB/'tools/reference-pilot/view_workspace.js').read_text()).replace('__TOKEN__','browser-local')
+bootstrap='''<script>window.browserLabReady=new Promise((resolve,reject)=>{window.browserLabResolve=resolve;window.browserLabReject=reject});const originalBrowserFetch=window.fetch.bind(window);window.fetch=async (url,options)=>{if(typeof url==='string'&&['/initial','/render','/compose','/prepare','/inspect','/element','/accept','/rollback','/diagram'].includes(url)){const request=await window.browserLabReady;const data=await request(url,options?.body?JSON.parse(options.body):{});return {json:async()=>data};}return originalBrowserFetch(url,options)};</script><script type="module" src="/lab-runtime.js"></script>'''
 page=page.replace('<body>','<body>'+bootstrap).replace('Full qualified model retained locally. Additional source details load when selected.','Browser engine snapshot. Additional source details load when selected.').replace('Modeling lab','Modeling Lab')
 # Start the complete saved example through ordinary project admission so custom
 # views, baseline and original file locations survive the initial page load.
@@ -33,10 +34,13 @@ page=page.replace(startup,"$('source').value=data.source;return window.labWorkfl
 # No Pilot renderer runs in this profile. Hide its inherited comparison control.
 page=page.replace('</body>',"<script>document.getElementById('reference').style.display='none';</script></body>")
 # Digest includes generated owner copies and runtime inputs, including uncommitted work.
-paths=[p for p in (PUBLIC/'python').glob('*.py')]+[ROOT/name for name in ['lab-runtime.js','lab-worker.js','package-lock.json','opensysml-browser.patch','browser-engine.wasm','wasm_exec.js']]
+paths=[p for p in (PUBLIC/'python').glob('*.py')]+[ROOT/name for name in ['lab-runtime.js','lab-worker.js','engine-view.js','diagram-renderer.ts','package-lock.json','opensysml-browser.patch','browser-engine.wasm','wasm_exec.js','RUNTIME-NOTICES.md']]
 paths += sorted((PUBLIC/'examples').glob('*'))
 paths += [ROOT/'prepare.py',ROOT/'vite.config.js',PUBLIC/'initial.json']
-paths += [LAB/'tools/reference-pilot'/name for name in ['lab.html','scope.js','workflow.js','source_intake.js']]
+paths += [LAB/'tools/reference-pilot'/name for name in ['lab.html','scope.js','workflow.js','source_intake.js','view_workspace.js']]
+paths += [p for p in (LAB/'tools/reference-pilot/diagram-ui').rglob('*.ts') if not p.name.endswith('.test.ts')]
+paths += [ROOT/'node_modules/libavoid-js/dist/libavoid.wasm']
+paths += [p for p in (ROOT/'licenses').rglob('*') if p.is_file()]
 source_digest=hashlib.sha256()
 for path in sorted(paths,key=lambda p:str(p.relative_to(ROOT.parents[1]))):
     source_digest.update(str(path.relative_to(ROOT.parents[1])).encode()+b'\0'+path.read_bytes()+b'\0')
