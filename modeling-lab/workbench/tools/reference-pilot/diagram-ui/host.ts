@@ -146,8 +146,8 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   // Replace only the host's contents. A later disposal never clears a newer mount.
   container.replaceChildren(shell);
-  if ((view.rows?.length ?? 0) && !summary.totalNodes) {
-    status.textContent = `${view.rows!.length} table rows`; tools.querySelectorAll('button').forEach(button => { button.hidden = true; });
+  if (view.kind === 'table' || ((view.rows?.length ?? 0) && !summary.totalNodes)) {
+    status.textContent = `${view.rows?.length ?? 0} table rows`; tools.querySelectorAll('button').forEach(button => { button.hidden = true; });
     stage.className = 'diagram-table-wrap'; stage.removeAttribute('tabindex'); stage.removeAttribute('aria-label');
     const table = document.createElement('table'), head = document.createElement('tr');
     for (const column of view.columns ?? []) { const cell = document.createElement('th'); cell.textContent = column; head.append(cell); }
