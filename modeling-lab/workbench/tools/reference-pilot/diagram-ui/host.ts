@@ -13,6 +13,7 @@ export interface MountOptions {
 }
 export interface DiagramController {
   fit(): void; zoom(factor: number): void; dispose(): void;
+  captureViewport(): View | null; restoreViewport(view: View): void;
   readonly svg: SVGSVGElement | null; summary: DiagramSummary;
 }
 let serial = 0;
@@ -67,7 +68,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   const stage = document.createElement('div'); stage.className = 'diagram-stage'; stage.tabIndex = 0;
   stage.setAttribute('aria-label', 'Model diagram. Drag background to pan. Use zoom buttons or control and wheel to zoom. Home fits the diagram.');
   shell.append(stage);
-  let svg: SVGSVGElement | null = null, disposed = false;
+  let svg: SVGSVGElement | null = null, disposed = false, preserveViewportOnResize = false;
   let fit: View = { x: 0, y: 0, scale: 1 }, current: View = fit;
   let bounds: Box = { x: 0, y: 0, width: 800, height: 500 };
   let content: SVGGElement | undefined = undefined;
@@ -96,6 +97,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   function pan(dx: number, dy: number) { current = boundedView({ ...current, x: current.x + dx, y: current.y + dy }); apply(); }
   function fitDiagram() {
+    preserveViewportOnResize = false;
     if (!svg || !layout || disposed) return;
     const width = stage.clientWidth || 800, height = stage.clientHeight || 500;
     bounds = { x: 0, y: 0, width, height };
@@ -107,7 +109,10 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
     zoomTo(current.scale * factor);
   }
   const controller: DiagramController = {
-    fit: fitDiagram, zoom, summary, get svg() { return svg; },
+    fit: fitDiagram, zoom, summary,
+    captureViewport() { return svg ? { ...current } : null; },
+    restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); preserveViewportOnResize = true; apply(); },
+    get svg() { return svg; },
     dispose() { if (disposed) return; disposed = true; listeners.forEach(remove => remove()); observer?.disconnect(); shell.remove(); },
   };
   let observer: ResizeObserver | undefined;
@@ -141,7 +146,8 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   // Replace only the host's contents. A later disposal never clears a newer mount.
   container.replaceChildren(shell);
-  if ((view.rows?.length ?? 0) && !summary.totalNodes) {
+  if (view.kind === 'table' || ((view.rows?.length ?? 0) && !summary.totalNodes)) {
+    status.textContent = `${view.rows?.length ?? 0} table rows`; tools.querySelectorAll('button').forEach(button => { button.hidden = true; });
     stage.className = 'diagram-table-wrap'; stage.removeAttribute('tabindex'); stage.removeAttribute('aria-label');
     const table = document.createElement('table'), head = document.createElement('tr');
     for (const column of view.columns ?? []) { const cell = document.createElement('th'); cell.textContent = column; head.append(cell); }
@@ -209,6 +215,6 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
       event.preventDefault(); pan(event.key === 'ArrowLeft' ? 40 : event.key === 'ArrowRight' ? -40 : 0, event.key === 'ArrowUp' ? 40 : event.key === 'ArrowDown' ? -40 : 0);
     }
   }) as EventListener);
-  if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(fitDiagram); observer.observe(stage); }
+  if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(() => { const restored = preserveViewportOnResize ? { ...current } : null; fitDiagram(); if (restored) { current = boundedView(restored); apply(); } }); observer.observe(stage); }
   return controller;
 }
