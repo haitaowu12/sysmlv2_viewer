@@ -238,3 +238,42 @@ class BrowserMinimumOptions(unittest.TestCase):
         supported=source.replace('count > 1','count >= 1');sha2=hashlib.sha256(supported.encode()).hexdigest()
         env['current_report']={'source':supported,'sourceSha256':sha2,'staticChecksPassed':True,'elements':[{'metaclass':'RequirementUsage','qualifiedName':'r','source':supported}]}
         self.assertEqual(env['minimum_options_current']({'request':{'baseSourceSha256':sha2}})['options'],[{'target':'r','currentValue':1,'statement':'Example count >= 2.'}])
+
+class EnginePreflightAdmission(unittest.TestCase):
+    def setUp(self):
+        self.env=context()
+        self.old=self.env['render_report'](request('old',accept=True))
+        self.source='part def Large { '+' '.join('part p%d;'%n for n in range(14))+' }'
+        self.recipe={'id':'large','names':['Large'],'view':'INTERCONNECTION','renderer':'engineering'}
+        def limited(*args):raise ValueError('Overview supports at most 12 direct components; 14 were found.')
+        self.env['project']=limited
+        self.evidence={'supported':True,'sourceSha256':hashlib.sha256(self.source.encode()).hexdigest(),'viewquery':'#interconnection:Large','kind':'interconnection','nodeCount':15,'rowCount':0,'edgeCount':0}
+
+    def staged(self,evidence):
+        return self.env['render_report'](request(self.source,views=[self.recipe],enginePreflight={'large':evidence},stage=True,transactionId='large-engine',expectedBase=self.old['sourceSha256'],expectedReport=self.old['reportIntegrity']['reportSha256']))
+
+    def test_verified_engine_support_admits_larger_scope_without_inventing_legacy_drawings(self):
+        report=self.staged(self.evidence)
+        self.assertEqual(self.env['current_report'],self.old)
+        view=report['views'][0]
+        self.assertTrue(view['engineView']['supported']);self.assertIn('14 were found',view['error'])
+        self.assertIn('unavailable',view['stakeholderError']);self.assertNotIn('svg',view);self.assertNotIn('stakeholderSvg',view)
+        self.env['accept_current']({'transactionId':'large-engine','sourceSha256':report['sourceSha256'],'reportSha256':report['reportIntegrity']['reportSha256']})
+        self.assertEqual(self.env['current_report']['source'],self.source)
+        self.env['rollback_current']({'transactionId':'large-engine'});self.assertEqual(self.env['current_report'],self.old)
+
+    def test_missing_stale_wrong_target_kind_and_empty_receipts_cannot_bypass_failure(self):
+        for evidence in [None,True,{},dict(self.evidence,sourceSha256='stale'),dict(self.evidence,viewquery='#interconnection:Other'),dict(self.evidence,kind='tree'),dict(self.evidence,nodeCount=0),dict(self.evidence,nodeCount=True),dict(self.evidence,supported=False)]:
+            with self.subTest(evidence=evidence),self.assertRaisesRegex(ValueError,'Required view large'):
+                self.staged(evidence)
+            self.assertEqual(self.env['current_report'],self.old);self.assertIsNone(self.env['staged_report'])
+
+    def test_wrong_view_renderer_cannot_gain_engine_admission_from_a_receipt(self):
+        self.recipe={**self.recipe,'renderer':'summary'}
+        with self.assertRaisesRegex(ValueError,'Required view large'):self.staged(self.evidence)
+        self.assertEqual(self.env['current_report'],self.old)
+
+    def test_legacy_valid_view_does_not_require_successful_engine_support(self):
+        self.env.update(project=lambda *args:{'subject':'Large'},render_svg=lambda projection:'<svg>Legacy valid</svg>',interconnection=lambda *args:{'svg':'<svg>Engineering valid</svg>'})
+        report=self.staged(dict(self.evidence,supported=False,error='Engine unavailable'))
+        self.assertFalse(report['views'][0]['engineView']['supported']);self.assertEqual(report['views'][0]['svg'],'<svg>Engineering valid</svg>')

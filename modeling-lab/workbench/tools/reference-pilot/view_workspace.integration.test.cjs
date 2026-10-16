@@ -112,3 +112,12 @@ test('an intentional component focus opens its definition instead of restoring a
 test('interface and exhibited behavior subjects retain the chosen semantic target and useful notation',async t=>{
  const ui=harness(t);await ui.load();const cases=[['InterfaceDefinition','interconnection'],['ExhibitStateUsage','state'],['PerformActionUsage','action']];const data={...ui.report(),elements:cases.map(([metaclass],i)=>({qualifiedName:'P::Subject'+i,name:'Subject'+i,metaclass}))};ui.context.report=data;ui.api.onReport(data);for(const [i,[,notation]] of cases.entries()){ui.api.create('P::Subject'+i);assert.equal(ui.document.querySelector('[aria-label="Subject"]').value,'P::Subject'+i);assert.equal(ui.document.querySelector('[aria-label="Diagram kind"]').value,notation);ui.document.querySelector('dialog').close();}
 });
+
+test('failed first engine drawing replaces pending placeholder and retry mounts the exact view',async t=>{
+ const ui=harness(t);await ui.load();const data={...ui.report(),views:[{id:'focused',targets:['Example::Second'],view:'STATE',error:'Legacy scope limit',engineView:{supported:true,sourceSha256,viewquery:'#state:Example::Second',kind:'state',nodeCount:3,rowCount:0}}]};ui.context.report=data;ui.api.onReport(data);ui.canvas().textContent='Preparing SysML view';
+ const failure=deferred();ui.fetchPlans.set('#state:Example::Second',failure);const opening=ui.api.open('review:focused');failure.reject(Error('Worker rendering failed'));await opening;
+ assert.equal(ui.api.reader(),null);assert.doesNotMatch(ui.canvas().textContent,/Preparing/);assert.match(ui.canvas().textContent,/Worker rendering failed/);assert.equal(ui.statuses.at(-1)[0],'View could not be opened · retry available');
+ const retry=[...ui.canvas().querySelectorAll('button')].find(b=>b.textContent==='Retry view');assert.ok(retry);assert.equal(retry.hidden,false);
+ ui.fetchPlans.delete('#state:Example::Second');retry.click();await drain();
+ assert.equal(ui.requests.at(-1).view,'#state:Example::Second');assert.equal(ui.api.snapshot().selected,'review:focused');assert.equal(ui.api.reader().target,'Example::Second');assert.equal(ui.api.reader().sourceSha256,sourceSha256);assert.equal(ui.canvas().querySelector('[data-engine-view]').dataset.engineView,'#state:Example::Second');assert.equal(ui.statuses.at(-1)[0],'SysML view ready');
+});

@@ -238,7 +238,7 @@ function show(index,useRaw=false){
   }else{
     const text=(raw?'Pilot reference':view.notationProfile||'Pilot reference')+(view.excluded?.length?' · '+view.excluded.length+' excluded: '+view.excluded.map(e=>e.reason).join('; '):'');$('explanation').textContent=text;
   }
-  if(view.error&&!simple){empty('View unavailable',view.error);return}
+  if(view.error&&!simple){if(window.labViews&&window.labViewDefinitions?.acceptsEngineView(report,view)){empty('SysML view available','The source and engineering view passed validation.');const open=document.createElement('button');open.textContent='Open SysML view';open.onclick=()=>window.labViews.open('review:'+view.id);$('canvas').append(open)}else empty('View unavailable',view.error);return}
   mountSvg(simple?(narrowReview()?view.stakeholderPortraitSvg||view.stakeholderSvg:view.stakeholderSvg):(raw&&view.rawSvg?view.rawSvg:view.svg));
   if(simple)storyView({...view.stakeholder,changeSummary:concernChanges(view)});
   else if(view.behavior&&!raw)behaviorEvidence(view.behavior);
@@ -432,7 +432,7 @@ function displayReport(data,focused=false,payload={},preserveScope=true){
       const bounded=data.catalogue?.coverage?.mode==='configured-part-scopes';navigationNote.hidden=!unavailable&&!bounded;navigationNote.textContent=unavailable&&data.catalogue?'No component hierarchy is available for this model. The source is validated and retained; use the source editor.':unavailable?'Model browsing and new custom views are unavailable for this model. '+(data.catalogueError||'The model navigation catalogue could not be built.')+' Configured diagrams remain available in Views. Project source and saved view recipes are retained.':bounded?'Browsing configured component scopes. Other model roots are outside this navigation. The full source is retained.':'';
       $('customize').title=unavailable?'New custom views unavailable: '+(data.catalogueError||'Model navigation could not be built.'):'';
       window.labWorkflow?.onReport(data);
-      if(!data.views.length){$('nav-model').click();if(unavailable)openEditor();}
+      if(!data.views.length){$(window.labViews?.hasAuthored?.()?'nav-views':'nav-model').click();if(unavailable&&!window.labViews)openEditor();}
 
 }
 async function render(focused=false,transition=null){
@@ -457,7 +457,7 @@ async function render(focused=false,transition=null){
     }
     const required=data.viewRecipes||payload.views||initial.presets;
     for(const recipe of required){const matches=data.views.filter(v=>v.id===recipe.id);if(matches.length!==1||JSON.stringify(matches[0].targets)!==JSON.stringify(recipe.names))throw Error('Required view '+recipe.id+' is missing or has a different scope.');}
-    const failed=data.views.find(v=>v.error||v.stakeholderError||!v.svg||!v.stakeholderSvg);
+    const failed=data.views.find(v=>!(window.labViews&&window.labViewDefinitions?.acceptsEngineView(data,v))&&(v.error||v.stakeholderError||!v.svg||!v.stakeholderSvg));
     if(failed)throw Error('Required view '+failed.id+' could not be built: '+(failed.error||failed.stakeholderError||'A required audience drawing is missing'));
     transition?.validate?.(data);
     await window.labWorkflow?.validateCandidate(data,payload,transition?.project);

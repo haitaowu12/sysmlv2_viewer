@@ -27,7 +27,12 @@ project files; the native profile does not yet render the new browser diagrams.
 The registry distinguishes configured review views, authored `ViewUsage`
 declarations, personal SysML queries, and analytical views. Compatible configured
 engineering/behavior views use the engine canvas in Engineering. Stakeholder
-review presentations remain available. Personal/authored views keep the same
+review presentations remain available within their declared layout bounds. A
+legacy presentation failure does not reject otherwise validated source when the
+worker has just rendered the exact configured engineering query successfully.
+The worker overwrites client receipts; Python independently verifies exact source
+hash, query, kind and nonempty content before staging. An unavailable stakeholder
+presentation remains explicit, and a later diagram failure offers retry. Personal/authored views keep the same
 semantic graph across audiences; the stakeholder transform adds word spacing,
 without claiming an independent stakeholder modeling notation.
 

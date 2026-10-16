@@ -15,3 +15,32 @@ export async function renderAcceptedDiagram(connection, accepted, request) {
  if(accepted()!==report||accepted()?.sourceSha256!==sourceSha256)throw Error('The model changed while the drawing was prepared. Reopen the view.');
  return {sourceSha256,graph};
 }
+
+/** Candidate admission evidence. This never accepts a model or supplies a drawing. */
+export function engineViewQuery(request){
+ if(!request||!Array.isArray(request.names)||request.names.length!==1||typeof request.names[0]!=='string')return null;
+ const kind=String(request.view||'').toLowerCase();
+ const eligible=(request.renderer==='engineering'&&['tree','interconnection'].includes(kind))||
+  (['state','action'].includes(kind)&&(request.renderer==='behavior'||request.id==='focused'));
+ return eligible?'#'+kind+':'+request.names[0]:null;
+}
+export async function preflightEngineViews(model,source,requests){
+ const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(source));
+ const sourceSha256=Array.from(new Uint8Array(digest),value=>value.toString(16).padStart(2,'0')).join('');
+ const receipts={};
+ for(const request of requests){
+  const viewquery=engineViewQuery(request);if(!viewquery)continue;
+  const expectedKind=viewquery.slice(1,viewquery.indexOf(':'));
+  const evidence={supported:false,sourceSha256,viewquery,kind:expectedKind,nodeCount:0,rowCount:0,edgeCount:0};
+  try{
+   if(model.hasErrors)throw Error('Candidate source did not pass engine validation.');
+   const graph=await model.renderView(viewquery,{ports:'full'});
+   const nodeCount=Array.isArray(graph.nodes)?graph.nodes.length:0,rowCount=Array.isArray(graph.rows)?graph.rows.length:0;
+   Object.assign(evidence,{kind:graph.kind,nodeCount,rowCount,edgeCount:Array.isArray(graph.edges)?graph.edges.length:0});
+   evidence.supported=graph.kind===expectedKind&&nodeCount+rowCount>0;
+   if(!evidence.supported)evidence.error='The engine returned no content for the requested diagram kind.';
+  }catch(error){evidence.error=error.message||String(error)}
+  receipts[request.id]=evidence;
+ }
+ return receipts;
+}
