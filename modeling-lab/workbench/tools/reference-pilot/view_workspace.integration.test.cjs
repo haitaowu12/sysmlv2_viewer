@@ -25,7 +25,7 @@ function harness(t){
  window.labDiagramRenderer={async mountDiagram(container,graph,options){
   const plan=mountPlans.get(graph.view);if(plan)await plan.promise;
   const content=document.createElement('section');content.dataset.engineView=graph.view;content.textContent=graph.view;container.append(content);
-  const controller={disposed:false,fitCalls:0,presentation:{mode:'diagram'},summary:{notices:[]},capturePresentation(){return structuredClone(this.presentation)},async restorePresentation(state){restoreOrder.push('presentation:start');if(restorePlans.has(graph.view))await restorePlans.get(graph.view).promise;this.presentation=structuredClone(state);this.summary.notices=['Focused connection neighborhood'];restoreOrder.push('presentation:end')},captureViewport(){return this.viewport||null},restoreViewport(view){this.viewport=structuredClone(view);restoreOrder.push('viewport')},fit(){this.fitCalls++},zoom(){},dispose(){this.disposed=true;content.remove()}};
+  const controller={disposed:false,fitCalls:0,presentation:{mode:'diagram'},summary:{notices:[]},capturePresentation(){return structuredClone(this.presentation)},async restorePresentation(state){restoreOrder.push('presentation:start');if(restorePlans.has(graph.view)&&(await restorePlans.get(graph.view).promise)===false){restoreOrder.push('presentation:superseded');return false}this.presentation=structuredClone(state);this.summary.notices=['Focused connection neighborhood'];restoreOrder.push('presentation:end');return true},captureViewport(){return this.viewport||null},restoreViewport(view){this.viewport=structuredClone(view);restoreOrder.push('viewport')},fit(){this.fitCalls++},zoom(){},dispose(){this.disposed=true;content.remove()}};
   mounts.push({view:graph.view,container,content,controller,options});return controller;
  }};
  const context={window,document,structuredClone,console,busy:false,active:0,report:null,selected:null,
@@ -342,4 +342,21 @@ test('a superseded same-source report restoration cannot apply its camera to a n
  ui.api.beginReport();ui.api.core(0);const data=ui.report();ui.context.report=data;const pending=deferred();ui.restorePlans.set('#tree:'+first.target,pending);ui.api.onReport(data);await ui.flushTimers();
  await ui.api.open('sysml:second');const newer=ui.mounts.at(-1);pending.resolve();await drain();
  assert.equal(ui.api.reader().target,second.target);assert.equal(newer.controller.viewport,undefined,'report restoration must stay bound to its original drawing');
+});
+
+
+for(const scenario of ['back','report'])test(scenario+' restoration leaves a newer presentation on the same controller alone',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');
+ ui.mounts.at(-1).controller.presentation={mode:'focus',scroll:0,page:0};ui.mounts.at(-1).controller.viewport={x:-123,y:-456,scale:3};const pending=deferred();let returning;
+ if(scenario==='back'){await ui.api.navigate(usage);ui.restorePlans.set('#tree:'+first.target,pending);returning=ui.api.back();await drain()}
+ else{ui.api.beginReport();ui.api.core(0);const refreshed={...data};ui.context.report=refreshed;ui.restorePlans.set('#tree:'+first.target,pending);ui.api.onReport(refreshed);await ui.flushTimers()}
+ const current=ui.mounts.at(-1).controller;current.presentation={mode:'diagram',scroll:0,page:0};current.viewport={x:4,y:5,scale:1};pending.resolve(false);if(returning)await returning;else await drain();
+ assert.deepEqual(current.viewport,{x:4,y:5,scale:1});assert.equal(ui.api.reader().presentation,'diagram');
+});
+
+test('live scope notices follow the active presentation and ignore obsolete controllers',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const firstMount=ui.mounts.at(-1);
+ firstMount.options.onPresentationChange({notices:['2 displayed elements have no source origin']});assert.match(ui.document.getElementById('explanation').textContent,/no source origin/);
+ firstMount.options.onPresentationChange({notices:['Focus: 4 of 18 elements']});assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/no source origin/);assert.match(ui.document.getElementById('explanation').textContent,/4 of 18/);
+ await ui.api.open('sysml:second');firstMount.options.onPresentationChange({notices:['Obsolete warning']});assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/Obsolete warning/);
 });
