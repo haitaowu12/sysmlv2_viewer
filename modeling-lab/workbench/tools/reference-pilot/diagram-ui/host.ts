@@ -68,7 +68,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   const stage = document.createElement('div'); stage.className = 'diagram-stage'; stage.tabIndex = 0;
   stage.setAttribute('aria-label', 'Model diagram. Drag background to pan. Use zoom buttons or control and wheel to zoom. Home fits the diagram.');
   shell.append(stage);
-  let svg: SVGSVGElement | null = null, disposed = false;
+  let svg: SVGSVGElement | null = null, disposed = false, preserveViewportOnResize = false;
   let fit: View = { x: 0, y: 0, scale: 1 }, current: View = fit;
   let bounds: Box = { x: 0, y: 0, width: 800, height: 500 };
   let content: SVGGElement | undefined = undefined;
@@ -97,6 +97,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   }
   function pan(dx: number, dy: number) { current = boundedView({ ...current, x: current.x + dx, y: current.y + dy }); apply(); }
   function fitDiagram() {
+    preserveViewportOnResize = false;
     if (!svg || !layout || disposed) return;
     const width = stage.clientWidth || 800, height = stage.clientHeight || 500;
     bounds = { x: 0, y: 0, width, height };
@@ -110,7 +111,7 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
   const controller: DiagramController = {
     fit: fitDiagram, zoom, summary,
     captureViewport() { return svg ? { ...current } : null; },
-    restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); apply(); },
+    restoreViewport(view) { if (!svg || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.scale) || view.scale <= 0) return; current = boundedView(view); preserveViewportOnResize = true; apply(); },
     get svg() { return svg; },
     dispose() { if (disposed) return; disposed = true; listeners.forEach(remove => remove()); observer?.disconnect(); shell.remove(); },
   };
@@ -214,6 +215,6 @@ export async function mountDiagram(container: HTMLElement, view: SDKView, option
       event.preventDefault(); pan(event.key === 'ArrowLeft' ? 40 : event.key === 'ArrowRight' ? -40 : 0, event.key === 'ArrowUp' ? 40 : event.key === 'ArrowDown' ? -40 : 0);
     }
   }) as EventListener);
-  if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(fitDiagram); observer.observe(stage); }
+  if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(() => { const restored = preserveViewportOnResize ? { ...current } : null; fitDiagram(); if (restored) { current = boundedView(restored); apply(); } }); observer.observe(stage); }
   return controller;
 }
