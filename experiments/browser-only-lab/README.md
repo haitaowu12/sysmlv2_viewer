@@ -1,3 +1,58 @@
+# Browser-only Modeling Lab
+
+This adapter builds the maintained Lab for GitHub Pages. End users need a browser,
+without a local modeling installation or model-processing service. The online
+page starts with the complete Apollo project; Open model accepts a person's own
+SysML v2 files, folder or saved project.
+
+The maintained UI and workflow owner is `modeling-lab/`. The browser adapter uses
+the pinned OpenSysML 0.10.0 WASM engine, its public SDK, Pyodide and Viz. The new
+view workspace reuses OpenSysML's actual diagram canvas/layout modules. It
+exposes source-authored views and personal SysML views in the same selector as
+preserved review and analytical views. Compatible configured engineering views
+use the engine canvas. Personal definitions retain qualified subjects and
+notation/depth, without persisting drawing-local IDs.
+
+See [view workspace architecture](../../modeling-lab/references/view-workspace-architecture.md)
+for component responsibilities, accepted-revision contracts, representation
+boundaries, source identity, limits and next slices. See [release procedure](RELEASE.md)
+for exact candidate qualification and artifact promotion. The native Pilot
+profile retains its existing rendering pipeline.
+
+## Reproduce
+
+Use Node 22, Python 3.13 and Go 1.27.1:
+
+```sh
+npm ci
+npm test
+npm run build:engine
+npm run test:engine-views
+npm run build
+npm run preview
+```
+
+The root and `lab.html` open the Lab; `probe.html` contains separate diagnostic
+engine controls. `npm test` includes transport, accepted transactions, build
+contracts and bundled renderer DOM tests. `test:engine-views` runs the actual
+built WASM through the public SDK. These are separate from browser workflow
+qualification and human acceptance. The runtime identity covers actual shipped
+source inputs. Build outputs stay ignored.
+
+The browser producer bounds tree/interconnection traversal to four levels before
+expansion. Depth can narrow the presentation. Read labels reaches actual label
+size; Fit returns to the overview. Source import remains limited to 64 files and
+512 KiB assembled text, with an 8 MiB saved project. This is not full language,
+notation, inherited-occurrence, industrial-scale, cold-device or memory
+qualification. Empty/unsupported views disclose that result.
+
+## Historical feasibility record — October 14, 2026
+
+The following retains the initial stopped experiment and its failed gates.
+It describes that dated snapshot, rather than current release status or the
+current root entry. Later repairs and releases are recorded under `docs/`, the
+maintained architecture reference and the project testing records.
+
 # Browser-only Modeling Lab feasibility build
 
 Status: working prototype; **not the Pages replacement**. The maintained Lab and public local release remain unchanged. The selected product direction is an interactive GitHub Pages app with no local installation or separate modeling server.

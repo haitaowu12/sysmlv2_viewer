@@ -18,6 +18,7 @@
   const traceLabel=t=>t.kind==='verify'?'V · planned':t.polarity==='positive'?'S · asserted':t.polarity==='negative'?'Not satisfied · asserted':'Satisfaction polarity unknown';
   const customStatus=s=>{const kept=saved.find(v=>v.name===s.name);return 'Custom view · '+(!kept?'session view':JSON.stringify(kept.recipe)===JSON.stringify(s.recipe)&&kept.surface===s.surface?'saved recipe':'unsaved view changes')};
   function savedNavigation(){
+    if(window.labViews){window.labViews.rebuild();return}
     el('saved-perspectives').replaceChildren();
     el('views').querySelectorAll('[data-custom]').forEach(b=>b.remove());
     const entries=[...workingViews,...saved.filter(s=>!workingViews.some(v=>v.name===s.name))];
@@ -75,6 +76,7 @@
     while(n?.parent&&!seen.has(n.key)){seen.add(n.key);const siblings=catalog.nodes.filter(c=>c.parent===n.parent&&c.root===n.root);childPages.set(n.parent,Math.floor(siblings.findIndex(c=>c.key===n.key)/60));expanded.add(n.parent);n=catalog.nodes.find(c=>c.key===n.parent&&c.root===n.root)}
   }
   function modelBrowser(){
+    if(window.labViews){window.labViews.renderModel();return}
     el('model-tree').replaceChildren();if(!catalog)return;
     const query=el('model-search').value,all=catalog.nodes;
     const actions=node('div',undefined,'model-selection-actions');actions.id='model-selection-actions';el('model-tree').append(actions);modelSelectionActions();
@@ -191,6 +193,7 @@
     }
   }
   function draw(){
+    window.labViews?.analytical(activeViewName||el("perspective-name").value);
     if(el('return-view'))el('return-view').hidden=true;
     if(!result||!report||result.sourceSha256!==report.sourceSha256)return;
     if(!transient&&!activeViewName)activeViewName=el('perspective-name').value;
@@ -224,7 +227,7 @@
     for(const id of ['fit','minus','plus','readable','actual'])el(id).disabled=surface!=='diagram'||!result.svg;window.labWorkflow?.refreshState();
   }
   el('nav-model').addEventListener('click',()=>navigation('model'));el('nav-views').addEventListener('click',()=>navigation('views'));el('model-search').addEventListener('input',()=>{modelPage=0;modelBrowser()});
-  el('customize').addEventListener('click',()=>{creatingNew=true;open()});el('edit-perspective').addEventListener('click',()=>{creatingNew=false;open()});
+  el('customize').addEventListener('click',()=>{if(window.labViews){window.labViews.create();return}creatingNew=true;open()});el('edit-perspective').addEventListener('click',()=>{creatingNew=false;open()});
   for(const id of ['close-scope','cancel-scope'])el(id).addEventListener('click',()=>el('scope-dialog').close());el('scope-root').addEventListener('change',()=>{draftPins.clear();draftHidden.clear();el('scope-find').value='';rootOptions(el('scope-root').value)});el('scope-find').addEventListener('input',()=>{subjectPage=0;rulePage=0;rootOptions()});el('scope-focus').addEventListener('change',()=>{const n=catalog.nodes.find(n=>n.key===el('scope-focus').value);if(n)el('scope-root').value=n.root;draftHidden.delete(el('scope-focus').value);renderExceptions()});
   el('scope-question').addEventListener('change',()=>{const kind=el('scope-question').value;el('scope-depth').value=kind==='diagram'?'1':'2';el('scope-neighbors').value=kind==='interfaces'||kind==='register'?'1':'0'});
   el('apply-scope').addEventListener('click',()=>{if(creatingNew){transient=false;activeViewName=null;el('perspective-name').value=''}creatingNew=false;surface=el('scope-question').value==='breakdown'?'diagram':el('scope-question').value;apply(getRecipe())});
@@ -245,6 +248,8 @@
   el('save-perspective').addEventListener('click',()=>saveView());
   el('save-view-copy').addEventListener('click',()=>saveView(true));
   window.scopeWorkbench={
+    create(){creatingNew=true;open()},
+    openSaved(name){const s=[...workingViews,...saved].find(v=>v.name===name);if(!s)return;transient=false;el('view-save-feedback').textContent='';activeViewName=s.name;el('perspective-name').value=s.name;surface=s.surface||'diagram';apply(s.recipe)},
     captureContext:()=>recipe?{recipe:structuredClone(recipe),surface,transient,activeViewName,name:el('perspective-name').value,sourceSha256:report?.sourceSha256,workspaceKey:key(),history:structuredClone(scopeHistory)}:null,
     returnToScope(context){
       if(!context?.recipe||!catalog||!report||busy||context.sourceSha256!==report.sourceSha256||context.workspaceKey!==key()||context.recipe.schemaVersion!==1||!catalog.nodes.some(n=>n.root===context.recipe.root&&n.key===context.recipe.focus))return false;
@@ -279,9 +284,9 @@
         const action=button('Explore linked target · '+friendlyPath(destination.key)+' · '+traceLabel(trace),()=>{if(current()&&catalog===basisCatalog){focusNode(destination);closeInspector()}});
         action.title=destination.key;panel.append(action);
       }
-    },refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||!catalog?.roots?.length;if(el('model-open-component-view'))el('model-open-component-view').disabled=value;if(el('model-open-sysml-sheet'))el('model-open-sysml-sheet').disabled=value||typeof window.openSysmlComponent!=='function'},
+    },refresh(){const id=selected?.sessionElementId,wasOpen=!el('inspector').hidden,records=lastEvidence;draw();if(wasOpen&&id)inspect(id);else if(wasOpen&&records)evidence(records.relations,records.title)},setBusy(value){el('customize').disabled=value||(!window.labViews&&!catalog?.roots?.length);if(el('model-open-component-view'))el('model-open-component-view').disabled=value;if(el('model-open-sysml-sheet'))el('model-open-sysml-sheet').disabled=value||typeof window.openSysmlComponent!=='function'},
     leave(){el('canvas').closest('.workspace').classList.remove('table-mode');epoch++;recipe=null;result=null;transient=false;activeViewName=null;el('model-tree').querySelectorAll('[aria-current]').forEach(b=>b.removeAttribute('aria-current'));el('scope-surfaces').hidden=true;el('apply-scope').disabled=false},
     invalidate(){epoch++;result=null;catalog=null;modelSelection=null;el('model-tree').replaceChildren();el('customize').disabled=true;el('scope-surfaces').hidden=true;el('scope-dialog').close()},
-    load(data,restore){catalog=data.catalogue;el('customize').disabled=!catalog?.roots?.length;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelSelection=null;modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
+    load(data,restore){catalog=data.catalogue;el('customize').disabled=!window.labViews&&!catalog?.roots?.length;el('customize').title=data.catalogueError||'';if(loadedWorkspace!==key()){loadedWorkspace=key();workingViews=[];modelSelection=null;modelPage=0;childPages.clear();expanded.clear();try{const data=JSON.parse(localStorage.getItem(key())||'[]');saved=Array.isArray(data)?data.filter(s=>typeof s.name==='string'&&s.recipe?.schemaVersion===1).slice(0,30):[]}catch{saved=[]}}savedNavigation();modelBrowser();if(restore&&catalog){if(restoreContext){transient=restoreContext.transient;surface=restoreContext.surface;activeViewName=restoreContext.activeViewName;el('perspective-name').value=restoreContext.name}apply(restore,true)}}
   };
 })();

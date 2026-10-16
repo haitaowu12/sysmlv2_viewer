@@ -147,3 +147,62 @@ test('Valid source without a drawing target offers model browsing; invalid sourc
   if(valid){assert.ok(fallback);await fallback.click();assert.equal(ui.workflow.snapshot().source,source);assert.equal(ui.workflow.snapshot().views.length,0)}else{assert.equal(fallback,undefined);assert.ok(ui.dialog().querySelector('[role=alert]'))}
  }
 });
+
+// Exercise the shipped admission function, rather than setup()'s render double.
+// Transport and report display remain doubles: this checks transactional opening,
+// not canvas layout. The engine-proof predicate is the real workspace helper.
+function renderAdmissionUI(changeProof=()=>{}){
+ const ui=setup(async()=>goodInspect()),ctx=ui.context,calls=[];
+ const page=readFileSync(__dirname+'/lab.html','utf8');
+ const start=page.indexOf('async function render(focused=false,transition=null){');
+ const end=page.indexOf('\nfunction syncEditor()',start);
+ assert.ok(start>=0&&end>start,'the actual inline render admission must be available');
+ vm.runInNewContext(readFileSync(__dirname+'/view_workspace.js','utf8'),ctx);
+ ctx.window.labViews={snapshot:()=>({views:[]}),restore(){},importProject(){},onReport(){}};
+ ctx.acceptedReport=ctx.report;
+ Object.assign(ctx,{updateTimer:null,queued:false,pendingCompensation:null,clearTimeout(){},controls(){},empty(){},scheduleUpdate(){},sysmlReturn:null,
+  $:id=>ui.ids[id]??(ui.ids[id]=new Element('div')),
+  setRuntimeDiagnostic:error=>{ui.ids.diagnostics.textContent=String(error);ui.ids.diagnostics.dataset.runtimeError=String(error)},
+  displayReport:data=>{ctx.report=data;ui.workflow.onReport(data)},
+  invalidateDraft:()=>{throw Error('A rejected opening must retain the prior accepted source')},
+  modelRequest:async(path,payload)=>{
+   calls.push({path,payload});
+   if(path==='/render'){
+    const data={source:payload.source,sourceSha256:'b'.repeat(64),transactionId:payload.transactionId,staticChecksPassed:true,
+     diagnostics:[],elements:[],viewRecipes:payload.views,reportIntegrity:{reportSha256:'c'.repeat(64)},
+     views:payload.views.map(recipe=>({id:recipe.id,targets:recipe.names,view:recipe.view,svg:'',stakeholderSvg:'',error:'Legacy SVG limit reached',stakeholderError:'Legacy SVG limit reached',
+      engineView:{supported:true,sourceSha256:'b'.repeat(64),viewquery:'#'+recipe.view.toLowerCase()+':'+recipe.names[0],kind:recipe.view.toLowerCase(),nodeCount:1,rowCount:0}}))};
+    changeProof(data.views[0].engineView,data);return data;
+   }
+   if(path==='/accept')return{accepted:true,...payload};
+   if(path==='/rollback')return{rolledBack:true,transactionId:payload.transactionId};
+   throw Error('Unexpected admission request '+path);
+  },
+ });
+ vm.runInNewContext(page.slice(start,end),ctx);
+ return{...ui,calls};
+}
+
+test('Actual render admission accepts a revision-bound engine drawing despite both legacy SVG failures',async()=>{
+ const ui=renderAdmissionUI();await ui.workflow.openProject(project());
+ assert.equal(ui.workflow.snapshot().id,'apollo-example');assert.equal(ui.workflow.snapshot().source,project().source);
+ assert.deepEqual(ui.calls.map(call=>call.path),['/render','/accept']);
+ assert.equal(ui.calls[0].payload.stage,true);assert.equal(ui.calls[1].payload.transactionId,ui.calls[0].payload.transactionId);
+ assert.equal(ui.context.acceptedReport.sourceSha256,'b'.repeat(64));assert.equal(ui.context.acceptedReport.views[0].error,'Legacy SVG limit reached');
+});
+
+test('Actual render admission refuses stale or mismatched engine proof and preserves the prior project',async()=>{
+ for(const [label,change] of [
+  ['stale source',proof=>{proof.sourceSha256='a'.repeat(64)}],
+  ['different target',proof=>{proof.viewquery='#tree:DifferentSystem'}],
+  ['different notation',proof=>{proof.kind='interconnection'}],
+  ['unsupported',proof=>{proof.supported=false}],
+  ['no drawable content',proof=>{proof.nodeCount=0;proof.rowCount=0}],
+ ]){
+  const ui=renderAdmissionUI(change),before=JSON.stringify(ui.workflow.capture()),prior=ui.context.acceptedReport;
+  await assert.rejects(ui.workflow.openProject(project()),/Required view overview could not be built/,label);
+  assert.deepEqual(ui.calls.map(call=>call.path),['/render'],label+' must not accept the candidate');
+  assert.equal(JSON.stringify(ui.workflow.capture()),before,label+' must retain project metadata, views and draft');
+  assert.equal(ui.context.acceptedReport,prior,label+' must retain the accepted report');assert.equal(ui.context.report,prior,label+' must retain the displayed report');
+ }
+});

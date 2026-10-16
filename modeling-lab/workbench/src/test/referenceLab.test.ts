@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { createHash, webcrypto } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); delete (window as any).labViews })
 
 const toolbarClick=(label:string)=>[...document.querySelectorAll<HTMLButtonElement>('.project-toolbar button')].find(b=>b.textContent===label)!.click()
 
@@ -38,7 +38,7 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
     clearTimeout: (id: number) => { if (id) timers[id - 1] = () => {} },
   }
   for (const [key, value] of Object.entries(mocks)) vi.stubGlobal(key, value)
-  new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + '\n' + readFileSync('tools/reference-pilot/source_intake.js', 'utf8') + '\nwindow.sourceSetIntake=globalThis.sourceSetIntake;' + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : ''))()
+  const native = new Function(html.match(/<script nonce="__TOKEN__">([\s\S]*?)<\/script>/)![1]! + '\n' + readFileSync('tools/reference-pilot/scope.js', 'utf8') + '\n' + readFileSync('tools/reference-pilot/source_intake.js', 'utf8') + '\nwindow.sourceSetIntake=globalThis.sourceSetIntake;' + (workflow ? '\n' + readFileSync('tools/reference-pilot/workflow.js', 'utf8') : '') + '\nreturn {syncSysmlReturn};')()
   const flush = async () => { for (let i = 0; i < 64; i++) await Promise.resolve() }
   const answer = async (index: number, valid = true, extra: Record<string, unknown> = {}) => {
     await vi.waitFor(() => expect(calls[index]).toBeDefined(), { interval: 1, timeout: 1000 })
@@ -48,7 +48,7 @@ async function harness(workflow = false, initialMetadata: Record<string, unknown
   }
   const edit = (text: string) => { const input = dom.window.document.getElementById('source') as HTMLTextAreaElement; input.value = text; input.dispatchEvent(new dom.window.Event('input')) }
   await flush()
-  return { dom, calls, answer, edit, flush, receipts, protocol, holdAcceptance: () => { delayAccept = true }, resumeAcceptance: () => { delayAccept = false }, rollbackReplies, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
+  return { dom, calls, answer, edit, flush, receipts, protocol, syncReturn: native.syncSysmlReturn as () => void, holdAcceptance: () => { delayAccept = true }, resumeAcceptance: () => { delayAccept = false }, rollbackReplies, tick: () => { const pending = timers.splice(0); pending.forEach(f => f()) } }
 }
 
 describe('reference lab automatic propagation', () => {
@@ -1695,6 +1695,63 @@ describe('explicit SysML sheets and honest notation',()=>{
     expect(document.querySelector('#views [aria-current=true]')!.getAttribute('data-view-index')).toBe('0')
     expect(audience.value).toBe('stakeholder');expect(document.getElementById('return-view')!.hidden).toBe(true)
     expect((window as any).labWorkflow.snapshot().views).toEqual([core])
+  })
+  // The native harness executes the real sheet and transaction functions. Its
+  // workspace double supplies selection only; drawing lifecycles are exercised
+  // separately by view_workspace.integration.test.cjs.
+  function workspaceSelection(h:Awaited<ReturnType<typeof harness>>,keys:string[]){
+    let selected:string|null=null,coreIndex=0
+    const api={
+      rebuild(){},beginReport(){},renderModel(){},filter(){},
+      snapshot:()=>({views:[],selected}),has:(key:string)=>keys.includes(key),
+      core(index:number){coreIndex=index;selected='review:'+ (index?'focused':'context')},
+      onReport(data:any){selected=data.views[coreIndex]?'review:'+data.views[coreIndex].id:null},
+      importProject(){},restore(){},invalidate(){selected=null},leave(){selected=null},
+      active:()=>!!selected&&!selected.startsWith('review:'),refresh:()=>false,control:()=>false,
+      open:vi.fn(async(key:string)=>{selected=key;document.getElementById('canvas')!.textContent='WORKSPACE '+key;h.syncReturn()}),
+    }
+    ;(window as any).labViews=api
+    return api
+  }
+  it('returns to the latest personal workspace after a previous focused-sheet visit and hides Return while that workspace is displayed',async()=>{
+    const h=await harness(true);await h.answer(0,true,{views:[view('context','Pump')],viewRecipes:[core]})
+    const workspace=workspaceSelection(h,['sysml:personal-a','sysml:personal-b'])
+    await workspace.open('sysml:personal-a')
+    const first=(window as any).openSysmlComponent('Pump::a')
+    await h.answer(1,true,{views:[view('context','Pump'),view('focused','Pump::a')],viewRecipes:[core]});await first
+    expect(document.getElementById('return-view')!.hidden).toBe(false)
+    // Opening a workspace does not change legacy active, which remains focused.
+    await workspace.open('sysml:personal-b')
+    expect(document.getElementById('return-view')!.hidden).toBe(true)
+    const second=(window as any).openSysmlComponent('Pump::b')
+    await h.answer(2,true,{views:[view('context','Pump'),view('focused','Pump::b')],viewRecipes:[core]});await second
+    expect(document.getElementById('return-view')!.hidden).toBe(false)
+    document.getElementById('return-view')!.click();await h.flush()
+    expect(workspace.open).toHaveBeenLastCalledWith('sysml:personal-b')
+    expect(workspace.snapshot().selected).toBe('sysml:personal-b')
+    expect(document.getElementById('canvas')!.textContent).toBe('WORKSPACE sysml:personal-b')
+    expect(document.getElementById('return-view')!.hidden).toBe(true)
+  })
+  it('returns from a focused sheet through an accepted empty-view render before restoring the exact source-only workspace key',async()=>{
+    const h=await harness(true);await h.answer(0)
+    const workflow=(window as any).labWorkflow,source='package Pump { part def Pump { part motor; } }'
+    const project={...workflow.snapshot(),id:'source-only-workspace',title:'Own model',source,baselineSource:source,views:[],customViews:[],history:[]};delete project.baselineHash
+    const sourceSha256=createHash('sha256').update(source).digest('hex')
+    const opening=workflow.openProject(project)
+    await h.answer(1,true,{views:[],viewRecipes:[]});await h.answer(2,true,{sourceSha256,views:[],viewRecipes:[]});await opening
+    const key='authored:Pump::architecture',workspace=workspaceSelection(h,[key]);await workspace.open(key)
+    const sheet=(window as any).openSysmlComponent('Pump')
+    await h.answer(3,true,{sourceSha256,views:[view('focused','Pump')],viewRecipes:[]});await sheet
+    expect(workspace.snapshot().selected).toBe('review:focused')
+    document.getElementById('return-view')!.click();await h.flush()
+    expect(h.calls[4].url).toBe('/render');expect(h.calls[4].payload).toMatchObject({source,workspaceKey:project.id,views:[]})
+    expect(h.calls[4].payload).not.toHaveProperty('target')
+    expect(workspace.open).toHaveBeenCalledTimes(1)
+    await h.answer(4,true,{sourceSha256,views:[],viewRecipes:[]});await h.flush()
+    expect(workspace.open).toHaveBeenLastCalledWith(key);expect(workspace.open).toHaveBeenCalledTimes(2)
+    expect(workspace.snapshot().selected).toBe(key);expect(workflow.snapshot().views).toEqual([])
+    expect(document.getElementById('canvas')!.textContent).toBe('WORKSPACE '+key)
+    expect(document.getElementById('return-view')!.hidden).toBe(true)
   })
   it.each(['none','validation','display'])('returns a source-only project through an accepted empty-view render (failure: %s)',async(failure)=>{
     const h=await harness(true);await h.answer(0)

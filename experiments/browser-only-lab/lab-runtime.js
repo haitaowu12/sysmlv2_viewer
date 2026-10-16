@@ -1,3 +1,4 @@
+import './diagram-renderer.ts';
 const worker=new Worker(new URL('./lab-worker.js',import.meta.url),{type:'module'});
 let next=0,stopped=null;const waiting=new Map();
 const recovery='Export model source or copy it and retain unsaved project notes before reloading to restart.';

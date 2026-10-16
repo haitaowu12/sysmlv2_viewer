@@ -56,3 +56,25 @@ When available, ask Tony to identify the changed minimum and declared capacity, 
 Inspecting a requirement usage offers Read requirement definition when its typed definition is available. Explore linked target follows the assertion's exact occurrence context; unresolved or ambiguous targets remain a limitation. These links do not infer satisfaction, verification or transitive coverage.
 
 Reader exports keep review diagrams and material qualifications visible. Expand the counted fact, behavior and scope disclosures for source evidence. Model-wide or configured-scope appendices state their actual coverage and any export truncation; a compact reader does not imply complete language support.
+
+## Browser source-linked SysML views
+
+The online browser profile now uses one selector for configured review views,
+source-authored views, personal SysML views and preserved analytical views.
+Use + New view, find a model subject, choose a diagram kind and create the view.
+The chosen subject is preserved even beyond the first 200 search results.
+Depth narrows presentation; Full canvas hides navigation and Restore panels
+brings it back. Inspection reserves space. Select a declaration or relationship
+to open its source; external library declarations do not jump into user source.
+Personal views can be renamed or deleted with Edit view. Save project file
+retains personal definitions and selection along with source, notes, original
+files and analytical views. Reopen that downloaded file to resume. Reader
+exports include the currently displayed SysML viewport plus definitions of
+other personal views, without claiming they are all rendered.
+
+Compatible configured engineering/behavior views use the engine in Engineering;
+stakeholder review presentations remain available. Personal SysML views retain
+the same graph in either audience, with label spacing for Stakeholder. The
+native Pilot profile retains its existing rendering pipeline. See
+[View workspace architecture](references/view-workspace-architecture.md) for
+ownership, producer bounds, source identity and remaining work.
