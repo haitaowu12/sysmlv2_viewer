@@ -13,7 +13,7 @@ const sourceSha256='a'.repeat(64);
 const personal=(id,target)=>({kind:'sysml',id,name:id+' architecture',target,notation:'tree',depth:2});
 const first=personal('first','Example::First'),second=personal('second','Example::Second');
 function harness(t){
- const ids=['views','view-count','view-search','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual'];
+ const ids=['views','view-count','view-search','no-views','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual'];
  const dom=new JSDOM('<!doctype html><html><head></head><body><div class="canvas-tools"></div>'+ids.map(id=>['view-search','model-search'].includes(id)?`<input id="${id}">`:`<div id="${id}"></div>`).join('')+'</body></html>');
  t.after(()=>dom.window.close());
  const window=dom.window,document=window.document,timers=[],requests=[],mounts=[],statuses=[],diagnostics=[];
@@ -120,4 +120,30 @@ test('failed first engine drawing replaces pending placeholder and retry mounts 
  const retry=[...ui.canvas().querySelectorAll('button')].find(b=>b.textContent==='Retry view');assert.ok(retry);assert.equal(retry.hidden,false);
  ui.fetchPlans.delete('#state:Example::Second');retry.click();await drain();
  assert.equal(ui.requests.at(-1).view,'#state:Example::Second');assert.equal(ui.api.snapshot().selected,'review:focused');assert.equal(ui.api.reader().target,'Example::Second');assert.equal(ui.api.reader().sourceSha256,sourceSha256);assert.equal(ui.canvas().querySelector('[data-engine-view]').dataset.engineView,'#state:Example::Second');assert.equal(ui.statuses.at(-1)[0],'SysML view ready');
+});
+
+test('an unmatched view search shows zero of total with empty groups hidden and clearing restores the list',async t=>{
+ const ui=harness(t);await ui.load();
+ const search=ui.document.getElementById('view-search'),count=ui.document.getElementById('view-count'),empty=ui.document.getElementById('no-views');
+ assert.equal(count.textContent,'2 views');assert.equal(empty.hidden,true);
+ search.value='no matching architecture';search.dispatchEvent(new ui.document.defaultView.Event('input'));
+ assert.equal(count.textContent,'0 / 2');assert.equal(empty.hidden,false);
+ assert.ok([...ui.document.querySelectorAll('#views button[data-view-key]')].every(button=>button.hidden));
+ assert.ok([...ui.document.querySelectorAll('#views .view-group')].every(heading=>heading.hidden));
+ search.value='';search.dispatchEvent(new ui.document.defaultView.Event('input'));
+ assert.equal(count.textContent,'2 views');assert.equal(empty.hidden,true);
+ assert.equal(ui.document.querySelectorAll('#views button[data-view-key]:not([hidden])').length,2);
+ assert.equal(ui.document.querySelectorAll('#views .view-group:not([hidden])').length,1);
+});
+
+test('a review route filter preserves original review indices and leaves personal views available',async t=>{
+ const ui=harness(t);await ui.load();const shown=[];ui.context.routeIndices=()=>[1];ui.context.show=index=>shown.push(index);
+ const data={...ui.report(),views:[{id:'first-review',targets:['Example::First'],view:'TREE'},{id:'second-review',targets:['Example::Second'],view:'TREE'}]};
+ ui.context.report=data;ui.api.onReport(data);
+ assert.equal(ui.document.querySelector('[data-view-key="review:first-review"]'),null);
+ assert.ok(ui.document.querySelector('[data-view-key="review:second-review"]'));
+ assert.ok(ui.document.querySelector('[data-view-key="sysml:first"]'));assert.ok(ui.document.querySelector('[data-view-key="sysml:second"]'));
+ assert.equal(ui.document.getElementById('view-count').textContent,'3 views');
+ await ui.api.open('review:second-review');assert.deepEqual(shown,[1],'the allowed second review retains its original index');
+ assert.equal(ui.api.snapshot().selected,'review:second-review');
 });
