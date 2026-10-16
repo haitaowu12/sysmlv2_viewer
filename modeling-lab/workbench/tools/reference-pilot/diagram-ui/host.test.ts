@@ -134,3 +134,17 @@ test('table views report rows, omit graph zoom controls and retain source select
     assert.equal(selected[0],origin);assert.equal(diagram.captureViewport(),null);diagram.dispose();
   } finally { Object.assign(globalThis,{document:previous});dom.window.close(); }
 });
+
+test('the initial asynchronous resize preserves a restored navigation viewport', async () => {
+  const dom=new JSDOM('<!doctype html><main></main>'), previous=globalThis.document, previousObserver=globalThis.ResizeObserver;
+  let resize: (()=>void)|undefined;
+  Object.assign(globalThis,{document:dom.window.document,ResizeObserver:class { constructor(callback:()=>void){resize=callback} observe(){} disconnect(){} }});
+  try {
+    const host=dom.window.document.querySelector('main')!, first=await mountDiagram(host,model());
+    first.zoom(2);const saved=first.captureViewport()!;first.dispose();
+    const next=await mountDiagram(host,model()), group=next.svg!.lastElementChild!;
+    next.restoreViewport(saved);const restored=group.getAttribute('transform');
+    resize!();assert.equal(group.getAttribute('transform'),restored,'queued initial fit must not overwrite Back camera');
+    next.fit();const fitted=group.getAttribute('transform');resize!();assert.equal(group.getAttribute('transform'),fitted,'an explicit Fit still requests the overview');next.dispose();
+  } finally { Object.assign(globalThis,{document:previous,ResizeObserver:previousObserver});dom.window.close(); }
+});

@@ -279,3 +279,23 @@ test('first occurrence navigation and history refresh saved-state status after c
  await ui.api.back();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline);assert.equal(ui.api.reader().target,first.target);
  await ui.api.forward();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline,'Forward also refreshes after restoring navigation history');assert.equal(ui.api.reader().target,usage.qualifiedName);
 });
+
+
+test('same-source report refresh restores the explored occurrence, depth and history after core disposes its drawing',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),baseline=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ ui.api.reveal(usage);await ui.api.navigate(usage);changeDepth(ui,4);await drain();const drawing=ui.mounts.at(-1),keys=viewKeys(ui);
+ ui.api.beginReport(data,false,{});ui.api.core(0);assert.equal(drawing.controller.disposed,true);assert.equal(ui.api.reader(),null);ui.canvas().textContent='Configured review drawing';
+ const refreshed={...data,elements:[...data.elements]};ui.context.report=refreshed;ui.api.onReport(refreshed);await ui.flushTimers();
+ assert.equal(ui.requests.at(-1).view,'#interconnection:'+usage.qualifiedName);assert.equal(ui.api.reader()?.target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);assert.equal(ui.mounts.at(-1).options.depth,4);
+ assert.equal(ui.canvas().querySelector('[data-engine-view]')?.dataset.engineView,'#interconnection:'+usage.qualifiedName);assert.doesNotMatch(ui.canvas().textContent,/Configured review drawing/);
+ assert.equal(ui.document.querySelector('[aria-label="Model ancestry"] [aria-current="location"]').textContent,'pipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
+ assert.deepEqual(viewKeys(ui),keys);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot())),baseline,'refresh retains the saved view identity while restoring temporary exploration');
+ await ui.api.back();assert.equal(ui.api.reader().target,first.target);await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);
+});
+
+test('changed-source invalidation restores the registered saved view instead of the old exploration',async t=>{
+ const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline');await ui.api.navigate(usage);changeDepth(ui,4);await drain();
+ ui.api.invalidate();ui.context.report=null;const changed={...data,source:data.source+' // changed revision',sourceSha256:'c'.repeat(64),elements:[...data.elements]};ui.api.beginReport(changed,false,{});ui.context.report=changed;ui.api.core(0);ui.api.onReport(changed);await ui.flushTimers();
+ assert.equal(ui.requests.at(-1).view,'#tree:'+first.target);assert.equal(ui.requests.at(-1).sourceSha256,changed.sourceSha256);assert.equal(ui.api.reader().target,first.target);assert.equal(ui.api.snapshot().selected,'sysml:first');
+ const requests=ui.requests.length;await ui.api.back();assert.equal(ui.requests.length,requests,'old occurrence history belongs to the invalidated revision');
+});
