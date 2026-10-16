@@ -185,7 +185,7 @@
     "workbench/tools/reference-pilot/review_routes.py": "b48f71d6db4b6b0b52f7ea4df5fa193e55781c9d6408d649cd6d86273c0bbbc8",
     "workbench/tools/reference-pilot/run_reference.py": "e6c796e2aacebc106eb3904af9ad299a1b2affafc3a66162289d9cdded227a6a",
     "workbench/tools/reference-pilot/scope.js": "61edd11fb5289243d4d04f19d70b386aab5c537c0106e671c238c60908ac2417",
-    "workbench/tools/reference-pilot/workflow.js": "8f7940b47f459423621980aa6383a745779de3656c0873cb7c2837469badcb93",
+    "workbench/tools/reference-pilot/workflow.js": "983bf5ad29a59b747c60711a514d1fdc89aa530fc1d69ae5b7f737525b747581",
     "workbench/tools/reference-pilot/lab_project.py": "cc06a75591c80338208118ea5be49752e9b3744167572f314006541fec06ee3f",
     "workbench/tools/reference-pilot/lab_delivery.py": "9cb304d019da9c0c7672fffb25297ceb9046dca68f326ff9705dead908d30ad1",
     "workbench/tools/reference-pilot/test_lab_delivery.py": "a309d7efc08c47924c0563f0ac231953c26fdc7f72432f143664de6bf7d906f1",
