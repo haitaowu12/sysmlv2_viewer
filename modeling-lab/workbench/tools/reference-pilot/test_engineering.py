@@ -95,3 +95,14 @@ class EngineeringTests(unittest.TestCase):
         svg=interconnection(r,'P::Root')['svg'];self.assertIn('stroke-dasharray',svg);self.assertIn('&lt;unsafe&gt;',svg)
 
 if __name__=='__main__':unittest.main()
+
+
+class ExchangeIdentityTests(unittest.TestCase):
+    def test_distinct_semantic_types_with_the_same_label_do_not_merge(self):
+        detailed={'flows':[{'source':['a','port'],'target':['b','port'],'item':'Signal','itemIdentity':'Thermal::Signal','elementId':'f1','connectionId':'c1'},
+                           {'source':['a','port'],'target':['b','port'],'item':'Signal','itemIdentity':'Electrical::Signal','elementId':'f2','connectionId':'c2'}],
+                  'connectors':[{'elementId':'c1'},{'elementId':'c2'}], 'excluded':[]}
+        with patch('engineering.interconnection',return_value=detailed):
+            result=exchange_summary(fixture(),'P::Root')
+        self.assertEqual(len(result['groups']),2)
+        self.assertEqual({g['itemIdentity'] for g in result['groups']},{'Thermal::Signal','Electrical::Signal'})

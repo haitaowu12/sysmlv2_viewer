@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const vm=require('node:vm'),fs=require('node:fs');const context={};vm.runInNewContext(fs.readFileSync(__dirname+'/view_workspace.js','utf8'),context);const {admitViews,viewRegistry,sourceSlice,acceptsEngineView}=context.labViewDefinitions;const plain=x=>JSON.parse(JSON.stringify(x));
+const vm=require('node:vm'),fs=require('node:fs');const context={structuredClone};vm.runInNewContext(fs.readFileSync(__dirname+'/view_workspace.js','utf8'),context);const {admitViews,viewRegistry,sourceSlice,acceptsEngineView}=context.labViewDefinitions;const plain=x=>JSON.parse(JSON.stringify(x));
 const recipe={kind:'sysml',id:'my-view',name:'Pump',target:"Plant::'Pump A'",notation:'interconnection',depth:2};
 test('personal view round trips semantic target without drawing IDs',()=>{assert.deepEqual(plain(admitViews(JSON.parse(JSON.stringify([recipe])))),[recipe]);assert.deepEqual(plain(admitViews(undefined)),[]);assert.throws(()=>admitViews([recipe,recipe]));assert.throws(()=>admitViews([{...recipe,target:''}]));assert.throws(()=>admitViews([{...recipe,depth:5}]));});
 test('authored, engineering and analytical views coexist with distinct keys',()=>{const list=viewRegistry([{id:'overview'}],[{name:'Pump'}],[{name:'Pump',qualifiedName:'Plant::PumpView'}],[recipe]);assert.deepEqual(plain(list.map(v=>v.kind)),['review','authored','sysml','analytical']);assert.equal(new Set(list.map(v=>v.key)).size,4);assert.equal(list[1].target,'Plant::PumpView');});
@@ -71,4 +71,11 @@ test('type navigation requires a unique source definition and does not resolve u
  assert.deepEqual(plain(index.types(index.byId.get('pipeline')).map(e=>e.sessionElementId)),['analysis']);
  assert.deepEqual(plain(index.usages.get('analysis').map(e=>e.sessionElementId)),['pipeline','pipeline2']);
  assert.equal(index.usages.has('pipeline2'),false);
+});
+
+
+test('saved reading admission refuses a mismatched shape and non-finite camera',()=>{
+ const {admitReading}=context.labViewDefinitions;
+ const valid={sourceSha256:'a'.repeat(64),item:{kind:'sysml',key:'sysml:one'},query:'',filter:'',expanded:[],page:0,scroll:0,presentation:{mode:'focus'},viewport:{x:1,y:2,scale:1}};
+ assert.deepEqual(plain(admitReading(valid)),valid);assert.throws(()=>admitReading({...valid,item:null}));assert.throws(()=>admitReading({...valid,viewport:{x:0,y:0,scale:Infinity}}));
 });
