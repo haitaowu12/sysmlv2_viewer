@@ -18,6 +18,7 @@ import {
   sha256File,
 } from './workbench-release-support.js'
 import { stageSelfContainedRuntimes } from './workbench-stage-runtimes.js'
+import { verifyCompanionPortablePreflight } from './workbench-companion-preflight.js'
 import {
   embeddedCompanionVerifier,
   validateCompanionPackageIdentity,
@@ -54,6 +55,9 @@ const repositoryRoot = resolve(import.meta.dirname, '..')
 const portableBundle = await realpath(
   resolve(requiredValue('--portable-bundle')),
 )
+// Keep the safety boundary in the implementation: npm, direct TypeScript,
+// compiled JavaScript, and any importing wrapper must all pass this check.
+await verifyCompanionPortablePreflight(portableBundle)
 const nodeExecutable = resolve(requiredValue('--node-executable'))
 const javaHome = resolve(requiredValue('--java-home'))
 const outputRoot = await canonicalizeOutputRoot(
@@ -112,7 +116,7 @@ if (
     'Portable bundle must target darwin-arm64 and match the exact current source commit',
   )
 }
-if (portableManifest.release.sourceDirty && !allowDirty) {
+if (portableManifest.release.sourceDirty !== false) {
   throw new Error('A dirty-source portable bundle cannot qualify')
 }
 await verifyPortableBundle(portableBundle, portableManifest)

@@ -1,6 +1,13 @@
 # Phase 4 Product Shell Status
 
-Status: Gate P4 passed through the integrated Phase 5 pilot
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Status: **invalidated as a product gate**; historical service evidence retained
 Branch: `codex/sysml-workbench-phase4-product-shell`
 Draft PR: #6
 
@@ -43,8 +50,8 @@ Draft PR: #6
 
 ## Gate disposition
 
-Gate P4 passes. The integrated locked-runtime pilot exercises all eight
-mandated tasks through the workbench service and product surfaces:
+The historical pilot exercises these eight service operations. It does not
+establish execution through the delivered UI or a product-gate pass:
 
 1. open the realistic four-document infrastructure workspace;
 2. locate an unresolved reference while preserving canonical source;
@@ -58,10 +65,12 @@ mandated tasks through the workbench service and product surfaces:
 The exact qualified implementation head is `8a69813`. The semantic authority
 artifact SHA-256 is
 `8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160`.
-The pilot result is machine-recorded as `pass`.
+The historical observation contains `pass`; that result is service-integration
+evidence only, not an exact-artifact browser or practitioner result.
 
-## Next slice
+## Disposition
 
-Gate P5 closure and controlled-AI Gate P6. The project remains a release
-candidate under construction; Gate P7 packaging, security, accessibility, and
-clean-machine evidence are still required before any production claim.
+This service-backed product lane is preserved. Its uncompleted browser and
+practitioner requirements have not passed. P7 packaging, security,
+accessibility and clean-machine requirements remain unqualified; closing the
+superseded recovery proposal does not grant production approval.

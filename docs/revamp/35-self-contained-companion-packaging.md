@@ -1,10 +1,17 @@
 # Self-contained Pages companion packaging status
 
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
 ## Decision
 
-Use the GitHub Pages application as an unprivileged shell and ship a separate
-local companion archive for private filesystem, language-service, persistence,
-Git, and reporting responsibilities. This path continues engineering delivery
+The historical packaging design used a GitHub Pages application as an
+unprivileged shell and a local companion archive for filesystem, language
+service, persistence, Git and reporting responsibilities. This path continues engineering delivery
 without treating Apple Developer ID availability as an architecture decision.
 
 The first packaging slice is `darwin-arm64` only. It reuses the locked release

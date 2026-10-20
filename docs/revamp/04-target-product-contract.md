@@ -1,5 +1,12 @@
 # Target Product Contract
 
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
 Working name: **SysML Engineering Workbench**
 Phase 0 status: accepted at Gate P0 on 2026-07-24; no production feature claims
 

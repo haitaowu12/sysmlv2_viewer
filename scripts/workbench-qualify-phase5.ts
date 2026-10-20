@@ -87,7 +87,7 @@ try {
       change.after &&
       'kind' in change.after &&
       change.after.kind === 'InterfaceUsage')) {
-      throw new Error('Graphical interface command did not preview a semantic interface creation')
+      throw new Error('Typed interface command did not preview a semantic interface creation')
     }
     const snapshotAfterInterface = await manager.semanticSnapshot(status.workspaceId)
     const changedRequirement = requireElement(
@@ -224,8 +224,14 @@ try {
     const report = {
       schemaVersion: 1,
       recordedAt: new Date().toISOString(),
-      gate: 'P5',
-      result: 'pass',
+      gate: 'P5-SERVICE-ASSURANCE-WORKFLOW',
+      evidenceLayer: 'service-integration',
+      result: 'service-integration-pass',
+      productGate: {
+        id: 'P5',
+        state: 'invalidated',
+        reason: 'This qualifier invokes service APIs directly and cannot prove UI or practitioner acceptance.',
+      },
       runtimeLock,
       fixture: {
         id: status.workspaceId,
@@ -233,8 +239,11 @@ try {
         initialElements: initialSnapshot.elements.length,
         finalElements: changedSnapshot.elements.length,
       },
-      integratedUsabilityPilot: {
+      serviceIntegrationWorkflow: {
         result: 'pass',
+        uiExercised: false,
+        exactArtifactExercised: false,
+        practitionerEvidence: false,
         tasks: {
           workspaceLoad: true,
           unresolvedReferenceLocated: {
@@ -300,11 +309,11 @@ try {
       reviews: [closedReview],
       reports: [interfaceReport, changeReport, closureReport],
     }
-    const failedPilotTasks = Object.entries(report.integratedUsabilityPilot.tasks)
+    const failedServiceTasks = Object.entries(report.serviceIntegrationWorkflow.tasks)
       .filter(([, value]) => typeof value === 'object' && 'passed' in value && !value.passed)
       .map(([name]) => name)
-    if (failedPilotTasks.length > 0) {
-      throw new Error(`Integrated pilot tasks failed: ${failedPilotTasks.join(', ')}`)
+    if (failedServiceTasks.length > 0) {
+      throw new Error(`Service integration tasks failed: ${failedServiceTasks.join(', ')}`)
     }
     await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)

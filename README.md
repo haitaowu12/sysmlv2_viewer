@@ -18,9 +18,15 @@ The `modeling-lab/` directory is a generated mirror of the maintained standalone
 
 The service-backed workbench source and its staged implementation record below remain in this repository as a separate preserved development surface. Its companion, desktop and service requirements do not apply to the browser-only Lab linked above.
 
+The [retired workbench status](docs/retired-workbench-status.md) records the
+superseded recovery proposal and preserved safety fixes. The earlier P4/P5
+product-gate decisions are invalidated, and P6 retains service safety evidence
+only. The predecessor's R0 browser acceptance was never completed; its closure
+does not qualify either application or change the open P7 release gates.
+
 ## Earlier workbench implementation record
 
-Gates P1-P6 provide:
+The historical service implementation includes:
 
 - multi-file workspace loading and configured libraries;
 - locked VinQut/Pilot semantic authority plus non-authoritative Spec42
@@ -68,7 +74,7 @@ The Phase 4 product-shell component now adds:
   cannot write before explicit human approval;
 - workspace-owned saved views and stable-identity layout positions.
 
-Phase 5 adds the qualified engineering-assurance workflow:
+Phase 5 adds a service-tested engineering-assurance workflow:
 
 - deterministic requirements, verification, and interface rule packs;
 - Git status, workspace-owned baseline manifests, and stable-identity semantic
@@ -194,6 +200,6 @@ loopback transport, and keeps source local. Provider-backed AI is not part of
 the authority path and cannot mutate canonical source. Phase 3 commands require
 an explicit, validated human approval transaction.
 
-The project is not yet a public production release. The portable macOS arm64
+The preserved service-backed workbench has no public production approval. Its portable macOS arm64
 artifact is an unsigned internal release candidate only; the open P7 gates
 above remain mandatory.

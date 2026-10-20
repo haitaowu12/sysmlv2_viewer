@@ -1,6 +1,13 @@
 # Web Companion Deployment Decision
 
-Status: implementation candidate; merge and live Pages deployment pending
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Status: historical implementation; superseded by the browser-only Lab
 
 Date: 2026-07-25
 
@@ -8,9 +15,9 @@ Branch: `codex/sysml-workbench-web-companion`
 
 ## Outcome
 
-The recommended delivery path is the modern GitHub Pages workbench paired with
-a local companion. This advances the product without an Apple
-Developer ID and preserves the local/private engineering authority boundary.
+The historical delivery path paired a GitHub Pages workbench with a local
+companion. It has been replaced on the public site by the browser-only Lab.
+The local/private service authority described here belongs to that predecessor.
 
 GitHub Pages supplies only versioned UI assets. The local companion owns:
 
