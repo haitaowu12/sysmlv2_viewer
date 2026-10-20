@@ -153,7 +153,8 @@ export function AssuranceSurface({
       {!gitStatus && (
         <p role="status" className="assurance-note">
           Git is unavailable. Interface and verification assurance remain
-          available; baseline and commit-specific controls are disabled.
+          available; baseline controls, review creation, and report generation
+          are disabled.
           {gitError ? ` ${gitError}` : ''}
         </p>
       )}
@@ -343,7 +344,7 @@ export function AssuranceSurface({
               <option value="">No baseline</option>
               {baselines.map((baseline) => <option key={baseline.id} value={baseline.id}>{baseline.id}</option>)}
             </select></label>
-            <button type="button" disabled={busy || (reportKind === 'semantic-change-impact' && !baselineId)} onClick={() => void execute(async () => {
+            <button type="button" disabled={busy || !gitStatus || (reportKind === 'semantic-change-impact' && !baselineId)} onClick={() => void execute(async () => {
               setReport(await gateway.generateReport(workspaceId, {
                 reportId: `${reportKind}-${new Date().toISOString().slice(0, 10)}`,
                 kind: reportKind,

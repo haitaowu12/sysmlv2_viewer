@@ -168,6 +168,33 @@ describe('service-backed workbench shell', () => {
     expect(screen.getByRole('button', { name: 'Compare semantic baseline' })).toBeDisabled()
     expect(gateway.createBaseline).not.toHaveBeenCalled()
     expect(gateway.compareBaseline).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reviews' }))
+    const createReview = await screen.findByRole('button', { name: 'Create review at current commit' })
+    expect(createReview).toBeDisabled()
+    fireEvent.click(createReview)
+    expect(gateway.createReview).not.toHaveBeenCalled()
+  })
+
+  it('disables report generation when Git is unavailable without calling the service', async () => {
+    const gateway = createGateway()
+    vi.mocked(gateway.gitStatus).mockRejectedValue(
+      new Error('fatal: not a git repository'),
+    )
+
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }))
+    expect(await screen.findByRole('heading', { name: 'Reports and evidence' })).toBeInTheDocument()
+    expect(screen.getByText('Git unavailable')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Baseline'), { target: { value: '' } })
+
+    for (const kind of ['interface-register', 'workspace-health']) {
+      fireEvent.change(screen.getByLabelText('Report type'), { target: { value: kind } })
+      const generate = screen.getByRole('button', { name: 'Generate evidence package' })
+      fireEvent.click(generate)
+      expect(gateway.generateReport).not.toHaveBeenCalled()
+      expect(generate).toBeDisabled()
+    }
   })
 
   it('reviews a grounded AI patch before a separate approval applies it', async () => {
