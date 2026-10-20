@@ -1,6 +1,13 @@
 # Gate P6 Decision — Controlled AI
 
-Decision: **pass**
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Decision: **product-gate status withdrawn; service safety evidence retained**
 Qualified implementation head: `5eb193e`
 Branch: `codex/sysml-workbench-phase6-ai`
 Runtime lock outcome: `HYBRID GO`
@@ -67,7 +74,7 @@ Machine-readable evidence:
 
 ## Decision
 
-Gate P6 passes. AI cannot mutate canonical source without a distinct user
-approval, and hallucinated references fail before a proposal is accepted.
-Gate P7 hardening and release-candidate evidence are next. The project is not
-yet a production release.
+The retained service evidence demonstrates separate user approval and
+hallucinated-reference rejection within its tested boundary. It does not
+establish a P6 product-gate pass. P7 requirements and production approval
+remain open for the preserved service-backed profile.

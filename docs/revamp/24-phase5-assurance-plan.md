@@ -1,6 +1,13 @@
 # Phase 5 — Engineering Assurance Plan
 
-Status: completed; Gate P5 passed
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Status: historical implementation plan; **P5 product-gate result invalidated**
 Stack base: `codex/sysml-workbench-phase4-product-shell` at `7ac19e6`
 Branch: `codex/sysml-workbench-phase5-assurance`
 
@@ -59,8 +66,8 @@ reports. Complete the integrated usability pilot required by Gates P4 and P5.
 
 ## Acceptance result
 
-The exact locked-runtime pilot passed all required P4/P5 operations from a
-clean copied workspace: workspace opening, diagnostic navigation, requirement
+The exact locked-runtime pilot recorded these service operations from a
+clean copied workspace; it did not complete the UI/usability acceptance: workspace opening, diagnostic navigation, requirement
 navigation, unverified-requirement identification, approved interface edit,
 semantic baseline comparison, review finding closure, and interface report
 export. The qualified implementation head is `8a69813`; evidence is in

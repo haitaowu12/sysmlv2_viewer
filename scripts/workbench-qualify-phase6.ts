@@ -190,8 +190,17 @@ try {
     const report = {
       schemaVersion: 1,
       recordedAt: new Date().toISOString(),
-      gate: 'P6',
-      result: 'pass',
+      gate: 'P6-SERVICE-CONTROLLED-AI',
+      evidenceLayer: 'service-integration',
+      result: 'service-integration-pass',
+      productGate: {
+        id: 'P6',
+        state: 'withdrawn',
+        reason: 'This qualifier retains bounded service safety evidence; it does not operate the delivered UI or establish practitioner acceptance.',
+      },
+      uiExercised: false,
+      exactArtifactBrowserEvidence: false,
+      practitionerEvidence: false,
       runtimeLock,
       fixture: {
         id: reopened.workspaceId,
