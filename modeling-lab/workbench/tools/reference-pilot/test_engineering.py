@@ -63,6 +63,10 @@ class EngineeringTests(unittest.TestCase):
         flow['semantics'].update(sourceFeature=ref(receiver),targetFeature=[ref(sender)])
         p=interconnection(r,'P::Root');self.assertEqual(p['flows'][0]['source'],['b','port']);self.assertEqual(p['flows'][0]['target'],['a','port'])
         self.assertIn('«flow»',p['svg']);self.assertEqual(p['excluded'],[])
+        payload['semantics']['type']=[42,{'name':'Reading','qualifiedName':'P::Reading'}]
+        p=interconnection(r,'P::Root');self.assertEqual(p['flows'][0]['itemIdentity'],'P::Reading');self.assertEqual(p['excluded'],[])
+        payload['semantics']['type']=[42]
+        p=interconnection(r,'P::Root');self.assertEqual(p['flows'],[]);self.assertTrue(p['excluded'])
     def test_named_presentation_identity_survives_new_engine_session(self):
         r=fixture();before=interconnection(r,'P::Root')
         ids={e['sessionElementId'] for e in r['elements']}
