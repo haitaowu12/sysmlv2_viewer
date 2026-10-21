@@ -67,7 +67,7 @@ def interface_flows(connection, index):
             payloads=[index[r['id']] for r in sem(flow,'ownedElement',[])
                       if r['id'] in index and index[r['id']]['metaclass']=='PayloadFeature']
             if len(payloads)!=1 or len(types(payloads[0]))!=1: raise ValueError('Flow payload is not uniquely typed')
-            type_ref=sem(payloads[0],'type')[0];item_identity=type_ref.get('id') or type_ref.get('qualifiedName')
+            type_ref=next(r for r in sem(payloads[0],'type') if isinstance(r,dict));item_identity=type_ref.get('id') or type_ref.get('qualifiedName')
             if not isinstance(item_identity,str) or not item_identity:raise ValueError('Flow payload type has no resolved semantic identity')
             flows.append({'elementId':flow['sessionElementId'],'source':actual(source),
                           'target':actual(targets[0]),'item':types(payloads[0])[0],
