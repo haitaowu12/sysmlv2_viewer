@@ -1,6 +1,13 @@
 # Phase 6 — Controlled AI Plan
 
-Status: completed; Gate P6 passed
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Status: historical implementation plan; **P6 product-gate status withdrawn**
 Baseline: `b42b2baa25fd98bc3c255ec6c67151b878d39c4f`
 Branch: `codex/sysml-workbench-phase6-ai`
 
@@ -87,6 +94,7 @@ timestamps. They do not log full source documents.
 
 ## Result
 
-All criteria passed at implementation head `5eb193e`. See
+The service safety criteria were recorded at implementation head `5eb193e`;
+no delivered-UI or practitioner acceptance follows from those results. See
 `27-phase6-gate-decision.md` and
 `phase6-qualification-observation.json`.

@@ -1,5 +1,12 @@
 # ADR-003: Client, Service, and Deployment Architecture
 
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
 - Status: accepted at Gate P0
 - Date: 2026-07-24
 
@@ -38,7 +45,7 @@ The browser and desktop render the same view, command, diagnostic, identity, rev
 ## Deployment profiles
 
 1. **Public web evaluation** — packaged sample workspaces, read-only/restricted capability set, no arbitrary local filesystem access.
-2. **Browser + local companion** — first-class production authoring: shared web UI connects to a loopback-only Workbench Service after explicit pairing.
+2. **Browser + local companion** — historical authoring candidate: shared web UI connects to a loopback-only Workbench Service after explicit pairing.
 3. **Tauri desktop** — same UI and service, packaged for fully offline use with scoped OS integration.
 4. **Managed hosted** — future authenticated multi-tenant or dedicated service using the same protocol with repository/object/database adapters.
 

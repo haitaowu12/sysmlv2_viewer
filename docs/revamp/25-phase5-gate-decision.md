@@ -1,14 +1,21 @@
 # Gate P5 Decision — Engineering Assurance
 
-Decision: **pass**
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
+Decision: **invalidated as a product gate**; service evidence retained
 Qualified implementation head: `8a69813`
 Branch: `codex/sysml-workbench-phase5-assurance`
 Runtime lock outcome: `HYBRID GO`
 
 ## Acceptance evidence
 
-The integrated infrastructure pilot passed against the exact locked language
-runtime:
+The infrastructure service pilot recorded the following results against the
+exact locked language runtime; these are not browser/practitioner acceptance:
 
 - semantic authority artifact SHA-256:
   `8dc941e0e83fbdd063ee2e9148840fa2d5b80ad72f27d22c8267e61db52a5160`;
@@ -70,12 +77,12 @@ Machine-readable evidence:
 - Pilot-derived engine UUIDs may change between parses. The identity overlay
   correlates command-engine renames by a unique kind/name/source locator and
   fails closed on ambiguity.
-- This gate proves the bounded capability profile only. It is not a broad
-  SysML v2 conformance declaration.
+- The historical service results cover only the bounded capability profile.
+  They do not qualify the UI or establish broad SysML v2 conformance.
 
 ## Decision
 
-Gate P5 passes. The workbench can conduct the representative requirements,
-interface, baseline, review, and evidence workflow locally with canonical
-source and explicit approvals. Gate P6 controlled AI is next. Gate P7 remains
-mandatory before production release.
+The service evidence remains useful for requirements, interface, baseline,
+review and report operations with explicit approvals. It did not establish
+product acceptance, so the P5 product-gate result is invalidated. P7 remains
+mandatory before any release of this preserved service-backed profile.
