@@ -1,5 +1,12 @@
 # ADR-008: Deployment Profiles
 
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
 - Status: accepted at Gate P0
 - Date: 2026-07-24
 
@@ -16,8 +23,8 @@ Support four profiles from one client/service architecture.
 
 Profiles A and B use the same modern Pages shell. Without a companion bootstrap
 the shell remains a bounded sample surface (A); after explicit pairing it uses
-local source and service authority (B). Profile B is the recommended
-production-candidate target while native packages lack platform signing.
+local source and service authority (B). Profile B was the historical production candidate; that recommendation is
+withdrawn for the maintained browser-only Lab.
 Profile C packages the same web application, Client SDK, protocol, and
 Workbench Service. Profile D is future scope; its authorization and persistence
 adapters must not change semantic contracts.

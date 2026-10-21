@@ -168,13 +168,23 @@ try {
     { workspaceFile: credentials.workspaceHandle },
   )
   const report = {
-    schemaVersion: 2,
-    outcome: 'passed',
+    schemaVersion: 3,
+    outcome: 'service-integration-pass',
+    evidenceLayer: 'service-integration',
+    profile: 'retained-predecessor',
+    productGate: {
+      id: 'R0-exact-artifact-ui',
+      state: 'retired-unpassed',
+      reason: 'The browser-only Modeling Lab superseded this Pages companion profile. Direct HTTP/RPC and static asset checks never satisfied its browser acceptance gate.',
+    },
     pages: {
       origin: page.origin,
       pathname: page.pathname,
       modernWorkbenchShell: true,
       cspAllowsExactLoopback: true,
+      uiExercised: false,
+      exactArtifactBrowserEvidence: false,
+      practitionerEvidence: false,
     },
     companion: {
       loopbackOnly: true,

@@ -1,9 +1,16 @@
 # Self-contained Pages companion release
 
+> Historical service-backed workbench record. The browser-only Modeling Lab
+> superseded this delivery profile in October 2026. P4/P5 product-gate
+> decisions are invalidated; P6 retains service safety evidence only.
+> No companion/browser R0 pass is claimed. See the
+> [retired workbench status](../retired-workbench-status.md) before using
+> the historical instructions or interpreting their evidence.
+
 ## Scope
 
-The companion distribution makes the GitHub Pages shell useful for local,
-private engineering work without an Apple Developer ID. The static shell
+The companion distribution belongs to the retired service-backed Pages
+shell. The maintained browser-only Lab neither needs nor pairs with it. The static shell
 remains unprivileged. An unsigned local process owns filesystem access,
 language services, report generation, and workspace persistence over a paired
 loopback session.
