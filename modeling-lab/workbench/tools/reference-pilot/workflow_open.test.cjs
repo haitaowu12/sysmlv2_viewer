@@ -206,3 +206,14 @@ test('Actual render admission refuses stale or mismatched engine proof and prese
   assert.equal(ui.context.acceptedReport,prior,label+' must retain the accepted report');assert.equal(ui.context.report,prior,label+' must retain the displayed report');
  }
 });
+
+
+test('asynchronous reading restoration does not dirty a newly opened project but source edits do',async()=>{
+ const ui=setup(async()=>goodInspect());let reading=null;
+ ui.context.window.labViews={snapshot:()=>({views:[],selected:'sysml:first',reading}),importProject(){reading=null},onReport(){}};
+ await ui.workflow.openProject(project());assert.equal(ui.workflow.dirty(),false);
+ reading={sourceSha256:'a'.repeat(64),item:{kind:'sysml',key:'sysml:first'},presentation:{mode:'focus'},viewport:{x:2,y:3,scale:1.5}};
+ ui.workflow.refreshState();assert.equal(ui.workflow.dirty(),false,'delayed camera restoration is navigation, not a project edit');
+ assert.deepEqual(JSON.parse(JSON.stringify(ui.workflow.snapshot().viewReading)),reading,'reading position remains included in saved files');
+ ui.ids.source.value+='\n// deliberate edit';assert.equal(ui.workflow.dirty(),true);
+});
