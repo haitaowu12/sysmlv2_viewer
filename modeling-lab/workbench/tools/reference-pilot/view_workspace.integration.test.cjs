@@ -389,3 +389,16 @@ test('port with owner source span remains a port selection with no authoritative
  const origin={file:'<content>',startLine:1,endLine:1};await ui.mounts.at(-1).options.onSelect(origin,{kind:'port',originOf:'owner',ownerId:'owner',element:{name:'signal'}});
  assert.equal(ui.document.getElementById('selected').textContent,'signal');assert.match(ui.document.getElementById('selection-meta').textContent,/Port selected/);assert.equal(ui.context.selected,null);assert.equal(ui.document.getElementById('jump-source').hidden,true);assert.equal(ui.document.getElementById('explore-selection').children.length,0);
 });
+
+
+test('project reopen restores model search and scroll only for the saved source revision',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');
+ const search=ui.document.getElementById('model-search');search.value='First';search.dispatchEvent(new ui.document.defaultView.Event('input'));
+ ui.document.getElementById('model-tree').scrollTop=73;
+ const saved=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ ui.api.importProject({sysmlViews:saved.views,selectedView:saved.selected,viewReading:saved.reading});ui.context.report=ui.report();ui.api.onReport(ui.context.report);await ui.flushTimers();
+ assert.equal(search.value,'First');assert.equal(ui.document.getElementById('model-tree').scrollTop,73);
+ const changed=ui.report();changed.sourceSha256='b'.repeat(64);
+ ui.api.importProject({sysmlViews:saved.views,selectedView:saved.selected,viewReading:saved.reading});ui.context.report=changed;ui.api.onReport(changed);await ui.flushTimers();
+ assert.equal(search.value,'');assert.deepEqual(ui.mounts.at(-1).controller.presentation,{mode:'diagram'});assert.equal(ui.mounts.at(-1).controller.viewport,undefined);
+});
