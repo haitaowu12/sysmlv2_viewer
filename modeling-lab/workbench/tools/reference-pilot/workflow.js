@@ -39,8 +39,9 @@
     // Keep the actual link attached for a fresh user gesture if an automatic request is blocked.
     downloadLink.click();
   }
-  function snapshot(){if(!project)return null;const viewState=window.labViews?.snapshot();return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value,...(viewState?{sysmlViews:viewState.views,selectedView:viewState.selected}:{})}}
-  function stateKey(data){return JSON.stringify(data,(_key,value)=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)}
+  function snapshot(){if(!project)return null;const viewState=window.labViews?.snapshot();return {...project,source:el('source').value,views:project.views,customViews:window.scopeWorkbench.export(),audience:el('audience').value,...(viewState?{sysmlViews:viewState.views,selectedView:viewState.selected,viewReading:viewState.reading}:{})}}
+  // Persist reading position without treating camera/navigation restoration as a content edit.
+  function stateKey(data){return JSON.stringify(data,(_key,value)=>_key==='viewReading'?undefined:value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)}
   async function inspectSource(source,views,baselineSource,sourceSet){const response=await fetch('/inspect',{method:'POST',headers:{'Content-Type':'application/json','X-Session':'__TOKEN__'},body:JSON.stringify({source,views,baselineSource,...(sourceSet?{sourceSet}:{})})}),data=await response.json();if(data.error)throw Error(data.error);if(!data.staticChecksPassed)throw Error('Imported model failed language validation: '+data.diagnostics.map((d,index)=>{const original=data.sourceLocations?.status==='original'?data.sourceLocations.diagnostics?.find(item=>item.index===index)?.originalSource:null;const location=original?.path?original.path+(original.line?':'+original.line:''):d.line?'Line '+d.line:'';return (location?location+': ':'')+d.message}).join(' '));return data}
   function filename(){return (project.title||'modeling-project').replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,70)}
   function projectPanel(){
@@ -173,7 +174,7 @@
     }
   }
   async function admitRecords(data){
-    admitViews(data.views,'Project');if(data.sysmlViews!==undefined){if(!window.labViewDefinitions)throw Error('This Lab cannot admit saved SysML view definitions.');data.sysmlViews=window.labViewDefinitions.admitViews(data.sysmlViews)}const names=new Set(),checks=[];
+    admitViews(data.views,'Project');if(data.viewReading!==undefined){if(!window.labViewDefinitions)throw Error('Saved reading-state support is unavailable.');data.viewReading=window.labViewDefinitions.admitReading(data.viewReading)}if(data.sysmlViews!==undefined){if(!window.labViewDefinitions)throw Error('This Lab cannot admit saved SysML view definitions.');data.sysmlViews=window.labViewDefinitions.admitViews(data.sysmlViews)}const names=new Set(),checks=[];
     for(const v of data.customViews){
       if(!record(v)||!text(v.name,80)||!v.name.trim()||names.has(v.name)||!record(v.recipe)||v.recipe.schemaVersion!==1)throw Error('Invalid or repeated custom view name/recipe.');
       const r=v.recipe,path=value=>text(value,5000)&&value.length>0,paths=value=>Array.isArray(value)&&value.length<=2000&&value.every(path);

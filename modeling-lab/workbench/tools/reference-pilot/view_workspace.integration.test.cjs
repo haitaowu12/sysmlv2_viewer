@@ -13,7 +13,7 @@ const sourceSha256='a'.repeat(64);
 const personal=(id,target)=>({kind:'sysml',id,name:id+' architecture',target,notation:'tree',depth:2});
 const first=personal('first','Example::First'),second=personal('second','Example::Second');
 function harness(t){
- const ids=['views','view-count','view-search','no-views','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual','nav-model','explore-selection'];
+ const ids=['views','view-count','view-search','no-views','model-tree','model-search','model-navigation-note','customize','canvas','scope-surfaces','view-title','view-purpose','view-notation','scope','reference','explanation','fit','minus','plus','readable','actual','nav-model','explore-selection','selected','selection-meta','snippet','selection-hint','jump-source'];
  const dom=new JSDOM('<!doctype html><html><head></head><body><div class="canvas-tools"></div>'+ids.map(id=>['view-search','model-search'].includes(id)?`<input id="${id}">`:`<div id="${id}"></div>`).join('')+'</body></html>');
  t.after(()=>dom.window.close());
  const window=dom.window,document=window.document,timers=[],requests=[],mounts=[],statuses=[],diagnostics=[],refreshSnapshots=[];
@@ -28,10 +28,10 @@ function harness(t){
   const controller={disposed:false,fitCalls:0,presentation:{mode:'diagram'},summary:{notices:[]},capturePresentation(){return structuredClone(this.presentation)},async restorePresentation(state){restoreOrder.push('presentation:start');if(restorePlans.has(graph.view)&&(await restorePlans.get(graph.view).promise)===false){restoreOrder.push('presentation:superseded');return false}this.presentation=structuredClone(state);this.summary.notices=['Focused connection neighborhood'];restoreOrder.push('presentation:end');return true},captureViewport(){return this.viewport||null},restoreViewport(view){this.viewport=structuredClone(view);restoreOrder.push('viewport')},fit(){this.fitCalls++},zoom(){},dispose(){this.disposed=true;content.remove()}};
   mounts.push({view:graph.view,container,content,controller,options});return controller;
  }};
- const context={window,document,structuredClone,console,busy:false,active:0,report:null,selected:null,
+ const context={window,document,structuredClone,console,busy:false,active:0,inspectionEpoch:0,report:null,selected:null,
   setTimeout:callback=>{timers.push(callback);return timers.length},requestAnimationFrame:callback=>callback(),
   viewLabel:id=>id,human:value=>String(value),stakeholderMode:()=>false,
-  status:(...args)=>statuses.push(args),setRuntimeDiagnostic:error=>diagnostics.push(error),resetStory(){},clearSelection(){},show(){},fit(){},
+  status:(...args)=>statuses.push(args),setRuntimeDiagnostic:error=>diagnostics.push(error),openInspector(){},resetStory(){},clearSelection(){},show(){},fit(){},
   async fetch(path,options){assert.equal(path,'/diagram');const request=JSON.parse(options.body);requests.push(request);const plan=fetchPlans.get(request.view);if(plan)await plan.promise;return{json:async()=>({sourceSha256:request.sourceSha256,graph:{view:request.view,kind:'tree',nodes:[],edges:[],notices:['Depth bound disclosed']}})}}};
  vm.runInNewContext(readFileSync(__dirname+'/view_workspace.js','utf8'),context);
  const api=window.labViews;
@@ -275,9 +275,9 @@ test('older history resolves the current personal recipe after rename and depth 
 
 test('first occurrence navigation and history refresh saved-state status after committing the history change',async t=>{
  const ui=harness(t),data=await loadNavigation(ui),usage=data.elements.find(e=>e.sessionElementId==='pipeline'),baseline=JSON.parse(JSON.stringify(ui.api.snapshot()));
- await ui.api.navigate(usage);assert.deepEqual(ui.refreshSnapshots.at(-1),baseline,'the final refresh keeps the saved selected view while browsing an occurrence');
- await ui.api.back();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline);assert.equal(ui.api.reader().target,first.target);
- await ui.api.forward();assert.deepEqual(ui.refreshSnapshots.at(-1),baseline,'Forward also refreshes after restoring navigation history');assert.equal(ui.api.reader().target,usage.qualifiedName);
+ await ui.api.navigate(usage);assert.deepEqual({...ui.refreshSnapshots.at(-1),reading:baseline.reading},baseline,'the final refresh keeps the saved selected view while browsing an occurrence');
+ await ui.api.back();assert.deepEqual({...ui.refreshSnapshots.at(-1),reading:baseline.reading},baseline);assert.equal(ui.api.reader().target,first.target);
+ await ui.api.forward();assert.deepEqual({...ui.refreshSnapshots.at(-1),reading:baseline.reading},baseline,'Forward also refreshes after restoring navigation history');assert.equal(ui.api.reader().target,usage.qualifiedName);
 });
 
 
@@ -291,7 +291,7 @@ test('same-source report refresh restores the explored occurrence, depth and his
  assert.equal(ui.canvas().querySelector('[data-engine-view]')?.dataset.engineView,'#interconnection:'+usage.qualifiedName);assert.doesNotMatch(ui.canvas().textContent,/Configured review drawing/);
  assert.equal(ui.api.reader().presentation,'focus');assert.deepEqual(ui.mounts.at(-1).controller.viewport,{x:-20,y:-10,scale:1.2});
  assert.equal(ui.document.querySelector('[aria-label="Model ancestry"] [aria-current="location"]').textContent,'pipeline');assert.equal(ui.document.querySelector('.model-role').textContent,'Occurrence');
- assert.deepEqual(viewKeys(ui),keys);assert.deepEqual(JSON.parse(JSON.stringify(ui.api.snapshot())),baseline,'refresh retains the saved view identity while restoring temporary exploration');
+ assert.deepEqual(viewKeys(ui),keys);assert.deepEqual({...JSON.parse(JSON.stringify(ui.api.snapshot())),reading:baseline.reading},baseline,'refresh retains the saved view identity while restoring temporary exploration');
  await ui.api.back();assert.equal(ui.api.reader().target,first.target);await ui.api.forward();assert.equal(ui.api.reader().target,usage.qualifiedName);assert.equal(ui.api.reader().depth,4);
 });
 
@@ -368,3 +368,37 @@ test('live scope notices follow the active presentation and ignore obsolete cont
  retained.options.onPresentationChange({notices:['Focused scope']});
  assert.match(ui.document.getElementById('explanation').textContent,/Focused scope/);assert.doesNotMatch(ui.document.getElementById('explanation').textContent,/Overview scope/);
  });
+
+
+test('failed depth render keeps drawing, saved recipe and control at the accepted depth',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const before=ui.mounts.at(-1),pending=deferred();ui.mountPlans.set('#tree:'+first.target,pending);
+ changeDepth(ui,4);await drain();assert.equal(ui.api.snapshot().views[0].depth,2);pending.reject(Error('depth unavailable'));await drain();
+ assert.equal(ui.mounts.at(-1).controller,before.controller);assert.equal(before.controller.disposed,false);assert.equal(ui.api.reader().depth,2);assert.equal(ui.api.snapshot().views[0].depth,2);assert.equal(ui.document.querySelector('[aria-label="Diagram depth"]').value,'2');
+});
+
+test('saved project restores live presentation and viewport only at its matching source revision',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const presentation={mode:'focus',selectedWitness:{name:'unit',kind:'part'},scroll:12,page:0},viewport={x:-20,y:40,scale:2};
+ ui.mounts.at(-1).controller.presentation=presentation;ui.mounts.at(-1).controller.viewport=viewport;const saved=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ ui.api.importProject({sysmlViews:saved.views,selectedView:saved.selected,viewReading:saved.reading});ui.context.report=ui.report();ui.api.onReport(ui.context.report);await ui.flushTimers();
+ assert.deepEqual(ui.mounts.at(-1).controller.presentation,presentation);assert.deepEqual(ui.mounts.at(-1).controller.viewport,viewport);
+});
+
+
+test('port with owner source span remains a port selection with no authoritative edit target',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');const data=ui.context.report;data.elements=[{sessionElementId:'owner',qualifiedName:'Example::Owner',name:'Owner',metaclass:'PartUsage',line:1,endLine:1,source:data.source}];
+ const origin={file:'<content>',startLine:1,endLine:1};await ui.mounts.at(-1).options.onSelect(origin,{kind:'port',originOf:'owner',ownerId:'owner',element:{name:'signal'}});
+ assert.equal(ui.document.getElementById('selected').textContent,'signal');assert.match(ui.document.getElementById('selection-meta').textContent,/Port selected/);assert.equal(ui.context.selected,null);assert.equal(ui.document.getElementById('jump-source').hidden,true);assert.equal(ui.document.getElementById('explore-selection').children.length,0);
+});
+
+
+test('project reopen restores model search and scroll only for the saved source revision',async t=>{
+ const ui=harness(t);await ui.load('sysml:first');
+ const search=ui.document.getElementById('model-search');search.value='First';search.dispatchEvent(new ui.document.defaultView.Event('input'));
+ ui.document.getElementById('model-tree').scrollTop=73;
+ const saved=JSON.parse(JSON.stringify(ui.api.snapshot()));
+ ui.api.importProject({sysmlViews:saved.views,selectedView:saved.selected,viewReading:saved.reading});ui.context.report=ui.report();ui.api.onReport(ui.context.report);await ui.flushTimers();
+ assert.equal(search.value,'First');assert.equal(ui.document.getElementById('model-tree').scrollTop,73);
+ const changed=ui.report();changed.sourceSha256='b'.repeat(64);
+ ui.api.importProject({sysmlViews:saved.views,selectedView:saved.selected,viewReading:saved.reading});ui.context.report=changed;ui.api.onReport(changed);await ui.flushTimers();
+ assert.equal(search.value,'');assert.deepEqual(ui.mounts.at(-1).controller.presentation,{mode:'diagram'});assert.equal(ui.mounts.at(-1).controller.viewport,undefined);
+});

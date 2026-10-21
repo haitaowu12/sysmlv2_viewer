@@ -67,8 +67,11 @@ def interface_flows(connection, index):
             payloads=[index[r['id']] for r in sem(flow,'ownedElement',[])
                       if r['id'] in index and index[r['id']]['metaclass']=='PayloadFeature']
             if len(payloads)!=1 or len(types(payloads[0]))!=1: raise ValueError('Flow payload is not uniquely typed')
+            type_ref=next(r for r in sem(payloads[0],'type') if isinstance(r,dict));item_identity=type_ref.get('id') or type_ref.get('qualifiedName')
+            if not isinstance(item_identity,str) or not item_identity:raise ValueError('Flow payload type has no resolved semantic identity')
             flows.append({'elementId':flow['sessionElementId'],'source':actual(source),
-                          'target':actual(targets[0]),'item':types(payloads[0])[0]})
+                          'target':actual(targets[0]),'item':types(payloads[0])[0],
+                          'itemIdentity':item_identity})
         except (ValueError,KeyError,TypeError) as error:
             errors.append({'id':flow['sessionElementId'],'reason':str(error)})
     return flows, errors
@@ -253,8 +256,8 @@ def exchange_summary(report, target):
     groups={}
     for flow in detailed['flows']:
         a,b=flow['source'][0],flow['target'][0]
-        key=(a,b,flow['item'])
-        group=groups.setdefault(key,{'sources':[],'connections':[],'source':a,'target':b,'item':flow['item']})
+        key=(a,b,flow.get('itemIdentity') or flow['item'])
+        group=groups.setdefault(key,{'sources':[],'connections':[],'source':a,'target':b,'item':flow['item'],'itemIdentity':flow.get('itemIdentity')})
         group['sources'].append(flow['elementId']);group['connections'].append(flow['connectionId'])
     visible=set(v for k in groups for v in k[:2]);ordered=sorted(visible,key=lambda x:element_order(index[x]) if x else ('', '', -1, ''))
     width=max(620,len(ordered)*290+100);height=300+len(groups)*65
