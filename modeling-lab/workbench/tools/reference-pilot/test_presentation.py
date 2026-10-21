@@ -289,7 +289,7 @@ class MissingRoleAndExpressionTests(unittest.TestCase):
         end=element('end','PortUsage',None,ownedReferenceSubsetting={'id':'binding'})
         binding=element('binding','ReferenceSubsetting',None,referencedFeature={'id':'port'})
         port=element('port','PortUsage','port')
-        payload=element('payload','PayloadFeature','payload',type=[{'name':'Reading'}])
+        payload=element('payload','PayloadFeature','payload',type=[{'name':'Reading','qualifiedName':'P::Reading'}])
         flow=element('flow','FlowUsage','flow',sourceFeature=ref(role),targetFeature=[ref(role)],ownedElement=[ref(payload)])
         connection=element('connection','InterfaceUsage','connection',feature=[ref(flow)],connectorEnd=[ref(end)])
         ix={e['sessionElementId']:e for e in [role,end,binding,port,payload,flow,connection]}

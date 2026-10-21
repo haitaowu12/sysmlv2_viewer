@@ -94,7 +94,6 @@ class EngineeringTests(unittest.TestCase):
         r=fixture();r['elements'][1]['semantics']['isComposite']=False;r['elements'][1]['name']='<unsafe>'
         svg=interconnection(r,'P::Root')['svg'];self.assertIn('stroke-dasharray',svg);self.assertIn('&lt;unsafe&gt;',svg)
 
-if __name__=='__main__':unittest.main()
 
 
 class ExchangeIdentityTests(unittest.TestCase):
@@ -106,3 +105,5 @@ class ExchangeIdentityTests(unittest.TestCase):
             result=exchange_summary(fixture(),'P::Root')
         self.assertEqual(len(result['groups']),2)
         self.assertEqual({g['itemIdentity'] for g in result['groups']},{'Thermal::Signal','Electrical::Signal'})
+
+if __name__=='__main__':unittest.main()

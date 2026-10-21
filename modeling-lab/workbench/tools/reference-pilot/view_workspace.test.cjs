@@ -77,5 +77,5 @@ test('type navigation requires a unique source definition and does not resolve u
 test('saved reading admission refuses a mismatched shape and non-finite camera',()=>{
  const {admitReading}=context.labViewDefinitions;
  const valid={sourceSha256:'a'.repeat(64),item:{kind:'sysml',key:'sysml:one'},query:'',filter:'',expanded:[],page:0,scroll:0,presentation:{mode:'focus'},viewport:{x:1,y:2,scale:1}};
- assert.deepEqual(plain(admitReading(valid)),valid);assert.throws(()=>admitReading({...valid,item:null}));assert.throws(()=>admitReading({...valid,viewport:{x:0,y:0,scale:Infinity}}));
+ assert.deepEqual(plain(admitReading(valid)),valid);assert.throws(()=>admitReading({...valid,item:null}));assert.throws(()=>admitReading({...valid,usageFilter:{unexpected:true}}));assert.throws(()=>admitReading({...valid,selection:[]}));assert.throws(()=>admitReading({...valid,viewport:{x:0,y:0,scale:Infinity}}));
 });
