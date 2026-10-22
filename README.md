@@ -10,6 +10,8 @@ The current import format is **SysML v2 text**. SysML 1/XMI and vendor binary pr
 
 The [own-model workflow repair](docs/own-model-repair-2026-10-15.md) records current opening behavior, independent source trials and remaining coverage gaps.
 
+The [October 22 browser-flow verification](docs/reviews/2026-10-22-browser-flow/RESULT.md) records import, witnessed editing, saved-view/camera recovery, standalone export, undo and failed-import retention on source `9e07237`. Its frozen prerelease artifact is retained without a new Actions run. The public Pages URL remains on the earlier overview release; this verification does not establish human or cold-device acceptance.
+
 The [completion and qualification record](docs/browser-only-lab-review-2026-10-14.md) records preserved views, recovery behavior, fixture results, scale measurements and known limits. The browser profile uses the maintained Lab interface and projections with a pinned OpenSysML WASM engine. It does not claim full Pilot notation/language parity or engineering acceptance. The [artifact release process](experiments/browser-only-lab/RELEASE.md) explains exact-byte promotion and retained rollback.
 
 The `modeling-lab/` directory is a generated mirror of the maintained standalone package. Change the maintained owner first and regenerate its registered mirror; avoid separate UI implementations. The earlier native baseline remains available in Releases.

@@ -1,0 +1,12 @@
+{
+  "downloaded": {
+    "revision": "9e0723777a7064080896ae8cb005487aeae90409",
+    "files_verified": 75
+  },
+  "browser_tested_local": {
+    "revision": "9e0723777a7064080896ae8cb005487aeae90409",
+    "files_verified": 75
+  },
+  "differing_files": [],
+  "exact_tested_artifact": true
+}

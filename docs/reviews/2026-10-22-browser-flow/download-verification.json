@@ -1,0 +1,108 @@
+{
+  "checks": {
+    "capacity_2": true,
+    "minimum_3": true,
+    "one_history": true,
+    "depth_3": true,
+    "model_query": true,
+    "personal_selected": true,
+    "reading_matches_source": true
+  },
+  "sourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+  "selectedView": "sysml:526926d0-34f7-46cb-920f-041daeb3e020",
+  "personalViews": [
+    {
+      "kind": "sysml",
+      "id": "526926d0-34f7-46cb-920f-041daeb3e020",
+      "name": "Cold-room capacity review",
+      "target": "AlarmReview::MonitoringSystem",
+      "notation": "interconnection",
+      "depth": 3
+    }
+  ],
+  "reading": {
+    "sourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+    "item": {
+      "kind": "sysml",
+      "id": "526926d0-34f7-46cb-920f-041daeb3e020",
+      "name": "Cold-room capacity review",
+      "target": "AlarmReview::MonitoringSystem",
+      "notation": "interconnection",
+      "depth": 3,
+      "key": "sysml:526926d0-34f7-46cb-920f-041daeb3e020",
+      "detail": "Interconnections \u00b7 personal SysML view"
+    },
+    "query": "Controller",
+    "filter": "",
+    "usageFilter": null,
+    "expanded": [
+      "AlarmReview"
+    ],
+    "selection": "AlarmReview::MonitoringSystem",
+    "page": 0,
+    "scroll": 0,
+    "presentation": {
+      "mode": "diagram",
+      "scroll": 0,
+      "page": 0
+    },
+    "viewport": {
+      "scale": 1,
+      "x": -17,
+      "y": 64.5
+    }
+  },
+  "history": [
+    {
+      "operation": "minimum",
+      "target": "AlarmReview::sampleRetention",
+      "reason": "CR-1: For this fictional exercise, revise the required minimum to three; keep the declared sample capacity of two unchanged. No verification has run.",
+      "description": "AlarmReview::sampleRetention: required minimum becomes 3; the statement is updated. Design quantities stay unchanged.",
+      "before": "requirement sampleRetention {\n        doc /* BR-2: The monitoring controller shall retain at least two samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 2 }\n    }",
+      "after": "requirement sampleRetention {\n        doc /* CR-1: The monitoring controller shall retain at least three samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 3 }\n    }",
+      "baseSourceSha256": "828e780e553f143e0ed404d67431977e4660f3a597dbcf1568bacf2acf00cee5",
+      "candidateSourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+      "baseSource": "package AlarmReview {\n    private import ScalarValues::*;\n    item def TemperatureReading;\n    item def AlarmCommand;\n    port def Temperature { out item observation : TemperatureReading; }\n    port def Alarm { out item command : AlarmCommand; }\n    interface def TemperatureExchange {\n        end sender : Temperature;\n        end receiver : ~Temperature;\n        flow of TemperatureReading from sender.observation to receiver.observation;\n    }\n    interface def AlarmExchange {\n        end sender : Alarm;\n        end receiver : ~Alarm;\n        flow of AlarmCommand from sender.command to receiver.command;\n    }\n    part def Probe { port readings : Temperature; }\n    part def ColdRoom {\n        port readings : Temperature;\n        part probeHead : Probe;\n        binding observations bind readings = probeHead.readings;\n    }\n    part def Controller {\n        port room0Readings : ~Temperature;\n        port room1Readings : ~Temperature;\n        port alarm : Alarm;\n        attribute sampleCapacity : Integer = 2;\n    }\n    part def Annunciator { port alarm : ~Alarm; }\n    part def MonitoringSystem {\n        part coldRoom0 : ColdRoom;\n        part coldRoom1 : ColdRoom;\n        part controller : Controller;\n        part annunciator : Annunciator;\n        interface room0Observations : TemperatureExchange connect coldRoom0.readings to controller.room0Readings;\n        interface room1Observations : TemperatureExchange connect coldRoom1.readings to controller.room1Readings;\n        interface alarmCommands : AlarmExchange connect controller.alarm to annunciator.alarm;\n    }\n    part monitoringSystem : MonitoringSystem;\n    requirement sampleRetention {\n        doc /* BR-2: The monitoring controller shall retain at least two samples. */\n        subject system : MonitoringSystem;\n        require constraint { system.controller.sampleCapacity >= 2 }\n    }\n    satisfy sampleRetention by monitoringSystem;\n    verification def CapacityVerification {\n        doc /* BR-2: Planned capacity verification only. No execution occurred. */\n        subject system : MonitoringSystem;\n        objective { verify sampleRetention; }\n    }\n}\n",
+      "baseViews": [
+        {
+          "id": "overview",
+          "names": [
+            "AlarmReview::monitoringSystem"
+          ],
+          "view": "INTERCONNECTION",
+          "styles": [],
+          "renderer": "engineering"
+        },
+        {
+          "id": "requirement",
+          "names": [
+            "AlarmReview::sampleRetention"
+          ],
+          "view": "TREE",
+          "styles": []
+        },
+        {
+          "id": "verification",
+          "names": [
+            "AlarmReview::CapacityVerification"
+          ],
+          "view": "TREE",
+          "styles": []
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "Cold-room-alarm-study.review.html",
+      "sourceSha256": "284640d10406c5f869c50f6df4ce7ff2a9383dd7cd95a40a924de078e210dd57",
+      "kind": "reader-review",
+      "status": "download-requested",
+      "targets": [
+        "AlarmReview::monitoringSystem",
+        "AlarmReview::sampleRetention",
+        "AlarmReview::CapacityVerification"
+      ]
+    }
+  ]
+}
