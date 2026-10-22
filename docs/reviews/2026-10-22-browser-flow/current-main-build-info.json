@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "name": "Modeling Lab",
+  "revision": "9e0723777a7064080896ae8cb005487aeae90409",
+  "contentSha256": "ac6487bddb209541d7b92ee57638365064c27bf0dc2a04d5be2e99497f5014d0",
+  "engine": "OpenSysML 0.10.0 + typed Lab export",
+  "profile": "browser-only",
+  "sourceUrl": "https://github.com/haitaowu12/sysmlv2_viewer/tree/9e0723777a7064080896ae8cb005487aeae90409/experiments/browser-only-lab"
+}

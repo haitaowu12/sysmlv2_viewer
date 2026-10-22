@@ -1,0 +1,121 @@
+Browser tab: 1, Title: "Apollo 11 complete model review · Mission system · Modeling Lab", URL: "https://haitaowu12.github.io/sysmlv2_viewer/".
+0 AXWebArea Apollo 11 complete model review · Mission system · Modeling Lab, URL: haitaowu12.github.io/sysmlv2_viewer/
+	1 link Description: Skip to diagram, Value: haitaowu12.github.io/sysmlv2_viewer/#canvas
+	2 container
+		3 heading Modeling Lab, Value: 1
+			4 text Modeling Lab
+		5 text SYSML V2 LOCAL DRAFT
+		6 button Open model
+		7 button Project
+		8 button Develop model
+		9 button Review changes
+		10 text Audience
+		11 pop up button (collapsed, settable) Description: Audience, Value: Engineering, ID: audience, Secondary Actions: Expand
+			12 menu
+				13 (selected) Engineering
+				14 Stakeholder
+	15 container Current project
+		56 text Apollo 11 complete model review
+		57 text Saved snapshot · check Downloads
+		18 button Save project file
+	19 container main
+		20 container Model navigation
+			21 container Navigation
+				22 checkbox Model, Value: 0, ID: nav-model
+				23 checkbox Views, Value: 1, ID: nav-views
+			24 container view-browser
+				25 heading VIEWS, Value: 2
+					26 text VIEWS
+				58 text 8 views
+				28 search text field (settable) Description: Find a viewpoint, ID: view-search
+				29 container Description: Model viewpoints, ID: views
+					59 text Review views
+					60 button Mission system SysML review view
+						61 text Mission system
+						62 text SysML review view
+					63 button Saturn v stages SysML review view
+						64 text Saturn v stages
+						65 text SysML review view
+					66 button Command service interface SysML review view
+						67 text Command service interface
+						68 text SysML review view
+					69 button First stage engines SysML review view
+						70 text First stage engines
+						71 text SysML review view
+					72 button Mission phases SysML review view
+						73 text Mission phases
+						74 text SysML review view
+					75 text From the model
+					76 button Requirements Table View Authored SysML view
+						77 text Requirements Table View
+						78 text Authored SysML view
+					79 text Analytical views
+					80 button Apollo Command Service Module review Analytical register
+						81 text Apollo Command Service Module review
+						82 text Analytical register
+					83 button Stage1 review Analytical requirements
+						84 text Stage1 review
+						85 text Analytical requirements
+				30 button + New view, ID: customize
+				31 button (collapsed) Explore another scope, Secondary Actions: Expand
+					32 text Explore another scope
+		33 container Model workspace
+			34 heading Mission system, Value: 2, ID: view-title
+				86 text Mission system
+			87 text SysML · Interconnection
+			37 button (collapsed) Edit SysML source, ID: edit-toggle, Secondary Actions: Expand
+			88 button (collapsed) View options, Secondary Actions: Expand
+				89 text View options
+			90 container Model location
+				91 button (disabled) Back to previous model view
+				92 button (disabled) Forward to next model view
+				93 container Model ancestry
+					94 button Show current element in model
+					95 text ›
+					96 button System Package
+					97 text ›
+					98 text Apollo11 Mission System
+				99 text Definition
+				100 button Usages (2)
+				101 button Inspect source
+			45 container Description: Reference diagram, ID: canvas
+				102 container Model diagram
+					103 button Fit
+					104 button Read labels
+					105 button Zoom in
+					106 button Zoom out
+					107 text 6 of 6 elements · 1 of 1 relationships · depth 2
+					108 container Model diagram. Drag background to pan. Use zoom buttons or control and wheel to zoom. Home fits the diagram.
+						109 image
+							110 button SystemPackage::Apollo11MissionSystem
+								111 container
+									112 text SystemPackage::Apollo11MissionSystem «part def»
+							113 button launchVehicle : 'SA-506'
+								114 container
+									115 text launchVehicle : 'SA-506' «part»
+							116 button spacecraft : ApolloSpacecraft
+								117 container
+									118 text spacecraft : ApolloSpacecraft «part»
+							119 button csm : 'CSM-107'
+								120 container
+									121 text csm : 'CSM-107' «part»
+							122 button lm : 'LM-5'
+								123 container
+									124 text lm : 'LM-5' «part»
+							125 button spaceSuits : ExtravehicularMobilityUnit
+								126 container
+									127 text spaceSuits : ExtravehicularMobilityUnit «part»
+							128 button lvToPayload: launchVehicle to spacecraft
+								129 text lvToPayload
+					130 button (collapsed) View notes and scope, Secondary Actions: Expand
+						131 text View notes and scope
+	48 container
+		49 container Help: Content SHA-256: 7c525f90d4710f04276f0d6355115ad9ce4a741e6547bf004a3967ecf6199dcd, ID: browser-build
+			50 text Browser · 7c525f90d471 ·
+			51 link Description: Runtime notices, Value: haitaowu12.github.io/sysmlv2_viewer/RUNTIME-NOTICES.txt
+		132 text Revision 761e50b2c928
+		133 text SysML view ready
+		54 button (collapsed) Model details · acceptance not assessed, Secondary Actions: Expand
+			55 text Model details · acceptance not assessed
+
+The focused UI element is 0 AXWebArea Apollo 11 complete model review · Mission system · Modeling Lab, URL: haitaowu12.github.io/sysmlv2_viewer/
