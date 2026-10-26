@@ -1,0 +1,64 @@
+[
+  {
+    "id": "context",
+    "names": [
+      "CoolerStudy::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "engineering"
+  },
+  {
+    "id": "decomposition",
+    "names": [
+      "CoolerStudy::Cooler"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "interconnection",
+    "names": [
+      "CoolerStudy::Cooler"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "engineering"
+  },
+  {
+    "id": "behavior",
+    "names": [
+      "CoolerStudy::Regulate"
+    ],
+    "view": "ACTION",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "requirements",
+    "names": [
+      "CoolerStudy::capacityRequirement"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "verification",
+    "names": [
+      "CoolerStudy::CapacityVerification"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  }
+]

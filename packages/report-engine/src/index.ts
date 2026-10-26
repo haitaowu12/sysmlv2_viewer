@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { lstat, mkdir, realpath, rename, writeFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
@@ -7,7 +7,7 @@ import type { LanguageDiagnostic } from '../../language-adapter/src/index.js'
 import type { ModelReview } from '../../review-service/src/index.js'
 import type { AssuranceEvaluation } from '../../rule-engine/src/index.js'
 
-export const REPORT_ENGINE_VERSION = '1.0.0'
+export const REPORT_ENGINE_VERSION = '1.1.0'
 
 export type ReportKind =
   | 'workspace-health'
@@ -23,6 +23,8 @@ export type ReportKind =
 export interface ReportProvenance {
   workspace: { id: string; name: string }
   commitSha: string
+  snapshotSha256?: string
+  configurationName?: string
   baseline: string | null
   languageRelease: string
   workbenchVersion: string
@@ -99,16 +101,20 @@ export async function writeReportBundle(
   const root = await realpath(rootPath)
   const directory = resolve(root, 'generated', 'reports', reportId)
   await assertNoSymlinkSegments(root, directory)
-  await mkdir(directory, { recursive: true })
-  await assertNoSymlinkSegments(root, directory)
+  try { await lstat(directory); throw new Error('Report ID already exists; use a new issued report ID') } catch (error) {
+    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error
+  }
+  await mkdir(resolve(root, 'generated', 'reports'), { recursive: true })
+  const staging = resolve(root, 'generated', 'reports', `.staging-${randomUUID()}`)
+  await mkdir(staging)
   const report = await renderReport(request)
   const artifacts: ReportBundleManifest['artifacts'] = []
-  await atomicWrite(directory, `${reportId}.html`, report.html)
+  await atomicWrite(staging, `${reportId}.html`, report.html)
   artifacts.push({ format: 'html', path: `generated/reports/${reportId}/${reportId}.html`, sha256: report.contentSha256.html })
-  await atomicWrite(directory, `${reportId}.pdf`, report.pdf)
+  await atomicWrite(staging, `${reportId}.pdf`, report.pdf)
   artifacts.push({ format: 'pdf', path: `generated/reports/${reportId}/${reportId}.pdf`, sha256: report.contentSha256.pdf })
   if (report.csv !== undefined && report.contentSha256.csv) {
-    await atomicWrite(directory, `${reportId}.csv`, report.csv)
+    await atomicWrite(staging, `${reportId}.csv`, report.csv)
     artifacts.push({ format: 'csv', path: `generated/reports/${reportId}/${reportId}.csv`, sha256: report.contentSha256.csv })
   }
   const manifest: ReportBundleManifest = {
@@ -119,7 +125,8 @@ export async function writeReportBundle(
     provenance: structuredClone(request.provenance),
     artifacts,
   }
-  await atomicWrite(directory, 'manifest.json', `${JSON.stringify(manifest, null, 2)}\n`)
+  await atomicWrite(staging, 'manifest.json', `${JSON.stringify(manifest, null, 2)}\n`)
+  await rename(staging, directory)
   return manifest
 }
 
@@ -162,10 +169,13 @@ function buildSections(request: ReportRequest): ReportSection[] {
     case 'verification-readiness':
       requireAssurance(assurance)
       return [{
-        heading: 'Verification readiness',
+        heading: 'Verification trace coverage',
+        paragraphs: ['Trace links identify planned verification. Execution readiness, observed results and stakeholder validation require separate configuration-specific evidence and are not assessed by this report.'],
         rows: assurance.requirementCoverage.map((row) => ({
           requirement: row.qualifiedName,
-          ready: row.satisfaction === 'direct' && row.verification === 'direct',
+          traceLinksComplete: row.satisfaction === 'direct' && row.verification === 'direct',
+          executionReadiness: 'not-assessed',
+          verificationResult: 'not-assessed',
           satisfaction: row.satisfaction,
           verification: row.verification,
         })),
@@ -201,6 +211,40 @@ function buildSections(request: ReportRequest): ReportSection[] {
             elementId: change.elementId ?? '',
             relationshipId: change.relationshipId ?? '',
           })),
+        },
+        {
+          heading: 'Potential downstream impact',
+          paragraphs: request.comparison.semanticImpact?.limitations ?? ['Impact was not assessed in this comparison. A list of changed elements is not a downstream impact assessment.'],
+          rows: request.comparison.semanticImpact?.affectedElements.map(element => ({
+            element: element.qualifiedName,
+            reason: element.reason,
+            presentInCurrent: element.presentInCurrent,
+            witnessPath: element.witnessPath.map(step => `${step.fromId} -> ${step.toId} (${step.relationshipKind}, ${step.snapshot})`).join('; '),
+          })) ?? [],
+        },
+        {
+          heading: 'Implementation and assurance artifact review',
+          paragraphs: request.comparison.lifecycleReview?.limitations ?? ['Lifecycle artifacts were not assessed.'],
+          rows: request.comparison.lifecycleReview?.artifactReviews.map(row => ({
+            artifact: row.artifactId, kind: row.kind, status: row.status,
+            presentInCurrent: row.presentInCurrent, witness: row.witness.join(' -> '),
+          })) ?? [],
+        },
+        {
+          heading: 'Unresolved impact coverage',
+          rows: [
+            ...(request.comparison.semanticImpact?.unresolvedEndpointIds ?? []).map(id => ({ item: id, gap: 'unresolved model endpoint' })),
+            ...(request.comparison.semanticImpact?.opaqueElementIds ?? []).map(id => ({ item: id, gap: 'opaque model semantics' })),
+            ...(request.comparison.lifecycleReview?.unlinkedArtifactIds ?? []).map(id => ({ item: id, gap: 'unlinked artifact - impact unknown' })),
+            ...(request.comparison.lifecycleReview?.unresolvedDependencies ?? []).map(id => ({ item: id, gap: 'unresolved lifecycle dependency' })),
+          ],
+        },
+        {
+          heading: 'Verification planning candidates - not executable',
+          rows: request.comparison.lifecycleReview?.testCandidates.map(row => ({
+            candidate: row.id, requirements: row.requirementIds.join('; '), configuration: row.configuration,
+            modelRevision: row.modelRevision, status: row.status, requiredInputs: row.requiredInputs.join('; '),
+          })) ?? [],
         },
       ]
     case 'review-findings':
@@ -245,13 +289,15 @@ function renderHtml(title: string, provenance: ReportProvenance, sections: Repor
     '<html lang="en"><head><meta charset="utf-8">',
     `<meta name="generator" content="SysML Engineering Workbench report-engine ${REPORT_ENGINE_VERSION}">`,
     `<title>${escapeHtml(title)}</title>`,
-    '<style>body{font-family:system-ui,sans-serif;margin:2rem;color:#172033}h1,h2{color:#102a43}table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border:1px solid #bcccdc;padding:.45rem;text-align:left;vertical-align:top}th{background:#eaf2f8}.provenance{background:#f3f6f9;padding:1rem}.muted{color:#52667a}</style>',
+    '<style>body{font-family:system-ui,sans-serif;margin:2rem;color:#172033}h1,h2{color:#102a43}table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border:1px solid #bcccdc;padding:.45rem;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#eaf2f8}.provenance{background:#f3f6f9;padding:1rem}.muted{color:#52667a}</style>',
     '</head><body>',
     `<h1>${escapeHtml(title)}</h1>`,
     `<div class="provenance"><strong>${escapeHtml(provenance.workspace.name)}</strong><br><span class="muted">Commit ${escapeHtml(provenance.commitSha)} · Generated ${escapeHtml(provenance.generatedAt)} · Workbench ${escapeHtml(provenance.workbenchVersion)} · Rules ${escapeHtml(provenance.rulePackVersion)} · Language ${escapeHtml(provenance.languageRelease)}</span></div>`,
     content,
     `<section><h2>Generation basis</h2>${renderHtmlTable([{
       baseline: provenance.baseline ?? 'none',
+      modelRevision: provenance.snapshotSha256 ?? 'unavailable',
+      configuration: provenance.configurationName ?? 'unavailable',
       viewConfiguration: provenance.viewConfiguration ?? 'none',
       unresolvedDiagnostics: provenance.unresolvedDiagnostics,
       exclusions: provenance.exclusions.join('; '),
@@ -282,12 +328,23 @@ function renderCsv(request: ReportRequest): string | undefined {
       verification: row.verification,
       satisfyingElementIds: row.satisfyingElementIds.join('; '),
       verificationElementIds: row.verificationElementIds.join('; '),
+      ...(request.kind === 'verification-readiness' ? {
+        traceLinksComplete: row.satisfaction === 'direct' && row.verification === 'direct',
+        executionReadiness: 'not-assessed',
+        verificationResult: 'not-assessed',
+      } : {}),
     }))
   } else if (request.kind === 'review-findings') {
     rows = [...(request.reviews ?? [])].sort((left, right) => left.id.localeCompare(right.id)).flatMap(reviewFindingRows)
   }
   if (!rows) return undefined
-  if (rows.length === 0) return '\n'
+  if (rows.length === 0) rows = [{ recordStatus: 'no-records' }]
+  rows = rows.map(row => ({ ...row, workspace: request.provenance.workspace.id,
+    modelRevision: request.provenance.snapshotSha256 ?? 'unavailable',
+    configuration: request.provenance.configurationName ?? 'unavailable',
+    exclusions: request.provenance.exclusions.join('; '),
+    limitations: (request.assurance?.limitations ?? []).join('; '),
+  }))
   const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))].sort()
   return `${columns.map(csvCell).join(',')}\n${rows.map((row) => columns.map((column) => csvCell(String(row[column] ?? ''))).join(',')).join('\n')}\n`
 }
@@ -316,6 +373,9 @@ async function renderPdf(title: string, provenance: ReportProvenance, sections: 
       '',
     ]),
     'Generation basis',
+    'PDF text convention: non-ASCII code points use U+ hexadecimal escapes; literal backslashes are doubled.',
+    `model revision: ${provenance.snapshotSha256 ?? 'unavailable'}`,
+    `configuration: ${provenance.configurationName ?? 'unavailable'}`,
     `baseline: ${provenance.baseline ?? 'none'}`,
     `language release: ${provenance.languageRelease}`,
     `view configuration: ${provenance.viewConfiguration ?? 'none'}`,
@@ -342,6 +402,7 @@ function interfaceRow(row: AssuranceEvaluation['interfaceRegister'][number]): Re
     qualifiedName: row.qualifiedName,
     kind: row.kind,
     owner: row.ownerQualifiedName ?? '',
+    endpoints: (row.endpointIds ?? [...row.sourceEndpointIds, ...row.targetEndpointIds]).join('; '),
     sourceEndpoints: row.sourceEndpointIds.join('; '),
     targetEndpoints: row.targetEndpointIds.join('; '),
     endpointTypes: row.endpointTypeIds.join('; '),
@@ -349,6 +410,7 @@ function interfaceRow(row: AssuranceEvaluation['interfaceRegister'][number]): Re
     requirements: row.requirementIds.join('; '),
     verification: row.verificationIds.join('; '),
     openFindings: row.openFindingIds.length,
+    unavailableAttributes: row.unavailableAttributes.join('; '),
     sourcePath: row.sourcePath,
   }
 }
@@ -389,10 +451,28 @@ function validateRequest(request: ReportRequest): void {
   if (!provenance.workspace.id || !provenance.workspace.name) throw new Error('Report workspace identity is required')
   if (!/^[0-9a-f]{7,64}$/.test(provenance.commitSha)) throw new Error('Report commit SHA is invalid')
   if (Number.isNaN(Date.parse(provenance.generatedAt))) throw new Error('Report generation timestamp is invalid')
+  if (request.assurance) {
+    const context = request.assurance.context
+    if (!context || context.workspaceId !== provenance.workspace.id ||
+        context.configurationName !== provenance.configurationName ||
+        context.languageRelease !== provenance.languageRelease ||
+        request.assurance.snapshotSha256 !== provenance.snapshotSha256 ||
+        request.assurance.rulePack.version !== provenance.rulePackVersion) {
+      throw new Error('Report provenance does not match assurance evaluation context')
+    }
+  }
+  if (request.comparison && (request.comparison.workspace?.id !== provenance.workspace.id ||
+      request.comparison.workspace?.configurationName !== provenance.configurationName ||
+      request.comparison.current.commit !== provenance.commitSha ||
+      request.comparison.baseline.id !== provenance.baseline ||
+      request.comparison.current.snapshotSha256 !== provenance.snapshotSha256)) {
+    throw new Error('Report provenance does not match baseline comparison')
+  }
   if (!Array.isArray(provenance.exclusions)) throw new Error('Report exclusions must be an array')
 }
 
 function reportTitle(kind: ReportKind): string {
+  if (kind === 'verification-readiness') return 'Verification Trace Coverage and Readiness Limits'
   return kind.split('-').map((word) => `${word[0]?.toUpperCase() ?? ''}${word.slice(1)}`).join(' ')
 }
 
@@ -400,8 +480,12 @@ function requireAssurance(value: AssuranceEvaluation | undefined): asserts value
   if (!value) throw new Error('Report requires an assurance evaluation')
 }
 
+export function encodePdfText(value: string): string {
+  return [...value].map(c => /^[\x20-\x7E]$/.test(c) ? (c === '\\' ? '\\\\' : c) : `\\u{${c.codePointAt(0)!.toString(16).toUpperCase()}}`).join('')
+}
+
 function wrapPdfLine(value: string): string[] {
-  const normalized = value.replace(/[^\x20-\x7E]/g, '?')
+  const normalized = encodePdfText(value)
   if (normalized.length <= 92) return [normalized]
   const lines: string[] = []
   let remaining = normalized

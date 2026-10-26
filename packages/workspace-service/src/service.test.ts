@@ -520,7 +520,7 @@ describe('WorkbenchService', () => {
       method: WORKBENCH_METHODS.assuranceEvaluate,
       params: { workspaceId: 'phase1-sample' },
     })).resolves.toMatchObject({
-      result: { schemaVersion: 1, rulePack: { version: '1.0.0' } },
+      result: { schemaVersion: 1, rulePack: { version: '1.1.0' } },
     })
     await expect(service.handle({
       jsonrpc: '2.0',

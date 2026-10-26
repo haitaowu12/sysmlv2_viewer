@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import type { SemanticElement, SemanticSnapshot } from '../../semantic-model/src/index.js'
 
 export const RULE_PACK_ID = 'sysml-workbench/engineering-assurance'
-export const RULE_PACK_VERSION = '1.0.0'
+export const RULE_PACK_VERSION = '1.1.0'
 
 export type AssuranceSeverity = 'critical' | 'major' | 'minor' | 'advisory'
 export type AssuranceDomain = 'requirement' | 'verification' | 'interface' | 'dependency'
@@ -35,6 +35,8 @@ export interface InterfaceRegisterRow {
   kind: SemanticElement['kind']
   ownerId: string | null
   ownerQualifiedName: string | null
+  /** Structural endpoints; ordering does not establish directional roles. */
+  endpointIds?: string[]
   sourceEndpointIds: string[]
   targetEndpointIds: string[]
   endpointTypeIds: string[]
@@ -50,6 +52,7 @@ export interface AssuranceEvaluation {
   schemaVersion: 1
   rulePack: { id: string; version: string }
   snapshotSha256: string
+  context?: { workspaceId: string; configurationName: string; languageRelease: string }
   resultSha256: string
   findings: AssuranceFinding[]
   requirementCoverage: RequirementCoverageRow[]
@@ -85,7 +88,7 @@ export function evaluateAssurance(snapshot: SemanticSnapshot): AssuranceEvaluati
     if (!row.ownerId) {
       findings.push(finding('IF-MISSING-OWNER', 'interface', 'major', `Interface element ${row.qualifiedName} has no semantic owner.`, [row.interfaceId], [], [], 'Assign the interface element to an owning package or part.'))
     }
-    const endpointIds = [...row.sourceEndpointIds, ...row.targetEndpointIds]
+    const endpointIds = row.endpointIds ?? [...row.sourceEndpointIds, ...row.targetEndpointIds]
     if (endpointIds.length < 2 && (row.kind === 'InterfaceUsage' || row.kind === 'ConnectionUsage')) {
       findings.push(finding('IF-INCOMPLETE-ENDPOINTS', 'interface', 'critical', `Interface ${row.qualifiedName} does not resolve two endpoints.`, [row.interfaceId, ...endpointIds], [], [['resolvedEndpoints', endpointIds.length]], 'Resolve explicit source and target endpoints.'))
     }
@@ -108,6 +111,7 @@ export function evaluateAssurance(snapshot: SemanticSnapshot): AssuranceEvaluati
     schemaVersion: 1 as const,
     rulePack: { id: RULE_PACK_ID, version: RULE_PACK_VERSION },
     snapshotSha256: snapshot.snapshotSha256,
+    context: { workspaceId: snapshot.workspace.id, configurationName: snapshot.workspace.configurationName, languageRelease: snapshot.authority.referenceRelease },
     findings: sortedFindings,
     requirementCoverage,
     interfaceRegister,
@@ -151,7 +155,6 @@ function buildInterfaceRegister(snapshot: SemanticSnapshot): InterfaceRegisterRo
       ...interfaceLinks.map((relationship) => relationship.targetId),
       ...connectionLinks.flatMap((relationship) => [relationship.sourceId, relationship.targetId]).filter((id) => id !== element.id),
     ])].sort()
-    const flowLinks = snapshot.relationships.filter((relationship) => relationship.kind === 'flow' && (endpointIds.includes(relationship.sourceId) || endpointIds.includes(relationship.targetId)))
     const requirementIds = [...new Set([
       ...incomingTargets(snapshot, element.id, 'satisfaction'),
       ...endpointIds.flatMap((id) => incomingTargets(snapshot, id, 'satisfaction')),
@@ -164,14 +167,15 @@ function buildInterfaceRegister(snapshot: SemanticSnapshot): InterfaceRegisterRo
       kind: element.kind,
       ownerId: element.ownerId ?? null,
       ownerQualifiedName: element.ownerId ? byId.get(element.ownerId)?.qualifiedName ?? null : null,
-      sourceEndpointIds: interfaceLinks.slice(0, 1).map((relationship) => relationship.targetId),
-      targetEndpointIds: interfaceLinks.slice(1).map((relationship) => relationship.targetId),
+      endpointIds,
+      sourceEndpointIds: [],
+      targetEndpointIds: [],
       endpointTypeIds,
-      exchangedItemIds: [...new Set(flowLinks.flatMap((relationship) => [relationship.sourceId, relationship.targetId]).filter((id) => !endpointIds.includes(id)))].sort(),
+      exchangedItemIds: [],
       requirementIds,
       verificationIds,
       sourcePath: element.source.workspacePath,
-      unavailableAttributes: ['direction', 'units', 'protocol', 'rateCapacity', 'timing', 'operatingModes', 'failureBehaviour', 'safety', 'security', 'status', 'assumptions'],
+      unavailableAttributes: ['exchangedItems', 'direction', 'units', 'protocol', 'rateCapacity', 'timing', 'operatingModes', 'failureBehaviour', 'safety', 'security', 'status', 'assumptions'],
       openFindingIds: [],
     }
   }).sort((left, right) => left.interfaceId.localeCompare(right.interfaceId))

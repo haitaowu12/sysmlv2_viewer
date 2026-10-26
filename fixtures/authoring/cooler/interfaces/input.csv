@@ -1,0 +1,14 @@
+id,record,owner,name,type,from,to,item,details
+A1,context,,context,,, , ,"Package CoolerStudy; context owns cooler:Cooler and external operator:Operator"
+A2,part,Cooler,probe,Probe,,,,owned
+A3,part,Cooler,controller,Controller,,,,owned
+A4,part,Cooler,actuator,Actuator,,,,owned
+I1,interface,Cooler,temperatureTransfer,TemperatureTransfer,probe.readings,controller.readings,TemperatureReading,"Temperature port type; outgoing item at Probe, conjugated input at Controller"
+I2,interface,Cooler,coolingTransfer,CoolingTransfer,controller.cooling,actuator.cooling,CoolingCommand,"Cooling port type; outgoing item at Controller, conjugated input at Actuator"
+I3,interface,context,enableTransfer,EnableTransfer,operator.enable,cooler.enable,EnableCommand,"Enable port type; outgoing item at Operator, conjugated input at Cooler"
+I4,binding,Cooler,,,,controller.enable,,"Cooler.enable = controller.enable; both conjugated Enable ports"
+P1,attribute,Controller,sampleCapacity,Integer,,,,4
+R1,requirement,,capacityRequirement,,,,,"The cooler controller shall retain at least four samples; subject Cooler; controller.sampleCapacity >= 4; satisfy by context.cooler"
+V1,verification,,CapacityVerification,,,,,"Planned verification of capacityRequirement; no test executed"
+B1,behavior,Controller,Regulate,,,,,"start then acquire then decide then issue then done; controller performs it"
+U1,unknown,,,,,,,"Timing, protocol, temperature units and failure responses are unspecified; do not invent"

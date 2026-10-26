@@ -1,0 +1,102 @@
+{
+  "package": "CoolerStudy",
+  "facts": [
+    {
+      "id": "A1",
+      "kind": "ownership",
+      "owner": "context",
+      "owned": {
+        "cooler": "Cooler"
+      },
+      "referenced": {
+        "operator": "Operator"
+      }
+    },
+    {
+      "id": "A2-A4",
+      "kind": "ownership",
+      "owner": "Cooler",
+      "owned": {
+        "probe": "Probe",
+        "controller": "Controller",
+        "actuator": "Actuator"
+      }
+    },
+    {
+      "id": "I1",
+      "kind": "directed-interface",
+      "name": "Cooler::temperatureTransfer",
+      "type": "TemperatureTransfer",
+      "source": "probe.readings",
+      "target": "controller.readings",
+      "item": "TemperatureReading"
+    },
+    {
+      "id": "I2",
+      "kind": "directed-interface",
+      "name": "Cooler::coolingTransfer",
+      "type": "CoolingTransfer",
+      "source": "controller.cooling",
+      "target": "actuator.cooling",
+      "item": "CoolingCommand"
+    },
+    {
+      "id": "I3",
+      "kind": "directed-interface",
+      "name": "context::enableTransfer",
+      "type": "EnableTransfer",
+      "source": "operator.enable",
+      "target": "cooler.enable",
+      "item": "EnableCommand"
+    },
+    {
+      "id": "I4",
+      "kind": "binding",
+      "ends": [
+        "Cooler::enable",
+        "Cooler::controller::enable"
+      ],
+      "portType": "~Enable"
+    },
+    {
+      "id": "P1",
+      "kind": "value",
+      "name": "Controller::sampleCapacity",
+      "type": "Integer",
+      "value": 4
+    },
+    {
+      "id": "R1",
+      "kind": "requirement",
+      "name": "capacityRequirement",
+      "subject": "Cooler",
+      "constraint": "cooler.controller.sampleCapacity >= 4",
+      "satisfiedBy": "context::cooler"
+    },
+    {
+      "id": "V1",
+      "kind": "verification",
+      "name": "CapacityVerification",
+      "verifies": "capacityRequirement",
+      "status": "planned-no-execution"
+    },
+    {
+      "id": "B1",
+      "kind": "behavior",
+      "name": "Regulate",
+      "sequence": [
+        "start",
+        "acquire",
+        "decide",
+        "issue",
+        "done"
+      ],
+      "performedBy": "Controller"
+    }
+  ],
+  "exclusions": [
+    "No timing, protocol, temperature units or failure responses",
+    "No achieved verification verdict",
+    "No extra direct flow introduced by the binding"
+  ]
+}

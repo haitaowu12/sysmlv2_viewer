@@ -13,6 +13,7 @@ export type SemanticChangeKind =
   | 'element-content-changed'
   | 'relationship-created'
   | 'relationship-deleted'
+  | 'relationship-content-changed'
 
 export interface SemanticChange {
   kind: SemanticChangeKind
@@ -33,6 +34,10 @@ export function compareSemanticSnapshots(
 ): SemanticDiff {
   if (before.workspace.id !== after.workspace.id) {
     throw new Error('Semantic diff requires snapshots from the same workspace')
+  }
+  for (const snapshot of [before, after]) {
+    if (new Set(snapshot.elements.map(e => e.id)).size !== snapshot.elements.length ||
+        new Set(snapshot.relationships.map(r => r.id)).size !== snapshot.relationships.length) throw new Error('Semantic diff requires unique identities')
   }
   const changes: SemanticChange[] = []
   const beforeElements = new Map(before.elements.map((element) => [element.id, element]))
@@ -90,6 +95,18 @@ function compareRelationships(
         kind: 'relationship-deleted',
         relationshipId: id,
         before: beforeRelationship,
+      })
+    } else if (beforeRelationship && afterRelationship && (
+      beforeRelationship.kind !== afterRelationship.kind ||
+      beforeRelationship.sourceId !== afterRelationship.sourceId ||
+      beforeRelationship.targetId !== afterRelationship.targetId ||
+      JSON.stringify([...beforeRelationship.provenance.features].sort()) !== JSON.stringify([...afterRelationship.provenance.features].sort())
+    )) {
+      changes.push({
+        kind: 'relationship-content-changed',
+        relationshipId: id,
+        before: beforeRelationship,
+        after: afterRelationship,
       })
     }
   }
