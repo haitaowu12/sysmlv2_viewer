@@ -1,0 +1,49 @@
+{
+  "files": {
+    "LICENSE.txt": {
+      "sha256": "0155be7a300f3898409f505c4e3a3e726e9c75c44676d2630304a2ccf1abe5fb",
+      "source": ".agent/skills/development-workflow/specialists/frontend-skill/LICENSE.txt",
+      "source_sha256": "0155be7a300f3898409f505c4e3a3e726e9c75c44676d2630304a2ccf1abe5fb"
+    },
+    "SKILL.md": {
+      "sha256": "8e1562411493bd4e4f22d1bf9e59d7bc971dfd598f1d17e52c118ca0ce1a276f",
+      "source": ".agent/skills/development-workflow/specialists/frontend-skill/SKILL.md",
+      "source_sha256": "b8e12180fa04d1c69b277331acedca24b536f50a71fce085359b9f5febe25d2e"
+    },
+    "agents/openai.yaml": {
+      "sha256": "0b3f227f16942e69fe30f8b2713598c7263b0ca68522dd9abee67e0716bccf63",
+      "source": ".agent/skills/development-workflow/specialists/frontend-skill/agents/openai.yaml",
+      "source_sha256": "0b3f227f16942e69fe30f8b2713598c7263b0ca68522dd9abee67e0716bccf63"
+    },
+    "references/evidence-qa-contract.md": {
+      "sha256": "344caf1c7a64f6f52cb31905ba8f6fee2f4bf07c995c2ab8d13de86851f4ec28",
+      "source": ".agent/skills/quality-verification/references/evidence-qa-contract.md",
+      "source_sha256": "9ab672b762c628688660f898c59bfbad60f3f4bd6b177a0ce336309bbb5048bf"
+    },
+    "references/product-design-practice.md": {
+      "sha256": "c43519498d13c0e2ce41fb5f7dc6f8be016930de1517ff885eb780bdc384df32",
+      "source": ".agent/skills/development-workflow/specialists/frontend-skill/references/product-design-practice.md",
+      "source_sha256": "c43519498d13c0e2ce41fb5f7dc6f8be016930de1517ff885eb780bdc384df32"
+    },
+    "references/ui-design-delivery.md": {
+      "sha256": "af9ac19f60d963b07f55a0123593b4f05301d4e116e2de4d83b916c6cd17b16a",
+      "source": ".agent/skills/development-workflow/references/ui-design-delivery.md",
+      "source_sha256": "e58771ccad3a8e5eb0f3cca3685714e879a6ae49c8911d0d50d6d7096f7cc208"
+    },
+    "references/ui-direction-decisions.md": {
+      "sha256": "451efd6911c178254a48f44d82c6e9b25438e41bdda5e45476157b61f74c38ec",
+      "source": ".agent/skills/development-workflow/references/ui-direction-decisions.md",
+      "source_sha256": "4416c4fe375b83174d4a99fa6e4929f7ac3dc607d423336509f9aa9e9a8f27df"
+    },
+    "scripts/frontend_capsule.py": {
+      "sha256": "fa5698661c79d66fd383ba5bf64e7ce636e9053769b9bf0bcec059e104e48bd4",
+      "source": "scripts/frontend_capsule.py",
+      "source_sha256": "fa5698661c79d66fd383ba5bf64e7ce636e9053769b9bf0bcec059e104e48bd4"
+    }
+  },
+  "format": "tonys-second-brain.frontend-capsule.v1",
+  "repository": "https://github.com/haitaowu12/tonys-second-brain",
+  "skill": "frontend-skill",
+  "source_revision": "3edda779472d71d8d002d72e873031eb2969249e",
+  "source_revision_verified": false
+}
