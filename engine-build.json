@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "engineCommit": "08ef397841767b829e492bbecf6d723483b4421e",
+  "patchSha256": "879a1239d3ab65b5de8a89f889af2706c55b7f2f5c68b7e0f9ad78886bd0cc33",
+  "goVersion": "go1.27.1",
+  "wasmSha256": "6ff663b59cfb131d85f3646a25c7de3368805d18519dd7b2794c9a3a033e6e52",
+  "wasmExecSha256": "0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14"
+}

@@ -1,0 +1,898 @@
+diff --git a/internal/frontend/combined/combined.go b/internal/frontend/combined/combined.go
+index e349420..4259c31 100644
+--- a/internal/frontend/combined/combined.go
++++ b/internal/frontend/combined/combined.go
+@@ -21,0 +22,2 @@ var capabilities = []string{
++	"render_view",
++	"convert",
+@@ -112 +114 @@ func (s *Server) Call(ctx context.Context, method string, params []byte) ([]byte
+-	case "GetDiagnostics", "GetSymbol":
++	case "GetDiagnostics", "GetSymbol", "Convert":
+@@ -118 +120 @@ func (s *Server) Call(ctx context.Context, method string, params []byte) ([]byte
+-	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState":
++	case "Evaluate", "Instantiate", "ExecuteAction", "ExecuteState", "RenderView":
+diff --git a/internal/frontend/core/core.go b/internal/frontend/core/core.go
+index a25c123..5ec865b 100644
+--- a/internal/frontend/core/core.go
++++ b/internal/frontend/core/core.go
+@@ -27,0 +28 @@ import (
++	"github.com/Open-MBEE/OpenSysML/internal/translate/convert"
+@@ -102,0 +104,39 @@ func (c *Core) Call(ctx context.Context, method string, params []byte) (result [
++	case "Convert":
++		var req struct {
++			ModelHash string `json:"modelHash"`
++			ToFormat  string `json:"toFormat"`
++		}
++		if err := jsonrpc.Decode(params, &req); err != nil {
++			return nil, err
++		}
++		if req.ToFormat != "api-json" {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial only exposes api-json export")
++		}
++		model, ok := c.get(req.ModelHash)
++		if !ok {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeNotFound, msgModelNotFound, req.ModelHash)
++		}
++		if len(model.documents) != 1 {
++			return nil, jsonrpc.Errorf(jsonrpc.CodeUnimplemented, "Lab trial supports one source document")
++		}
++		for _, d := range modelDiagnostics(model) {
++			if d.Severity == "error" {
++				return nil, jsonrpc.Errorf(jsonrpc.CodeFailedPrecondition, "Invalid model cannot export a snapshot")
++			}
++		}
++		document := model.documents[0]
++		content, err := convert.Convert(document.source.Name(), document.source.Bytes(), convert.FormatSysML, convert.FormatAPIJSON)
++		if err != nil {
++			return nil, err
++		}
++		var elements []map[string]any
++		if err := json.Unmarshal(content, &elements); err != nil {
++			return nil, err
++		}
++		labEnrichAPIJSON(model, document, elements)
++		content, err = json.Marshal(elements)
++		if err != nil {
++			return nil, err
++		}
++		return json.Marshal(map[string]any{"content": string(content)})
++
+@@ -458,0 +499,267 @@ func ptr[T any](v T) *T { return &v }
++
++// labEnrichAPIJSON adds facts from the already validated typed model. Modified
++// for the maintained Modeling Lab; unresolved identities stay unasserted.
++func labEnrichAPIJSON(model *cachedModel, document *cachedDocument, elements []map[string]any) {
++	semantic := model.symbolContext().Semantics
++	resolver := model.symbolContext().Resolver
++	byName := map[string][]map[string]any{}
++	byID := map[any]map[string]any{}
++	bySpan := map[string][]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = append(byName[name], el)
++		}
++		byID[el["@id"]] = el
++		key := fmt.Sprintf("%v:%v:%s", el["sysx:sourceLine"], el["sysx:sourceColumn"], strings.ToLower(fmt.Sprint(el["@type"])))
++		bySpan[key] = append(bySpan[key], el)
++	}
++	identity := func(sym *symbols.Symbol) (any, bool) {
++		if sym == nil {
++			return nil, false
++		}
++		if sym.Name != "" {
++			if matches := byName[model.index.GetFQN(sym)]; len(matches) == 1 {
++				return matches[0]["@id"], true
++			}
++		}
++		if sym.DocName != document.source.Name() || sym.Decl == nil {
++			return nil, false
++		}
++		meta := semantic.MetaclassOf(sym)
++		if meta == nil {
++			return nil, false
++		}
++		pos := document.source.Lines().PosAt(sym.DeclSpan.Offset)
++		metaclass := meta.Name
++		// The pinned API-JSON encoder represents a verify clause as a
++		// RequirementUsage, while its typed AST is UsageSatisfy/verify.
++		if usage, ok := sym.Decl.(*ast.Usage); ok && usage.Kind == ast.UsageSatisfy && usage.Keyword == "verify" {
++			metaclass = "RequirementUsage"
++		}
++		key := fmt.Sprintf("%d:%d:%s", pos.Line, pos.Col, strings.ToLower(metaclass))
++		if matches := bySpan[key]; len(matches) == 1 {
++			return matches[0]["@id"], true
++		}
++		return nil, false
++	}
++	refs := func(syms []*symbols.Symbol) ([]map[string]any, []string) {
++		out := []map[string]any{}
++		missing := []string{}
++		seen := map[any]bool{}
++		for _, sym := range syms {
++			if id, ok := identity(sym); ok {
++				if !seen[id] {
++					out = append(out, map[string]any{"@id": id})
++					seen[id] = true
++				}
++			} else {
++				missing = append(missing, model.index.GetFQN(sym))
++			}
++		}
++		return out, missing
++	}
++	// Resolve original AST pointers, preserving each feature-chain occurrence.
++	var chainSymbols func(ast.Node) ([]*symbols.Symbol, bool)
++	chainSymbols = func(node ast.Node) ([]*symbols.Symbol, bool) {
++		switch n := node.(type) {
++		case *ast.FeatureReference:
++			return chainSymbols(n.Name)
++		case *ast.QualifiedName:
++			if n == nil || len(n.Parts) == 0 {
++				return nil, false
++			}
++			out := []*symbols.Symbol{}
++			for i := 1; i <= len(n.Parts); i++ {
++				if i == len(n.Parts) || n.Parts[i].Chained {
++					sym, ok := resolver.PartSymbol(n, i-1)
++					if !ok || sym == nil {
++						return nil, false
++					}
++					out = append(out, sym)
++				}
++			}
++			return out, true
++		case *ast.FeatureChainExpr:
++			out, ok := chainSymbols(n.Operand)
++			if !ok {
++				return nil, false
++			}
++			rest, ok := chainSymbols(n.Member)
++			if !ok {
++				return nil, false
++			}
++			return append(out, rest...), true
++		}
++		return nil, false
++	}
++	seen := map[*symbols.Symbol]bool{}
++	var all []*symbols.Symbol
++	var collect func(*symbols.Scope)
++	collect = func(scope *symbols.Scope) {
++		if scope == nil {
++			return
++		}
++		all = append(all, scope.AllMembers()...)
++		for _, child := range scope.Children() {
++			collect(child)
++		}
++	}
++	collect(model.index.DocumentRoot(document.source.Name()))
++	for _, sym := range all {
++		if sym == nil || seen[sym] || sym.DocName != document.source.Name() {
++			continue
++		}
++		seen[sym] = true
++		id, ok := identity(sym)
++		if !ok {
++			continue
++		}
++		el := byID[id]
++		if el == nil {
++			continue
++		}
++		for _, field := range []string{"isComposite", "isReference", "isAbstract", "isOrdered", "isUnique"} {
++			if value, ok := semantic.ReflectiveFeatureValue(sym, field); ok && value.Kind == symbols.FilterValueBool {
++				el[field] = value.Bool
++			}
++		}
++		switch el["@type"] {
++		case "StateDefinition", "StateUsage", "ExhibitStateUsage":
++			if value, ok := semantic.ReflectiveFeatureValue(sym, "isParallel"); ok && value.Kind == symbols.FilterValueBool {
++				el["isParallel"] = value.Bool
++			}
++		}
++		if features, ok := semantic.ReflectiveElements(sym, "feature"); ok {
++			local := []*symbols.Symbol{}
++			excluded := 0
++			for _, feature := range features {
++				if feature.DocName != document.source.Name() {
++					excluded++
++				} else {
++					local = append(local, feature)
++				}
++			}
++			mapped, missing := refs(local)
++			el["feature"] = mapped
++			el["featureLibraryExcluded"] = excluded
++			if len(missing) > 0 {
++				el["lab:unmappedFeatureRefs"] = missing
++			}
++		}
++		for _, field := range []string{"subjectParameter", "objectiveRequirement", "documentation"} {
++			if values, ok := semantic.ReflectiveElements(sym, field); ok {
++				mapped, missing := refs(values)
++				if len(missing) == 0 {
++					if len(mapped) == 1 && field != "documentation" {
++						el[field] = mapped[0]
++					} else {
++						el[field] = mapped
++					}
++				} else {
++					el["lab:unmapped:"+field] = missing
++				}
++			}
++		}
++		if usage, ok := sym.Decl.(*ast.Usage); ok && usage.Kind == ast.UsageSatisfy {
++			el["isNegated"] = usage.IsNegated
++			kind := semantics.RelationshipSatisfaction
++			if usage.Keyword == "verify" {
++				kind = semantics.RelationshipVerification
++			}
++			edges := semantic.RelationshipEdgesOf(sym, kind)
++			sources := []*symbols.Symbol{}
++			targets := []*symbols.Symbol{}
++			for _, edge := range edges {
++				sources = append(sources, edge.Source)
++				targets = append(targets, edge.Target)
++			}
++			sourceRefs, sourceMissing := refs(sources)
++			targetRefs, targetMissing := refs(targets)
++			if kind == semantics.RelationshipSatisfaction {
++				if len(sourceMissing) == 0 && len(sourceRefs) == 1 {
++					el["satisfyingFeature"] = sourceRefs[0]
++				}
++				if len(targetMissing) == 0 && len(targetRefs) == 1 {
++					el["satisfiedRequirement"] = targetRefs[0]
++				}
++			} else if len(targetMissing) == 0 && len(targetRefs) > 0 {
++				el["verifiedRequirement"] = targetRefs
++				// The typed edge source identifies the enclosing verification case,
++				// including verify usages declared inside an objective requirement.
++				for _, source := range sources {
++					if caseID, ok := identity(source); ok {
++						if target := byID[caseID]; target != nil && (target["@type"] == "VerificationCaseDefinition" || target["@type"] == "VerificationCaseUsage") {
++							existing, _ := target["verifiedRequirement"].([]map[string]any)
++							existing = append(existing, targetRefs...)
++							unique := []map[string]any{}
++							seen := map[any]bool{}
++							for _, ref := range existing {
++								if !seen[ref["@id"]] {
++									seen[ref["@id"]] = true
++									unique = append(unique, ref)
++								}
++							}
++							target["verifiedRequirement"] = unique
++						}
++					}
++				}
++			}
++			for _, rel := range usage.Relationships {
++				if rel == nil || rel.Kind != ast.RelSubject || rel.Target == nil {
++					continue
++				}
++				if _, ok := resolver.ResolveTarget(sym.OwnerScope, rel.Target); !ok {
++					continue
++				}
++				if symbols, ok := chainSymbols(rel.Target); ok {
++					// A chain is an ordered occurrence path, not a set of
++					// referenced declarations. Recursive steps may repeat an ID.
++					mapped := []map[string]any{}
++					complete := true
++					for _, step := range symbols {
++						id, ok := identity(step)
++						if !ok {
++							complete = false
++							break
++						}
++						mapped = append(mapped, map[string]any{"@id": id})
++					}
++					if complete && len(mapped) > 0 {
++						el["lab:subjectChain"] = mapped
++					}
++				}
++			}
++		}
++		if transition, ok := sym.Decl.(*ast.TransitionMember); ok {
++			complete := true
++			for _, field := range []struct {
++				name     string
++				declared bool
++			}{{"triggerAction", transition.Trigger != nil}, {"guardExpression", transition.Guard != nil}, {"effectAction", transition.HasEffect || len(transition.Effect) > 0}} {
++				if _, exists := el[field.name]; !exists {
++					if !field.declared {
++						el[field.name] = []any{}
++					} else {
++						complete = false
++					}
++				}
++			}
++			if complete {
++				el["lab:transitionFieldsComplete"] = true
++			}
++		}
++		if ends, ok := semantic.OwnedConnectorEnds(sym); ok {
++			encoded, _ := el["connectorEnd"].([]any)
++			if len(ends) == len(encoded) {
++				for i, nativeEnd := range ends {
++					ref, _ := encoded[i].(map[string]any)
++					target := byID[ref["@id"]]
++					roles := semantic.ImplicitEndRedefinitions(nativeEnd)
++					if target != nil && len(roles) == 1 {
++						target["lab:roleName"] = roles[0].Name
++					}
++				}
++			}
++		}
++	}
++}
+diff --git a/internal/frontend/engine/engine.go b/internal/frontend/engine/engine.go
+index 12a96ae..e192c57 100644
+--- a/internal/frontend/engine/engine.go
++++ b/internal/frontend/engine/engine.go
+@@ -324,0 +325,16 @@ func (e *Engine) renderView(req *JRenderViewRequest) ([]byte, error) {
++	// Modeling Lab structural canvases are bounded before semantic expansion,
++	// including the preliminary exposed-descendant walk, not just after drawing.
++	bounded := strings.HasPrefix(req.View, "#tree:") || strings.HasPrefix(req.View, "#interconnection:")
++	if !strings.HasPrefix(req.View, "#") {
++		candidates := lookupNamed(cached.Index, req.View)
++		if len(candidates) == 1 {
++			kind, _, err := renderer.KindOf(candidates[0])
++			bounded = err == nil && (kind == view.KindTree || kind == view.KindInterconnection)
++		}
++	}
++	if bounded {
++		if err := renderer.SetContainmentDepth(4); err != nil {
++			return nil, err
++		}
++	}
++
+@@ -335 +351,28 @@ func (e *Engine) renderView(req *JRenderViewRequest) ([]byte, error) {
+-	return marshalRenderView(rendering.DataFor(ports))
++	if bounded {
++		rendering.Notices = append(rendering.Notices, "Structural containment is limited to 4 levels from each exposed root; open a nested component to continue.")
++	}
++	return marshalRenderViewWithOrigins(rendering.DataFor(ports), cached.renderOrigin)
++}
++
++// renderOrigin retains the same one-based source spans as the gRPC transport.
++func (m *cachedModel) renderOrigin(origin view.Origin) *JSpan {
++	if !origin.Located() {
++		return nil
++	}
++	var sf *source.SourceFile
++	for _, document := range m.Documents {
++		if document.Source != nil && document.Source.Name() == origin.Doc {
++			sf = document.Source
++			break
++		}
++	}
++	if sf == nil && m.Library != nil {
++		if content, err := m.Library.Read(origin.Doc); err == nil {
++			sf = source.New(origin.Doc, content)
++		}
++	}
++	if sf == nil {
++		return &JSpan{File: origin.Doc}
++	}
++	start, end := sf.Lines().PosAt(origin.Span.Offset), sf.Lines().PosAt(origin.Span.End())
++	return &JSpan{File: sf.Name(), StartLine: int32(start.Line), StartCol: int32(start.Col), EndLine: int32(end.Line), EndCol: int32(end.Col)}
+@@ -337,0 +381 @@ func (e *Engine) renderView(req *JRenderViewRequest) ([]byte, error) {
++// Keep the legacy mapper for upstream consumers; render requests carry origins.
+@@ -338,0 +383,3 @@ func marshalRenderView(data view.Data) ([]byte, error) {
++	return marshalRenderViewWithOrigins(data, func(view.Origin) *JSpan { return nil })
++}
++func marshalRenderViewWithOrigins(data view.Data, originOf func(view.Origin) *JSpan) ([]byte, error) {
+@@ -354 +401 @@ func marshalRenderView(data view.Data) ([]byte, error) {
+-		out.Canvas = &JRenderCanvas{Unit: data.Canvas.Unit}
++		out.Canvas = &JRenderCanvas{Unit: data.Canvas.Unit, HasSize: data.Canvas.HasSize}
+@@ -361,0 +409 @@ func marshalRenderView(data view.Data) ([]byte, error) {
++			Origin: originOf(node.Origin), Text: node.Text, StandIn: node.StandIn,
+@@ -375,0 +424 @@ func marshalRenderView(data view.Data) ([]byte, error) {
++			item.Geometry = &JRenderGeometry{X: node.Geometry.X, Y: node.Geometry.Y, Width: node.Geometry.Width, Height: node.Geometry.Height, HasSize: node.Geometry.HasSize, Collapsed: node.Geometry.Collapsed}
+@@ -393 +442 @@ func marshalRenderView(data view.Data) ([]byte, error) {
+-			Label: edge.Label, Kind: edge.Kind.String(), Style: jRenderStyle(edge.Style),
++			Label: edge.Label, Name: edge.Name, Origin: originOf(edge.Origin), Kind: edge.Kind.String(), Style: jRenderStyle(edge.Style),
+@@ -401 +450,4 @@ func marshalRenderView(data view.Data) ([]byte, error) {
+-		out.Rows = append(out.Rows, JRenderRow{Cells: row.Cells})
++		out.Rows = append(out.Rows, JRenderRow{Cells: row.Cells, Origin: originOf(row.Origin)})
++	}
++	for _, note := range data.Notes {
++		out.Notes = append(out.Notes, JRenderNote{Text: note.Text, Anchor: note.Anchor, EdgeFrom: note.EdgeFrom, EdgeTo: note.EdgeTo, X: note.X, Y: note.Y, Width: note.Width, Height: note.Height, HasSize: note.HasSize, Origin: originOf(note.Origin)})
+diff --git a/internal/frontend/engine/json.go b/internal/frontend/engine/json.go
+index b8ac17a..8c71684 100644
+--- a/internal/frontend/engine/json.go
++++ b/internal/frontend/engine/json.go
+@@ -344,0 +345 @@ type JRenderViewResponse struct {
++	Notes   []JRenderNote  `json:"notes,omitempty"`
+@@ -348,3 +349,13 @@ type JRenderCanvas struct {
+-	Unit   string   `json:"unit,omitempty"`
+-	Width  *float64 `json:"width,omitempty"`
+-	Height *float64 `json:"height,omitempty"`
++	HasSize bool     `json:"hasSize,omitempty"`
++	Unit    string   `json:"unit,omitempty"`
++	Width   *float64 `json:"width,omitempty"`
++	Height  *float64 `json:"height,omitempty"`
++}
++
++type JRenderGeometry struct {
++	X         float64 `json:"x"`
++	Y         float64 `json:"y"`
++	Width     float64 `json:"width"`
++	Height    float64 `json:"height"`
++	HasSize   bool    `json:"hasSize"`
++	Collapsed bool    `json:"collapsed"`
+@@ -354,16 +365,20 @@ type JRenderNode struct {
+-	ID              string        `json:"id"`
+-	Kind            string        `json:"kind"`
+-	Name            string        `json:"name"`
+-	NameSynthesized bool          `json:"nameSynthesized,omitempty"`
+-	Type            string        `json:"type"`
+-	Detail          string        `json:"detail"`
+-	Parent          string        `json:"parent,omitempty"`
+-	Fill            string        `json:"fill,omitempty"`
+-	Border          string        `json:"border,omitempty"`
+-	Style           *JRenderStyle `json:"style,omitempty"`
+-	X               *float64      `json:"x,omitempty"`
+-	Y               *float64      `json:"y,omitempty"`
+-	Width           *float64      `json:"width,omitempty"`
+-	Height          *float64      `json:"height,omitempty"`
+-	Collapsed       bool          `json:"collapsed,omitempty"`
+-	Ports           []JRenderPort `json:"ports,omitempty"`
++	Origin          *JSpan           `json:"origin,omitempty"`
++	Geometry        *JRenderGeometry `json:"geometry,omitempty"`
++	Text            string           `json:"text,omitempty"`
++	StandIn         bool             `json:"standIn,omitempty"`
++	ID              string           `json:"id"`
++	Kind            string           `json:"kind"`
++	Name            string           `json:"name"`
++	NameSynthesized bool             `json:"nameSynthesized,omitempty"`
++	Type            string           `json:"type"`
++	Detail          string           `json:"detail"`
++	Parent          string           `json:"parent,omitempty"`
++	Fill            string           `json:"fill,omitempty"`
++	Border          string           `json:"border,omitempty"`
++	Style           *JRenderStyle    `json:"style,omitempty"`
++	X               *float64         `json:"x,omitempty"`
++	Y               *float64         `json:"y,omitempty"`
++	Width           *float64         `json:"width,omitempty"`
++	Height          *float64         `json:"height,omitempty"`
++	Collapsed       bool             `json:"collapsed,omitempty"`
++	Ports           []JRenderPort    `json:"ports,omitempty"`
+@@ -389,0 +405,2 @@ type JRenderEdge struct {
++	Origin   *JSpan         `json:"origin,omitempty"`
++	Name     string         `json:"name,omitempty"`
+@@ -404,0 +422,13 @@ type JRenderPoint struct {
++type JRenderNote struct {
++	Text     string  `json:"text"`
++	Anchor   string  `json:"anchor,omitempty"`
++	EdgeFrom string  `json:"edgeFrom,omitempty"`
++	EdgeTo   string  `json:"edgeTo,omitempty"`
++	X        float64 `json:"x"`
++	Y        float64 `json:"y"`
++	Width    float64 `json:"width"`
++	Height   float64 `json:"height"`
++	HasSize  bool    `json:"hasSize"`
++	Origin   *JSpan  `json:"origin,omitempty"`
++}
++
+@@ -406 +436,2 @@ type JRenderRow struct {
+-	Cells []string `json:"cells"`
++	Origin *JSpan   `json:"origin,omitempty"`
++	Cells  []string `json:"cells"`
+diff --git a/internal/ir/view/view.go b/internal/ir/view/view.go
+index 00c0b88..d64a149 100644
+--- a/internal/ir/view/view.go
++++ b/internal/ir/view/view.go
+@@ -160 +160 @@ type Renderer struct {
+-	// treeDepthBound overrides the containment depth bound when set; tests only.
++	// treeDepthBound overrides the containment depth bound when explicitly set.
+@@ -172,0 +173,10 @@ func NewRenderer(model *semantics.Model, resolver *resolve.Resolver, text Source
++// SetContainmentDepth bounds both the suppression dry-run and containment walk.
++// The checked range cannot exceed the existing renderer safety bound.
++func (r *Renderer) SetContainmentDepth(depth int) error {
++	if depth < 1 || depth > maxTreeDepth {
++		return fmt.Errorf("containment depth must be between 1 and %d", maxTreeDepth)
++	}
++	r.treeDepthBound = depth
++	return nil
++}
++
+diff --git a/internal/frontend/core/lab_capture_test.go b/internal/frontend/core/lab_capture_test.go
+new file mode 100644
+index 0000000..98a0974
+--- /dev/null
++++ b/internal/frontend/core/lab_capture_test.go
+@@ -0,0 +1,226 @@
++// Copyright 2025 Open‐MBEE Foundation. All rights reserved.
++// Use of this source code is governed by the LICENSE file.
++// Modified for the maintained Modeling Lab: typed export regression and capture.
++package core
++
++import (
++	"context"
++	"encoding/json"
++	"os"
++	"testing"
++)
++
++func labTestExport(t *testing.T, source string) []map[string]any {
++	t.Helper()
++	c, err := New()
++	if err != nil {
++		t.Fatal(err)
++	}
++	request, _ := json.Marshal(map[string]any{"content": source, "strictConformance": true})
++	parsed, err := c.Call(context.Background(), "ParseFile", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var p JParseFileResponse
++	if err = json.Unmarshal(parsed, &p); err != nil {
++		t.Fatal(err)
++	}
++	for _, d := range p.Diagnostics {
++		if d.Severity == "error" {
++			t.Fatalf("invalid fixture: %s", parsed)
++		}
++	}
++	request, _ = json.Marshal(map[string]any{"modelHash": p.ModelHash, "toFormat": "api-json"})
++	converted, err := c.Call(context.Background(), "Convert", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var result struct {
++		Content string `json:"content"`
++	}
++	if err = json.Unmarshal(converted, &result); err != nil {
++		t.Fatal(err)
++	}
++	var elements []map[string]any
++	if err = json.Unmarshal([]byte(result.Content), &elements); err != nil {
++		t.Fatal(err)
++	}
++	return elements
++}
++
++// Developer semantic capture through the same Core calls used by WebAssembly.
++func TestLabCapture(t *testing.T) {
++	path := os.Getenv("LAB_TEST_SOURCE")
++	if path == "" {
++		t.Skip("set LAB_TEST_SOURCE for a fixture capture")
++	}
++	src, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	elements := labTestExport(t, string(src))
++	if out := os.Getenv("LAB_TEST_OUTPUT"); out != "" {
++		data, err := json.Marshal(elements)
++		if err != nil {
++			t.Fatal(err)
++		}
++		if err = os.WriteFile(out, data, 0600); err != nil {
++			t.Fatal(err)
++		}
++	}
++}
++
++func TestLabTypedStateAndOccurrenceFacts(t *testing.T) {
++	elements := labTestExport(t, `package LabFacts {
++ part def Device;
++ part def Area { part unit : Device; }
++ part def Plant { part east : Area; part west : Area; }
++ part plant : Plant;
++ requirement r { subject device : Device; require constraint { true } }
++ satisfy r by plant.east.unit;
++ assert not satisfy r by plant.west.unit;
++ verification def V { subject device : Device; objective { verify r; } }
++ verification def UnknownVerification { subject device : Device; }
++ state def Sequential { entry; then a; state a; state b; transition move first a then b; }
++ state def Concurrent parallel { state a; state b; }
++}`)
++	byName := map[string]map[string]any{}
++	byID := map[any]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = el
++		}
++		byID[el["@id"]] = el
++	}
++	if got := byName["LabFacts::Sequential"]["isParallel"]; got != false {
++		t.Fatalf("sequential isParallel = %v", got)
++	}
++	if got := byName["LabFacts::Concurrent"]["isParallel"]; got != true {
++		t.Fatalf("parallel isParallel = %v", got)
++	}
++	transition := byName["LabFacts::Sequential::move"]
++	if transition["lab:transitionFieldsComplete"] != true {
++		t.Fatalf("typed transition incomplete: %v", transition)
++	}
++	for _, field := range []string{"triggerAction", "guardExpression", "effectAction"} {
++		if values, ok := transition[field].([]any); !ok || len(values) != 0 {
++			t.Fatalf("%s = %v, expected explicitly empty", field, transition[field])
++		}
++	}
++	roots := map[string]bool{}
++	negative, positive := 0, 0
++	for _, el := range elements {
++		if el["@type"] != "SatisfyRequirementUsage" {
++			continue
++		}
++		switch el["isNegated"] {
++		case true:
++			negative++
++		case false:
++			positive++
++		default:
++			t.Fatalf("missing polarity: %v", el)
++		}
++		chain, ok := el["lab:subjectChain"].([]any)
++		if !ok || len(chain) != 3 {
++			t.Fatalf("rooted occurrence chain missing: %v", el)
++		}
++		middle := chain[1].(map[string]any)["@id"]
++		roots[byID[middle]["qualifiedName"].(string)] = true
++		if _, ok := el["satisfyingFeature"].(map[string]any); !ok {
++			t.Fatalf("missing exact satisfier: %v", el)
++		}
++		if _, ok := el["satisfiedRequirement"].(map[string]any); !ok {
++			t.Fatalf("missing requirement: %v", el)
++		}
++	}
++	if negative != 1 || positive != 1 || !roots["LabFacts::Plant::east"] || !roots["LabFacts::Plant::west"] {
++		t.Fatalf("polarity or occurrence collapse: %d/%d %v", negative, positive, roots)
++	}
++	verified, ok := byName["LabFacts::V"]["verifiedRequirement"].([]any)
++	if !ok || len(verified) != 1 {
++		t.Fatalf("verification objective not resolved: %v", byName["LabFacts::V"])
++	}
++	if _, invented := byName["LabFacts::UnknownVerification"]["verifiedRequirement"]; invented {
++		t.Fatal("verification without a declared objective acquired a verified requirement")
++	}
++	if _, invented := byName["LabFacts::Device"]["isParallel"]; invented {
++		t.Fatal("non-state declaration acquired a state default")
++	}
++	for _, el := range elements {
++		if el["@type"] == "StateSubactionMembership" {
++			if _, invented := el["memberElement"]; invented {
++				t.Fatal("empty entry acquired an invented action")
++			}
++		}
++	}
++}
++
++func TestLabSubjectChainRetainsRepeatedFeatureSteps(t *testing.T) {
++	elements := labTestExport(t, `package Repeated {
++ part def Node { ref part next : Node; }
++ part root : Node;
++ requirement r { subject item : Node; require constraint { true } }
++ satisfy r by root.next.next;
++}`)
++	names := map[any]string{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			names[el["@id"]] = name
++		}
++	}
++	found := false
++	for _, el := range elements {
++		if el["@type"] != "SatisfyRequirementUsage" {
++			continue
++		}
++		found = true
++		chain, ok := el["lab:subjectChain"].([]any)
++		if !ok || len(chain) != 3 {
++			t.Fatalf("recursive occurrence chain lost a step: %v", el["lab:subjectChain"])
++		}
++		expected := []string{"Repeated::root", "Repeated::Node::next", "Repeated::Node::next"}
++		for i, ref := range chain {
++			id := ref.(map[string]any)["@id"]
++			if names[id] != expected[i] {
++				t.Fatalf("chain step %d = %s, expected %s", i, names[id], expected[i])
++			}
++		}
++	}
++	if !found {
++		t.Fatal("fixture satisfaction declaration was not exported")
++	}
++}
++
++func TestLabDocumentationUsesTypedRelationship(t *testing.T) {
++	elements := labTestExport(t, `package DocumentationFacts {
++ part def Other;
++ requirement r {
++  doc /* The device shall retain the stated information. */
++  comment about Other /* This comment describes Other, not the requirement. */
++  require constraint { true }
++ }
++ requirement undocumented { require constraint { true } }
++}`)
++	byName := map[string]map[string]any{}
++	byID := map[any]map[string]any{}
++	for _, el := range elements {
++		if name, ok := el["qualifiedName"].(string); ok {
++			byName[name] = el
++		}
++		byID[el["@id"]] = el
++	}
++	docs, ok := byName["DocumentationFacts::r"]["documentation"].([]any)
++	if !ok || len(docs) != 1 {
++		t.Fatalf("typed documentation relationship missing or comment included: %v", byName["DocumentationFacts::r"]["documentation"])
++	}
++	doc := byID[docs[0].(map[string]any)["@id"]]
++	if doc["@type"] != "Documentation" || doc["body"] != "The device shall retain the stated information. " {
++		t.Fatalf("wrong documentation target: %v", doc)
++	}
++	for _, name := range []string{"DocumentationFacts::Other", "DocumentationFacts::undocumented"} {
++		if values, ok := byName[name]["documentation"].([]any); !ok || len(values) != 0 {
++			t.Fatalf("%s acquired documentation: %v", name, byName[name]["documentation"])
++		}
++	}
++}
+diff --git a/internal/frontend/combined/lab_render_test.go b/internal/frontend/combined/lab_render_test.go
+new file mode 100644
+index 0000000..cb61eac
+--- /dev/null
++++ b/internal/frontend/combined/lab_render_test.go
+@@ -0,0 +1,161 @@
++package combined
++
++import (
++	"context"
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++func labRender(t *testing.T, server *Server, source, target string) map[string]any {
++	t.Helper()
++	request, _ := json.Marshal(map[string]any{"content": source, "strictConformance": true})
++	parsed, err := server.Call(context.Background(), "ParseFile", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var result map[string]any
++	if err = json.Unmarshal(parsed, &result); err != nil {
++		t.Fatal(err)
++	}
++	if diagnostics, ok := result["diagnostics"].([]any); ok {
++		for _, raw := range diagnostics {
++			d := raw.(map[string]any)
++			if d["severity"] == "error" {
++				t.Fatalf("invalid fixture: %s", parsed)
++			}
++		}
++	}
++	request, _ = json.Marshal(map[string]any{"modelHash": result["modelHash"], "view": target, "ports": "full"})
++	rendered, err := server.Call(context.Background(), "RenderView", request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err = json.Unmarshal(rendered, &result); err != nil {
++		t.Fatal(err)
++	}
++	return result
++}
++func TestLabAuthoredViewsAndOrigins(t *testing.T) {
++	server, err := New("lab-test")
++	if err != nil {
++		t.Fatal(err)
++	}
++	source, err := os.ReadFile(filepath.Join("..", "..", "..", "examples", "general-views-demo", "vehicle.sysml"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	kinds := map[string]string{"requirementView": "requirement", "definitionView": "definition", "packageView": "package", "plainView": "tree"}
++	for name, kind := range kinds {
++		t.Run(name, func(t *testing.T) {
++			graph := labRender(t, server, string(source), "GeneralViews::"+name)
++			if graph["kind"] != kind {
++				t.Fatalf("kind %v, want %s", graph["kind"], kind)
++			}
++			nodes := graph["nodes"].([]any)
++			if len(nodes) == 0 {
++				t.Fatal("no nodes")
++			}
++			for _, raw := range nodes {
++				node := raw.(map[string]any)
++				origin, ok := node["origin"].(map[string]any)
++				if !ok || origin["startLine"].(float64) < 1 || origin["startCol"].(float64) < 1 {
++					t.Fatalf("missing source origin: %v", node)
++				}
++			}
++		})
++	}
++}
++func TestLabAnonymousConnectorExactOrigin(t *testing.T) {
++	server, err := New("lab-test")
++	if err != nil {
++		t.Fatal(err)
++	}
++	const source = `package LinkDemo {
++ port def Signal;
++ part def Device { port signal : Signal; }
++ part system {
++  part left : Device;
++  part right : Device;
++  connect left.signal to right.signal;
++ }
++}`
++	graph := labRender(t, server, source, "#interconnection:LinkDemo::system")
++	edges := graph["edges"].([]any)
++	if len(edges) != 1 {
++		t.Fatalf("want one anonymous connector: %v", edges)
++	}
++	origin := edges[0].(map[string]any)["origin"].(map[string]any)
++	if origin["startLine"] != float64(7) || origin["startCol"] != float64(3) || origin["endLine"] != float64(7) {
++		t.Fatalf("wrong connector span: %v", origin)
++	}
++	line := strings.Split(source, "\n")[6]
++	start := int(origin["startCol"].(float64)) - 1
++	end := int(origin["endCol"].(float64)) - 1
++	if got := line[start:end]; got != "connect left.signal to right.signal;" {
++		t.Fatalf("connector origin covers %q", got)
++	}
++}
++func TestLabGeometryAndNotesSurviveJSON(t *testing.T) {
++	server, err := New("lab-test")
++	if err != nil {
++		t.Fatal(err)
++	}
++	source, err := os.ReadFile(filepath.Join("..", "..", "ir", "view", "testdata", "shared-notes.sysml"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	graph := labRender(t, server, string(source), "SharedViews::rigView")
++	if graph["canvas"].(map[string]any)["hasSize"] != true {
++		t.Fatal("canvas size lost")
++	}
++	found := false
++	for _, raw := range graph["nodes"].([]any) {
++		node := raw.(map[string]any)
++		if node["name"] != "left" {
++			continue
++		}
++		geometry := node["geometry"].(map[string]any)
++		if geometry["x"] != float64(20) || geometry["width"] != float64(100) || geometry["hasSize"] != true {
++			t.Fatalf("geometry lost: %v", geometry)
++		}
++		found = true
++	}
++	if !found {
++		t.Fatal("left part missing")
++	}
++	notes := graph["notes"].([]any)
++	found = false
++	for _, raw := range notes {
++		note := raw.(map[string]any)
++		if note["text"] == "calibrated" {
++			if note["width"] != float64(120) || note["hasSize"] != true || note["origin"] == nil {
++				t.Fatalf("note lost: %v", note)
++			}
++			found = true
++		}
++	}
++	if !found {
++		t.Fatal("calibrated note missing")
++	}
++}
++
++func TestLabStructuralDepthBoundBeforeExpansion(t *testing.T) {
++	server, err := New("lab-test")
++	if err != nil {
++		t.Fatal(err)
++	}
++	const source = `package Deep {
++ part root { part b { part c { part d { part e { part f { part g; } } } } } }
++ }`
++	graph := labRender(t, server, source, "#interconnection:Deep::root")
++	nodes := graph["nodes"].([]any)
++	if len(nodes) != 5 {
++		t.Fatalf("want root plus four nested levels, got %d", len(nodes))
++	}
++	if notices, ok := graph["notices"].([]any); !ok || len(notices) == 0 || !strings.Contains(notices[len(notices)-1].(string), "4 levels") {
++		t.Fatalf("missing explicit bound notice: %v", graph["notices"])
++	}
++}

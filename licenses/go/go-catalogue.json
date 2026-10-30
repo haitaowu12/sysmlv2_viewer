@@ -1,0 +1,25 @@
+[
+  {
+    "module": "golang.org/x/net",
+    "version": "v0.23.0",
+    "files": [
+      "golang.org_x_net/LICENSE",
+      "golang.org_x_net/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/text",
+    "version": "v0.37.0",
+    "files": [
+      "golang.org_x_text/LICENSE",
+      "golang.org_x_text/PATENTS"
+    ]
+  },
+  {
+    "module": "Go standard library and wasm_exec.js",
+    "version": "go1.27.1",
+    "files": [
+      "Go-LICENSE"
+    ]
+  }
+]
