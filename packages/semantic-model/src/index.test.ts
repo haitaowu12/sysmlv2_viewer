@@ -15,6 +15,31 @@ import {
 const root = resolve('/workspace')
 
 describe('normalized semantic snapshot', () => {
+  it('keeps action succession distinct from state transition', () => {
+    const document = workspaceDocument('package Sample { action def Sequence { first start; then done; } }')
+    const evidence: EngineSemanticEvidence = {
+      schemaVersion: 1, uri: document.uri,
+      elements: [engineElement('succession', 'SuccessionAsUsage', 'Sample::order'), engineElement('transition', 'TransitionUsage', 'Sample::change')],
+      relationships: [],
+    }
+    const result = buildSemanticSnapshot({ ...snapshotInput(document, IdentityRegistry.empty('sample')), evidence: new Map([[document.uri, evidence]]) })
+    expect(result.elements.find((e) => e.rawKind === 'SuccessionAsUsage')?.kind).toBe('SuccessionUsage')
+    expect(result.elements.find((e) => e.rawKind === 'TransitionUsage')?.kind).toBe('TransitionUsage')
+  })
+
+  it('preserves distinct connectors between the same endpoints', () => {
+    const document = workspaceDocument('package Sample { part a; part b; connection c1 connect a to b; connection c2 connect a to b; }')
+    const evidence: EngineSemanticEvidence = {
+      schemaVersion: 1, uri: document.uri,
+      elements: [engineElement('a', 'PartUsage', 'Sample::a'), engineElement('b', 'PartUsage', 'Sample::b'), engineElement('c1', 'ConnectionUsage', 'Sample::c1'), engineElement('c2', 'ConnectionUsage', 'Sample::c2')],
+      relationships: ['c1', 'c2'].flatMap((id) => [engineRelationship(id, 'a', 'source'), engineRelationship(id, 'b', 'target')]),
+    }
+    const result = buildSemanticSnapshot({ ...snapshotInput(document, IdentityRegistry.empty('sample')), evidence: new Map([[document.uri, evidence]]) })
+    const connections = result.relationships.filter((r) => r.kind === 'connection')
+    expect(connections).toHaveLength(2)
+    expect(new Set(connections.map((r) => r.id)).size).toBe(2)
+  })
+
   it('normalizes explicit engine relationship evidence without source inference', () => {
     const document = workspaceDocument(
       'package Sample { part def Vehicle; part vehicle : Vehicle; }',

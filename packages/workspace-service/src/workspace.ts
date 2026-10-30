@@ -1124,6 +1124,8 @@ export class WorkspaceManager {
           name: workspace.displayName,
         },
         commitSha: gitStatus.head,
+        snapshotSha256: snapshot.snapshotSha256,
+        configurationName: snapshot.workspace.configurationName,
         baseline: input.baselineId ?? null,
         languageRelease: snapshot.authority.referenceRelease,
         workbenchVersion: this.options.workbenchVersion ?? '0.0.0',

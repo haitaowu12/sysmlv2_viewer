@@ -1,0 +1,9 @@
+Fictional qualification exercise PS-01, revision A. This is not a client design.
+The pumping station owns one controller and two individually named pump skids, duty and standby, both of the same PumpSkid type. Each skid owns one motor of type Motor.
+A remote operator is outside the station boundary. The operator sends a StartRequest to the station's request port; that boundary port is bound to the controller's request port.
+The controller has separate dutyCommand and standbyCommand output ports. Each pump skid has one conjugated command input port and forwards it by binding to its motor's command input port.
+Each motor has operating states stopped, running and tripped; entry selects stopped. StartRequest changes stopped to running, StopRequest changes running to stopped, FaultNotice changes running to tripped, and ResetRequest changes tripped to stopped. These event-triggered transitions specify behavior; they do not demonstrate execution.
+Requirement PS-CAP-01: The station shall have an installed pump capacity of at least two units. Represent installedPumpCount as Integer 2 and check installedPumpCount >= 2. This attribute is a declared design count, not a computed count of occurrences.
+Assert that the station design satisfies PS-CAP-01 and define a planned InstalledCapacityVerification whose objective verifies PS-CAP-01. No verification has been executed.
+Revision A operational policy proposes that both pump skids may run together. This conflicts with the workshop position and needs a decision before acceptance of the operating architecture.
+Communication protocol, transport latency, physical pump performance, automatic failover and trip reset safeguards have not been specified. Do not invent these; they are outside this qualification model's claims.

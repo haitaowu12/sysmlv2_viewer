@@ -1,0 +1,308 @@
+{
+  "source": {
+    "path": "input.csv",
+    "sha256": "fac19ac6b3b2d1bf10f398bfd80840912899af00d2aa01c58cdd494e7e8d5390"
+  },
+  "facts": [
+    {
+      "sourceId": "A1",
+      "anchor": "input.csv:2",
+      "quotation": {
+        "id": "A1",
+        "record": "context",
+        "owner": "",
+        "name": "context",
+        "type": "",
+        "from": "",
+        "to": " ",
+        "item": " ",
+        "details": "Package CoolerStudy; context owns cooler:Cooler and external operator:Operator"
+      },
+      "modeledFactId": "A1",
+      "modelElements": [
+        "CoolerStudy::context",
+        "CoolerStudy::context::cooler",
+        "CoolerStudy::context::operator"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "A2",
+      "anchor": "input.csv:3",
+      "quotation": {
+        "id": "A2",
+        "record": "part",
+        "owner": "Cooler",
+        "name": "probe",
+        "type": "Probe",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "owned"
+      },
+      "modeledFactId": "A2",
+      "modelElements": [
+        "CoolerStudy::Cooler::probe"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "A3",
+      "anchor": "input.csv:4",
+      "quotation": {
+        "id": "A3",
+        "record": "part",
+        "owner": "Cooler",
+        "name": "controller",
+        "type": "Controller",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "owned"
+      },
+      "modeledFactId": "A3",
+      "modelElements": [
+        "CoolerStudy::Cooler::controller"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "A4",
+      "anchor": "input.csv:5",
+      "quotation": {
+        "id": "A4",
+        "record": "part",
+        "owner": "Cooler",
+        "name": "actuator",
+        "type": "Actuator",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "owned"
+      },
+      "modeledFactId": "A4",
+      "modelElements": [
+        "CoolerStudy::Cooler::actuator"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "I1",
+      "anchor": "input.csv:6",
+      "quotation": {
+        "id": "I1",
+        "record": "interface",
+        "owner": "Cooler",
+        "name": "temperatureTransfer",
+        "type": "TemperatureTransfer",
+        "from": "probe.readings",
+        "to": "controller.readings",
+        "item": "TemperatureReading",
+        "details": "Temperature port type; outgoing item at Probe, conjugated input at Controller"
+      },
+      "modeledFactId": "I1",
+      "modelElements": [
+        "CoolerStudy::TemperatureReading",
+        "CoolerStudy::Temperature",
+        "CoolerStudy::TemperatureTransfer",
+        "CoolerStudy::Cooler::temperatureTransfer"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "I2",
+      "anchor": "input.csv:7",
+      "quotation": {
+        "id": "I2",
+        "record": "interface",
+        "owner": "Cooler",
+        "name": "coolingTransfer",
+        "type": "CoolingTransfer",
+        "from": "controller.cooling",
+        "to": "actuator.cooling",
+        "item": "CoolingCommand",
+        "details": "Cooling port type; outgoing item at Controller, conjugated input at Actuator"
+      },
+      "modeledFactId": "I2",
+      "modelElements": [
+        "CoolerStudy::CoolingCommand",
+        "CoolerStudy::Cooling",
+        "CoolerStudy::CoolingTransfer",
+        "CoolerStudy::Cooler::coolingTransfer"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "I3",
+      "anchor": "input.csv:8",
+      "quotation": {
+        "id": "I3",
+        "record": "interface",
+        "owner": "context",
+        "name": "enableTransfer",
+        "type": "EnableTransfer",
+        "from": "operator.enable",
+        "to": "cooler.enable",
+        "item": "EnableCommand",
+        "details": "Enable port type; outgoing item at Operator, conjugated input at Cooler"
+      },
+      "modeledFactId": "I3",
+      "modelElements": [
+        "CoolerStudy::EnableCommand",
+        "CoolerStudy::Enable",
+        "CoolerStudy::EnableTransfer",
+        "CoolerStudy::context::enableTransfer"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "I4",
+      "anchor": "input.csv:9",
+      "quotation": {
+        "id": "I4",
+        "record": "binding",
+        "owner": "Cooler",
+        "name": "",
+        "type": "",
+        "from": "",
+        "to": "controller.enable",
+        "item": "",
+        "details": "Cooler.enable = controller.enable; both conjugated Enable ports"
+      },
+      "modeledFactId": "I4",
+      "modelElements": [
+        "CoolerStudy::Cooler::enable",
+        "CoolerStudy::Controller::enable"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "P1",
+      "anchor": "input.csv:10",
+      "quotation": {
+        "id": "P1",
+        "record": "attribute",
+        "owner": "Controller",
+        "name": "sampleCapacity",
+        "type": "Integer",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "4"
+      },
+      "modeledFactId": "P1",
+      "modelElements": [
+        "CoolerStudy::Controller::sampleCapacity"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "R1",
+      "anchor": "input.csv:11",
+      "quotation": {
+        "id": "R1",
+        "record": "requirement",
+        "owner": "",
+        "name": "capacityRequirement",
+        "type": "",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "The cooler controller shall retain at least four samples; subject Cooler; controller.sampleCapacity >= 4; satisfy by context.cooler"
+      },
+      "modeledFactId": "R1",
+      "modelElements": [
+        "CoolerStudy::capacityRequirement"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "V1",
+      "anchor": "input.csv:12",
+      "quotation": {
+        "id": "V1",
+        "record": "verification",
+        "owner": "",
+        "name": "CapacityVerification",
+        "type": "",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "Planned verification of capacityRequirement; no test executed"
+      },
+      "modeledFactId": "V1",
+      "modelElements": [
+        "CoolerStudy::CapacityVerification"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "B1",
+      "anchor": "input.csv:13",
+      "quotation": {
+        "id": "B1",
+        "record": "behavior",
+        "owner": "Controller",
+        "name": "Regulate",
+        "type": "",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "start then acquire then decide then issue then done; controller performs it"
+      },
+      "modeledFactId": "B1",
+      "modelElements": [
+        "CoolerStudy::Regulate",
+        "CoolerStudy::Controller::regulate"
+      ],
+      "status": "source-backed"
+    },
+    {
+      "sourceId": "U1",
+      "anchor": "input.csv:14",
+      "quotation": {
+        "id": "U1",
+        "record": "unknown",
+        "owner": "",
+        "name": "",
+        "type": "",
+        "from": "",
+        "to": "",
+        "item": "",
+        "details": "Timing, protocol, temperature units and failure responses are unspecified; do not invent"
+      },
+      "modeledFactId": "U1",
+      "modelElements": [],
+      "status": "unresolved"
+    }
+  ],
+  "interpretations": [
+    {
+      "id": "INT1",
+      "status": "assumption",
+      "text": "The phrase external operator is modeled as a reference part; context owns the reference usage but does not compositionally own Operator."
+    },
+    {
+      "id": "INT2",
+      "status": "assumption",
+      "text": "Unnamed item features use reading or command; unnamed interface end roles use sender and receiver; controller performance usage is regulate typed by Regulate. These names do not assert additional function or protocol."
+    },
+    {
+      "id": "INT3",
+      "status": "unresolved",
+      "text": "No explicit multiplicity was provided. Source uses ordinary unquantified part usages and does not assert redundancy or population cardinalities."
+    },
+    {
+      "id": "INT4",
+      "status": "source-backed",
+      "text": "Temperature, Cooling and Enable port type names come from interface details. Bind connects Cooler.enable and Controller.enable, both conjugated Enable ports; it does not invent an extra directed channel."
+    }
+  ],
+  "unknowns": [
+    "timing",
+    "protocol",
+    "temperature units",
+    "failure responses"
+  ],
+  "conflicts": []
+}

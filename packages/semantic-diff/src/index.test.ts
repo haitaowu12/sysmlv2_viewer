@@ -4,6 +4,29 @@ import type { SemanticElement, SemanticSnapshot } from '../../semantic-model/src
 import { compareSemanticSnapshots } from './index.js'
 
 describe('identity-aware semantic diff', () => {
+  it('detects endpoint changes when a relationship retains its identity', () => {
+    const before = snapshot(element('Vehicle', 'model/vehicle.sysml'))
+    before.relationships = [{
+      id: 'same-link', kind: 'dependency', sourceId: 'test-case', targetId: 'old-requirement',
+      provenance: { authority: 'qualified-language-engine', extraction: 'pilot-emf-explicit-reference', engineMetaclass: 'Dependency', features: [] },
+    }]
+    const after = structuredClone(before)
+    after.snapshotSha256 = 'after'
+    after.relationships[0]!.targetId = 'new-requirement'
+    expect(compareSemanticSnapshots(before, after).changes).toEqual([
+      expect.objectContaining({ kind: 'relationship-content-changed', relationshipId: 'same-link' }),
+    ])
+  })
+
+  it('detects changed role provenance and rejects duplicate identities', () => {
+    const before = snapshot(element('Vehicle', 'model/vehicle.sysml'))
+    before.relationships = [{ id: 'r', kind: 'interface', sourceId: 'interface', targetId: 'port', provenance: { authority: 'qualified-language-engine', extraction: 'pilot-emf-explicit-reference', engineMetaclass: 'InterfaceUsage', features: ['source'] } }]
+    const after = structuredClone(before); after.relationships[0]!.provenance.features = ['target']
+    expect(compareSemanticSnapshots(before, after).changes[0]?.kind).toBe('relationship-content-changed')
+    after.elements.push(after.elements[0]!)
+    expect(() => compareSemanticSnapshots(before, after)).toThrow('unique identities')
+  })
+
   it('classifies controlled rename and file move without delete/create', () => {
     const before = snapshot(element('Vehicle', 'model/vehicle.sysml'))
     const after = snapshot(element('Platform', 'model/platform.sysml'), 'after')

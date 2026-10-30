@@ -1,0 +1,16 @@
+{
+  "source": "../input.md",
+  "facts": [
+    {"id":"F01","expect":"CoolerStudy::context owns cooler:Cooler and references external operator:Operator"},
+    {"id":"F02","expect":"Cooler owns probe:Probe, controller:Controller and actuator:Actuator"},
+    {"id":"F03","expect":"Temperature, Cooling and Enable port definitions have distinct out items TemperatureReading, CoolingCommand and EnableCommand"},
+    {"id":"F04","expect":"Probe.readings is Temperature; Controller.readings is conjugated Temperature; typed interface flow sends probe observations to controller"},
+    {"id":"F05","expect":"Controller.cooling is Cooling; Actuator.cooling is conjugated Cooling; typed interface flow sends controller commands to actuator"},
+    {"id":"F06","expect":"Operator.enable is Enable; Cooler.enable and Controller.enable are conjugated Enable; typed interface sends operator commands to cooler boundary and binding equates boundary with controller port"},
+    {"id":"F07","expect":"Controller.sampleCapacity is Integer with value 4"},
+    {"id":"F08","expect":"capacityRequirement subject is a Cooler and constraint is subject.controller.sampleCapacity >= 4; satisfaction asserted by context.cooler"},
+    {"id":"F09","expect":"CapacityVerification verifies capacityRequirement; planned case only, no execution result"},
+    {"id":"F10","expect":"Controller performs Regulate with ordered succession start, acquire, decide, issue, done"}
+  ],
+  "excluded": ["protocol","timing","temperature units","failure responses","verification execution","inferred connector arrows","production qualification"]
+}

@@ -30,6 +30,7 @@ import { NativeCommandEditor } from '../components/NativeCommandEditor.js'
 import type { LoadedWorkspace, WorkbenchGateway } from './gateway.js'
 import { AssuranceSurface, type AssuranceActivity } from './AssuranceSurface.js'
 import { ControlledAiSurface } from './ControlledAiSurface.js'
+import { SemanticDiagram } from './SemanticDiagram.js'
 
 type ActivityId = 'explorer' | 'model' | 'diagrams' | 'traceability' | 'interfaces' | 'verification' | 'reviews' | 'changes' | 'reports' | 'assistant' | 'settings'
 type SurfaceId = 'source' | 'diagram' | 'matrix'
@@ -72,6 +73,8 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('problems')
   const [bottomOpen, setBottomOpen] = useState(true)
   const [mode, setMode] = useState<ModelQueryMode>('containment')
+  const [diagramRoot, setDiagramRoot] = useState('')
+  const [diagramDepth, setDiagramDepth] = useState(3)
   const [queryResult, setQueryResult] = useState<ModelQueryResult | null>(null)
   const [queryError, setQueryError] = useState('')
   const [selectedId, setSelectedId] = useState(initialWorkspace.snapshot.elements[0]?.id ?? '')
@@ -96,7 +99,8 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
     void gateway.modelQuery(workspaceId, {
       schemaVersion: 1,
       mode,
-      depth: 5,
+      roots: diagramRoot ? [diagramRoot] : undefined,
+      depth: diagramDepth,
       maxResults: 2_000,
     }).then((result) => {
       if (!active) return
@@ -107,7 +111,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
       setQueryError(cause instanceof Error ? cause.message : 'Model query failed')
     })
     return () => { active = false }
-  }, [gateway, mode, workspaceId, workspace.snapshot.snapshotSha256])
+  }, [gateway, mode, diagramRoot, diagramDepth, workspaceId, workspace.snapshot.snapshotSha256])
 
   useEffect(() => {
     if (!selectedUri) return
@@ -177,9 +181,9 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
         schemaVersion: 1,
         id: `view-${mode}`,
         name: `${EXPLORER_MODES.find((item) => item.id === mode)?.label ?? mode} review`,
-        query: { mode, depth: 5, maxResults: 2_000 },
+        query: { mode, roots: diagramRoot ? [diagramRoot] : undefined, depth: diagramDepth, maxResults: 2_000 },
         notation: surface === 'matrix' ? 'table' : surface === 'diagram' ? notationForMode(mode) : 'model-structure',
-        layout: { positions: defaultPositions(filteredElements) },
+        layout: { positions: {} },
         updatedAt: new Date().toISOString(),
       })
       setWorkspace((current) => ({
@@ -299,7 +303,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
           <section className="saved-views" aria-label="Saved views">
             <h3>Saved views <span>{workspace.views.length}</span></h3>
             {workspace.views.map((view) => (
-              <button type="button" key={view.id} onClick={() => applySavedView(view, setMode, setSurface)}>
+              <button type="button" key={view.id} onClick={() => applySavedView(view, setMode, setSurface, setDiagramRoot, setDiagramDepth)}>
                 {view.name}
               </button>
             ))}
@@ -348,7 +352,7 @@ export function WorkbenchShell({ gateway, initialWorkspace, userId }: WorkbenchS
             )}
             {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'source' && !document && <EmptySurface title="No source document" detail="Select a source-backed model element." />}
             {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'diagram' && (
-              <DiagramSurface snapshot={workspace.snapshot} result={queryResult} selectedId={selectedId} onSelect={selectElement} />
+              <SemanticDiagram snapshot={workspace.snapshot} mode={mode} rootId={diagramRoot} depth={diagramDepth} onRootChange={setDiagramRoot} onDepthChange={setDiagramDepth} onModeChange={setMode} selectedId={selectedId} onSelect={selectElement} />
             )}
             {activity !== 'assistant' && !isAssuranceActivity(activity) && surface === 'matrix' && (
               <MatrixSurface snapshot={workspace.snapshot} result={queryResult} onSelect={selectElement} />
@@ -469,35 +473,6 @@ function SourceSurface({ gateway, workspace, document, userId, onApplied }: {
           />
         </div>
       )}
-    </div>
-  )
-}
-
-function DiagramSurface({ snapshot, result, selectedId, onSelect }: {
-  snapshot: SemanticSnapshot
-  result: ModelQueryResult | null
-  selectedId: string
-  onSelect(element: SemanticElement): void
-}) {
-  const elements = (result?.elements ?? snapshot.elements).slice(0, 120)
-  const relationships = result?.relationships ?? snapshot.relationships
-  return (
-    <div className="semantic-diagram" aria-label="Semantic diagram">
-      <div className="diagram-grid" />
-      {elements.map((element, index) => (
-        <button
-          type="button"
-          key={element.id}
-          className={`diagram-node ${selectedId === element.id ? 'selected' : ''}`}
-          style={{ left: `${28 + (index % 4) * 220}px`, top: `${28 + Math.floor(index / 4) * 112}px` }}
-          onClick={() => onSelect(element)}
-        >
-          <span>{element.kind}</span>
-          <strong>{element.name}</strong>
-          <small>{relationships.filter((item) => item.sourceId === element.id || item.targetId === element.id).length} relationships</small>
-        </button>
-      ))}
-      {elements.length === 0 && <EmptySurface title="Empty projection" detail="Adjust the roots or filters for this view." />}
     </div>
   )
 }
@@ -721,11 +696,9 @@ function notationForMode(mode: ModelQueryMode): SavedWorkbenchView['notation'] {
   return 'model-structure'
 }
 
-function defaultPositions(elements: SemanticElement[]): Record<string, { x: number; y: number }> {
-  return Object.fromEntries(elements.slice(0, 500).map((element, index) => [element.id, { x: (index % 4) * 220, y: Math.floor(index / 4) * 112 }]))
-}
-
-function applySavedView(view: SavedWorkbenchView, setMode: (mode: ModelQueryMode) => void, setSurface: (surface: SurfaceId) => void) {
+function applySavedView(view: SavedWorkbenchView, setMode: (mode: ModelQueryMode) => void, setSurface: (surface: SurfaceId) => void, setRoot: (id: string) => void, setDepth: (depth: number) => void) {
+  setRoot(view.query.roots?.[0] ?? '')
+  setDepth(view.query.depth ?? 3)
   if (view.query.mode) setMode(view.query.mode)
   setSurface(view.notation === 'table' ? 'matrix' : 'diagram')
 }

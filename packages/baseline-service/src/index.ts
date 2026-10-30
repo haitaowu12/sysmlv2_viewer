@@ -5,6 +5,9 @@ import { promisify } from 'node:util'
 import type { LanguageDiagnostic } from '../../language-adapter/src/index.js'
 import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
 import { compareSemanticSnapshots, type SemanticDiff } from '../../semantic-diff/src/index.js'
+import { type SemanticImpact } from '../../semantic-diff/src/impact.js'
+
+import { reviewLifecycleChange, type LifecycleArtifact, type LifecycleReview } from '../../lifecycle-engine/src/index.js'
 
 const executeFile = promisify(execFile)
 
@@ -33,13 +36,17 @@ export interface BaselineManifest {
   languageAuthority: SemanticSnapshot['authority']
   snapshot: SemanticSnapshot
   diagnostics: LanguageDiagnostic[]
+  lifecycleArtifacts?: LifecycleArtifact[]
 }
 
 export interface BaselineComparison {
   schemaVersion: 1
+  workspace?: { id: string; configurationName: string }
   baseline: { id: string; commit: string; snapshotSha256: string }
   current: { commit: string; branch: string; snapshotSha256: string; dirty: boolean }
   semanticDiff: SemanticDiff
+  semanticImpact?: SemanticImpact
+  lifecycleReview?: LifecycleReview
   diagnostics: {
     introduced: LanguageDiagnostic[]
     resolved: LanguageDiagnostic[]
@@ -95,6 +102,8 @@ export class BaselineRepository {
     if (input.snapshot.freshness !== 'current') throw new Error('Baseline requires a current semantic snapshot')
     const status = await readGitStatus(this.rootPath)
     if (status.dirty) throw new Error('Baseline creation requires a clean Git working tree')
+    const lifecycleArtifacts = await this.artifacts()
+    reviewLifecycleChange(input.snapshot, input.snapshot, lifecycleArtifacts, lifecycleArtifacts)
     const manifest: BaselineManifest = {
       schemaVersion: 1,
       id: input.id,
@@ -106,6 +115,7 @@ export class BaselineRepository {
       workbenchVersion: input.workbenchVersion,
       rulePackVersion: input.rulePackVersion,
       languageAuthority: structuredClone(input.snapshot.authority),
+      lifecycleArtifacts,
       snapshot: structuredClone(input.snapshot),
       diagnostics: structuredClone(input.diagnostics).sort(compareDiagnostics),
     }
@@ -123,13 +133,17 @@ export class BaselineRepository {
     const baseline = await this.get(id)
     if (baseline.workspaceId !== currentSnapshot.workspace.id) throw new Error('Baseline belongs to a different workspace')
     const gitStatus = await readGitStatus(this.rootPath)
+    const lifecycleReview = reviewLifecycleChange(baseline.snapshot, currentSnapshot, baseline.lifecycleArtifacts ?? [], await this.artifacts())
     const beforeDiagnostics = new Map(baseline.diagnostics.map((item) => [diagnosticKey(item), item]))
     const afterDiagnostics = new Map(currentDiagnostics.map((item) => [diagnosticKey(item), item]))
     return {
       schemaVersion: 1,
+      workspace: { id: currentSnapshot.workspace.id, configurationName: currentSnapshot.workspace.configurationName },
       baseline: { id: baseline.id, commit: baseline.commit, snapshotSha256: baseline.snapshot.snapshotSha256 },
       current: { commit: gitStatus.head, branch: gitStatus.branch, snapshotSha256: currentSnapshot.snapshotSha256, dirty: gitStatus.dirty },
       semanticDiff: compareSemanticSnapshots(baseline.snapshot, currentSnapshot),
+      semanticImpact: lifecycleReview.semanticImpact,
+      lifecycleReview,
       diagnostics: {
         introduced: [...afterDiagnostics].filter(([key]) => !beforeDiagnostics.has(key)).map(([, item]) => item).sort(compareDiagnostics),
         resolved: [...beforeDiagnostics].filter(([key]) => !afterDiagnostics.has(key)).map(([, item]) => item).sort(compareDiagnostics),
@@ -137,6 +151,22 @@ export class BaselineRepository {
       changedFiles: gitStatus.changedFiles,
       reviewOnlyFiles: gitStatus.changedFiles.filter((file) => file.category === 'review').map((file) => file.path),
       layoutOnlyFiles: gitStatus.changedFiles.filter((file) => file.category === 'layout' || file.category === 'view').map((file) => file.path),
+    }
+  }
+
+  private async artifacts(): Promise<LifecycleArtifact[]> {
+    const root = await realpath(this.rootPath)
+    const path = resolve(root, 'lifecycle', 'artifacts.json')
+    await assertNoSymlinkSegments(root, path)
+    try {
+      const content = await readFile(path, 'utf8')
+      if (Buffer.byteLength(content) > 4 * 1024 * 1024) throw new Error('Lifecycle register exceeds 4 MiB')
+      const value = JSON.parse(content)
+      if (value?.schemaVersion !== 1 || !Array.isArray(value.artifacts)) throw new Error('Invalid lifecycle register')
+      return value.artifacts
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return []
+      throw error
     }
   }
 

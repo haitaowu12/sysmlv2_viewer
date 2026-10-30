@@ -95,8 +95,24 @@ describe('service-backed workbench shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save current view' }))
     await waitFor(() => expect(gateway.saveView).toHaveBeenCalledWith(
       'pilot',
-      expect.objectContaining({ id: 'view-containment', query: { mode: 'containment', depth: 5, maxResults: 2000 } }),
+      expect.objectContaining({ id: 'view-containment', query: { mode: 'containment', roots: undefined, depth: 3, maxResults: 2000 } }),
     ))
+  })
+
+  it('saves and restores the focused model scope and depth', async () => {
+    const gateway = createGateway()
+    render(<WorkbenchShell gateway={gateway} initialWorkspace={loadedWorkspace()} userId="engineer" />)
+    fireEvent.click(screen.getByRole('treeitem', { name: /Controller/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Focus selection' }))
+    fireEvent.change(screen.getByLabelText('Decomposition depth'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save current view' }))
+    await waitFor(() => expect(gateway.saveView).toHaveBeenCalledWith('pilot', expect.objectContaining({
+      query: expect.objectContaining({ roots: ['controller'], depth: 1 }),
+    })))
+    fireEvent.click(screen.getByRole('button', { name: 'Whole model' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Containment review' }))
+    await waitFor(() => expect(gateway.modelQuery).toHaveBeenLastCalledWith('pilot', expect.objectContaining({ roots: ['controller'], depth: 1 })))
+    expect(screen.getByLabelText('Decomposition depth')).toHaveValue('1')
   })
 
   it('runs assurance activities through the local workbench service', async () => {
