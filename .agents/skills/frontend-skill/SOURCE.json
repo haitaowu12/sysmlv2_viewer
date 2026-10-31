@@ -6,9 +6,9 @@
       "source_sha256": "ecd2f0fbc75527b1ab36e682fdfac1a4bdb7768373f9da73b59d9d596149fdc8"
     },
     "SKILL.md": {
-      "sha256": "c9234c59c779ef3cdbc34c7df0036ccbe2cda7ee46ed1c7ab1f117b3b0c3d59a",
+      "sha256": "e1e978f983486eaf5cea6491005cbfdfb9c57ef58d916d62cf9642a8cc02ef48",
       "source": ".agent/skills/development-workflow/specialists/frontend-skill/SKILL.md",
-      "source_sha256": "8d2e229bf00258913ab0454f50a8f5ea99ef95cc61bb8c64f2a3ebd4fbe88789"
+      "source_sha256": "116ce67c54d6b83c7c9fbf8176982f1ea76e1d8f5f947aad986540a0b06f314a"
     },
     "agents/openai.yaml": {
       "sha256": "b8d5e8c47fecac328be9dffccb9dac3d86b97b488130ec26b662d8c93e241858",
@@ -16,24 +16,24 @@
       "source_sha256": "b8d5e8c47fecac328be9dffccb9dac3d86b97b488130ec26b662d8c93e241858"
     },
     "references/evidence-qa-contract.md": {
-      "sha256": "902352ad7ed8196567842c91405c7d713b80d33db738c960e85e74429e4089c5",
+      "sha256": "7e2ecc722dd33678eb8d80a93f8c01f7b892bd907040b2c4bb427377eef2bca2",
       "source": ".agent/skills/quality-verification/references/evidence-qa-contract.md",
       "source_sha256": "9ab672b762c628688660f898c59bfbad60f3f4bd6b177a0ce336309bbb5048bf"
     },
     "references/product-design-practice.md": {
-      "sha256": "aac904bb294e891d8685607cf391ae12355032c6498def43ee568db41998c195",
+      "sha256": "402bdd7016c6e6144c200ce0cab209c5fe48021e995b1fd2ca426224393779e4",
       "source": ".agent/skills/development-workflow/specialists/frontend-skill/references/product-design-practice.md",
-      "source_sha256": "7913e2d14b22878773247fe2a40fdeebee987fd8dc2ee4c145f4093051f1a7e2"
+      "source_sha256": "d14f2130a0e560df57aab30a7004a0e130fdad01c54d512095be279c05ec6a91"
     },
     "references/ui-design-delivery.md": {
-      "sha256": "400107b52b7d6e35392de50ea3eed6d4482f9766f77394ffd19e169878a5af2b",
+      "sha256": "39c52985ca6a67283ef78ca1d30002ad173d904e81bb75fa75c3d1bf554db4aa",
       "source": ".agent/skills/development-workflow/references/ui-design-delivery.md",
-      "source_sha256": "0c6f14fad8e21bed95db3e3e2814b54044a414cf320018483fa29170225f7449"
+      "source_sha256": "cfcd96c7d76da3c1d82b4e6160bbd863355653f39ee8da28c46189fa36db7987"
     },
     "references/ui-direction-decisions.md": {
-      "sha256": "acd9aa155b6de9471942efd8fd4f9b883a0f20841535497608f64579fba2a00c",
+      "sha256": "6319f31d2ecaac821bc91bf3ae5b57a507ed384c8a1fbc4f74adcaa78f9cd9e0",
       "source": ".agent/skills/development-workflow/references/ui-direction-decisions.md",
-      "source_sha256": "70f73e93817c11112e365cf02b0cb2390bb3dccadca8a4836291df16763308dd"
+      "source_sha256": "74959563afaac2371c7d528f91c237a9db722ed425a78a1688860a0999f60748"
     },
     "scripts/frontend_capsule.py": {
       "sha256": "fa5698661c79d66fd383ba5bf64e7ce636e9053769b9bf0bcec059e104e48bd4",
@@ -44,6 +44,6 @@
   "format": "tonys-second-brain.frontend-capsule.v1",
   "repository": "https://github.com/haitaowu12/tonys-second-brain",
   "skill": "frontend-skill",
-  "source_revision": "0595f46dfbe0a47a2d89b1f302176dde2adb08fb",
+  "source_revision": "262b646b45239b81cf998c0e7bb9c1f6d8f2510f",
   "source_revision_verified": false
 }
