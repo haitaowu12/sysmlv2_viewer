@@ -1,4 +1,0 @@
-interface:
-  display_name: "Frontend Skill"
-  short_description: "Task-specific frontend design, implementation, and review"
-  default_prompt: "Use $frontend-skill to design and implement this surface around its primary task, then inspect the rendered result under the existing delivery guidance."
