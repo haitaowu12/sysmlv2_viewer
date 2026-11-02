@@ -45,7 +45,7 @@ The reader records the source revision, brief/open questions, declared change hi
 
 Keep both the editable project JSON and the frozen reader. If an import fails validation, the current project remains; fix a separate copy and retry. Reopen a known saved project file to recover its source, baseline, notes, view recipes and history. Restoring the baseline draft changes only the browser draft; the supplied source file is not overwritten. Review and save any recovery deliberately.
 
-The local Git checkpoint and complete package archive preserve the product source. Notebook note/source backups exclude the product package, so their partial receipt is not complete remote code protection. A package manifest proves file identity, not usability or engineering approval. Do not edit generated readers to repair source facts: fix the source/projection and regenerate.
+Keep a complete backup of the product source and package. A package manifest proves file identity, not usability or engineering approval. Do not edit generated readers to repair source facts: fix the source/projection and regenerate.
 
 Stop the local server with Ctrl+C when finished. Keep the package, project files and reader; temporary validation directories and browser tabs are disposable only after needed outputs are retained.
 
