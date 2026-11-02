@@ -205,3 +205,5 @@ an explicit, validated human approval transaction.
 The preserved service-backed workbench has no public production approval. Its portable macOS arm64
 artifact is an unsigned internal release candidate only; the open P7 gates
 above remain mandatory.
+
+Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) · [More projects](https://haitaowu12.github.io/tony-wu-home/#work).
