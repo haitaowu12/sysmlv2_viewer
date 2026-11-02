@@ -35,6 +35,8 @@ apps/workbench-desktop/src-tauri/target/
 *.njsproj
 *.sln
 *.sw?
+# Local reference-engine compilation and Python caches
+tools/reference-pilot/__pycache__/
 node_modules/
 .codex/
 .openai/

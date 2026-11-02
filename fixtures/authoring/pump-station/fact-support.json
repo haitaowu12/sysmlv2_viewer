@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "links": [
+    {
+      "check": "context::station",
+      "claim": "structure"
+    },
+    {
+      "check": "context::operator",
+      "claim": "boundary"
+    },
+    {
+      "check": "Station::controller",
+      "claim": "structure"
+    },
+    {
+      "check": "Station::duty",
+      "claim": "structure"
+    },
+    {
+      "check": "Station::standby",
+      "claim": "structure"
+    },
+    {
+      "check": "PumpSkid::motor",
+      "claim": "structure"
+    },
+    {
+      "check": "exact-part-count",
+      "claim": "structure"
+    },
+    {
+      "check": "Station::requestForwarding",
+      "claim": "boundary"
+    },
+    {
+      "check": "PumpSkid::commandForwarding",
+      "claim": "forwarding"
+    },
+    {
+      "check": "IF-01",
+      "claim": "IF-01"
+    },
+    {
+      "check": "IF-02",
+      "claim": "IF-02"
+    },
+    {
+      "check": "IF-03",
+      "claim": "IF-03"
+    },
+    {
+      "check": "payload",
+      "claim": "vocabulary"
+    },
+    {
+      "check": "Station::request",
+      "claim": "ports"
+    },
+    {
+      "check": "Controller::request",
+      "claim": "ports"
+    },
+    {
+      "check": "Controller::dutyCommand",
+      "claim": "ports"
+    },
+    {
+      "check": "Controller::standbyCommand",
+      "claim": "ports"
+    },
+    {
+      "check": "PumpSkid::command",
+      "claim": "ports"
+    },
+    {
+      "check": "Motor::command",
+      "claim": "ports"
+    },
+    {
+      "check": "Operator::request",
+      "claim": "ports"
+    },
+    {
+      "check": "Station::installedPumpCount",
+      "claim": "capacity"
+    },
+    {
+      "check": "Station::maximumRunningPumps",
+      "claim": "policy-resolution"
+    },
+    {
+      "check": "motor-state-performance",
+      "claim": "states"
+    },
+    {
+      "check": "stopped",
+      "claim": "states"
+    },
+    {
+      "check": "running",
+      "claim": "states"
+    },
+    {
+      "check": "tripped",
+      "claim": "states"
+    },
+    {
+      "check": "startMotor",
+      "claim": "states"
+    },
+    {
+      "check": "stopMotor",
+      "claim": "states"
+    },
+    {
+      "check": "tripMotor",
+      "claim": "states"
+    },
+    {
+      "check": "resetMotor",
+      "claim": "states"
+    },
+    {
+      "check": "initial-state",
+      "claim": "states"
+    },
+    {
+      "check": "capacity-predicate",
+      "claim": "capacity"
+    },
+    {
+      "check": "capacity-satisfaction",
+      "claim": "assurance"
+    },
+    {
+      "check": "capacity-verification",
+      "claim": "assurance"
+    },
+    {
+      "check": "exchange-flow",
+      "claim": "vocabulary"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ export type CommandKind = (typeof COMMAND_KINDS)[number]
 
 export type CreatableElementKind = Exclude<
   NormalizedElementKind,
-  'OpaqueElement' | 'TransitionUsage'
+  'OpaqueElement' | 'TransitionUsage' | 'SuccessionUsage'
 >
 
 export type CreatableRelationshipKind =

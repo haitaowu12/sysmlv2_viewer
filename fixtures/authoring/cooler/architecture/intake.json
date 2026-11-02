@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Independent input catalog for the fictional authoring trial; frozen separately from candidate evidence. Changes require input review, not automatic regeneration.",
+  "sources": [
+    {
+      "id": "S1",
+      "path": "input.md",
+      "sha256": "4f92597db1de7a133fdba4283f58c79371e8158edcc920ae2398698f67f23e25"
+    }
+  ]
+}

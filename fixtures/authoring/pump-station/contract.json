@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "context::station",
+      "select": {
+        "qualifiedName": "PumpStationStudy::context::station",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::context",
+        "typeIncludes": "PumpStationStudy::Station",
+        "semanticFields": {
+          "isComposite": true
+        }
+      }
+    },
+    {
+      "id": "context::operator",
+      "select": {
+        "qualifiedName": "PumpStationStudy::context::operator",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::context",
+        "typeIncludes": "PumpStationStudy::Operator",
+        "semanticFields": {
+          "isComposite": false
+        }
+      }
+    },
+    {
+      "id": "Station::controller",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::controller",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::Station",
+        "typeIncludes": "PumpStationStudy::Controller",
+        "semanticFields": {
+          "isComposite": true
+        }
+      }
+    },
+    {
+      "id": "Station::duty",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::duty",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::Station",
+        "typeIncludes": "PumpStationStudy::PumpSkid",
+        "semanticFields": {
+          "isComposite": true
+        }
+      }
+    },
+    {
+      "id": "Station::standby",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::standby",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::Station",
+        "typeIncludes": "PumpStationStudy::PumpSkid",
+        "semanticFields": {
+          "isComposite": true
+        }
+      }
+    },
+    {
+      "id": "PumpSkid::motor",
+      "select": {
+        "qualifiedName": "PumpStationStudy::PumpSkid::motor",
+        "metaclass": "PartUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::PumpSkid",
+        "typeIncludes": "PumpStationStudy::Motor",
+        "semanticFields": {
+          "isComposite": true
+        }
+      }
+    },
+    {
+      "id": "exact-part-count",
+      "select": {
+        "metaclass": "PartUsage"
+      },
+      "count": 7,
+      "candidateCount": 7
+    },
+    {
+      "id": "Station::requestForwarding",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::requestForwarding",
+        "metaclass": "BindingConnectorAsUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "endpointsUnordered": [
+          [
+            "PumpStationStudy::Station::request"
+          ],
+          [
+            "PumpStationStudy::Station::controller",
+            "PumpStationStudy::Controller::request"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "PumpSkid::commandForwarding",
+      "select": {
+        "qualifiedName": "PumpStationStudy::PumpSkid::commandForwarding",
+        "metaclass": "BindingConnectorAsUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "endpointsUnordered": [
+          [
+            "PumpStationStudy::PumpSkid::command"
+          ],
+          [
+            "PumpStationStudy::PumpSkid::motor",
+            "PumpStationStudy::Motor::command"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "IF-01",
+      "select": {
+        "qualifiedName": "PumpStationStudy::context::requestLink",
+        "metaclass": "InterfaceUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::CommandExchange",
+        "endpointsUnordered": [
+          [
+            "PumpStationStudy::context::operator",
+            "PumpStationStudy::Operator::request"
+          ],
+          [
+            "PumpStationStudy::context::station",
+            "PumpStationStudy::Station::request"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "IF-02",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::dutyLink",
+        "metaclass": "InterfaceUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::CommandExchange",
+        "endpointsUnordered": [
+          [
+            "PumpStationStudy::Station::controller",
+            "PumpStationStudy::Controller::dutyCommand"
+          ],
+          [
+            "PumpStationStudy::Station::duty",
+            "PumpStationStudy::PumpSkid::command"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "IF-03",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::standbyLink",
+        "metaclass": "InterfaceUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::CommandExchange",
+        "endpointsUnordered": [
+          [
+            "PumpStationStudy::Station::controller",
+            "PumpStationStudy::Controller::standbyCommand"
+          ],
+          [
+            "PumpStationStudy::Station::standby",
+            "PumpStationStudy::PumpSkid::command"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "payload",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Command::request",
+        "metaclass": "ItemUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::StartRequest",
+        "semanticFields": {
+          "direction": "out"
+        }
+      }
+    },
+    {
+      "id": "Station::request",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::request",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command::'~Command'"
+      }
+    },
+    {
+      "id": "Controller::request",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Controller::request",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command::'~Command'"
+      }
+    },
+    {
+      "id": "Controller::dutyCommand",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Controller::dutyCommand",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command"
+      }
+    },
+    {
+      "id": "Controller::standbyCommand",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Controller::standbyCommand",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command"
+      }
+    },
+    {
+      "id": "PumpSkid::command",
+      "select": {
+        "qualifiedName": "PumpStationStudy::PumpSkid::command",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command::'~Command'"
+      }
+    },
+    {
+      "id": "Motor::command",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Motor::command",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command::'~Command'"
+      }
+    },
+    {
+      "id": "Operator::request",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Operator::request",
+        "metaclass": "PortUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::Command"
+      }
+    },
+    {
+      "id": "Station::installedPumpCount",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::installedPumpCount",
+        "metaclass": "AttributeUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "ScalarValues::Integer",
+        "literalValues": [
+          2
+        ]
+      }
+    },
+    {
+      "id": "Station::maximumRunningPumps",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Station::maximumRunningPumps",
+        "metaclass": "AttributeUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "ScalarValues::Integer",
+        "literalValues": [
+          1
+        ]
+      }
+    },
+    {
+      "id": "motor-state-performance",
+      "select": {
+        "qualifiedName": "PumpStationStudy::Motor::operating",
+        "metaclass": "ExhibitStateUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "typeIncludes": "PumpStationStudy::MotorStates",
+        "owner": "PumpStationStudy::Motor"
+      }
+    },
+    {
+      "id": "stopped",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::stopped",
+        "metaclass": "StateUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::MotorStates"
+      }
+    },
+    {
+      "id": "running",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::running",
+        "metaclass": "StateUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::MotorStates"
+      }
+    },
+    {
+      "id": "tripped",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::tripped",
+        "metaclass": "StateUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "owner": "PumpStationStudy::MotorStates"
+      }
+    },
+    {
+      "id": "startMotor",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::startMotor",
+        "metaclass": "TransitionUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "transition": {
+          "source": "PumpStationStudy::MotorStates::stopped",
+          "target": "PumpStationStudy::MotorStates::running",
+          "triggerTypes": [
+            [
+              "PumpStationStudy::StartRequest"
+            ]
+          ],
+          "guardCount": 0,
+          "effectCount": 0
+        }
+      }
+    },
+    {
+      "id": "stopMotor",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::stopMotor",
+        "metaclass": "TransitionUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "transition": {
+          "source": "PumpStationStudy::MotorStates::running",
+          "target": "PumpStationStudy::MotorStates::stopped",
+          "triggerTypes": [
+            [
+              "PumpStationStudy::StopRequest"
+            ]
+          ],
+          "guardCount": 0,
+          "effectCount": 0
+        }
+      }
+    },
+    {
+      "id": "tripMotor",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::tripMotor",
+        "metaclass": "TransitionUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "transition": {
+          "source": "PumpStationStudy::MotorStates::running",
+          "target": "PumpStationStudy::MotorStates::tripped",
+          "triggerTypes": [
+            [
+              "PumpStationStudy::FaultNotice"
+            ]
+          ],
+          "guardCount": 0,
+          "effectCount": 0
+        }
+      }
+    },
+    {
+      "id": "resetMotor",
+      "select": {
+        "qualifiedName": "PumpStationStudy::MotorStates::resetMotor",
+        "metaclass": "TransitionUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "transition": {
+          "source": "PumpStationStudy::MotorStates::tripped",
+          "target": "PumpStationStudy::MotorStates::stopped",
+          "triggerTypes": [
+            [
+              "PumpStationStudy::ResetRequest"
+            ]
+          ],
+          "guardCount": 0,
+          "effectCount": 0
+        }
+      }
+    },
+    {
+      "id": "initial-state",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "PumpStationStudy::MotorStates"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "targets": [
+          [
+            "PumpStationStudy::MotorStates::stopped"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "capacity-predicate",
+      "select": {
+        "metaclass": "ConstraintUsage",
+        "owner": "PumpStationStudy::installedCapacity"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "expression": {
+          "kind": "OperatorExpression",
+          "operator": ">=",
+          "operands": [
+            {
+              "kind": "FeaturePath",
+              "path": [
+                "PumpStationStudy::installedCapacity::station",
+                "PumpStationStudy::Station::installedPumpCount"
+              ]
+            },
+            {
+              "kind": "LiteralInteger",
+              "value": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "capacity-satisfaction",
+      "select": {
+        "metaclass": "SatisfyRequirementUsage"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "references": {
+          "satisfiedRequirement": "PumpStationStudy::installedCapacity"
+        },
+        "referenceTargets": {
+          "satisfyingFeature": "PumpStationStudy::context::station"
+        }
+      }
+    },
+    {
+      "id": "capacity-verification",
+      "select": {
+        "metaclass": "RequirementVerificationMembership"
+      },
+      "count": 1,
+      "candidateCount": 1,
+      "expect": {
+        "references": {
+          "verifiedRequirement": "PumpStationStudy::installedCapacity",
+          "memberElement": "PumpStationStudy::InstalledCapacityVerification::obj::installedCapacity"
+        }
+      }
+    },
+    {
+      "id": "exchange-flow",
+      "select": {
+        "metaclass": "FlowUsage",
+        "owner": "PumpStationStudy::CommandExchange"
+      },
+      "candidateCount": 1,
+      "count": 1,
+      "expect": {
+        "source": [
+          "PumpStationStudy::CommandExchange::source"
+        ],
+        "targets": [
+          [
+            "PumpStationStudy::CommandExchange::target"
+          ]
+        ]
+      }
+    }
+  ]
+}

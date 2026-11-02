@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { SemanticSnapshot } from '../../semantic-model/src/index.js'
+import { renderReport } from '../../report-engine/src/index.js'
 import { BaselineRepository, readGitStatus } from './index.js'
 
 const run = promisify(execFile)
@@ -22,6 +23,31 @@ describe('Git semantic baseline repository', () => {
     const comparison = await baselines.compare('design-review', after, [{ uri: 'file:///pilot/model.sysml', severity: 'warning', code: 'NEW', message: 'new diagnostic' }])
     expect(comparison.semanticDiff.changes).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'element-renamed', elementId: 'engine' })]))
     expect(comparison.diagnostics.introduced).toHaveLength(1)
+    expect(comparison.semanticImpact?.affectedElements.map(e => e.elementId)).toEqual(['engine'])
+  })
+
+  it('captures lifecycle links and reports downstream artifact applicability after a design revision', async () => {
+    const root = await repository()
+    await mkdir(resolve(root, 'lifecycle'))
+    const artifacts = [
+      { id: 'design-drawing', kind: 'design-artifact', revision: 'A', configuration: 'default', modelElementIds: ['engine'], dependsOn: [] },
+      { id: 'sat-observation', kind: 'test-observation', revision: 'historical-pass', configuration: 'default', modelElementIds: [], dependsOn: ['design-drawing'] },
+    ]
+    await writeFile(resolve(root, 'lifecycle/artifacts.json'), JSON.stringify({ schemaVersion: 1, artifacts }))
+    await run('git', ['add', 'lifecycle/artifacts.json'], { cwd: root }); await run('git', ['commit', '-m', 'lifecycle register'], { cwd: root })
+    const baselines = new BaselineRepository(root), model = snapshot('before', 'Engine', 'fingerprint')
+    await baselines.create({ id: 'lifecycle-a', snapshot: model, diagnostics: [], actor: 'test', at: '2026-01-01T00:00:00Z', workbenchVersion: 'test', rulePackVersion: 'test' })
+    artifacts[0]!.revision = 'B'
+    await writeFile(resolve(root, 'lifecycle/artifacts.json'), JSON.stringify({ schemaVersion: 1, artifacts }))
+    const comparison = await baselines.compare('lifecycle-a', model, [])
+    expect(comparison.lifecycleReview?.changedArtifactIds).toEqual(['design-drawing'])
+    expect(comparison.lifecycleReview?.artifactReviews.find(a => a.artifactId === 'sat-observation')?.status).toBe('applicability-review-required')
+    expect((await baselines.get('lifecycle-a')).lifecycleArtifacts?.[0]?.revision).toBe('A')
+    const report = await renderReport({ kind: 'semantic-change-impact', comparison, provenance: {
+      workspace: { id: 'pilot', name: 'Pilot' }, commitSha: comparison.current.commit, snapshotSha256: model.snapshotSha256, configurationName: model.workspace.configurationName, baseline: 'lifecycle-a', languageRelease: 'test', workbenchVersion: 'test', rulePackVersion: 'test', viewConfiguration: null, generatedAt: '2026-01-01T00:00:00Z', unresolvedDiagnostics: 0, exclusions: [],
+    } })
+    expect(report.html).toContain('sat-observation'); expect(report.html).toContain('applicability-review-required')
+    expect(report.pdf.length).toBeGreaterThan(100)
   })
 
   it('classifies working-tree source, review, and layout changes', async () => {

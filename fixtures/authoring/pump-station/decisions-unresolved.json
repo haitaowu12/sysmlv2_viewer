@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "decisions": [
+    {
+      "id": "PS-POLICY-01",
+      "question": "May both pumps run simultaneously?",
+      "impact": "blocking",
+      "status": "open",
+      "sourceClaims": [
+        "policy-conflict"
+      ],
+      "resolutionClaim": null,
+      "scopeReason": null,
+      "resolutionChecks": []
+    },
+    {
+      "id": "PS-DETAIL-01",
+      "question": "What are protocol, latency, physical performance and failover/reset safeguards?",
+      "impact": "outside-claims",
+      "status": "open",
+      "sourceClaims": [
+        "unknowns"
+      ],
+      "resolutionClaim": null,
+      "scopeReason": "This fixture qualifies declared architecture and event transitions only; implementation/enforcement and physical performance are not accepted.",
+      "resolutionChecks": []
+    }
+  ]
+}

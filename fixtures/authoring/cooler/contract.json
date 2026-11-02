@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "owned-probe",
+      "select": {
+        "qualifiedName": "CoolerStudy::Cooler::probe"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "owner": "CoolerStudy::Cooler",
+        "typeIncludes": "CoolerStudy::Probe",
+        "semanticFields": {
+          "isComposite": true
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "owned-controller",
+      "select": {
+        "qualifiedName": "CoolerStudy::Cooler::controller"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "owner": "CoolerStudy::Cooler",
+        "typeIncludes": "CoolerStudy::Controller",
+        "semanticFields": {
+          "isComposite": true
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "owned-actuator",
+      "select": {
+        "qualifiedName": "CoolerStudy::Cooler::actuator"
+      },
+      "expect": {
+        "metaclass": "PartUsage",
+        "owner": "CoolerStudy::Cooler",
+        "typeIncludes": "CoolerStudy::Actuator",
+        "semanticFields": {
+          "isComposite": true
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "context-system",
+      "select": {
+        "qualifiedName": "CoolerStudy::context::cooler"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::Cooler",
+        "semanticFields": {
+          "isComposite": true
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "external-operator",
+      "select": {
+        "qualifiedName": "CoolerStudy::context::operator"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::Operator",
+        "semanticFields": {
+          "isComposite": false
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Probe::readings",
+      "select": {
+        "qualifiedName": "CoolerStudy::Probe::readings"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Temperature"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Controller::readings",
+      "select": {
+        "qualifiedName": "CoolerStudy::Controller::readings"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Temperature::'~Temperature'"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Controller::cooling",
+      "select": {
+        "qualifiedName": "CoolerStudy::Controller::cooling"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Cooling"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Actuator::cooling",
+      "select": {
+        "qualifiedName": "CoolerStudy::Actuator::cooling"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Cooling::'~Cooling'"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Operator::enable",
+      "select": {
+        "qualifiedName": "CoolerStudy::Operator::enable"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Enable"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Cooler::enable",
+      "select": {
+        "qualifiedName": "CoolerStudy::Cooler::enable"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Enable::'~Enable'"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "port-Controller::enable",
+      "select": {
+        "qualifiedName": "CoolerStudy::Controller::enable"
+      },
+      "expect": {
+        "metaclass": "PortUsage",
+        "typeIncludes": "CoolerStudy::Enable::'~Enable'"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "payload-Temperature",
+      "select": {
+        "metaclass": "ItemUsage",
+        "owner": "CoolerStudy::Temperature"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::TemperatureReading",
+        "semanticFields": {
+          "direction": "out"
+        }
+      },
+      "count": 1
+    },
+    {
+      "id": "payload-Cooling",
+      "select": {
+        "metaclass": "ItemUsage",
+        "owner": "CoolerStudy::Cooling"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::CoolingCommand",
+        "semanticFields": {
+          "direction": "out"
+        }
+      },
+      "count": 1
+    },
+    {
+      "id": "payload-Enable",
+      "select": {
+        "metaclass": "ItemUsage",
+        "owner": "CoolerStudy::Enable"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::EnableCommand",
+        "semanticFields": {
+          "direction": "out"
+        }
+      },
+      "count": 1
+    },
+    {
+      "id": "interface-temperature",
+      "select": {
+        "metaclass": "InterfaceUsage",
+        "owner": "CoolerStudy::Cooler"
+      },
+      "expect": {
+        "endpoints": [
+          [
+            "CoolerStudy::Cooler::probe",
+            "CoolerStudy::Probe::readings"
+          ],
+          [
+            "CoolerStudy::Cooler::controller",
+            "CoolerStudy::Controller::readings"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "interface-cooling",
+      "select": {
+        "metaclass": "InterfaceUsage",
+        "owner": "CoolerStudy::Cooler"
+      },
+      "expect": {
+        "endpoints": [
+          [
+            "CoolerStudy::Cooler::controller",
+            "CoolerStudy::Controller::cooling"
+          ],
+          [
+            "CoolerStudy::Cooler::actuator",
+            "CoolerStudy::Actuator::cooling"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "interface-enable",
+      "select": {
+        "metaclass": "InterfaceUsage",
+        "owner": "CoolerStudy::context"
+      },
+      "expect": {
+        "endpoints": [
+          [
+            "CoolerStudy::context::operator",
+            "CoolerStudy::Operator::enable"
+          ],
+          [
+            "CoolerStudy::context::cooler",
+            "CoolerStudy::Cooler::enable"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "boundary-binding",
+      "select": {
+        "metaclass": "BindingConnectorAsUsage",
+        "owner": "CoolerStudy::Cooler"
+      },
+      "expect": {
+        "endpointsUnordered": [
+          [
+            "CoolerStudy::Cooler::enable"
+          ],
+          [
+            "CoolerStudy::Cooler::controller",
+            "CoolerStudy::Controller::enable"
+          ]
+        ]
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "capacity",
+      "select": {
+        "qualifiedName": "CoolerStudy::Controller::sampleCapacity"
+      },
+      "expect": {
+        "literalValues": [
+          4
+        ]
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "behavior-start-acquire",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "CoolerStudy::Regulate"
+      },
+      "expect": {
+        "source": [
+          "Actions::Action::start"
+        ],
+        "targets": [
+          [
+            "CoolerStudy::Regulate::acquire"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "behavior-acquire-decide",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "CoolerStudy::Regulate"
+      },
+      "expect": {
+        "source": [
+          "CoolerStudy::Regulate::acquire"
+        ],
+        "targets": [
+          [
+            "CoolerStudy::Regulate::decide"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "behavior-decide-issue",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "CoolerStudy::Regulate"
+      },
+      "expect": {
+        "source": [
+          "CoolerStudy::Regulate::decide"
+        ],
+        "targets": [
+          [
+            "CoolerStudy::Regulate::issue"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "behavior-issue-done",
+      "select": {
+        "metaclass": "SuccessionAsUsage",
+        "owner": "CoolerStudy::Regulate"
+      },
+      "expect": {
+        "source": [
+          "CoolerStudy::Regulate::issue"
+        ],
+        "targets": [
+          [
+            "Actions::Action::done"
+          ]
+        ]
+      },
+      "count": 1
+    },
+    {
+      "id": "requirement",
+      "select": {
+        "qualifiedName": "CoolerStudy::capacityRequirement"
+      },
+      "expect": {
+        "metaclass": "RequirementUsage"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "requirement-subject",
+      "select": {
+        "metaclass": "ReferenceUsage",
+        "owner": "CoolerStudy::capacityRequirement"
+      },
+      "expect": {
+        "typeIncludes": "CoolerStudy::Cooler"
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "satisfaction-target",
+      "select": {
+        "metaclass": "SatisfyRequirementUsage"
+      },
+      "expect": {
+        "references": {
+          "satisfiedRequirement": "CoolerStudy::capacityRequirement",
+          "satisfyingFeature": "CoolerStudy::context::cooler"
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "verification",
+      "select": {
+        "qualifiedName": "CoolerStudy::CapacityVerification"
+      },
+      "expect": {
+        "metaclass": "VerificationCaseDefinition",
+        "references": {
+          "verifiedRequirement": "CoolerStudy::capacityRequirement"
+        }
+      },
+      "count": 1,
+      "candidateCount": 1
+    },
+    {
+      "id": "one-explicit-attribute",
+      "select": {
+        "metaclass": "AttributeUsage"
+      },
+      "expect": {},
+      "count": 1
+    },
+    {
+      "id": "controller-performs-regulate",
+      "select": {
+        "qualifiedName": "CoolerStudy::Controller::regulate"
+      },
+      "candidateCount": 1,
+      "expect": {
+        "metaclass": "PerformActionUsage",
+        "owner": "CoolerStudy::Controller",
+        "types": [
+          "CoolerStudy::Regulate"
+        ]
+      }
+    },
+    {
+      "id": "requirement-constraint",
+      "select": {
+        "metaclass": "ConstraintUsage",
+        "owner": "CoolerStudy::capacityRequirement"
+      },
+      "candidateCount": 1,
+      "expect": {
+        "expression": {
+          "kind": "OperatorExpression",
+          "operator": ">=",
+          "operands": [
+            {
+              "kind": "FeaturePath",
+              "path": [
+                "CoolerStudy::capacityRequirement::cooler",
+                "CoolerStudy::Cooler::controller",
+                "CoolerStudy::Controller::sampleCapacity"
+              ]
+            },
+            {
+              "kind": "LiteralInteger",
+              "value": 4
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "sources": [
+    {
+      "id": "S1",
+      "path": "input.md",
+      "sha256": "4f6d312d6c8f54cc18d9f3bbf8a2b5783c6d88d3ab9e98628060b08168ce286f",
+      "kind": "fictional modeling conversation"
+    }
+  ],
+  "facts": [
+    {
+      "id": "F01",
+      "source": "S1",
+      "anchor": "line 2",
+      "quotation": "User: Let's model a cooler, package CoolerStudy. The context has cooler of type Cooler and an external operator of type Operator.",
+      "modelElements": [
+        "CoolerStudy::context",
+        "CoolerStudy::context::cooler",
+        "CoolerStudy::context::operator"
+      ],
+      "interpretation": "Cooler context contains cooler:Cooler and references external operator:Operator.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F02",
+      "source": "S1",
+      "anchor": "line 4",
+      "quotation": "User: probe:Probe, controller:Controller, actuator:Actuator. Keep those role/type names.",
+      "modelElements": [
+        "CoolerStudy::Cooler::probe",
+        "CoolerStudy::Cooler::controller",
+        "CoolerStudy::Cooler::actuator"
+      ],
+      "interpretation": "Cooler owns probe:Probe, controller:Controller and actuator:Actuator; no explicit multiplicities supplied.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F03",
+      "source": "S1",
+      "anchor": "line 6",
+      "quotation": "User: Probe sends TemperatureReading to Controller, then Controller sends CoolingCommand to Actuator. Name those ports readings and cooling respectively. Their channel types are Temperature and Cooling, with an output item at the sender and the conjugate type at the receiver. Use typed interfaces with directed flows.",
+      "modelElements": [
+        "CoolerStudy::Temperature",
+        "CoolerStudy::TemperatureTransfer",
+        "CoolerStudy::Probe::readings",
+        "CoolerStudy::Controller::readings",
+        "CoolerStudy::Cooler::temperatureTransfer"
+      ],
+      "interpretation": "TemperatureReading flows from probe.readings to controller.readings using Temperature sender and conjugate receiver.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F04",
+      "source": "S1",
+      "anchor": "line 6",
+      "quotation": "User: Probe sends TemperatureReading to Controller, then Controller sends CoolingCommand to Actuator. Name those ports readings and cooling respectively. Their channel types are Temperature and Cooling, with an output item at the sender and the conjugate type at the receiver. Use typed interfaces with directed flows.",
+      "modelElements": [
+        "CoolerStudy::Cooling",
+        "CoolerStudy::CoolingTransfer",
+        "CoolerStudy::Controller::cooling",
+        "CoolerStudy::Actuator::cooling",
+        "CoolerStudy::Cooler::coolingTransfer"
+      ],
+      "interpretation": "CoolingCommand flows from controller.cooling to actuator.cooling using Cooling sender and conjugate receiver.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F05",
+      "source": "S1",
+      "anchor": "line 8",
+      "quotation": "User: Operator outputs EnableCommand through enable, typed by an Enable channel. Cooler receives it through a conjugated enable boundary port. Controller has a conjugated enable port too. The boundary and controller ports are bound to each other. The context interface connects operator.enable to cooler.enable with the directed item flow.",
+      "modelElements": [
+        "CoolerStudy::Enable",
+        "CoolerStudy::EnableTransfer",
+        "CoolerStudy::Operator::enable",
+        "CoolerStudy::Cooler::enable",
+        "CoolerStudy::Controller::enable",
+        "CoolerStudy::context::enableTransfer"
+      ],
+      "interpretation": "EnableCommand flows operator.enable to cooler.enable; cooler.enable binds controller.enable.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F06",
+      "source": "S1",
+      "anchor": "line 10",
+      "quotation": "User: Controller sampleCapacity is Integer 4. It performs Regulate: start -> acquire -> decide -> issue -> done. Those are abstract actions only.",
+      "modelElements": [
+        "CoolerStudy::Controller::sampleCapacity",
+        "CoolerStudy::Controller::regulate",
+        "CoolerStudy::Regulate"
+      ],
+      "interpretation": "Integer sampleCapacity has value 4; Controller performs abstract sequence Regulate start acquire decide issue done.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F07",
+      "source": "S1",
+      "anchor": "line 12",
+      "quotation": "User: capacityRequirement says the cooler controller shall retain at least four samples. Use a Cooler subject and controller.sampleCapacity >= 4. Assert satisfaction by context.cooler. Plan CapacityVerification to verify it. Nothing has been executed or passed.",
+      "modelElements": [
+        "CoolerStudy::capacityRequirement",
+        "CoolerStudy::context",
+        "CoolerStudy::CapacityVerification"
+      ],
+      "interpretation": "Requirement subject is Cooler, cooler.controller.sampleCapacity >= 4; context.cooler asserts satisfaction; verification planned only.",
+      "status": "user-confirmed"
+    },
+    {
+      "id": "F08",
+      "source": "S1",
+      "anchor": "line 14",
+      "quotation": "User: All unspecified. Keep them open. Build and validate the model, show context, decomposition, interconnection, behavior, requirements and verification as different views of the same model. Record this conversation as evidence.",
+      "modelElements": [],
+      "interpretation": "Timing, protocol, units and failure response remain unspecified; six views requested.",
+      "status": "user-confirmed"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "topic": "timing",
+      "status": "unresolved",
+      "source": "S1",
+      "anchor": "line 14"
+    },
+    {
+      "id": "U2",
+      "topic": "protocol",
+      "status": "unresolved",
+      "source": "S1",
+      "anchor": "line 14"
+    },
+    {
+      "id": "U3",
+      "topic": "temperature units",
+      "status": "unresolved",
+      "source": "S1",
+      "anchor": "line 14"
+    },
+    {
+      "id": "U4",
+      "topic": "failure response",
+      "status": "unresolved",
+      "source": "S1",
+      "anchor": "line 14"
+    },
+    {
+      "id": "U5",
+      "topic": "multiplicity",
+      "status": "unresolved",
+      "source": "S1",
+      "anchor": "not supplied"
+    }
+  ],
+  "interpretationNotes": [
+    "The external operator is a reference usage, not owned by the cooler.",
+    "Abstract actions means unspecified action implementations, not isAbstract=true definitions; the requested performed action sequence remains explicit.",
+    "Transfer type and payload feature identifiers are author-chosen names; they add no protocol, timing or unit semantics.",
+    "Application view presets are projections, not SysML view/viewpoint declarations."
+  ]
+}

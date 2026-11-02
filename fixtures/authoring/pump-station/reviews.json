@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "reviewedSourceSha256": "67ce68bf0e6614b13abd10a98b0b77a982a4d1aab49c9ceaa6f8f7c2041b4bf2",
+  "routes": [
+    {
+      "id": "understand",
+      "title": "Understand the system",
+      "audience": "Project stakeholders",
+      "objective": "Agree the boundary and responsibilities before discussing detailed design.",
+      "steps": [
+        {
+          "viewId": "context",
+          "targets": [
+            "PumpStationStudy::context"
+          ],
+          "question": "Which actors and exchanges are inside this review?"
+        },
+        {
+          "viewId": "station-decomposition",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "Are these responsibilities divided at the right level?"
+        },
+        {
+          "viewId": "exchange-summary",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "Which declared exchanges need an interface agreement?"
+        }
+      ]
+    },
+    {
+      "id": "operate",
+      "title": "Review operating behavior",
+      "audience": "Operators and maintainers",
+      "objective": "Review the declared motor states and their subsystem context; recovery procedures remain to be supplied.",
+      "steps": [
+        {
+          "viewId": "context",
+          "targets": [
+            "PumpStationStudy::context"
+          ],
+          "question": "Who can initiate the declared request?"
+        },
+        {
+          "viewId": "motor-states",
+          "targets": [
+            "PumpStationStudy::MotorStates"
+          ],
+          "question": "Which events cause state changes, and what recovery conditions remain unspecified?"
+        },
+        {
+          "viewId": "skid-detail",
+          "targets": [
+            "PumpStationStudy::PumpSkid"
+          ],
+          "question": "What does this subsystem expose to the wider system?"
+        }
+      ]
+    },
+    {
+      "id": "assure",
+      "title": "Review design assurance",
+      "audience": "Design, verification and commissioning reviewers",
+      "objective": "Review the capacity obligation, design structure and planned check without implying test execution.",
+      "steps": [
+        {
+          "viewId": "capacity-requirement",
+          "targets": [
+            "PumpStationStudy::installedCapacity"
+          ],
+          "question": "Is the capacity obligation agreed for this configuration?"
+        },
+        {
+          "viewId": "station-decomposition",
+          "targets": [
+            "PumpStationStudy::Station"
+          ],
+          "question": "What design information supports the declared capacity, and what needs physical confirmation?"
+        },
+        {
+          "viewId": "capacity-verification",
+          "targets": [
+            "PumpStationStudy::InstalledCapacityVerification"
+          ],
+          "question": "What independent acceptance criteria, procedure and configuration evidence are still needed?"
+        }
+      ]
+    }
+  ]
+}

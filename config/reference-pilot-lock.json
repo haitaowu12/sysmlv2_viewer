@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "status": "independent-reference-candidate-not-production-workbench-runtime",
+  "language": "SysML 2.0 / KerML 1.0",
+  "release": "2025-09",
+  "package": "jupyter-sysml-kernel-0.52.0.zip",
+  "source": "https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation/releases/tag/2025-09",
+  "jarSha256": "c2e6ae9a526108d8caf324933ef22f617578e5d8d519870e1f5ff29ab315f517",
+  "libraryTreeSha256": "5e8c5ce8ae13be1ca73ffd22979b01811a25c2d09a19cbd44071d0bbfb2e2702",
+  "specificationPdfSha256": "46e6c0476a6f1f34f367d57e039d56659bff75e41d2e4b3d37ca4cadea84a83a"
+}

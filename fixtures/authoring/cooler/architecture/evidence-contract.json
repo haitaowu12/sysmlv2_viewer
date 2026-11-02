@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 1,
+  "coverageProfile": "source-declarations-v1",
+  "model": {
+    "path": "model.sysml",
+    "sha256": "ad2fe61bb3d1e40c7d9b64a2fcd3905003928d7c3b22095d6e263f75425d0823"
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "path": "input.md",
+      "sha256": "4f92597db1de7a133fdba4283f58c79371e8158edcc920ae2398698f67f23e25"
+    }
+  ],
+  "auditNote": "Retrospective citation/coverage audit of the existing candidate. Independent intended facts remain in ../contract.json. Not an independent generation trial or proof of source entailment.",
+  "claims": [
+    {
+      "id": "structure",
+      "status": "source-backed",
+      "interpretation": "Package and system boundary; reusable types and owned versus external part roles. Definition names are derived from the explicit role/type names.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "Create a SysML v2 model of a cooler system using package CoolerStudy. The system context contains cooler:Cooler and an external operator:Operator. Cooler owns probe:Probe and controller:Controller. Probe provides temperature observations to controller; controller sends cooling commands to an actuator:Actuator, also owned by Cooler. Operator provides an enable command to the Cooler boundary; the boundary forwards that same command to controller. Use these exact role/type names for traceability."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "Package",
+            "qualifiedName": "CoolerStudy"
+          },
+          "sourceSha256": "c9c85d08f853c66e86c9b1cb05aa0d363d8efc47f4798d1d14f9b7d8b7525090"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "CoolerStudy::Operator"
+          },
+          "sourceSha256": "c4cb48c9db3a5b041c951c1b3e03a1db5e038ac3425fb67a5979e95b1f6c39e5"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "CoolerStudy::Probe"
+          },
+          "sourceSha256": "49056c7f5e901f3fcebc22f5c205b53e55763886f867128f08f0312076f524ba"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "CoolerStudy::Actuator"
+          },
+          "sourceSha256": "8b51c3e56ff52cc02a449c2c89ffa64bd21621e373e5fd4286dfc25bb19e6abd"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "CoolerStudy::Controller"
+          },
+          "sourceSha256": "576589576a41430200e49f6925c63270f8e546dc1a0b598fd10d7fb831b58e21"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "CoolerStudy::Cooler"
+          },
+          "sourceSha256": "fca3a48a3dac227b67e7b3409e8bdeb59260fa8c9bbf7b98256a0350cd890fd4"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::Cooler::probe"
+          },
+          "sourceSha256": "82e8d9e376df76114c347e068b8d9b108aec702abe57e35060decb87818346ff"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::Cooler::controller"
+          },
+          "sourceSha256": "1b0ef09d94a50c02fbd331059b6fe70893e8cbdc020b4a1fbf2f62a75758a5ed"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::Cooler::actuator"
+          },
+          "sourceSha256": "e14d52ab7e6d4be01398ca2729c4b5b6585fd2d9b6ff34a379affa4a0e57f970"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::context"
+          },
+          "sourceSha256": "e4a725e4fb976af4eab73eaac8b2e2dd0774fb011302aaa12353052df5fd3160"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::context::cooler"
+          },
+          "sourceSha256": "4311f3fd97018afd6c5f511c68bcc366bae6acf7926a7c47229bda374e05cba4"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "CoolerStudy::context::operator"
+          },
+          "sourceSha256": "2b07eafaae2e781095abf785ed88e288cc44173c9d5cb1611a9ebd471523011d"
+        }
+      ]
+    },
+    {
+      "id": "temperature",
+      "status": "source-backed",
+      "interpretation": "Temperature payload, directed channel, endpoint ports and typed exchange. Local interface/end/item names are representational choices; endpoint direction and payload come from the input.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "TemperatureReading, CoolingCommand, and EnableCommand are distinct exchanged item types. Probe's readings port is an output Temperature channel and controller's readings port is its input conjugate. Controller's cooling port outputs a Cooling channel to actuator's conjugated cooling port. Operator's enable port outputs an Enable channel to Cooler's conjugated enable boundary port; controller also has a conjugated enable port. Define the channel port types with the respective directed item, and explicit typed interfaces with flows for the two internal exchanges and the operator exchange; bind the boundary enable port to controller.enable. Do not treat connector direction as item-flow direction."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "CoolerStudy::TemperatureReading"
+          },
+          "sourceSha256": "41b25bff929d2e2b5c97c22e6ac9d1a623c895c6a1dc9d1457ae27634dc9fa69"
+        },
+        {
+          "select": {
+            "metaclass": "PortDefinition",
+            "qualifiedName": "CoolerStudy::Temperature"
+          },
+          "sourceSha256": "fa306976e3c227ecb9ef795f7116beba4bdc57b9ccffa31c157ffc35d1845974"
+        },
+        {
+          "select": {
+            "metaclass": "ItemUsage",
+            "qualifiedName": "CoolerStudy::Temperature::observation"
+          },
+          "sourceSha256": "4005b6f61fd52b4cae485f6a9209b3d7a9526d972d261c17490a8d0c840d7542"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceDefinition",
+            "qualifiedName": "CoolerStudy::TemperatureExchange"
+          },
+          "sourceSha256": "f6893570ee6d00494d6adaffd1320dbd4d800d961ae65f01f65cdeaa2478e768"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::TemperatureExchange::source"
+          },
+          "sourceSha256": "7fb0600c56b451de70da6e51a4d4962529853a9ee86194d7881d52297bbeb22c"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::TemperatureExchange::target"
+          },
+          "sourceSha256": "15f1c7120de606ef86bb229ed79adfe68a355ee2c235a9f20698e475da390718"
+        },
+        {
+          "select": {
+            "metaclass": "FlowUsage",
+            "line": 15,
+            "owner": "CoolerStudy::TemperatureExchange"
+          },
+          "sourceSha256": "5cfe188345e076c82e3d7820ee0eb58b898ee41411239070302ddad4530d97be"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Probe::readings"
+          },
+          "sourceSha256": "3118f16002f6e23f7acfa24d10402e1317daecb7d71611e3089a3894d94ccd43"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Controller::readings"
+          },
+          "sourceSha256": "5e6c2e2868a253558354f4f18bd30bd1214a144c2cc2a6184463048f2ecb5cca"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "CoolerStudy::Cooler::observations"
+          },
+          "sourceSha256": "bbaa761580b7715b986c88eac42ed0845c5f5f608c562471d6363e8faa290634"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Cooler::observations::source"
+          },
+          "sourceSha256": "2656a7b4c51b6f37b400a9dbedac82e2b991dce4e6109c0f7aa59c38552ad37f"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Cooler::observations::target"
+          },
+          "sourceSha256": "579bbd34d5c4334312e97464043cd4cab9117ace480667fab8e0298425064dae"
+        }
+      ]
+    },
+    {
+      "id": "cooling",
+      "status": "source-backed",
+      "interpretation": "Cooling command payload, directed channel, endpoint ports and typed exchange. Local interface/end/item names are representational choices.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "TemperatureReading, CoolingCommand, and EnableCommand are distinct exchanged item types. Probe's readings port is an output Temperature channel and controller's readings port is its input conjugate. Controller's cooling port outputs a Cooling channel to actuator's conjugated cooling port. Operator's enable port outputs an Enable channel to Cooler's conjugated enable boundary port; controller also has a conjugated enable port. Define the channel port types with the respective directed item, and explicit typed interfaces with flows for the two internal exchanges and the operator exchange; bind the boundary enable port to controller.enable. Do not treat connector direction as item-flow direction."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "CoolerStudy::CoolingCommand"
+          },
+          "sourceSha256": "ff2ba81fad2d55ba6a05b6447f791ad10cbada150502c38c3b91b40b353cd718"
+        },
+        {
+          "select": {
+            "metaclass": "PortDefinition",
+            "qualifiedName": "CoolerStudy::Cooling"
+          },
+          "sourceSha256": "2ae36b70e2bdbf322cc8479357c82227afad08b198834f7ad77476127a091fb6"
+        },
+        {
+          "select": {
+            "metaclass": "ItemUsage",
+            "qualifiedName": "CoolerStudy::Cooling::command"
+          },
+          "sourceSha256": "8cb9b9bcea0f9015c1f3740209cb3a3ced3d5243184232467232cf3b099a48d8"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceDefinition",
+            "qualifiedName": "CoolerStudy::CoolingExchange"
+          },
+          "sourceSha256": "7647da67fac01a89b60924466842a25670b908ec21a589978fef8999d0a06e25"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::CoolingExchange::source"
+          },
+          "sourceSha256": "d5a30b95aba79e00d826ad0240f22bc8eea8b1388a2932ce1d80fb5ca8b67ec0"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::CoolingExchange::target"
+          },
+          "sourceSha256": "b8307acdd617e73b76b7fad7d6574abde40237c387acb42ebf771216eb7cebf3"
+        },
+        {
+          "select": {
+            "metaclass": "FlowUsage",
+            "line": 20,
+            "owner": "CoolerStudy::CoolingExchange"
+          },
+          "sourceSha256": "ec89fc7ce848617f91924239921d19d8f5f5137e9cc1da3cc6ef152b5097d5a1"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Actuator::cooling"
+          },
+          "sourceSha256": "c5f07bc246e5deaed10487b45d3b9eee51e9bef5552241f84b01362a5dec719f"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Controller::cooling"
+          },
+          "sourceSha256": "8a3fb2686af7a4ac87de995743989d9a7157aca01b45c7fa2b7c796c51cdbfbb"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "CoolerStudy::Cooler::commands"
+          },
+          "sourceSha256": "85ce8e0584e255cd6d9cdb96aa8ceecd2690a4b211dd0c4d74fe2747d7bcc27d"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Cooler::commands::source"
+          },
+          "sourceSha256": "6704d670314a79a61283ceefe88fbdaaa9e401d95fbe383d65db33d9121357ab"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Cooler::commands::target"
+          },
+          "sourceSha256": "5bc311db1260a240449ad46619407bd0e736d421e299ce66a9ff97c33dc5805f"
+        }
+      ]
+    },
+    {
+      "id": "enable",
+      "status": "source-backed",
+      "interpretation": "Enable command payload, directed channel, boundary and controller ports and the operator exchange. Local interface/end/item names are representational choices.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "TemperatureReading, CoolingCommand, and EnableCommand are distinct exchanged item types. Probe's readings port is an output Temperature channel and controller's readings port is its input conjugate. Controller's cooling port outputs a Cooling channel to actuator's conjugated cooling port. Operator's enable port outputs an Enable channel to Cooler's conjugated enable boundary port; controller also has a conjugated enable port. Define the channel port types with the respective directed item, and explicit typed interfaces with flows for the two internal exchanges and the operator exchange; bind the boundary enable port to controller.enable. Do not treat connector direction as item-flow direction."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "CoolerStudy::EnableCommand"
+          },
+          "sourceSha256": "3d2fdb5d00e81ce9b69ce0a02430e90d9052d1dd6f7104a31cfd4c9ab588ad83"
+        },
+        {
+          "select": {
+            "metaclass": "PortDefinition",
+            "qualifiedName": "CoolerStudy::Enable"
+          },
+          "sourceSha256": "1725e0f6b25d22af6dad2052063380627b2e90e002d1e74caf396ea89d897528"
+        },
+        {
+          "select": {
+            "metaclass": "ItemUsage",
+            "qualifiedName": "CoolerStudy::Enable::command"
+          },
+          "sourceSha256": "82900c314ac4131428670f37dd9f05390cc58fd5a46f94d3d005920c65b2cca9"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceDefinition",
+            "qualifiedName": "CoolerStudy::EnableExchange"
+          },
+          "sourceSha256": "08c1732c8b15009d57e410296db76cc21a72eb489e160218af24af26ed15c976"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::EnableExchange::source"
+          },
+          "sourceSha256": "715bba2ecd153e218629cf9567a16c4d43c165765fa9e631753aa958fd58075c"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::EnableExchange::target"
+          },
+          "sourceSha256": "4faef4a24d7ec67dee2664d66248279afa89369af195384b1c30f1ba5f0e215e"
+        },
+        {
+          "select": {
+            "metaclass": "FlowUsage",
+            "line": 25,
+            "owner": "CoolerStudy::EnableExchange"
+          },
+          "sourceSha256": "96544008c73768a3fb13fb3c52733c83b51ef08d86546b976f13bbcdc43cd2a3"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Operator::enable"
+          },
+          "sourceSha256": "98c125c2eb69eca29ea99d85ceddf10f81ff96e44a995a7ce517ac60cd5fdee1"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Controller::enable"
+          },
+          "sourceSha256": "99d2647f55dc7468159f08dad28886b784ad21c7f32dbcb7bd34dfa12dbd5a20"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::Cooler::enable"
+          },
+          "sourceSha256": "99d2647f55dc7468159f08dad28886b784ad21c7f32dbcb7bd34dfa12dbd5a20"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "CoolerStudy::context::operatorCommand"
+          },
+          "sourceSha256": "478ab09f5fcf5e6482e0430bb8865cdc33cfcf5ad44aa0b24254966d8c975832"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::context::operatorCommand::source"
+          },
+          "sourceSha256": "c46d941f3a481b8f360a1ac06dace0663a7e4dbefecad0d740cf9a8b875b568e"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "CoolerStudy::context::operatorCommand::target"
+          },
+          "sourceSha256": "6032e2c0ab5bbbc6addf839cab3c4cd739f0eef5665476f4db6b6698e5bb6437"
+        }
+      ]
+    },
+    {
+      "id": "binding",
+      "status": "source-backed",
+      "interpretation": "Boundary enable port is bound to controller.enable; this is not another asserted item flow.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "Create a SysML v2 model of a cooler system using package CoolerStudy. The system context contains cooler:Cooler and an external operator:Operator. Cooler owns probe:Probe and controller:Controller. Probe provides temperature observations to controller; controller sends cooling commands to an actuator:Actuator, also owned by Cooler. Operator provides an enable command to the Cooler boundary; the boundary forwards that same command to controller. Use these exact role/type names for traceability."
+        },
+        {
+          "source": "S1",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "TemperatureReading, CoolingCommand, and EnableCommand are distinct exchanged item types. Probe's readings port is an output Temperature channel and controller's readings port is its input conjugate. Controller's cooling port outputs a Cooling channel to actuator's conjugated cooling port. Operator's enable port outputs an Enable channel to Cooler's conjugated enable boundary port; controller also has a conjugated enable port. Define the channel port types with the respective directed item, and explicit typed interfaces with flows for the two internal exchanges and the operator exchange; bind the boundary enable port to controller.enable. Do not treat connector direction as item-flow direction."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "BindingConnectorAsUsage",
+            "qualifiedName": "CoolerStudy::Cooler::enableForwarding"
+          },
+          "sourceSha256": "db3cbdeb5fe3df143d19cfdbcd3d4263366237c0ce482bf3703c15c18e6c69f6"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "CoolerStudy::Cooler::enableForwarding::thisThing"
+          },
+          "sourceSha256": "e97166b54500da3a32eae48afe8df0970b19abfde3e4f3a50206cd8509feb161"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "CoolerStudy::Cooler::enableForwarding::sameThing"
+          },
+          "sourceSha256": "ba73011757deecb70fce912616605f45e718904aa955b2bc0e1aa5a94d2bd289"
+        }
+      ]
+    },
+    {
+      "id": "capacity",
+      "status": "source-backed",
+      "interpretation": "Controller integer sampleCapacity is 4.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 6,
+          "endLine": 6,
+          "quote": "Controller has integer sampleCapacity = 4. Requirement capacityRequirement: the cooler controller shall retain at least four samples. Bind its subject to a Cooler and model the >=4 constraint, assert satisfaction by context.cooler. Provide a planned CapacityVerification case that verifies this requirement; no execution occurred."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "AttributeUsage",
+            "qualifiedName": "CoolerStudy::Controller::sampleCapacity"
+          },
+          "sourceSha256": "7fe7c42fbdb8dee7de5a681dbafc98c695a8cf35b23ff807670c3f237dfc8722"
+        }
+      ]
+    },
+    {
+      "id": "requirement",
+      "status": "source-backed",
+      "interpretation": "At least four retained samples, a Cooler subject, and a satisfaction assertion by context.cooler. This is not demonstrated satisfaction.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 6,
+          "endLine": 6,
+          "quote": "Controller has integer sampleCapacity = 4. Requirement capacityRequirement: the cooler controller shall retain at least four samples. Bind its subject to a Cooler and model the >=4 constraint, assert satisfaction by context.cooler. Provide a planned CapacityVerification case that verifies this requirement; no execution occurred."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "CoolerStudy::capacityRequirement"
+          },
+          "sourceSha256": "fe362623e86efa9b485ef0669fb89a2af2c2ef556132134d6d3e24a6a358071f"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "CoolerStudy::capacityRequirement::cooler"
+          },
+          "sourceSha256": "ac152f7b4a1398ab6a6b64ad75102837bcfc4d9f2e44b9cd76fff366b679c02b"
+        },
+        {
+          "select": {
+            "metaclass": "ConstraintUsage",
+            "line": 64,
+            "owner": "CoolerStudy::capacityRequirement"
+          },
+          "sourceSha256": "b3f0178b0d49fdebc995b1e74b323509db22fa2c26cfaec79e7035453e660eec"
+        },
+        {
+          "select": {
+            "metaclass": "SatisfyRequirementUsage",
+            "line": 66,
+            "owner": "CoolerStudy"
+          },
+          "sourceSha256": "fdc5fb016fb70761e7fc8d10625c390e6e0107a1ceaaf2640fff7871f2708938"
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "status": "source-backed",
+      "interpretation": "Planned verification refers to the capacity requirement; no execution or successful result is claimed.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 6,
+          "endLine": 6,
+          "quote": "Controller has integer sampleCapacity = 4. Requirement capacityRequirement: the cooler controller shall retain at least four samples. Bind its subject to a Cooler and model the >=4 constraint, assert satisfaction by context.cooler. Provide a planned CapacityVerification case that verifies this requirement; no execution occurred."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "VerificationCaseDefinition",
+            "qualifiedName": "CoolerStudy::CapacityVerification"
+          },
+          "sourceSha256": "77ac14dd8c094df1c810d5b41e025ccc31317e9e6264edd7af01b59c5edee484"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "CoolerStudy::CapacityVerification::cooler"
+          },
+          "sourceSha256": "ac152f7b4a1398ab6a6b64ad75102837bcfc4d9f2e44b9cd76fff366b679c02b"
+        },
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "CoolerStudy::CapacityVerification::obj"
+          },
+          "sourceSha256": "eb6d3e6c646bde45c5fe2617501d6afdba986c76310fcc80fb16bee43b142451"
+        },
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "CoolerStudy::CapacityVerification::obj::capacityRequirement"
+          },
+          "sourceSha256": "6326d58b3d4a1d252998d6e0c30efefe1f4840518ff1a1fd8366354b594f14b4"
+        }
+      ]
+    },
+    {
+      "id": "behavior",
+      "status": "source-backed",
+      "interpretation": "Abstract Regulate sequence and controller performance, without timing or execution semantics.",
+      "citations": [
+        {
+          "source": "S1",
+          "startLine": 8,
+          "endLine": 8,
+          "quote": "Controller performs Regulate behavior: start, acquire, decide, issue, done, in that order. These are abstract actions; timing/protocol/temperature units/failure responses are not specified. Do not invent them. Provide context, decomposition, interconnection, behavior, requirement and verification views of one model. Record sources/unknowns and validate the result."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "PerformActionUsage",
+            "qualifiedName": "CoolerStudy::Controller::regulate"
+          },
+          "sourceSha256": "79f21d8fdaa1d57d6e79a8eed84f26d980c9d39046c4e3157fbef6403285c5a9"
+        },
+        {
+          "select": {
+            "metaclass": "ActionDefinition",
+            "qualifiedName": "CoolerStudy::Regulate"
+          },
+          "sourceSha256": "bf906727f68ef64e84a2c498facec7dcea3a1fe8f92c50822e2f0af63e80bbda"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "line": 55,
+            "owner": "CoolerStudy::Regulate"
+          },
+          "sourceSha256": "21af6f1260f927f5b9b3ff5ca4a5d19493a1a47a5977240d8dca31bc47a63527"
+        },
+        {
+          "select": {
+            "metaclass": "ActionUsage",
+            "qualifiedName": "CoolerStudy::Regulate::acquire"
+          },
+          "sourceSha256": "87d65e35369c5d24a54ad58c1118a4f9c2449b2162f68bc27496cca2a51c6fa0"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "line": 56,
+            "owner": "CoolerStudy::Regulate"
+          },
+          "sourceSha256": "21af6f1260f927f5b9b3ff5ca4a5d19493a1a47a5977240d8dca31bc47a63527"
+        },
+        {
+          "select": {
+            "metaclass": "ActionUsage",
+            "qualifiedName": "CoolerStudy::Regulate::decide"
+          },
+          "sourceSha256": "19d69212525e81d9ef0bf9df2f74e8a61a81891c83647901805054da8d8f56ad"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "line": 57,
+            "owner": "CoolerStudy::Regulate"
+          },
+          "sourceSha256": "21af6f1260f927f5b9b3ff5ca4a5d19493a1a47a5977240d8dca31bc47a63527"
+        },
+        {
+          "select": {
+            "metaclass": "ActionUsage",
+            "qualifiedName": "CoolerStudy::Regulate::issue"
+          },
+          "sourceSha256": "9f7265eead93c255b81723f93a8729b466d12d6b91541edea92e1967cfcafe08"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "line": 58,
+            "owner": "CoolerStudy::Regulate"
+          },
+          "sourceSha256": "20f730ec513d6afc1357d27a7b5c0a6aae13c5ba3c0c42fde087662a531869e0"
+        }
+      ]
+    },
+    {
+      "id": "open-details",
+      "status": "unresolved",
+      "interpretation": "Timing, protocol, temperature units and failure responses are unspecified and are not added to the model.",
+      "citations": [],
+      "targets": []
+    }
+  ]
+}

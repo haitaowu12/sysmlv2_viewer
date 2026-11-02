@@ -1,0 +1,76 @@
+[
+  {
+    "id": "context",
+    "names": [
+      "PumpStationStudy::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "station-structure",
+    "names": [
+      "PumpStationStudy::Station"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "station-decomposition",
+    "names": [
+      "PumpStationStudy::Station"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "skid-detail",
+    "names": [
+      "PumpStationStudy::PumpSkid"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "engineering"
+  },
+  {
+    "id": "motor-states",
+    "names": [
+      "PumpStationStudy::MotorStates"
+    ],
+    "view": "STATE",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "pilot"
+  },
+  {
+    "id": "capacity-requirement",
+    "names": [
+      "PumpStationStudy::installedCapacity"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "capacity-verification",
+    "names": [
+      "PumpStationStudy::InstalledCapacityVerification"
+    ],
+    "view": "TREE",
+    "styles": [],
+    "renderer": "pilot"
+  },
+  {
+    "id": "exchange-summary",
+    "names": [
+      "PumpStationStudy::Station"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [],
+    "renderer": "summary"
+  }
+]

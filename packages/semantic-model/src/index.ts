@@ -41,6 +41,7 @@ export type NormalizedElementKind =
   | 'ActionUsage'
   | 'StateDefinition'
   | 'StateUsage'
+  | 'SuccessionUsage'
   | 'TransitionUsage'
   | 'AttributeDefinition'
   | 'AttributeUsage'
@@ -74,6 +75,7 @@ export const NORMALIZED_ELEMENT_KINDS: readonly NormalizedElementKind[] = [
   'ActionUsage',
   'StateDefinition',
   'StateUsage',
+  'SuccessionUsage',
   'TransitionUsage',
   'AttributeDefinition',
   'AttributeUsage',
@@ -142,6 +144,7 @@ export interface SemanticRelationship {
     authority: 'qualified-language-engine'
     extraction: 'pilot-emf-explicit-reference'
     engineMetaclass: string
+    semanticElementId?: string
     features: string[]
   }
 }
@@ -196,7 +199,7 @@ const METACLASS_KIND: Readonly<Record<string, NormalizedElementKind>> = {
   StateDefinition: 'StateDefinition',
   StateUsage: 'StateUsage',
   TransitionUsage: 'TransitionUsage',
-  SuccessionAsUsage: 'TransitionUsage',
+  SuccessionAsUsage: 'SuccessionUsage',
   AttributeDefinition: 'AttributeDefinition',
   AttributeUsage: 'AttributeUsage',
   ItemDefinition: 'ItemDefinition',
@@ -325,12 +328,13 @@ function buildSemanticSnapshotWithinReconciliation(input: SnapshotInput): Semant
     targetEngineId: string | undefined,
     engineMetaclass: string,
     features: string[],
+    semanticElementId?: string,
   ): void => {
     if (!sourceEngineId || !targetEngineId || sourceEngineId === targetEngineId) return
     const source = semanticByEngineId.get(sourceEngineId)
     const target = semanticByEngineId.get(targetEngineId)
     if (!source || !target) return
-    const key = `${kind}\u0000${source.id}\u0000${target.id}`
+    const key = `${kind}\u0000${source.id}\u0000${target.id}${semanticElementId ? `\u0000${semanticElementId}` : ''}`
     const existing = relationshipMap.get(key)
     if (existing) {
       existing.provenance.features = [...new Set([
@@ -348,6 +352,7 @@ function buildSemanticSnapshotWithinReconciliation(input: SnapshotInput): Semant
         authority: 'qualified-language-engine',
         extraction: 'pilot-emf-explicit-reference',
         engineMetaclass,
+        ...(semanticElementId ? { semanticElementId } : {}),
         features: [...new Set(features)].sort(),
       },
     })
@@ -388,7 +393,7 @@ function buildSemanticSnapshotWithinReconciliation(input: SnapshotInput): Semant
     if (raw.evidence.metaclass === 'InterfaceUsage') {
       const source = targetForFeature(refs, 'source')
       const target = targetForFeature(refs, 'target')
-      addRelationship('connection', source, target, 'InterfaceUsage', ['source', 'target'])
+      addRelationship('connection', source, target, 'InterfaceUsage', ['source', 'target'], semantic.id)
       addRelationship('interface', engineId, source, 'InterfaceUsage', ['source'])
       addRelationship('interface', engineId, target, 'InterfaceUsage', ['target'])
     } else if (raw.evidence.metaclass === 'ConnectionUsage') {
@@ -398,18 +403,35 @@ function buildSemanticSnapshotWithinReconciliation(input: SnapshotInput): Semant
         targetForFeature(refs, 'target'),
         'ConnectionUsage',
         ['source', 'target'],
+        semantic.id,
       )
     } else if (raw.evidence.metaclass === 'FlowUsage') {
-      const endpoints = terminalTargets(
-        engineId,
-        new Set(['Redefinition', 'ReferenceSubsetting']),
-        rawById,
-        relationshipsBySource,
-        memberChildren,
-        semanticByEngineId,
-        (element) => element.kind === 'PortUsage' || element.kind === 'ItemUsage',
+      // Pilot gives FlowEnd semantic role names. Evidence enumeration order is
+      // transport detail and must never determine the direction of a flow.
+      const ends = [...rawById.values()].filter((candidate) =>
+        candidate.evidence.metaclass === 'FlowEnd' &&
+        nearestPublicOwner(candidate.evidence.engineId, rawById, relationshipsBySource) === engineId,
       )
-      addRelationship('flow', endpoints[0], endpoints[1], 'FlowUsage', ['redefinedFeature'])
+      const endpoint = (role: 'source' | 'target'): string | undefined => {
+        const candidates = ends.filter((end) => end.evidence.name === role)
+        if (candidates.length !== 1) return undefined
+        const targets = terminalTargets(
+          candidates[0]!.evidence.engineId,
+          new Set(['Redefinition', 'ReferenceSubsetting']),
+          rawById,
+          relationshipsBySource,
+          memberChildren,
+          semanticByEngineId,
+          (element) => element.kind === 'PortUsage' || element.kind === 'ItemUsage',
+        )
+        return targets.length === 1 ? targets[0] : undefined
+      }
+      const source = endpoint('source')
+      const target = endpoint('target')
+      if (!source || !target) {
+        throw new Error(`Cannot normalize flow ${semantic.qualifiedName}: source/target FlowEnd roles are missing or ambiguous; inspect canonical source`)
+      }
+      addRelationship('flow', source, target, 'FlowUsage', ['FlowEnd.source', 'FlowEnd.target', 'redefinedFeature'], semantic.id)
     } else if (semantic.kind === 'VerificationDefinition' || semantic.kind === 'VerificationUsage') {
       const requirements = terminalTargets(
         engineId,

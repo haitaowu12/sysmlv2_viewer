@@ -1,0 +1,806 @@
+{
+  "schemaVersion": 1,
+  "coverageProfile": "source-declarations-v1",
+  "model": {
+    "path": "model.sysml",
+    "sha256": "67ce68bf0e6614b13abd10a98b0b77a982a4d1aab49c9ceaa6f8f7c2041b4bf2"
+  },
+  "sources": [
+    {
+      "id": "ARCH",
+      "path": "architecture.txt",
+      "sha256": "b3cf79927c34ad2c9caf414c8b111c380cf2fa19e640b91884c137c38c14e395"
+    },
+    {
+      "id": "ICD",
+      "path": "interfaces.csv",
+      "sha256": "0d38839473b282d44beac4f69f4a266c3c84196e3d60f345239acc7923236ad8"
+    },
+    {
+      "id": "WORKSHOP",
+      "path": "workshop.txt",
+      "sha256": "8b49fe551818d74ca2a71a5f10922110bbdc5ba3856d56c3317073db03612b5a"
+    }
+  ],
+  "claims": [
+    {
+      "id": "structure",
+      "status": "source-backed",
+      "interpretation": "Owned controller, two same-type named skids, each owning one motor.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "The pumping station owns one controller and two individually named pump skids, duty and standby, both of the same PumpSkid type. Each skid owns one motor of type Motor."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "PumpStationStudy::Motor"
+          },
+          "sourceSha256": "380057e36364dfebc138e592d34dcd987a4f44a2f5a84a699fff02954118f693"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "PumpStationStudy::PumpSkid"
+          },
+          "sourceSha256": "b5f8636edadc2a984a6e976dd10044ccdb10088ee4ac7c24c4b20d18dcdc8223"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::PumpSkid::motor"
+          },
+          "sourceSha256": "3204d1881a525677f4b11a046cbaedb4371958b04f92c1aacbc6dbb1e75a0a60"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "PumpStationStudy::Controller"
+          },
+          "sourceSha256": "dc06b1a13829246bfe0faaefa46ff3c2a3d1bade7cf00f858a3b3caa53b0ab0a"
+        },
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "PumpStationStudy::Station"
+          },
+          "sourceSha256": "08b103c4be10fec1a38c3821faae5f4d1f790780d245d462421f8d2ac2297d9b"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::Station::controller"
+          },
+          "sourceSha256": "1b0ef09d94a50c02fbd331059b6fe70893e8cbdc020b4a1fbf2f62a75758a5ed"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::Station::duty"
+          },
+          "sourceSha256": "5ffa6fac8f6de9c26b4b487cb1901fe1d6346bc109cdde607b5deb6693e993fc"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::Station::standby"
+          },
+          "sourceSha256": "1d23f54f4be75ad7b6bfbde804315a5a8d3d5d23408f021d5b2d8ae898f7df2e"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::context"
+          },
+          "sourceSha256": "72e43c105356cc6840ed726f1a0b4a680775d042a97f4e7659c769e410626cb1"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::context::station"
+          },
+          "sourceSha256": "f2dc0891607a6b67b932cf1b361513c6772af886ed7273bcdbbbc8271b9228be"
+        }
+      ]
+    },
+    {
+      "id": "boundary",
+      "status": "source-backed",
+      "interpretation": "External operator, station boundary request and controller forwarding.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "A remote operator is outside the station boundary. The operator sends a StartRequest to the station's request port; that boundary port is bound to the controller's request port."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "PartDefinition",
+            "qualifiedName": "PumpStationStudy::Operator"
+          },
+          "sourceSha256": "dd0392913b62bc7715ad348606adca70ba251c996a4be596f76d47fde36b3942"
+        },
+        {
+          "select": {
+            "metaclass": "BindingConnectorAsUsage",
+            "qualifiedName": "PumpStationStudy::Station::requestForwarding"
+          },
+          "sourceSha256": "adce7e76d6c831499e729103bf853005e0b04b3ca70093636af9848c9418b71a"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::Station::requestForwarding::thisThing"
+          },
+          "sourceSha256": "1f58b9145b24d108d7ac38887338b3ea3229833b9c1e418250343f907bfd1047"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::Station::requestForwarding::sameThing"
+          },
+          "sourceSha256": "f7851771134dfc0b3fbafba51990b840db331cc02e4152d6eb4fbcc96685e40b"
+        },
+        {
+          "select": {
+            "metaclass": "PartUsage",
+            "qualifiedName": "PumpStationStudy::context::operator"
+          },
+          "sourceSha256": "2b07eafaae2e781095abf785ed88e288cc44173c9d5cb1611a9ebd471523011d"
+        }
+      ]
+    },
+    {
+      "id": "forwarding",
+      "status": "source-backed",
+      "interpretation": "Each skid forwards its boundary command to its owned motor.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "The controller has separate dutyCommand and standbyCommand output ports. Each pump skid has one conjugated command input port and forwards it by binding to its motor's command input port."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "BindingConnectorAsUsage",
+            "qualifiedName": "PumpStationStudy::PumpSkid::commandForwarding"
+          },
+          "sourceSha256": "e46006c20cf754de02845236f160951ec7be7560bc40454808e9adf6054e40c4"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::PumpSkid::commandForwarding::thisThing"
+          },
+          "sourceSha256": "5d347fd948b66308f502c3f65c8f7e12ff1c5cf8c760bcdfb188ae1ec7b8b618"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::PumpSkid::commandForwarding::sameThing"
+          },
+          "sourceSha256": "99a46be47eda326a698671d6c521699ee6b8b75a374deaf6fb8bcfe412da6243"
+        }
+      ]
+    },
+    {
+      "id": "ports",
+      "status": "source-backed",
+      "interpretation": "Typed source and conjugated recipient ports implement the three input interface rows.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "A remote operator is outside the station boundary. The operator sends a StartRequest to the station's request port; that boundary port is bound to the controller's request port."
+        },
+        {
+          "source": "ARCH",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "The controller has separate dutyCommand and standbyCommand output ports. Each pump skid has one conjugated command input port and forwards it by binding to its motor's command input port."
+        },
+        {
+          "source": "WORKSHOP",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "The naming, packaging and reusable SysML vocabulary in this exercise may be chosen by the model author without changing the source facts. Group all declarations under PumpStationStudy. Use Command ports carrying StartRequest and a CommandExchange interface with a directed flow from source to target. The stop, fault and reset events are motor behavior triggers; no station routing for these events is specified."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Operator::request"
+          },
+          "sourceSha256": "c1dd9c727bdce3d69966ddab9f7cf807daa20a90ecc316a44d922b963fbef037"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Motor::command"
+          },
+          "sourceSha256": "538a5fe1d50f7df1a56aa75c7532619005715db3d181e2f1ec5cc538bf77ef19"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::PumpSkid::command"
+          },
+          "sourceSha256": "538a5fe1d50f7df1a56aa75c7532619005715db3d181e2f1ec5cc538bf77ef19"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Controller::request"
+          },
+          "sourceSha256": "e9c7fc4fa0b425466cdca75e0e018811adfcf6a42eff53ce11bc4d211fff642d"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Controller::dutyCommand"
+          },
+          "sourceSha256": "f30e398367fba533351f403b8dd12a5bf0523fb653ddd042fd9d35704c9468f0"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Controller::standbyCommand"
+          },
+          "sourceSha256": "1fdef2fc33355903c00fae215b8815a0557d998f4bf72a6ecb73169eb5b8a3b4"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Station::request"
+          },
+          "sourceSha256": "e9c7fc4fa0b425466cdca75e0e018811adfcf6a42eff53ce11bc4d211fff642d"
+        }
+      ]
+    },
+    {
+      "id": "vocabulary",
+      "status": "source-backed",
+      "interpretation": "Package, event, port and directed interface vocabulary used to formalize the input.",
+      "citations": [
+        {
+          "source": "WORKSHOP",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "The naming, packaging and reusable SysML vocabulary in this exercise may be chosen by the model author without changing the source facts. Group all declarations under PumpStationStudy. Use Command ports carrying StartRequest and a CommandExchange interface with a directed flow from source to target. The stop, fault and reset events are motor behavior triggers; no station routing for these events is specified."
+        },
+        {
+          "source": "ARCH",
+          "startLine": 5,
+          "endLine": 5,
+          "quote": "Each motor has operating states stopped, running and tripped; entry selects stopped. StartRequest changes stopped to running, StopRequest changes running to stopped, FaultNotice changes running to tripped, and ResetRequest changes tripped to stopped. These event-triggered transitions specify behavior; they do not demonstrate execution."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "Package",
+            "qualifiedName": "PumpStationStudy"
+          },
+          "sourceSha256": "03b610f77c39a838f0f70591ded0d93cd6dea2e27f1dc830fe1377469ce75d85"
+        },
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "PumpStationStudy::StartRequest"
+          },
+          "sourceSha256": "0ae61dbaa099897d73e888c62b3c93bdd1ae3461fba0f1c05439c104d2b8bdfb"
+        },
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "PumpStationStudy::StopRequest"
+          },
+          "sourceSha256": "25ca671743e0999d32492a7e3b89aece46fb463e92444ce4c51eb5ece55e44c3"
+        },
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "PumpStationStudy::FaultNotice"
+          },
+          "sourceSha256": "20d6ccde7d73e915d6bad292fa626b8b8bc041bbc1923fbea6a78df26f450078"
+        },
+        {
+          "select": {
+            "metaclass": "ItemDefinition",
+            "qualifiedName": "PumpStationStudy::ResetRequest"
+          },
+          "sourceSha256": "260d98a99fc2890d72c5d9d1a50c1ec8650dd4b4c029298ec0a787f1c8d9d9ec"
+        },
+        {
+          "select": {
+            "metaclass": "PortDefinition",
+            "qualifiedName": "PumpStationStudy::Command"
+          },
+          "sourceSha256": "6b256a5e16f4c28e55a9ddba02ccdb82c00494e2888c05c36757fe00b55cf886"
+        },
+        {
+          "select": {
+            "metaclass": "ItemUsage",
+            "qualifiedName": "PumpStationStudy::Command::request"
+          },
+          "sourceSha256": "7f48683b5a0efec1ce01bcb62f2e31c1f49a1bb6b2740cbcd6a221d1d6edd075"
+        },
+        {
+          "select": {
+            "metaclass": "InterfaceDefinition",
+            "qualifiedName": "PumpStationStudy::CommandExchange"
+          },
+          "sourceSha256": "0bb32665e92ed85102243bfdcf2eb227f0abfe65f02df54ac89e2de0c2193b25"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::CommandExchange::source"
+          },
+          "sourceSha256": "c33aaea02cb1a865d1db0779be75af5ba98bd1703d31d4fa10f4f04fab18e3a7"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::CommandExchange::target"
+          },
+          "sourceSha256": "c0d2fa72e005a33bb16a56961ab294d940be97d41c38032018ec81404ffc9b58"
+        },
+        {
+          "select": {
+            "metaclass": "FlowUsage",
+            "owner": "PumpStationStudy::CommandExchange",
+            "line": 12
+          },
+          "sourceSha256": "4cca93dbce9e5796a0a5953c8c2588869389931f4660dc5c6820fdb682d8bf64"
+        }
+      ]
+    },
+    {
+      "id": "capacity",
+      "status": "source-backed",
+      "interpretation": "PS-CAP-01 checks the declared installed count against two; count is not derived.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 6,
+          "endLine": 6,
+          "quote": "Requirement PS-CAP-01: The station shall have an installed pump capacity of at least two units. Represent installedPumpCount as Integer 2 and check installedPumpCount >= 2. This attribute is a declared design count, not a computed count of occurrences."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "AttributeUsage",
+            "qualifiedName": "PumpStationStudy::Station::installedPumpCount"
+          },
+          "sourceSha256": "12d92881cbf75449ed0a86c034e1c1d84d3518789f54c96fa6598a24e8f8be96"
+        },
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "PumpStationStudy::installedCapacity"
+          },
+          "sourceSha256": "eca5a4bc279973db89e604f9e1f94ca47addbde0435df3b4dd2aef8ad79c8da4"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::installedCapacity::station"
+          },
+          "sourceSha256": "456142fbdbad9b14d5195c855b1499f187f277b3fee00c0a2137d16e6959548d"
+        },
+        {
+          "select": {
+            "metaclass": "ConstraintUsage",
+            "owner": "PumpStationStudy::installedCapacity",
+            "line": 62
+          },
+          "sourceSha256": "050a78f1ae7fe0706e7c140c4bc571409cf2bd5415964ab00a6ec135e47aa18a"
+        }
+      ]
+    },
+    {
+      "id": "assurance",
+      "status": "source-backed",
+      "interpretation": "Station satisfies the capacity requirement; verification is planned and unexecuted.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 7,
+          "endLine": 7,
+          "quote": "Assert that the station design satisfies PS-CAP-01 and define a planned InstalledCapacityVerification whose objective verifies PS-CAP-01. No verification has been executed."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "SatisfyRequirementUsage",
+            "owner": "PumpStationStudy",
+            "line": 64
+          },
+          "sourceSha256": "3d93514d05095cd6093a6c4c6c3fa17f589366721baeb970733f1c686a7cc973"
+        },
+        {
+          "select": {
+            "metaclass": "VerificationCaseDefinition",
+            "qualifiedName": "PumpStationStudy::InstalledCapacityVerification"
+          },
+          "sourceSha256": "5751bd6b466f8fdae68f6b63403d92e1c36f9779f764c43b398420675b6ed356"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::InstalledCapacityVerification::station"
+          },
+          "sourceSha256": "456142fbdbad9b14d5195c855b1499f187f277b3fee00c0a2137d16e6959548d"
+        },
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "PumpStationStudy::InstalledCapacityVerification::obj"
+          },
+          "sourceSha256": "a5250405af4eff6549858c630b31fc044c8f52d3a3edbc3c909f3e7ac097616b"
+        },
+        {
+          "select": {
+            "metaclass": "RequirementUsage",
+            "qualifiedName": "PumpStationStudy::InstalledCapacityVerification::obj::installedCapacity"
+          },
+          "sourceSha256": "5bd410f76ad2d0a4c400757098e074094a085969b331c87545ae8ae6b8242a4d"
+        }
+      ]
+    },
+    {
+      "id": "states",
+      "status": "source-backed",
+      "interpretation": "Motor exhibits stopped, running and tripped states with the specified initial state and four accepted event transitions.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 5,
+          "endLine": 5,
+          "quote": "Each motor has operating states stopped, running and tripped; entry selects stopped. StartRequest changes stopped to running, StopRequest changes running to stopped, FaultNotice changes running to tripped, and ResetRequest changes tripped to stopped. These event-triggered transitions specify behavior; they do not demonstrate execution."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "ExhibitStateUsage",
+            "qualifiedName": "PumpStationStudy::Motor::operating"
+          },
+          "sourceSha256": "7ca43721f3c0891a066ca39995334322c4f2340a713a3f8aaeec6ace9fc7e346"
+        },
+        {
+          "select": {
+            "metaclass": "StateDefinition",
+            "qualifiedName": "PumpStationStudy::MotorStates"
+          },
+          "sourceSha256": "952d2158b11293dac80d58919745b516aa493980f40fa2904c21e80f69e8280e"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "owner": "PumpStationStudy::MotorStates",
+            "line": 49
+          },
+          "sourceSha256": "8322e87d24582952e5c996da182de0eca66dd2bf58fba5ec56a325c656f21b38"
+        },
+        {
+          "select": {
+            "metaclass": "StateUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::stopped"
+          },
+          "sourceSha256": "3ad8680f0d620bb810203c6b5755f7a49f3e5eba0cb6ef54e380b3ea8175bc29"
+        },
+        {
+          "select": {
+            "metaclass": "StateUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::running"
+          },
+          "sourceSha256": "c80fa919896fff1ea226d461f90c5c348688da627c753e354d21609bf211b285"
+        },
+        {
+          "select": {
+            "metaclass": "StateUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::tripped"
+          },
+          "sourceSha256": "2675bb2e060ecbe77f15ccafccf364441da013f7662dc4877deffef4c5c2859f"
+        },
+        {
+          "select": {
+            "metaclass": "TransitionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::startMotor"
+          },
+          "sourceSha256": "3f91a3dd28194b56d25ba2a83ee69823f810c9bfa692d7245f0f93ab2f2365f4"
+        },
+        {
+          "select": {
+            "metaclass": "AcceptActionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::startMotor::accepter"
+          },
+          "sourceSha256": "ed19a1f1d3afe000dbf2fef4def951fec1928ec1bddf46e8b1ee73e8bf142cb7"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::startMotor::accepter::payload"
+          },
+          "sourceSha256": "ed19a1f1d3afe000dbf2fef4def951fec1928ec1bddf46e8b1ee73e8bf142cb7"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "owner": "PumpStationStudy::MotorStates::startMotor",
+            "line": 53
+          },
+          "sourceSha256": "c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8"
+        },
+        {
+          "select": {
+            "metaclass": "TransitionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::stopMotor"
+          },
+          "sourceSha256": "a57229c4b9f4e6a47df31c7f43a9693b82db8b5d80701e8e225c509ebb392d06"
+        },
+        {
+          "select": {
+            "metaclass": "AcceptActionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::stopMotor::accepter"
+          },
+          "sourceSha256": "3735bbee03d89a200235d81c2b26a86ae1c27065b92d18cd7b6d9ebf0b3db47f"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::stopMotor::accepter::payload"
+          },
+          "sourceSha256": "3735bbee03d89a200235d81c2b26a86ae1c27065b92d18cd7b6d9ebf0b3db47f"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "owner": "PumpStationStudy::MotorStates::stopMotor",
+            "line": 54
+          },
+          "sourceSha256": "8322e87d24582952e5c996da182de0eca66dd2bf58fba5ec56a325c656f21b38"
+        },
+        {
+          "select": {
+            "metaclass": "TransitionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::tripMotor"
+          },
+          "sourceSha256": "3bc5a881b171ac67acd91251dfb88900798af5fc1307eda6bfaf06e925e73800"
+        },
+        {
+          "select": {
+            "metaclass": "AcceptActionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::tripMotor::accepter"
+          },
+          "sourceSha256": "07cb45c5609773d3010cf44ff68b4522a237ee54a59e9424544eb6b6a669c4b5"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::tripMotor::accepter::payload"
+          },
+          "sourceSha256": "07cb45c5609773d3010cf44ff68b4522a237ee54a59e9424544eb6b6a669c4b5"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "owner": "PumpStationStudy::MotorStates::tripMotor",
+            "line": 55
+          },
+          "sourceSha256": "59fed950a8485c212578f3a10e87502d1f197638917c85133b5ac16a2fa3d02c"
+        },
+        {
+          "select": {
+            "metaclass": "TransitionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::resetMotor"
+          },
+          "sourceSha256": "de3e77f5b5107c407f2139e75d4a98d69c8e6a9d4307a079c214c2f3d2a27a31"
+        },
+        {
+          "select": {
+            "metaclass": "AcceptActionUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::resetMotor::accepter"
+          },
+          "sourceSha256": "680d8fd1b1e2d998b9bb45cbb7608ec7c90952df07ee0c73fff6182618f5ee84"
+        },
+        {
+          "select": {
+            "metaclass": "ReferenceUsage",
+            "qualifiedName": "PumpStationStudy::MotorStates::resetMotor::accepter::payload"
+          },
+          "sourceSha256": "680d8fd1b1e2d998b9bb45cbb7608ec7c90952df07ee0c73fff6182618f5ee84"
+        },
+        {
+          "select": {
+            "metaclass": "SuccessionAsUsage",
+            "owner": "PumpStationStudy::MotorStates::resetMotor",
+            "line": 56
+          },
+          "sourceSha256": "8322e87d24582952e5c996da182de0eca66dd2bf58fba5ec56a325c656f21b38"
+        }
+      ]
+    },
+    {
+      "id": "policy-resolution",
+      "status": "source-backed",
+      "interpretation": "The fictional owner decision supports maximumRunningPumps=1, without claiming runtime enforcement.",
+      "citations": [
+        {
+          "source": "WORKSHOP",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "For this qualification exercise, the designated fictional design owner subsequently resolves PS-POLICY-01 in favor of the workshop policy: represent maximumRunningPumps as Integer 1. This resolution supports the declared limit only; runtime enforcement and automatic changeover remain outside scope. It is a test input, not approval from Tony or a real engineering authority."
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "AttributeUsage",
+            "qualifiedName": "PumpStationStudy::Station::maximumRunningPumps"
+          },
+          "sourceSha256": "322b8c35b56678dab146c8b76e3e38c981c107dbcdd716c60fc5acfa63725039"
+        }
+      ]
+    },
+    {
+      "id": "IF-01",
+      "status": "source-backed",
+      "interpretation": "Operator to station StartRequest.",
+      "citations": [
+        {
+          "source": "ICD",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "IF-01,operator,request,station,request,StartRequest"
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "PumpStationStudy::context::requestLink"
+          },
+          "sourceSha256": "8226634854a73e91c64a85b6d19cf27ff3699f7f383f14ab9563812cd44c98d6"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::context::requestLink::source"
+          },
+          "sourceSha256": "0f8c2600945b6bee2ceb6bfb6dd42702106e97a2f3b44f6dc54ed58b86a13d66"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::context::requestLink::target"
+          },
+          "sourceSha256": "e05cf95880270acfd0df14c3674ef0ae5416eebec6bd808bcb7a581b9d6c87b3"
+        }
+      ]
+    },
+    {
+      "id": "IF-02",
+      "status": "source-backed",
+      "interpretation": "Controller dutyCommand to duty skid command StartRequest.",
+      "citations": [
+        {
+          "source": "ICD",
+          "startLine": 3,
+          "endLine": 3,
+          "quote": "IF-02,controller,dutyCommand,duty,command,StartRequest"
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "PumpStationStudy::Station::dutyLink"
+          },
+          "sourceSha256": "ba36500058b7229e9d4c8cfbb055b6f11b359d46a24d64a047008c0ca65ea2fc"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Station::dutyLink::source"
+          },
+          "sourceSha256": "cde0c7a55f83f3bf905fe8fe1a22438436457cf57a0b22659da261d8e55d4d7f"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Station::dutyLink::target"
+          },
+          "sourceSha256": "b4438b752eb6b433c25d2b84339bf0330fd99a32cee9b86c0eac4c36a9750707"
+        }
+      ]
+    },
+    {
+      "id": "IF-03",
+      "status": "source-backed",
+      "interpretation": "Controller standbyCommand to standby skid command StartRequest.",
+      "citations": [
+        {
+          "source": "ICD",
+          "startLine": 4,
+          "endLine": 4,
+          "quote": "IF-03,controller,standbyCommand,standby,command,StartRequest"
+        }
+      ],
+      "targets": [
+        {
+          "select": {
+            "metaclass": "InterfaceUsage",
+            "qualifiedName": "PumpStationStudy::Station::standbyLink"
+          },
+          "sourceSha256": "a6534bf865568e1f3badada4e1e1fbc4435cd57d127f29346a79806e85424c48"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Station::standbyLink::source"
+          },
+          "sourceSha256": "43e8c41e9cc4774bf926c1f4d79ded957cda7e3d4fe0e74f2c60850ad0d5f011"
+        },
+        {
+          "select": {
+            "metaclass": "PortUsage",
+            "qualifiedName": "PumpStationStudy::Station::standbyLink::target"
+          },
+          "sourceSha256": "b97a2d20d88f55bea382372686884e135451c8a3d97f6689b713d0476692d3fa"
+        }
+      ]
+    },
+    {
+      "id": "policy-conflict",
+      "status": "conflict",
+      "interpretation": "Architecture and workshop disagree about simultaneous pump operation; preserve both positions for a decision.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 8,
+          "endLine": 8,
+          "quote": "Revision A operational policy proposes that both pump skids may run together. This conflicts with the workshop position and needs a decision before acceptance of the operating architecture."
+        },
+        {
+          "source": "WORKSHOP",
+          "startLine": 2,
+          "endLine": 2,
+          "quote": "The intended operating policy is one duty pump and one standby pump; simultaneous running is prohibited. This conflicts with architecture revision A. Leave the conflict unresolved in the initial draft; do not quietly select either proposal."
+        }
+      ],
+      "targets": []
+    },
+    {
+      "id": "unknowns",
+      "status": "unresolved",
+      "interpretation": "Protocol, timing, physical performance, failover and reset safeguards are outside the modeled claims.",
+      "citations": [
+        {
+          "source": "ARCH",
+          "startLine": 9,
+          "endLine": 9,
+          "quote": "Communication protocol, transport latency, physical pump performance, automatic failover and trip reset safeguards have not been specified. Do not invent these; they are outside this qualification model's claims."
+        }
+      ],
+      "targets": []
+    }
+  ]
+}

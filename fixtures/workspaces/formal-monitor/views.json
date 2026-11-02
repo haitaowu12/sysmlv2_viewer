@@ -1,0 +1,64 @@
+[
+  {
+    "id": "context",
+    "names": [
+      "MonitorExample::context"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "engineering"
+  },
+  {
+    "id": "decomposition",
+    "names": [
+      "MonitorExample::Monitor"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "interconnection",
+    "names": [
+      "MonitorExample::Monitor"
+    ],
+    "view": "INTERCONNECTION",
+    "styles": [
+      "LR"
+    ],
+    "renderer": "engineering"
+  },
+  {
+    "id": "behavior",
+    "names": [
+      "MonitorExample::Reporting"
+    ],
+    "view": "ACTION",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "requirements",
+    "names": [
+      "MonitorExample::bufferRequirement"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  },
+  {
+    "id": "verification",
+    "names": [
+      "MonitorExample::BufferVerification"
+    ],
+    "view": "TREE",
+    "styles": [
+      "LR"
+    ]
+  }
+]

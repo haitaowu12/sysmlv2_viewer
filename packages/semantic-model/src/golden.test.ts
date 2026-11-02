@@ -35,7 +35,41 @@ const rawEvidence = JSON.parse(
 
 describe('mandatory Phase 2 semantic golden', () => {
   it('reproduces all qualified relationship and query modes from source plus evidence', () => {
-    const evidence = new Map(rawEvidence.map((value) => {
+    const snapshot = goldenSnapshot()
+    expect(new Set(snapshot.relationships.map((relationship) => relationship.kind))).toEqual(
+      new Set(SEMANTIC_RELATIONSHIP_KINDS),
+    )
+    expect(snapshot.relationships.filter((relationship) =>
+      relationship.kind === 'verification',
+    )).toHaveLength(1)
+    for (const mode of [
+      'containment',
+      'type-hierarchy',
+      'neighbourhood',
+      'requirements',
+      'verification',
+      'interfaces',
+    ] as const) {
+      const result = executeModelQuery(snapshot, {
+        schemaVersion: 1,
+        roots: ['Phase2Assurance'],
+        mode,
+        depth: 6,
+        maxResults: 1_000,
+      })
+      expect(result.truncated).toBe(false)
+      expect(result.elements.length).toBeGreaterThan(0)
+    }
+    expect(buildExplorerProjection(snapshot, {
+      roots: ['Phase2Assurance'],
+      mode: 'containment',
+      depth: 6,
+    }).nodes.length).toBeGreaterThan(10)
+  })
+})
+
+function goldenSnapshot(inputEvidence = rawEvidence) {
+    const evidence = new Map(inputEvidence.map((value) => {
       const document = documents.find((item) =>
         value.uri.endsWith(item.absolutePath.endsWith('support.sysml')
           ? '/libraries/support.sysml'
@@ -43,7 +77,7 @@ describe('mandatory Phase 2 semantic golden', () => {
       )!
       return [document.uri, { ...value, uri: document.uri }]
     }))
-    const snapshot = buildSemanticSnapshot({
+    return buildSemanticSnapshot({
       status: {
         workspaceId: 'phase2-semantic',
         rootUri: pathToFileURL(fixtureRoot).href,
@@ -88,34 +122,34 @@ describe('mandatory Phase 2 semantic golden', () => {
       evidence,
       identities: IdentityRegistry.empty('phase2-semantic'),
     })
-    expect(new Set(snapshot.relationships.map((relationship) => relationship.kind))).toEqual(
-      new Set(SEMANTIC_RELATIONSHIP_KINDS),
-    )
-    expect(snapshot.relationships.filter((relationship) =>
-      relationship.kind === 'verification',
-    )).toHaveLength(1)
-    for (const mode of [
-      'containment',
-      'type-hierarchy',
-      'neighbourhood',
-      'requirements',
-      'verification',
-      'interfaces',
-    ] as const) {
-      const result = executeModelQuery(snapshot, {
-        schemaVersion: 1,
-        roots: ['Phase2Assurance'],
-        mode,
-        depth: 6,
-        maxResults: 1_000,
-      })
-      expect(result.truncated).toBe(false)
-      expect(result.elements.length).toBeGreaterThan(0)
+}
+
+
+describe('flow direction is a semantic role, not evidence ordering', () => {
+  it('retains source and target when the evidence arrays are reversed', () => {
+    const reversed = rawEvidence.map((document) => ({
+      ...document,
+      elements: [...document.elements].reverse(),
+      relationships: [...document.relationships].reverse(),
+    }))
+    for (const evidence of [rawEvidence, reversed]) {
+      const snapshot = goldenSnapshot(evidence)
+      const byId = new Map(snapshot.elements.map((element) => [element.id, element.qualifiedName]))
+      const flows = snapshot.relationships.filter((relationship) => relationship.kind === 'flow')
+      expect(flows).toHaveLength(1)
+      expect(flows.map((flow) => [byId.get(flow.sourceId), byId.get(flow.targetId)])).toEqual([
+        ['Phase2Assurance::vehicle::commandIn', 'Phase2Assurance::vehicle::commandOut'],
+      ])
     }
-    expect(buildExplorerProjection(snapshot, {
-      roots: ['Phase2Assurance'],
-      mode: 'containment',
-      depth: 6,
-    }).nodes.length).toBeGreaterThan(10)
   })
+})
+
+
+it('rejects missing flow roles instead of inventing a direction', () => {
+  const missingRole = rawEvidence.map((document) => ({
+    ...document,
+    elements: document.elements.map((element) => element.metaclass === 'FlowEnd'
+      ? { ...element, name: undefined } : element),
+  }))
+  expect(() => goldenSnapshot(missingRole)).toThrow('source/target FlowEnd roles are missing or ambiguous')
 })

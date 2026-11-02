@@ -295,7 +295,7 @@ function renderElement(
   nameValue: string,
   typeQualifiedName?: string,
 ): string {
-  if (kind === 'OpaqueElement' || kind === 'TransitionUsage') {
+  if (kind === 'OpaqueElement' || kind === 'TransitionUsage' || kind === 'SuccessionUsage') {
     throw new StructuredSourceEditError(`Element kind is not creatable: ${kind}`)
   }
   const name = identifier(nameValue)
@@ -353,6 +353,7 @@ function declarationPrefix(kind: NormalizedElementKind): string {
     StateDefinition: 'state def',
     StateUsage: 'state',
     TransitionUsage: 'transition',
+    SuccessionUsage: 'succession',
     AttributeDefinition: 'attribute def',
     AttributeUsage: 'attribute',
     ItemDefinition: 'item def',

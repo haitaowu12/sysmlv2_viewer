@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "ARCH",
+      "path": "architecture.txt",
+      "sha256": "b3cf79927c34ad2c9caf414c8b111c380cf2fa19e640b91884c137c38c14e395"
+    },
+    {
+      "id": "ICD",
+      "path": "interfaces.csv",
+      "sha256": "0d38839473b282d44beac4f69f4a266c3c84196e3d60f345239acc7923236ad8"
+    },
+    {
+      "id": "WORKSHOP",
+      "path": "workshop.txt",
+      "sha256": "8b49fe551818d74ca2a71a5f10922110bbdc5ba3856d56c3317073db03612b5a"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "basis": "S1 conversation; recorded before validation/render inspection",
+  "facts": [
+    {
+      "id": "F01",
+      "interpretation": "Cooler context contains cooler:Cooler and references external operator:Operator.",
+      "modelElements": [
+        "CoolerStudy::context",
+        "CoolerStudy::context::cooler",
+        "CoolerStudy::context::operator"
+      ]
+    },
+    {
+      "id": "F02",
+      "interpretation": "Cooler owns probe:Probe, controller:Controller and actuator:Actuator; no explicit multiplicities supplied.",
+      "modelElements": [
+        "CoolerStudy::Cooler::probe",
+        "CoolerStudy::Cooler::controller",
+        "CoolerStudy::Cooler::actuator"
+      ]
+    },
+    {
+      "id": "F03",
+      "interpretation": "TemperatureReading flows from probe.readings to controller.readings using Temperature sender and conjugate receiver.",
+      "modelElements": [
+        "CoolerStudy::Temperature",
+        "CoolerStudy::TemperatureTransfer",
+        "CoolerStudy::Probe::readings",
+        "CoolerStudy::Controller::readings",
+        "CoolerStudy::Cooler::temperatureTransfer"
+      ]
+    },
+    {
+      "id": "F04",
+      "interpretation": "CoolingCommand flows from controller.cooling to actuator.cooling using Cooling sender and conjugate receiver.",
+      "modelElements": [
+        "CoolerStudy::Cooling",
+        "CoolerStudy::CoolingTransfer",
+        "CoolerStudy::Controller::cooling",
+        "CoolerStudy::Actuator::cooling",
+        "CoolerStudy::Cooler::coolingTransfer"
+      ]
+    },
+    {
+      "id": "F05",
+      "interpretation": "EnableCommand flows operator.enable to cooler.enable; cooler.enable binds controller.enable.",
+      "modelElements": [
+        "CoolerStudy::Enable",
+        "CoolerStudy::EnableTransfer",
+        "CoolerStudy::Operator::enable",
+        "CoolerStudy::Cooler::enable",
+        "CoolerStudy::Controller::enable",
+        "CoolerStudy::context::enableTransfer"
+      ]
+    },
+    {
+      "id": "F06",
+      "interpretation": "Integer sampleCapacity has value 4; Controller performs abstract sequence Regulate start acquire decide issue done.",
+      "modelElements": [
+        "CoolerStudy::Controller::sampleCapacity",
+        "CoolerStudy::Controller::regulate",
+        "CoolerStudy::Regulate"
+      ]
+    },
+    {
+      "id": "F07",
+      "interpretation": "Requirement subject is Cooler, cooler.controller.sampleCapacity >= 4; context.cooler asserts satisfaction; verification planned only.",
+      "modelElements": [
+        "CoolerStudy::capacityRequirement",
+        "CoolerStudy::context",
+        "CoolerStudy::CapacityVerification"
+      ]
+    },
+    {
+      "id": "F08",
+      "interpretation": "Timing, protocol, units and failure response remain unspecified; six views requested.",
+      "modelElements": []
+    }
+  ],
+  "exclusions": [
+    "No verification execution or verdict",
+    "No timing or protocol",
+    "No temperature unit",
+    "No failure behavior",
+    "No explicit multiplicity",
+    "No invented external cooler connections"
+  ]
+}

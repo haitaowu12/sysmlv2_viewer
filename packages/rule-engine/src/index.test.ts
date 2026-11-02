@@ -16,6 +16,18 @@ describe('engineering assurance rule pack', () => {
     expect(result.limitations[0]).toContain('not present')
   })
 
+  it('keeps unordered interface endpoints without inventing source and target roles', () => {
+    const input = snapshot()
+    const forward = evaluateAssurance(input)
+    input.relationships.reverse()
+    const reverse = evaluateAssurance(input)
+    expect(forward).toEqual(reverse)
+    expect(forward.interfaceRegister[0]).toMatchObject({
+      endpointIds: ['leftPort', 'rightPort'], sourceEndpointIds: [], targetEndpointIds: [],
+    })
+    expect(forward.findings.some(f => f.ruleId === 'IF-INCOMPLETE-ENDPOINTS')).toBe(false)
+  })
+
   it('is byte-deterministic for the same semantic snapshot', () => {
     expect(evaluateAssurance(snapshot()).resultSha256).toBe(evaluateAssurance(snapshot()).resultSha256)
   })

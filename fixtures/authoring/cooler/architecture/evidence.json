@@ -1,0 +1,113 @@
+{
+  "sources": [
+    {
+      "id": "S01",
+      "path": "input.md",
+      "sha256": "4f92597db1de7a133fdba4283f58c79371e8158edcc920ae2398698f67f23e25",
+      "authority": "fictional user brief, sole architecture source"
+    }
+  ],
+  "evidence": [
+    {
+      "source_id": "S01",
+      "anchor": "line 2",
+      "quotation": "Create a SysML v2 model of a cooler system using package CoolerStudy. The system context contains cooler:Cooler and an external operator:Operator. Cooler owns probe:Probe and controller:Controller. Probe provides temperature observations to controller; controller sends cooling commands to an actuator:Actuator, also owned by Cooler. Operator provides an enable command to the Cooler boundary; the boundary forwards that same command to controller. Use these exact role/type names for traceability.",
+      "modeled_fact_ids": [
+        "F01",
+        "F02"
+      ],
+      "model_elements": [
+        "CoolerStudy::context",
+        "CoolerStudy::Cooler",
+        "CoolerStudy::Probe",
+        "CoolerStudy::Controller",
+        "CoolerStudy::Actuator",
+        "CoolerStudy::Operator"
+      ],
+      "status": "source-backed",
+      "interpretation": "External operator is a reference usage; cooler components are composite usages."
+    },
+    {
+      "source_id": "S01",
+      "anchor": "line 4",
+      "quotation": "TemperatureReading, CoolingCommand, and EnableCommand are distinct exchanged item types. Probe's readings port is an output Temperature channel and controller's readings port is its input conjugate. Controller's cooling port outputs a Cooling channel to actuator's conjugated cooling port. Operator's enable port outputs an Enable channel to Cooler's conjugated enable boundary port; controller also has a conjugated enable port. Define the channel port types with the respective directed item, and explicit typed interfaces with flows for the two internal exchanges and the operator exchange; bind the boundary enable port to controller.enable. Do not treat connector direction as item-flow direction.",
+      "modeled_fact_ids": [
+        "F03",
+        "F04",
+        "F05",
+        "F06"
+      ],
+      "model_elements": [
+        "CoolerStudy::Temperature",
+        "CoolerStudy::Cooling",
+        "CoolerStudy::Enable",
+        "CoolerStudy::TemperatureExchange",
+        "CoolerStudy::CoolingExchange",
+        "CoolerStudy::EnableExchange"
+      ],
+      "status": "source-backed",
+      "interpretation": "Port conjugation reverses item direction. Typed interface flow defines transfer direction independently of undirected connection. Binding equates the enable boundary with controller.enable."
+    },
+    {
+      "source_id": "S01",
+      "anchor": "line 6",
+      "quotation": "Controller has integer sampleCapacity = 4. Requirement capacityRequirement: the cooler controller shall retain at least four samples. Bind its subject to a Cooler and model the >=4 constraint, assert satisfaction by context.cooler. Provide a planned CapacityVerification case that verifies this requirement; no execution occurred.",
+      "modeled_fact_ids": [
+        "F07",
+        "F08",
+        "F09"
+      ],
+      "model_elements": [
+        "CoolerStudy::Controller::sampleCapacity",
+        "CoolerStudy::capacityRequirement",
+        "CoolerStudy::CapacityVerification"
+      ],
+      "status": "source-backed",
+      "interpretation": "Requirement subject is typed Cooler; satisfaction is asserted for context.cooler. Verification definition is a planned check."
+    },
+    {
+      "source_id": "S01",
+      "anchor": "line 8",
+      "quotation": "Controller performs Regulate behavior: start, acquire, decide, issue, done, in that order. These are abstract actions; timing/protocol/temperature units/failure responses are not specified. Do not invent them. Provide context, decomposition, interconnection, behavior, requirement and verification views of one model. Record sources/unknowns and validate the result.",
+      "modeled_fact_ids": [
+        "F10"
+      ],
+      "model_elements": [
+        "CoolerStudy::Regulate",
+        "CoolerStudy::Controller::regulate"
+      ],
+      "status": "source-backed",
+      "interpretation": "Start/done are standard control nodes. acquire, decide and issue are abstract steps with no executable implementation."
+    }
+  ],
+  "unknowns": [
+    {
+      "topic": "timing",
+      "status": "unresolved",
+      "reason": "Not specified by source; not modeled"
+    },
+    {
+      "topic": "protocol",
+      "status": "unresolved",
+      "reason": "Not specified by source; not modeled"
+    },
+    {
+      "topic": "temperature units",
+      "status": "unresolved",
+      "reason": "Not specified by source; not modeled"
+    },
+    {
+      "topic": "failure responses",
+      "status": "unresolved",
+      "reason": "Not specified by source; not modeled"
+    },
+    {
+      "topic": "item payload fields",
+      "status": "unresolved",
+      "reason": "Not specified by source; not modeled"
+    }
+  ],
+  "verification_execution": "not performed",
+  "assumptions": [],
+  "conflicts": []
+}

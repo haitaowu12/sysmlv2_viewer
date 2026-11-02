@@ -1,0 +1,1 @@
+Build the fictional cooler system from input.csv into package CoolerStudy. Preserve its exact role/type names for traceability. Define the directed channel item types and interface flows, not merely undirected connectors. Produce six relevant viewpoint presets of one model, evidence/unknowns, and fresh validation.
