@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "site": "modeling-lab",
+    "public": "experiments/browser-only-lab/dist",
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}

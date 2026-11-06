@@ -1,6 +1,6 @@
 # Modeling Lab and SysML Engineering Workbench
 
-The maintained **[Modeling Lab](https://haitaowu12.github.io/sysmlv2_viewer/)** runs directly in the browser. Open the link, allow the modeling runtime to initialize, and choose Engineering or Stakeholder. It works from static GitHub Pages assets without a companion service or local installation.
+The maintained **[Modeling Lab](https://modeling-lab.web.app/)** runs directly in the browser. Open the link, allow the modeling runtime to initialize, and choose Engineering or Stakeholder. It works from static hosting assets without a companion service or local installation.
 
 The online page starts with the complete Apollo 11 example: 28 source files, five core views and two custom views.
 
@@ -205,3 +205,13 @@ artifact is an unsigned internal release candidate only; the open P7 gates
 above remain mandatory.
 
 Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) · [More projects](https://haitaowu12.github.io/tony-wu-home/#work).
+
+## Firebase Hosting
+
+[Open the published project](https://modeling-lab.web.app/). Firebase Hosting is the primary destination for future releases. From `experiments/browser-only-lab/`, run `npm ci`, `npm test`, `npm run build:engine`, `npm run test:engine-views`, `npm run build` and `npm audit --omit=dev`. Publish only this browser-only Lab output, including its WASM runtime; the root application and companion service are separate products.
+
+```sh
+firebase deploy --only hosting --project tony-wu-projects
+```
+
+The repository configuration selects the site and public output directory. Hosting uses the no-cost Spark plan; source pushes do not deploy automatically. Existing hosts remain available.
