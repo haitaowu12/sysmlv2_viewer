@@ -26,5 +26,9 @@
   },
   "devDependencies": {
     "jsdom": "29.0.2"
+  },
+  "overrides": {
+    "glob": "14.0.4",
+    "minimatch": "11.0.5"
   }
 }
