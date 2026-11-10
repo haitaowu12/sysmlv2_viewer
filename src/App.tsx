@@ -57,7 +57,7 @@ import type { LucideIcon } from 'lucide-react';
 
 type ExportFormat = 'sysml' | 'drawio' | 'svg' | 'png';
 
-const AUTHOR_URL = 'https://haitaowu12.github.io/tony-wu-home/';
+const AUTHOR_URL = 'https://tony-wu-home.web.app/';
 
 const viewTabs: { id: ViewType; label: string; icon: LucideIcon; description: string }[] = [
   { id: 'general', label: 'General', icon: Box, description: 'Block Definition Diagram' },

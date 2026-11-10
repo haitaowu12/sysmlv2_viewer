@@ -204,7 +204,7 @@ The preserved service-backed workbench has no public production approval. Its po
 artifact is an unsigned internal release candidate only; the open P7 gates
 above remain mandatory.
 
-Built by [Tony Wu](https://haitaowu12.github.io/tony-wu-home/) · [More projects](https://haitaowu12.github.io/tony-wu-home/#work).
+Built by [Tony Wu](https://tony-wu-home.web.app/) · [More projects](https://tony-wu-home.web.app/#work).
 
 ## Firebase Hosting
 
